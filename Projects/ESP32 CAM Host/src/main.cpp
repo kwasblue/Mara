@@ -46,6 +46,20 @@ public:
     }
 
     void loop() {
+        // --- WiFi watchdog: reconnect if we got booted ---
+        if (WiFi.status() != WL_CONNECTED) {
+            static uint32_t last_reconnect_attempt = 0;
+            uint32_t now = millis();
+            if (now - last_reconnect_attempt > 5000) {  // every 5s max
+                last_reconnect_attempt = now;
+                Serial.println("[WIFI] Lost connection, trying to reconnect...");
+                WiFi.disconnect();
+                WiFi.begin(CAM_WIFI_SSID, CAM_WIFI_PASSWORD);
+            }
+            // Even if WiFi is down, we can still accept a client (e.g., AP mode),
+            // so don't return here.
+        }
+
         WiFiClient client = server_.available();
         if (!client) {
             delay(5);
@@ -93,8 +107,8 @@ private:
         config.pixel_format = PIXFORMAT_JPEG;
 
         // Resolution / quality
-        config.frame_size   = FRAMESIZE_VGA;  // 640x480
-        config.jpeg_quality = 10;             // 0–63 (lower = better)
+        config.frame_size   = FRAMESIZE_QVGA;  // 320x240
+        config.jpeg_quality = 12;
         config.fb_count     = 2;
 
         esp_err_t err = esp_camera_init(&config);
@@ -111,6 +125,7 @@ private:
         Serial.println(F("[WIFI] Connecting..."));
 
         WiFi.mode(WIFI_STA);
+        WiFi.setSleep(false);  // keep radios fully awake
         WiFi.begin(CAM_WIFI_SSID, CAM_WIFI_PASSWORD);
 
         uint32_t start = millis();
@@ -197,5 +212,5 @@ void setup() {
 
 void loop() {
     g_cam.loop();
-    delay(1); // tiny yield
+    delay(1);  // small yield
 }

@@ -14,14 +14,30 @@ MSG_CMD_BIN          = 0x51  # Binary command for high-rate streaming
 
 _MAX_LEN = 65535  # 16-bit length
 
+
+def crc16_ccitt(data: bytes, crc: int = 0xFFFF) -> int:
+    """
+    CRC16-CCITT (polynomial 0x1021, initial 0xFFFF).
+    Provides much stronger error detection than simple sum checksum.
+    """
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = ((crc << 1) ^ 0x1021) & 0xFFFF
+            else:
+                crc = (crc << 1) & 0xFFFF
+    return crc
+
+
 def encode(msg_type: int, payload: bytes = b"") -> bytes:
     """
     Encode a frame as:
-        [HEADER][len_hi][len_lo][msg_type][payload...][checksum]
+        [HEADER][len_hi][len_lo][msg_type][payload...][crc_hi][crc_lo]
 
     where:
-        length   = 1 + len(payload)  # msg_type + payload
-        checksum = (length + msg_type + sum(payload)) & 0xFF
+        length = 1 + len(payload)  # msg_type + payload
+        CRC16 is calculated over: len_hi, len_lo, msg_type, payload
     """
     length = 1 + len(payload)
     if length <= 0 or length > _MAX_LEN:
@@ -30,18 +46,22 @@ def encode(msg_type: int, payload: bytes = b"") -> bytes:
     len_hi = (length >> 8) & 0xFF
     len_lo = length & 0xFF
 
-    checksum = (length + msg_type + sum(payload)) & 0xFF
+    # Calculate CRC16 over: len_hi, len_lo, msg_type, payload
+    crc = crc16_ccitt(bytes([len_hi, len_lo, msg_type]) + payload)
+    crc_hi = (crc >> 8) & 0xFF
+    crc_lo = crc & 0xFF
 
-    # Pre-allocate exact frame size (optimization: avoid multiple appends)
+    # Pre-allocate exact frame size (1 extra byte for 2-byte CRC vs 1-byte checksum)
     payload_len = len(payload)
-    frame = bytearray(5 + payload_len)  # header + len_hi + len_lo + msg_type + payload + checksum
+    frame = bytearray(6 + payload_len)  # header + len_hi + len_lo + msg_type + payload + crc(2)
     frame[0] = HEADER
     frame[1] = len_hi
     frame[2] = len_lo
     frame[3] = msg_type
     if payload_len > 0:
         frame[4:4 + payload_len] = payload
-    frame[4 + payload_len] = checksum
+    frame[4 + payload_len] = crc_hi
+    frame[5 + payload_len] = crc_lo
     return bytes(frame)
 
 
@@ -50,6 +70,9 @@ _HEADER_BYTE = bytes([HEADER])  # Pre-allocated for find()
 def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None:
     """
     Parse as many frames as possible from buffer.
+
+    Frame format:
+        [HEADER][len_hi][len_lo][msg_type][payload...][crc_hi][crc_lo]
 
     Calls:
         on_frame(body)
@@ -63,8 +86,8 @@ def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None
     i = 0
     n = len(buffer)
 
-    # need at least HEADER + len_hi + len_lo + msg_type + checksum
-    MIN_FRAME_HEADER = 1 + 2 + 1 + 1  # header + len_hi/lo + msg_type + checksum
+    # need at least HEADER + len_hi + len_lo + msg_type + crc(2)
+    MIN_FRAME_HEADER = 1 + 2 + 1 + 2  # header + len_hi/lo + msg_type + crc(2)
 
     while i + MIN_FRAME_HEADER <= n:
         # Vectorized search for HEADER byte (faster than byte-by-byte)
@@ -93,8 +116,8 @@ def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None
             continue
 
         # total frame size:
-        #   HEADER(1) + len_hi(1) + len_lo(1) + body(length) + checksum(1)
-        frame_total = 1 + 2 + length + 1
+        #   HEADER(1) + len_hi(1) + len_lo(1) + body(length) + crc(2)
+        frame_total = 1 + 2 + length + 2
 
         if i + frame_total > n:
             # not enough data yet
@@ -113,11 +136,15 @@ def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None
         msg_type = body[0]
         payload  = body[1:]
 
-        recv_checksum = buffer[body_end]
+        # Extract received CRC (big-endian)
+        recv_crc_hi = buffer[body_end]
+        recv_crc_lo = buffer[body_end + 1]
+        recv_crc = (recv_crc_hi << 8) | recv_crc_lo
 
-        checksum = (length + msg_type + sum(payload)) & 0xFF
+        # Calculate expected CRC over: len_hi, len_lo, msg_type, payload
+        expected_crc = crc16_ccitt(bytes([len_hi, len_lo, msg_type]) + payload)
 
-        if checksum == recv_checksum:
+        if expected_crc == recv_crc:
             # good frame
             on_frame(bytes(body))  # msg_type + payload
             i += frame_total

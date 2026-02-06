@@ -179,10 +179,13 @@ Transport              EventBus              TelemetryHostModule
 ### Frame Format
 
 ```
-┌────────┬────────┬────────┬──────────┬─────────────┬──────────┐
-│ HEADER │ LEN_HI │ LEN_LO │ MSG_TYPE │   PAYLOAD   │ CHECKSUM │
-│  0xAA  │   1B   │   1B   │    1B    │   N bytes   │    1B    │
-└────────┴────────┴────────┴──────────┴─────────────┴──────────┘
+┌────────┬────────┬────────┬──────────┬─────────────┬──────────────┐
+│ HEADER │ LEN_HI │ LEN_LO │ MSG_TYPE │   PAYLOAD   │  CRC16       │
+│  0xAA  │   1B   │   1B   │    1B    │   N bytes   │   2B         │
+└────────┴────────┴────────┴──────────┴─────────────┴──────────────┘
+
+CRC16-CCITT (polynomial 0x1021, initial 0xFFFF) calculated over:
+LEN_HI + LEN_LO + MSG_TYPE + PAYLOAD
 ```
 
 ### Optimized Parsing

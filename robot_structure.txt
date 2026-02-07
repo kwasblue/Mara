@@ -1,7 +1,7 @@
 ================================================================================
 📂 PROJECT STRUCTURE
-Generated: 2026-02-07 01:52:11
-Total Files: 145
+Generated: 2026-02-07 11:39:37
+Total Files: 147
 ================================================================================
 
 📄 examples/01_serial_connection.py
@@ -11,7 +11,7 @@ Total Files: 145
    ⚙️  def on_telemetry(self, data)
 
 📄 examples/03_command_basics.py
-   ⚙️  def create_transport(self, arg)
+   ⚙️  def parse_args()
 
 📄 examples/04_telemetry_stream.py
    ⚙️  def create_transport(self, arg)
@@ -414,6 +414,16 @@ Total Files: 145
       ├── def __init__(self, name, log_dir, level, console, max_bytes, backup_count, dedup_cooldown_s, jsonl_file, text_file)
       └── def close(self)
 
+📄 robot_host/module/base.py
+   🧱 class BaseModule
+      ├── def __init__(self)
+      ├── def robot(self)
+      ├── def attach(self, robot)
+      ├── def detach(self)
+      ├── def _get_handler_for_topic(self, topic)
+      ├── def topics(self)
+      └── def __repr__(self)
+
 📄 robot_host/module/camera_client.py
    🧱 class Esp32CamClient
       ├── def __init__(self, base_url, timeout)
@@ -550,7 +560,7 @@ Total Files: 145
    ⚙️  def load_noise_config(self, data)
    ⚙️  def load_diff_drive_config(self, data)
    ⚙️  def load_delay_config(self, data)
-   🧱 class RobotConfig
+   🧱 class SimulationConfig
       ├── def __init__(self, config_path)
       ├── def create_robot(self)
       ├── def create_simulation_runner(self, controller)
@@ -937,6 +947,9 @@ Total Files: 145
       ├── def is_running(self)
       ├── def tick_count(self)
       ├── def elapsed_time(self)
+      ├── def modules(self)
+      ├── def add_module(self, module)
+      ├── def remove_module(self, module)
       ├── def on_tick(self, callback)
       ├── def on_telemetry(self, callback)
       ├── def on_start(self, callback)
@@ -1039,6 +1052,11 @@ Total Files: 145
    ⚙️  def generate_cpp_version(self, version)
    ⚙️  def generate_py_version(self, version)
    ⚙️  def write_version_files(self, version, cpp_path, py_path)
+   ⚙️  def main()
+
+📄 robot_host/tools/gen_telemetry.py
+   ⚙️  def generate_cpp_header()
+   ⚙️  def generate_py_module()
    ⚙️  def main()
 
 📄 robot_host/tools/gen_version.py
@@ -1364,7 +1382,7 @@ Total Files: 145
 ================================================================================
 📊 STATISTICS
 ================================================================================
-Total Classes:    185
-Total Functions:  341
-Total Methods:    471
+Total Classes:    186
+Total Functions:  344
+Total Methods:    481
 ================================================================================

@@ -71,7 +71,7 @@ from .experiments import ExperimentRunner, ExperimentConfig, ExperimentResult
 from .config_loader import (
     load_robot,
     load_simulation,
-    RobotConfig,
+    SimulationConfig,
     list_available_robots,
     generate_config_template,
 )
@@ -123,7 +123,7 @@ __all__ = [
     # Config
     "load_robot",
     "load_simulation",
-    "RobotConfig",
+    "SimulationConfig",
     "list_available_robots",
     "generate_config_template",
 ]

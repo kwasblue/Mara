@@ -2,118 +2,71 @@
   'theme': 'base',
   'themeVariables': {
     'fontFamily': 'SF Pro Display, -apple-system, sans-serif',
-    'fontSize': '13px',
+    'fontSize': '12px',
     'primaryColor': '#6366f1',
     'primaryTextColor': '#fff',
-    'primaryBorderColor': '#4f46e5',
     'lineColor': '#94a3b8',
     'textColor': '#334155'
   }
 }}%%
 
-flowchart TB
-    subgraph STEP1["<b>① DEFINE</b> — Edit Schema"]
-        direction TB
-        S1_DESC["Add your command/telemetry to the single source of truth"]
-
-        SCHEMA["<b>📝 platform_schema.py</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><br/>COMMANDS = {<br/>  'CMD_MY_SENSOR_READ': {<br/>    'kind': 'cmd',<br/>    'direction': 'host→mcu',<br/>    'payload': {'sensor_id': {...}}<br/>  }<br/>}<br/><br/>TELEMETRY_SECTIONS = {<br/>  'TELEM_MY_SENSOR': {<br/>    'id': 0x20,<br/>    'format': 'id(u8) value(f32)',<br/>    'size': 5<br/>  }<br/>}"]
+flowchart LR
+    subgraph S1["<b>① DEFINE</b>"]
+        SCHEMA["<b>📝 platform_schema.py</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>COMMANDS = {<br/>  'CMD_MY_SENSOR': {...}<br/>}<br/><br/>TELEMETRY_SECTIONS = {<br/>  'TELEM_MY_SENSOR': {<br/>    'id': 0x20,<br/>    'format': 'id(u8) val(f32)'<br/>  }<br/>}"]
     end
 
-    subgraph STEP2["<b>② GENERATE</b> — Run Codegen"]
+    subgraph S2["<b>② GENERATE</b>"]
         direction TB
-        S2_DESC["Single command generates matching Python + C++ code"]
-
         GEN["<b>⚙️ python generate_all.py</b>"]
-
-        subgraph OUTPUTS["Generated Files"]
+        subgraph OUTS[" "]
             direction LR
-            subgraph PY_OUT["<b>🐍 Python</b>"]
-                PY1["command_defs.py"]
-                PY2["telemetry_sections.py"]
-                PY3["client_commands.py"]
-            end
-            subgraph CPP_OUT["<b>⚡ C++</b>"]
-                CPP1["CommandDefs.h"]
-                CPP2["TelemetrySections.h"]
-                CPP3["BinaryCommands.h"]
-            end
+            PY["<b>🐍 Python</b><br/>telemetry_sections.py<br/>client_commands.py"]
+            CPP["<b>⚡ C++</b><br/>TelemetrySections.h<br/>CommandDefs.h"]
+        end
+        GEN --> OUTS
+    end
+
+    subgraph S3["<b>③ MCU HANDLER</b>"]
+        MCU["<b>📄 MySensorHandler.h</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>class MySensorHandler<br/>  : public IStringHandler {<br/><br/>  void handle(...) {<br/>    float val = readSensor();<br/>    ctx.sendAck(cmd, val);<br/>  }<br/>};<br/><br/>REGISTER_HANDLER(...);"]
+    end
+
+    subgraph S4["<b>④ HOST MODULE</b>"]
+        HOST["<b>📄 my_sensor.py</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>class MySensorModule(BaseModule):<br/>    name = 'my_sensor'<br/><br/>    def topics(self):<br/>        return ['telemetry.my_sensor']<br/><br/>    def on_telemetry_my_sensor(self, d):<br/>        self.value = d['value']<br/><br/>    async def read(self, id):<br/>        return await self._robot<br/>          .client.cmd_my_sensor(id)"]
+    end
+
+    subgraph S5["<b>⑤ USE IT</b>"]
+        APP["<b>📄 my_app.py</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>from robot_host import Robot, Runtime<br/>from my_sensor import MySensorModule<br/><br/>async with Robot('/dev/tty') as robot:<br/>    sensor = MySensorModule()<br/>    runtime = Runtime(robot, tick_hz=50)<br/>    runtime.add_module(sensor)<br/><br/>    await robot.arm()<br/>    val = await sensor.read(0)<br/>    await runtime.run(duration=10)"]
+    end
+
+    subgraph S6["<b>⑥ RUNTIME</b>"]
+        direction TB
+        subgraph FLOWS[" "]
+            direction LR
+            CMD_PATH["<b>Command →</b><br/>read(0) → Client<br/>→ Frame → MCU<br/>→ Handler → ACK"]
+            TELEM_PATH["<b>← Telemetry</b><br/>Sensor → Pack<br/>→ Frame → Parse<br/>→ EventBus → Module"]
         end
     end
 
-    subgraph STEP3["<b>③ IMPLEMENT MCU</b> — Add Handler"]
-        direction TB
-        S3_DESC["Create self-registering handler (1 file)"]
-
-        MCU_CODE["<b>📄 MySensorHandler.h</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><br/>class MySensorHandler : public IStringHandler {<br/>public:<br/>  static constexpr const char* CMDS[] = {<br/>    'CMD_MY_SENSOR_READ', nullptr<br/>  };<br/><br/>  void handle(const char* cmd,<br/>              JsonVariantConst payload,<br/>              CommandContext& ctx) override {<br/>    int id = payload['sensor_id'];<br/>    float val = readSensor(id);<br/>    ctx.sendAck(cmd, true, {{'value', val}});<br/>  }<br/>};<br/><br/>REGISTER_HANDLER(MySensorHandler);"]
-    end
-
-    subgraph STEP4["<b>④ IMPLEMENT HOST</b> — Add Module"]
-        direction TB
-        S4_DESC["Create BaseModule for your feature"]
-
-        HOST_CODE["<b>📄 my_sensor.py</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><br/>from robot_host import BaseModule<br/>from robot_host.telemetry.telemetry_sections import TELEM_MY_SENSOR<br/><br/>class MySensorModule(BaseModule):<br/>    name = 'my_sensor'<br/><br/>    def topics(self):<br/>        return ['telemetry.my_sensor']<br/><br/>    def on_telemetry_my_sensor(self, data):<br/>        self.latest_value = data['value']<br/>        print(f'Sensor: {data}')<br/><br/>    async def read(self, sensor_id: int):<br/>        return await self._robot.client.cmd_my_sensor_read(<br/>            sensor_id=sensor_id<br/>        )"]
-    end
-
-    subgraph STEP5["<b>⑤ USE IT</b> — Full Application"]
-        direction TB
-        S5_DESC["Everything wired up and working"]
-
-        APP_CODE["<b>📄 my_app.py</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/><br/>from robot_host import Robot, Runtime<br/>from my_sensor import MySensorModule<br/><br/>async def main():<br/>    async with Robot('/dev/ttyUSB0') as robot:<br/>        # Add your module<br/>        sensor = MySensorModule()<br/>        runtime = Runtime(robot, tick_hz=50)<br/>        runtime.add_module(sensor)<br/><br/>        # Use it!<br/>        await robot.arm()<br/>        value = await sensor.read(sensor_id=0)<br/>        print(f'Read: {value}')<br/><br/>        # Or run continuous loop<br/>        await runtime.run(duration=10.0)"]
-    end
-
-    subgraph RUNTIME["<b>⑥ RUNTIME</b> — Data Flow"]
-        direction LR
-
-        subgraph CMD_FLOW["<b>Command Path</b>"]
-            direction TB
-            CF1["sensor.read(0)"]
-            CF2["Client encodes"]
-            CF3["Frame sent"]
-            CF4["MCU handler"]
-            CF5["Response"]
-        end
-
-        subgraph TELEM_FLOW["<b>Telemetry Path</b>"]
-            direction TB
-            TF1["MCU sensor read"]
-            TF2["Pack section 0x20"]
-            TF3["Frame sent"]
-            TF4["Parser decodes"]
-            TF5["EventBus publishes"]
-            TF6["Module callback"]
-        end
-    end
-
-    %% Flow connections
-    STEP1 --> STEP2
-    STEP2 --> STEP3
-    STEP2 --> STEP4
-    STEP3 --> STEP5
-    STEP4 --> STEP5
-    STEP5 --> RUNTIME
-
-    SCHEMA --> GEN
-    GEN --> PY_OUT
-    GEN --> CPP_OUT
-
-    CF1 --> CF2 --> CF3 --> CF4 --> CF5
-    TF1 --> TF2 --> TF3 --> TF4 --> TF5 --> TF6
+    S1 --> S2 --> S3
+    S2 --> S4
+    S3 --> S5
+    S4 --> S5
+    S5 --> S6
 
     %% Styling
-    style STEP1 fill:#eef2ff,stroke:#6366f1,stroke-width:2px,color:#3730a3
-    style STEP2 fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#92400e
-    style STEP3 fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#065f46
-    style STEP4 fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e40af
-    style STEP5 fill:#fdf4ff,stroke:#a855f7,stroke-width:2px,color:#7e22ce
-    style RUNTIME fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#334155
+    style S1 fill:#eef2ff,stroke:#6366f1,stroke-width:2px,color:#3730a3
+    style S2 fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#92400e
+    style S3 fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#065f46
+    style S4 fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e40af
+    style S5 fill:#fdf4ff,stroke:#a855f7,stroke-width:2px,color:#7e22ce
+    style S6 fill:#f1f5f9,stroke:#64748b,stroke-width:2px,color:#334155
 
-    style SCHEMA fill:#e0e7ff,stroke:#6366f1,stroke-width:1px,color:#3730a3
-    style MCU_CODE fill:#d1fae5,stroke:#10b981,stroke-width:1px,color:#065f46
-    style HOST_CODE fill:#dbeafe,stroke:#3b82f6,stroke-width:1px,color:#1e40af
-    style APP_CODE fill:#f3e8ff,stroke:#a855f7,stroke-width:1px,color:#7e22ce
-    style GEN fill:#fef3c7,stroke:#f59e0b,stroke-width:1px,color:#92400e
-
-    style PY_OUT fill:#dbeafe,stroke:#3b82f6,color:#1e40af
-    style CPP_OUT fill:#d1fae5,stroke:#10b981,color:#065f46
-    style CMD_FLOW fill:#e0e7ff,stroke:#6366f1,color:#3730a3
-    style TELEM_FLOW fill:#ffedd5,stroke:#f97316,color:#c2410c
+    style SCHEMA fill:#e0e7ff,stroke:#6366f1,color:#3730a3
+    style GEN fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style MCU fill:#d1fae5,stroke:#10b981,color:#065f46
+    style HOST fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    style APP fill:#f3e8ff,stroke:#a855f7,color:#7e22ce
+    style PY fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    style CPP fill:#d1fae5,stroke:#10b981,color:#065f46
+    style CMD_PATH fill:#e0e7ff,stroke:#6366f1,color:#3730a3
+    style TELEM_PATH fill:#ffedd5,stroke:#f97316,color:#c2410c

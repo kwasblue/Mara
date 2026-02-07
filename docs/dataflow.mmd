@@ -10,81 +10,65 @@
   }
 }}%%
 
-flowchart TB
-    subgraph COMMAND["<b>📤 COMMAND FLOW</b>  <i>Host → MCU</i>"]
-        direction TB
-
-        C1["<b>👤 User Code</b><br/>robot.motion.set_velocity(0.3, 0.1)"]
-        C2["<b>🔷 Public API</b><br/>DifferentialDrive.drive()"]
-        C3["<b>📡 AsyncRobotClient</b><br/>send_binary(SET_VEL, vx, omega)"]
-        C4["<b>📦 Protocol</b><br/>[0xAA][len][0x51][vx:f32][ω:f32][CRC]"]
-        C5["<b>🔌 Transport</b><br/>Serial / TCP / Bluetooth"]
-
-        C1 --> C2 --> C3 --> C4 --> C5
+flowchart LR
+    subgraph CMD["<b>📤 COMMAND FLOW</b>  Host → MCU"]
+        direction LR
+        C1["<b>👤 User</b><br/>set_velocity()"]
+        C2["<b>🔷 API</b><br/>DiffDrive"]
+        C3["<b>📡 Client</b><br/>send_binary()"]
+        C4["<b>📦 Frame</b><br/>[0xAA]..."]
+        C5["<b>🔌 Transport</b>"]
     end
 
-    subgraph LINK["<b>⚡ WIRE</b>"]
-        WIRE["USB Serial  •  WiFi TCP:8080  •  Bluetooth SPP"]
+    subgraph WIRE1[" "]
+        W1["⚡"]
     end
 
-    subgraph MCU_PROC["<b>🔧 MCU PROCESSING</b>"]
-        direction TB
-
-        M1["<b>📥 Transport</b><br/>Receive frame"]
-        M2["<b>🔀 MessageRouter</b><br/>Parse, validate CRC"]
-        M3["<b>📋 MotionHandler</b><br/>Decode SET_VEL opcode"]
-        M4["<b>🎯 IntentBuffer</b><br/>setVelocityIntent(vx, ω)"]
-        M5["<b>⚡ Control Task</b><br/>100Hz FreeRTOS<br/>consumeVelocityIntent()"]
-        M6["<b>🔧 MotionController</b><br/>Diff drive → wheel speeds"]
-        M7["<b>⚙️ DC Motors</b><br/>Apply PWM"]
-
-        M1 --> M2 --> M3 --> M4 --> M5 --> M6 --> M7
+    subgraph MCU_CMD["<b>🔧 MCU</b>"]
+        direction LR
+        M1["<b>📥 Recv</b>"]
+        M2["<b>🔀 Route</b>"]
+        M3["<b>📋 Handler</b>"]
+        M4["<b>🎯 Intent</b>"]
+        M5["<b>⚡ Control</b><br/>100Hz"]
+        M6["<b>⚙️ Motor</b>"]
     end
 
-    subgraph TELEMETRY["<b>📊 TELEMETRY FLOW</b>  <i>MCU → Host</i>"]
-        direction TB
+    C1 --> C2 --> C3 --> C4 --> C5 --> WIRE1 --> M1 --> M2 --> M3 --> M4 --> M5 --> M6
 
-        T1["<b>📡 Sensors</b><br/>IMU • Encoder • Ultrasonic"]
-        T2["<b>📦 TelemetryModule</b><br/>Pack binary sections"]
-        T3["<b>🏷️ Section IDs</b><br/>0x01:IMU  0x04:Encoder  0x02:Sonar"]
-        T4["<b>📤 Frame</b><br/>[0xAA][len][0x30][sections...][CRC]"]
-
-        T1 --> T2 --> T3 --> T4
+    subgraph SENSOR["<b>📊 TELEMETRY FLOW</b>  MCU → Host"]
+        direction LR
+        T1["<b>📡 Sensors</b><br/>IMU, Encoder"]
+        T2["<b>📦 Pack</b><br/>Sections"]
+        T3["<b>🏷️ IDs</b><br/>0x01, 0x04"]
+        T4["<b>📤 Frame</b>"]
     end
 
-    subgraph HOST_TELEM["<b>📬 HOST TELEMETRY PARSE</b>"]
-        direction TB
-
-        H1["<b>📥 Transport</b><br/>Receive frame"]
-        H2["<b>🔍 binary_parser.py</b><br/>Parse by section ID"]
-        H3["<b>📬 EventBus</b><br/>publish('telemetry.imu', data)"]
-        H4["<b>🔔 Callbacks</b><br/>robot.on('telemetry.imu', fn)"]
-        H5["<b>📊 Your Module</b><br/>Process data"]
-
-        H1 --> H2 --> H3 --> H4 --> H5
+    subgraph WIRE2[" "]
+        W2["⚡"]
     end
 
-    %% Main flow
-    COMMAND --> LINK
-    LINK --> MCU_PROC
-    TELEMETRY --> LINK
-    LINK --> HOST_TELEM
+    subgraph PARSE["<b>🐍 Host Parse</b>"]
+        direction LR
+        H1["<b>📥 Recv</b>"]
+        H2["<b>🔍 Parser</b><br/>by section"]
+        H3["<b>📬 EventBus</b><br/>publish()"]
+        H4["<b>🔔 Callback</b><br/>on('imu')"]
+        H5["<b>📊 Module</b>"]
+    end
+
+    T1 --> T2 --> T3 --> T4 --> WIRE2 --> H1 --> H2 --> H3 --> H4 --> H5
 
     %% Styling
-    style COMMAND fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e40af
-    style MCU_PROC fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#065f46
-    style TELEMETRY fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#c2410c
-    style HOST_TELEM fill:#fdf4ff,stroke:#a855f7,stroke-width:2px,color:#7e22ce
-    style LINK fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#92400e
-
-    style WIRE fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style CMD fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e40af
+    style MCU_CMD fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#065f46
+    style SENSOR fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#c2410c
+    style PARSE fill:#fdf4ff,stroke:#a855f7,stroke-width:2px,color:#7e22ce
+    style WIRE1 fill:#fef3c7,stroke:#f59e0b,stroke-width:1px,color:#92400e
+    style WIRE2 fill:#fef3c7,stroke:#f59e0b,stroke-width:1px,color:#92400e
 
     style C1 fill:#dbeafe,stroke:#3b82f6,color:#1e40af
-    style C5 fill:#dbeafe,stroke:#3b82f6,color:#1e40af
-    style M1 fill:#d1fae5,stroke:#10b981,color:#065f46
     style M5 fill:#bbf7d0,stroke:#22c55e,color:#166534,stroke-width:2px
-    style M7 fill:#d1fae5,stroke:#10b981,color:#065f46
+    style M6 fill:#d1fae5,stroke:#10b981,color:#065f46
     style T1 fill:#ffedd5,stroke:#f97316,color:#c2410c
-    style T4 fill:#ffedd5,stroke:#f97316,color:#c2410c
-    style H1 fill:#f3e8ff,stroke:#a855f7,color:#7e22ce
     style H5 fill:#f3e8ff,stroke:#a855f7,color:#7e22ce

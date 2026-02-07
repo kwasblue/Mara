@@ -239,27 +239,28 @@ class CommandStreamer:
 
     # ---------------- Internals ----------------
 
-    async def _get_provider_payload(self, provider: PayloadProvider) -> Optional[Payload]:
+    async def _get_provider_payload(self, provider: PayloadProvider, is_async: bool) -> Optional[Payload]:
         res = provider()
-        if inspect.isawaitable(res):
+        if is_async:
             return dict(await res)
         return dict(res)
 
-    def _is_connected(self) -> bool:
-        # tolerate robot without is_connected
+    def _is_connected(self, is_connected_attr: Any) -> bool:
+        # Use cached attribute reference
+        if is_connected_attr is None:
+            return True
         try:
-            return bool(getattr(self.robot, "is_connected", True))
+            return bool(is_connected_attr)
         except Exception:
             return True
 
-    def _pending_count(self) -> int:
-        commander = getattr(self.robot, "commander", None)
-        if commander and hasattr(commander, "pending_count"):
-            try:
-                return int(commander.pending_count())
-            except Exception:
-                return 0
-        return 0
+    def _pending_count(self, commander: Any) -> int:
+        if commander is None:
+            return 0
+        try:
+            return int(commander.pending_count())
+        except Exception:
+            return 0
 
     def _ttl_expired(self, spec: StreamSpec) -> bool:
         if spec.ttl_s is None:
@@ -291,7 +292,7 @@ class CommandStreamer:
                     pass
             return
 
-    async def _get_payload(self, spec: StreamSpec) -> Optional[Payload]:
+    async def _get_payload(self, spec: StreamSpec, provider_is_async: bool = False) -> Optional[Payload]:
         # TTL/deadman only makes sense when payload is expected to be refreshed.
         if self._ttl_expired(spec):
             await self._handle_ttl(spec)
@@ -299,7 +300,7 @@ class CommandStreamer:
 
         # Provider-based stream
         if spec.provider is not None:
-            p = await self._get_provider_payload(spec.provider)
+            p = await self._get_provider_payload(spec.provider, provider_is_async)
             # Provider counts as "fresh" data only if you WANT it to.
             # If you want TTL to apply to provider, you should update last_update_ts externally.
             return p
@@ -326,23 +327,40 @@ class CommandStreamer:
     async def _run_stream(self, spec: StreamSpec) -> None:
         next_t = time.monotonic()
 
+        # Cache attribute lookups once at stream start (avoid getattr in hot loop)
+        is_connected_attr = getattr(self.robot, "is_connected", None)
+        commander = getattr(self.robot, "commander", None) if spec.request_ack else None
+
+        # Cache whether provider is async (avoid inspect.isawaitable per call)
+        provider_is_async = False
+        if spec.provider is not None:
+            # Check once if provider returns awaitable
+            test_result = spec.provider()
+            provider_is_async = inspect.isawaitable(test_result)
+            if provider_is_async:
+                # Consume the awaitable we just created
+                try:
+                    await test_result
+                except Exception:
+                    pass
+
         while spec.enabled:
             # recompute each loop so set_rate() takes effect immediately
             period = 1.0 / max(1e-6, float(spec.rate_hz))
 
             try:
                 # Connection gating
-                if spec.require_connected and not self._is_connected():
+                if spec.require_connected and not self._is_connected(is_connected_attr):
                     await asyncio.sleep(min(0.25, period))
                     continue
 
                 # Ack gating: don't let streaming overwhelm pending reliable queue
                 if spec.request_ack:
-                    if self._pending_count() >= spec.max_in_flight:
+                    if self._pending_count(commander) >= spec.max_in_flight:
                         await asyncio.sleep(min(0.01, period))
                         continue
 
-                payload = await self._get_payload(spec)
+                payload = await self._get_payload(spec, provider_is_async)
                 if payload is None:
                     spec.skipped_no_payload += 1
                 else:

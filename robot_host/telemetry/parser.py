@@ -47,7 +47,7 @@ def parse_telemetry(msg: Dict[str, Any]) -> TelemetryPacket:
       }
     """
     ts_ms = int(msg.get("ts_ms", 0))
-    data = msg.get("data", {}) or {}
+    data = msg.get("data") or {}
 
     # --- IMU ---
     imu = None

@@ -35,8 +35,10 @@ def load_session_df(jsonl_path: str) -> pd.DataFrame:
     rows = []
     with open(jsonl_path, "r", encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
-            if line:
+            # JSON parser handles whitespace; skip empty lines efficiently
+            if line and line[0] not in ('\n', '\r', ' ', '\t'):
+                rows.append(json.loads(line))
+            elif line.strip():
                 rows.append(json.loads(line))
 
     df = pd.DataFrame(rows)

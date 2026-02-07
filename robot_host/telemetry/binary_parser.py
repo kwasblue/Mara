@@ -33,11 +33,19 @@ TELEM_CTRL_SIGNALS   = 0x10
 TELEM_CTRL_OBSERVERS = 0x11
 TELEM_CTRL_SLOTS     = 0x12
 
-# Outer "sectioned packet" header (LE):
-# u8 version, u16 seq, u32 ts_ms, u8 section_count
-# (this matches your C++: put_u8, put_u16, put_u32, put_u8)
-_PKT_HDR = struct.Struct("<BHI B".replace(" ", ""))  # "<BHIB"
-# Explicit: "<BHIB" == u8, u16, u32, u8
+# Pre-compiled struct formats for performance (avoid format string parsing each call)
+_PKT_HDR = struct.Struct("<BHIB")  # version(u8), seq(u16), ts_ms(u32), section_count(u8)
+_IMU_FMT = struct.Struct("<BB7h")  # online, ok, ax/ay/az, gx/gy/gz, temp
+_ULTRASONIC_FMT = struct.Struct("<BBBH")  # sensor_id, attached, ok, dist_mm
+_LIDAR_FMT = struct.Struct("<BBHH")  # online, ok, dist_mm, signal
+_ENCODER_FMT = struct.Struct("<i")  # ticks
+_STEPPER_FMT = struct.Struct("<bBBBBih")  # motor_id, attached, enabled, moving, dir, steps, speed
+_DC_MOTOR_FMT = struct.Struct("<Bh")  # attached, speed_centi
+_SIGNAL_FMT = struct.Struct("<Hfi")  # id, value, ts_ms
+_OBSERVER_HDR_FMT = struct.Struct("<BBB")  # slot, enabled, num_states
+_FLOAT_FMT = struct.Struct("<f")  # single float
+_SLOT_FMT = struct.Struct("<BBBI")  # slot, enabled, ok, run_count
+_U16_FMT = struct.Struct("<H")  # count
 
 def _make_empty(ts_ms: int, raw_len: int, meta: Dict[str, Any]) -> TelemetryPacket:
     return TelemetryPacket(
@@ -96,6 +104,7 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
         off += section_len
 
         # ---- Section decoders (v1) ----
+        # Using pre-compiled Struct objects and multiplication for speed
 
         # IMU v1:
         # online(u8), ok(u8),
@@ -103,31 +112,31 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
         # gx_mdps(i16), gy_mdps(i16), gz_mdps(i16),
         # temp_c_centi(i16)
         if section_id == TELEM_IMU:
-            if len(body) >= struct.calcsize("<BB7h"):
-                online, ok, ax_mg, ay_mg, az_mg, gx_mdps, gy_mdps, gz_mdps, temp_c_centi = struct.unpack_from("<BB7h", body, 0)
+            if len(body) >= _IMU_FMT.size:
+                online, ok, ax_mg, ay_mg, az_mg, gx_mdps, gy_mdps, gz_mdps, temp_c_centi = _IMU_FMT.unpack_from(body, 0)
                 pkt.imu = ImuTelemetry(
                     online=bool(online),
                     ok=bool(ok),
-                    ax_g=ax_mg / 1000.0,
-                    ay_g=ay_mg / 1000.0,
-                    az_g=az_mg / 1000.0,
-                    gx_dps=gx_mdps / 1000.0,
-                    gy_dps=gy_mdps / 1000.0,
-                    gz_dps=gz_mdps / 1000.0,
-                    temp_c=temp_c_centi / 100.0,
+                    ax_g=ax_mg * 0.001,
+                    ay_g=ay_mg * 0.001,
+                    az_g=az_mg * 0.001,
+                    gx_dps=gx_mdps * 0.001,
+                    gy_dps=gy_mdps * 0.001,
+                    gz_dps=gz_mdps * 0.001,
+                    temp_c=temp_c_centi * 0.01,
                 )
             continue
 
         # Ultrasonic v1:
         # sensor_id(u8), attached(u8), ok(u8), dist_mm(u16)
         if section_id == TELEM_ULTRASONIC:
-            if len(body) >= struct.calcsize("<BBBH"):
-                sensor_id, attached, ok, dist_mm = struct.unpack_from("<BBBH", body, 0)
+            if len(body) >= _ULTRASONIC_FMT.size:
+                sensor_id, attached, ok, dist_mm = _ULTRASONIC_FMT.unpack_from(body, 0)
                 pkt.ultrasonic = UltrasonicTelemetry(
                     sensor_id=int(sensor_id),
                     attached=bool(attached),
                     ok=bool(ok),
-                    distance_cm=(dist_mm / 10.0) if dist_mm != 0 else None,
+                    distance_cm=(dist_mm * 0.1) if dist_mm != 0 else None,
                     ts_ms=ts_ms,
                 )
             continue
@@ -135,12 +144,12 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
         # LiDAR v1:
         # online(u8), ok(u8), dist_mm(u16), signal(u16)
         if section_id == TELEM_LIDAR:
-            if len(body) >= struct.calcsize("<BBHH"):
-                online, ok, dist_mm, signal = struct.unpack_from("<BBHH", body, 0)
+            if len(body) >= _LIDAR_FMT.size:
+                online, ok, dist_mm, signal = _LIDAR_FMT.unpack_from(body, 0)
                 pkt.lidar = LidarTelemetry(
                     online=bool(online),
                     ok=bool(ok),
-                    distance_m=(dist_mm / 1000.0) if dist_mm != 0 else None,
+                    distance_m=(dist_mm * 0.001) if dist_mm != 0 else None,
                     signal=(signal if signal != 0 else None),
                     ts_ms=ts_ms,
                 )
@@ -149,41 +158,41 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
         # Encoder0 v1:
         # ticks(i32)
         if section_id == TELEM_ENCODER0:
-            if len(body) >= struct.calcsize("<i"):
-                (ticks,) = struct.unpack_from("<i", body, 0)
-                pkt.encoder0 = EncoderTelemetry(ts_ms=ts_ms, encoder_id=0, ticks=int(ticks))
+            if len(body) >= _ENCODER_FMT.size:
+                (ticks,) = _ENCODER_FMT.unpack_from(body, 0)
+                pkt.encoder0 = EncoderTelemetry(ts_ms=ts_ms, encoder_id=0, ticks=ticks)
             continue
 
         # Stepper0 v1:
         # motor_id(i8), attached(u8), enabled(u8), moving(u8), dir_forward(u8),
         # last_cmd_steps(i32), last_cmd_speed_centi(i16)
         if section_id == TELEM_STEPPER0:
-            if len(body) >= struct.calcsize("<bBBBBih"):
-                motor_id, attached, enabled, moving, dir_forward, last_steps, speed_centi = struct.unpack_from("<bBBBBih", body, 0)
+            if len(body) >= _STEPPER_FMT.size:
+                motor_id, attached, enabled, moving, dir_forward, last_steps, speed_centi = _STEPPER_FMT.unpack_from(body, 0)
                 pkt.stepper0 = StepperTelemetry(
                     ts_ms=ts_ms,
-                    motor_id=int(motor_id),
+                    motor_id=motor_id,
                     attached=bool(attached),
                     enabled=bool(enabled),
                     moving=bool(moving),
                     dir_forward=bool(dir_forward),
-                    last_cmd_steps=int(last_steps),
-                    last_cmd_speed=speed_centi / 100.0,
+                    last_cmd_steps=last_steps,
+                    last_cmd_speed=speed_centi * 0.01,
                 )
             continue
 
         # DC Motor0 v1 (minimal):
         # attached(u8), speed_centi(i16)
         if section_id == TELEM_DC_MOTOR0:
-            if len(body) >= struct.calcsize("<Bh"):
-                attached, speed_centi = struct.unpack_from("<Bh", body, 0)
+            if len(body) >= _DC_MOTOR_FMT.size:
+                attached, speed_centi = _DC_MOTOR_FMT.unpack_from(body, 0)
                 pkt.dc_motor0 = DcMotorTelemetry(
                     ts_ms=ts_ms,
                     motor_id=0,
                     attached=bool(attached),
                     in1_pin=None, in2_pin=None, pwm_pin=None, ledc_channel=None,
                     gpio_ch_in1=None, gpio_ch_in2=None, pwm_ch=None,
-                    speed=speed_centi / 100.0,
+                    speed=speed_centi * 0.01,
                     freq_hz=None,
                     resolution_bits=None,
                 )
@@ -192,16 +201,17 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
         # Control Signals:
         # count(u16), [id(u16), value(f32), ts_ms(u32)] * count
         if section_id == TELEM_CTRL_SIGNALS:
-            if len(body) >= 2:
-                count = struct.unpack_from("<H", body, 0)[0]
+            if len(body) >= _U16_FMT.size:
+                count = _U16_FMT.unpack_from(body, 0)[0]
                 signals = []
                 pos = 2
+                signal_size = _SIGNAL_FMT.size
                 for _ in range(count):
-                    if pos + 10 > len(body):
+                    if pos + signal_size > len(body):
                         break
-                    sig_id, value, sig_ts = struct.unpack_from("<Hfi", body, pos)
+                    sig_id, value, sig_ts = _SIGNAL_FMT.unpack_from(body, pos)
                     signals.append(SignalTelemetry(id=sig_id, name="", value=value, ts_ms=sig_ts))
-                    pos += 10
+                    pos += signal_size
                 pkt.ctrl_signals = ControlSignalsTelemetry(signals=signals, count=count)
             continue
 
@@ -212,18 +222,20 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                 slot_count = body[0]
                 observers = []
                 pos = 1
+                obs_hdr_size = _OBSERVER_HDR_FMT.size
+                float_size = _FLOAT_FMT.size
                 for _ in range(slot_count):
-                    if pos + 3 > len(body):
+                    if pos + obs_hdr_size > len(body):
                         break
-                    slot, enabled, num_states = struct.unpack_from("<BBB", body, pos)
-                    pos += 3
+                    slot, enabled, num_states = _OBSERVER_HDR_FMT.unpack_from(body, pos)
+                    pos += obs_hdr_size
                     states = []
                     for _ in range(num_states):
-                        if pos + 4 > len(body):
+                        if pos + float_size > len(body):
                             break
-                        (x,) = struct.unpack_from("<f", body, pos)
+                        (x,) = _FLOAT_FMT.unpack_from(body, pos)
                         states.append(x)
-                        pos += 4
+                        pos += float_size
                     observers.append(ObserverTelemetry(
                         slot=slot, enabled=bool(enabled), update_count=0, states=states
                     ))
@@ -237,11 +249,12 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                 slot_count = body[0]
                 slots = []
                 pos = 1
+                slot_size = _SLOT_FMT.size
                 for _ in range(slot_count):
-                    if pos + 7 > len(body):
+                    if pos + slot_size > len(body):
                         break
-                    slot, enabled, ok, run_count = struct.unpack_from("<BBBI", body, pos)
-                    pos += 7
+                    slot, enabled, ok, run_count = _SLOT_FMT.unpack_from(body, pos)
+                    pos += slot_size
                     slots.append(ControlSlotTelemetry(
                         slot=slot, enabled=bool(enabled), ok=bool(ok), run_count=run_count
                     ))

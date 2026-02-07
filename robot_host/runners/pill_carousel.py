@@ -3,13 +3,11 @@ import asyncio
 import time
 from typing import Optional
 
-import serial
-
 from robot_host.core.event_bus import EventBus
 from robot_host.command.client import AsyncRobotClient
 from robot_host.module.pill_test import PillCarousel, PillCarouselConfig
 from robot_host.transport.tcp_transport import AsyncTcpTransport
-from robot_host.transport.stream_transport import StreamTransport
+from robot_host.transport.serial_transport import SerialTransport
 
 
 # ==================== SIMPLE CONFIG BLOCK ====================
@@ -36,41 +34,6 @@ COVER_OFFSET_STEPS = 17   # NEW: 20-step nudge to cover a slot
 # What test to run
 FULL_REV_TEST = False    # True = one full rev, False = step slot-by-slot
 COVER_DEMO = True       # NEW: if True, cover/uncover each slot after moving
-
-
-# ==================== TRANSPORT ====================
-
-class SerialTransport(StreamTransport):
-    """
-    Generic serial transport for USB/UART or Bluetooth-Serial devices.
-    Copied from your stepper runner.
-    """
-
-    def __init__(self, port: str, baudrate: int = 115200) -> None:
-        super().__init__()
-        self.port = port
-        self.baudrate = baudrate
-        self._ser: Optional[serial.Serial] = None
-
-    def _open(self) -> None:
-        print(f"[SerialTransport] Opening {self.port} @ {self.baudrate}")
-        self._ser = serial.Serial(self.port, self.baudrate, timeout=0.05)
-
-    def _close(self) -> None:
-        print("[SerialTransport] Closing")
-        if self._ser and self._ser.is_open:
-            self._ser.close()
-        self._ser = None
-
-    def _read_raw(self, n: int) -> bytes:
-        if not self._ser:
-            return b""
-        return self._ser.read(n)
-
-    def _send_bytes(self, data: bytes) -> None:
-        if not self._ser or not self._ser.is_open:
-            raise RuntimeError("Serial not open")
-        self._ser.write(data)
 
 
 async def tcp_preflight(host: str, port: int, timeout: float = 1.0) -> bool:

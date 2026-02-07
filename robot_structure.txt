@@ -1,14 +1,8 @@
 ================================================================================
 📂 PROJECT STRUCTURE
-Generated: 2026-01-31 08:56:26
-Total Files: 124
+Generated: 2026-02-07 01:24:56
+Total Files: 139
 ================================================================================
-
-📄 boot_strap_structure.py
-   ⚙️  def ensure_dir(self, path)
-   ⚙️  def ensure_init(self, path)
-   ⚙️  def write_if_missing(self, path, content)
-   ⚙️  def main()
 
 📄 examples/01_serial_connection.py
    ⚙️  def find_serial_ports()
@@ -60,23 +54,109 @@ Total Files: 124
    ⚙️  def on_connection_lost(self, _)
    ⚙️  def on_connection_restored(self, _)
 
-📄 file_directory_listing.py
-   ⚙️  def list_all_files(self, root_path)
-   ⚙️  def list_all_directories_excluding_venv(self, root_path)
+📄 examples/10_custom_robot.py
+   🧱 class PillDispenser
+      └── def __init__(self, robot, slots)
+   🧱 class RobotArm
+      └── def __init__(self, robot)
 
-📄 reorg.py
-   ⚙️  def ensure_dir(self, path)
-   ⚙️  def move_if_exists(self, src, dst)
-   ⚙️  def touch_init(self, path)
-   ⚙️  def remove_pycache(self, root)
-   ⚙️  def main()
+📄 examples/11_sensors_and_telemetry.py
+   ⚙️  def on_encoder_update(self, reading)
+   ⚙️  def on_imu_update(self, reading)
+   ⚙️  def on_telemetry(self, data)
+
+📄 robot_host/api/dc_motor.py
+   🧱 class DCMotor
+      ├── def __init__(self, robot, motor_id)
+      ├── def client(self)
+      ├── def current_speed(self)
+      ├── def is_moving(self)
+      └── def __repr__(self)
+
+📄 robot_host/api/encoder.py
+   🧱 class EncoderReading
+      (no methods)
+   🧱 class Encoder
+      ├── def __init__(self, robot, encoder_id, pin_a, pin_b, counts_per_rev)
+      ├── def client(self)
+      ├── def count(self)
+      ├── def velocity(self)
+      ├── def revolutions(self)
+      ├── def is_attached(self)
+      ├── def _on_telemetry(self, data)
+      ├── def on_update(self, callback)
+      └── def __repr__(self)
+
+📄 robot_host/api/imu.py
+   🧱 class IMUReading
+      (no methods)
+   🧱 class IMU
+      ├── def __init__(self, robot, apply_bias)
+      ├── def _on_telemetry(self, data)
+      ├── def is_online(self)
+      ├── def is_ok(self)
+      ├── def acceleration(self)
+      ├── def gyro(self)
+      ├── def temperature(self)
+      ├── def roll_deg(self)
+      ├── def pitch_deg(self)
+      ├── def roll_rad(self)
+      ├── def pitch_rad(self)
+      ├── def set_bias(self, accel_bias, gyro_bias)
+      ├── def on_update(self, callback)
+      └── def __repr__(self)
+
+📄 robot_host/api/servo.py
+   🧱 class Servo
+      ├── def __init__(self, robot, servo_id, channel, min_us, max_us, min_angle, max_angle)
+      ├── def client(self)
+      ├── def is_attached(self)
+      ├── def current_angle(self)
+      ├── def angle_to_pulse(self, angle)
+      ├── def pulse_to_angle(self, pulse_us)
+      └── def __repr__(self)
+
+📄 robot_host/api/stepper.py
+   🧱 class Stepper
+      ├── def __init__(self, robot, motor_id, steps_per_rev)
+      ├── def client(self)
+      ├── def is_enabled(self)
+      ├── def position(self)
+      ├── def position_degrees(self)
+      ├── def position_revolutions(self)
+      ├── def reset_position(self, position)
+      └── def __repr__(self)
+
+📄 robot_host/api/ultrasonic.py
+   🧱 class UltrasonicReading
+      (no methods)
+   🧱 class Ultrasonic
+      ├── def __init__(self, robot, sensor_id, max_distance_cm)
+      ├── def client(self)
+      ├── def _on_telemetry(self, data)
+      ├── def distance_cm(self)
+      ├── def distance_m(self)
+      ├── def distance_inches(self)
+      ├── def is_ok(self)
+      ├── def is_attached(self)
+      ├── def is_in_range(self)
+      ├── def on_update(self, callback)
+      └── def __repr__(self)
+
+📄 robot_host/api/velocity.py
+   🧱 class VelocityController
+      ├── def __init__(self, robot, use_binary)
+      ├── def client(self)
+      ├── def current_velocity(self)
+      ├── def is_moving(self)
+      └── def __repr__(self)
 
 📄 robot_host/command/binary_commands.py
    🧱 class Opcode
       (no methods)
    🧱 class BinaryStreamer
       ├── def encode_set_vel(self, vx, omega)
-      ├── def encode_set_signal(self, signal_id, value)
+      ├── def encode_set_signal(self, id, value)
       ├── def encode_set_signals(self, signals)
       ├── def encode_heartbeat(self)
       └── def encode_stop(self)
@@ -99,6 +179,9 @@ Total Files: 124
       ├── def version_verified(self)
       ├── def firmware_version(self)
       ├── def protocol_version(self)
+      ├── def schema_version(self)
+      ├── def capabilities(self)
+      ├── def features(self)
       ├── def board(self)
       ├── def robot_name(self)
       └── def get_stats(self)
@@ -144,8 +227,8 @@ Total Files: 124
       ├── def supports_binary(self, cmd_type)
       ├── def _encode_set_vel(self, cmd)
       ├── def _encode_set_signal(self, cmd)
-      ├── def _encode_heartbeat(self)
-      └── def _encode_stop(self)
+      ├── def _encode_heartbeat(self, cmd)
+      └── def _encode_stop(self, cmd)
    🧱 class JsonToBinaryBatchEncoder
       ├── def encode_signals(self, signals)
       └── def encode_signal_cmds(self, cmds)
@@ -168,6 +251,50 @@ Total Files: 124
    ⚙️  def get_flags()
    ⚙️  def set_flags(self, flags)
 
+📄 robot_host/control/design.py
+   ⚙️  def lqr(self, A, B, Q, R, N)
+   ⚙️  def lqr_discrete(self, A, B, Q, R, N)
+   ⚙️  def pole_placement(self, A, B, poles)
+   ⚙️  def acker(self, A, B, poles)
+   ⚙️  def observer_gains(self, A, C, poles)
+   ⚙️  def lqe(self, A, C, Q, R)
+   ⚙️  def check_stability(self, A, B, K, continuous)
+   ⚙️  def reference_gain(self, A, B, C, K)
+   ⚙️  def integral_gain(self, n_states, n_outputs, ki_diag)
+
+📄 robot_host/control/examples.py
+   ⚙️  def example_mass_spring_damper()
+   ⚙️  def example_dc_motor_velocity()
+   ⚙️  def example_discretization_comparison()
+
+📄 robot_host/control/state_space.py
+   🧱 class StateSpaceModel
+      ├── def __post_init__(self)
+      ├── def _validate(self)
+      ├── def num_states(self)
+      ├── def num_inputs(self)
+      ├── def num_outputs(self)
+      ├── def poles(self)
+      ├── def is_stable(self)
+      ├── def is_marginally_stable(self)
+      ├── def is_controllable(self, tol)
+      ├── def is_observable(self, tol)
+      ├── def controllability_matrix(self)
+      ├── def observability_matrix(self)
+      ├── def to_discrete(self, dt, method)
+      ├── def simulate(self, t, u, x0)
+      └── def __repr__(self)
+   ⚙️  def discretize(self, sys, dt, method)
+
+📄 robot_host/control/upload.py
+   🧱 class SignalDefinition
+      (no methods)
+   🧱 class ControllerConfig
+      (no methods)
+   🧱 class ObserverConfig
+      (no methods)
+   ⚙️  def _matrix_to_row_major(self, matrix)
+
 📄 robot_host/core/event_bus.py
    🧱 class EventBus
       ├── def __init__(self)
@@ -179,6 +306,7 @@ Total Files: 124
       (no methods)
 
 📄 robot_host/core/protocol.py
+   ⚙️  def crc16_ccitt(self, data, crc)
    ⚙️  def encode(self, msg_type, payload)
    ⚙️  def extract_frames(self, buffer, on_frame)
 
@@ -579,6 +707,31 @@ Total Files: 124
    ⚙️  def model(self, params, v)
    ⚙️  def cost(self, params)
 
+📄 robot_host/robot.py
+   🧱 class Session
+      ├── def __init__(self, robot, name, log_dir)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def __enter__(self)
+      └── def __exit__(self, exc_type, exc_val, exc_tb)
+   🧱 class Robot
+      ├── def __init__(self, port, host, tcp_port, baudrate)
+      ├── def _setup(self)
+      ├── def client(self)
+      ├── def bus(self)
+      ├── def is_connected(self)
+      ├── def capabilities(self)
+      ├── def firmware_version(self)
+      ├── def name(self)
+      ├── def gpio(self)
+      ├── def pwm(self)
+      ├── def motion(self)
+      ├── def on(self, event, handler)
+      ├── def from_config(self, cls, config_path)
+      └── def __repr__(self)
+   ⚙️  def load_config(self, config_path)
+   ⚙️  def robot_from_config(self, config)
+
 📄 robot_host/runners/bluetooth_shell.py
    ⚙️  def _print_event(self, tag)
    ⚙️  def _handler(self, data)
@@ -612,21 +765,9 @@ Total Files: 124
    ⚙️  def on_dc_ack(self, msg)
 
 📄 robot_host/runners/pill_carousel.py
-   🧱 class SerialTransport
-      ├── def __init__(self, port, baudrate)
-      ├── def _open(self)
-      ├── def _close(self)
-      ├── def _read_raw(self, n)
-      └── def _send_bytes(self, data)
    ⚙️  def main()
 
 📄 robot_host/runners/pill_gui.py
-   🧱 class SerialTransport
-      ├── def __init__(self, port, baudrate)
-      ├── def _open(self)
-      ├── def _close(self)
-      ├── def _read_raw(self, n)
-      └── def _send_bytes(self, data)
    🧱 class RobotController
       ├── def __init__(self, log_fn)
       └── def _log(self, msg)
@@ -707,12 +848,6 @@ Total Files: 124
    ⚙️  def _handler(self, data)
 
 📄 robot_host/runners/stepper_tst.py
-   🧱 class SerialTransport
-      ├── def __init__(self, port, baudrate)
-      ├── def _open(self)
-      ├── def _close(self)
-      ├── def _read_raw(self, n)
-      └── def _send_bytes(self, data)
    ⚙️  def main()
 
 📄 robot_host/runners/stream_runner.py
@@ -728,6 +863,9 @@ Total Files: 124
    ⚙️  def on_lidar(self, lidar)
    ⚙️  def on_stepper(self, step)
    ⚙️  def on_dc(self, dc)
+
+📄 robot_host/runners/test_tcp.py
+   ⚙️  def main()
 
 📄 robot_host/sensor/encoder.py
    🧱 class EncoderDefaults
@@ -804,6 +942,16 @@ Total Files: 124
 📄 robot_host/tools/build_world.py
    ⚙️  def main()
 
+📄 robot_host/tools/gen_binary_commands.py
+   ⚙️  def to_pascal_case(self, name)
+   ⚙️  def to_snake_case(self, name)
+   ⚙️  def get_struct_format(self, payload)
+   ⚙️  def get_payload_size(self, payload)
+   ⚙️  def generate_cpp_header()
+   ⚙️  def generate_py_binary_commands()
+   ⚙️  def generate_py_json_to_binary()
+   ⚙️  def main()
+
 📄 robot_host/tools/gen_commands.py
    ⚙️  def validate_commands(self, cmds)
    ⚙️  def generate_json(self, commands)
@@ -820,6 +968,9 @@ Total Files: 124
    ⚙️  def generate_cpp_version(self, version)
    ⚙️  def generate_py_version(self, version)
    ⚙️  def write_version_files(self, version, cpp_path, py_path)
+   ⚙️  def main()
+
+📄 robot_host/tools/generate_all.py
    ⚙️  def main()
 
 📄 robot_host/tools/generate_pins.py
@@ -975,6 +1126,39 @@ Total Files: 124
    ⚙️  def on_disc()
    ⚙️  def on_rec()
 
+📄 tests/test_control_design.py
+   🧱 class TestStateSpaceModel
+      ├── def test_create_model(self)
+      ├── def test_create_with_D(self)
+      ├── def test_dimension_validation(self)
+      ├── def test_poles(self)
+      ├── def test_stability_check(self)
+      ├── def test_controllability(self)
+      └── def test_observability(self)
+   🧱 class TestDiscretization
+      ├── def test_euler_discretization(self)
+      ├── def test_zoh_discretization(self)
+      └── def test_bilinear_discretization(self)
+   🧱 class TestLQR
+      ├── def test_lqr_basic(self)
+      ├── def test_lqr_higher_Q_faster_response(self)
+      └── def test_lqr_discrete(self)
+   🧱 class TestPolePlacement
+      ├── def test_pole_placement_basic(self)
+      ├── def test_pole_placement_complex(self)
+      └── def test_acker_matches_pole_placement(self)
+   🧱 class TestObserverGains
+      ├── def test_observer_gains_basic(self)
+      ├── def test_observer_faster_than_controller(self)
+      └── def test_lqe_kalman_filter(self)
+   🧱 class TestUtilityFunctions
+      ├── def test_check_stability_continuous(self)
+      ├── def test_check_stability_discrete(self)
+      ├── def test_reference_gain(self)
+      └── def test_integral_gain(self)
+   🧱 class TestIntegration
+      └── def test_mass_spring_damper_design(self)
+
 📄 tests/test_event_bus.py
    ⚙️  def test_event_bus_subscribe_publish()
    ⚙️  def handler(self, data)
@@ -1069,6 +1253,9 @@ Total Files: 124
    ⚙️  def test_encode_decode_roundtrip_single_frame()
    ⚙️  def test_extract_multiple_frames_with_noise_and_partial()
    ⚙️  def test_bad_checksum_resync()
+   ⚙️  def test_crc16_ccitt_known_values()
+   ⚙️  def test_frame_format_has_2_byte_crc()
+   ⚙️  def test_empty_payload_frame()
 
 📄 tests/test_protocol_to_telemetry_integration.py
    ⚙️  def _build_sectioned_payload(self, ts_ms, seq)
@@ -1100,7 +1287,7 @@ Total Files: 124
 ================================================================================
 📊 STATISTICS
 ================================================================================
-Total Classes:    149
-Total Functions:  317
-Total Methods:    318
+Total Classes:    171
+Total Functions:  339
+Total Methods:    425
 ================================================================================

@@ -6,7 +6,7 @@ import requests
 import numpy as np
 import cv2
 
-from robot_host.core.ml_preprocess import preprocess_for_ml
+from robot_host.module.ml_preprocess import preprocess_for_ml
 
 
 class Esp32CamClient:

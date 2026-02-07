@@ -89,7 +89,8 @@ class TelemetryFileLogger:
 
         # Normalize to dict-like access
         if isinstance(imu, ImuTelemetry):
-            ts_ms = getattr(imu, "ts_ms", None)
+            # Direct attribute access (ts_ms may not exist on model, use None)
+            ts_ms = imu.ts_ms if hasattr(imu, "ts_ms") else None
             row = [
                 ts_ms,
                 imu.ax_g,
@@ -135,7 +136,7 @@ class TelemetryFileLogger:
             return
 
         if isinstance(ultra, UltrasonicTelemetry):
-            ts_ms = getattr(ultra, "ts_ms", None)
+            ts_ms = ultra.ts_ms if hasattr(ultra, "ts_ms") else None
             row = [
                 ts_ms,
                 ultra.sensor_id,

@@ -5,19 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .event_bus import EventBus
-from .client import AsyncRobotClient          # or .client_async if that's where it lives now
+from ..command.client import AsyncRobotClient
 from .settings import HostSettings
 
-from ..transports.tcp_transport import AsyncTcpTransport
-from ..transports.serial_transport import SerialTransport
-from ..transports.bluetooth_transport import BluetoothSerialTransport
+from ..transport.tcp_transport import AsyncTcpTransport
+from ..transport.serial_transport import SerialTransport
+from ..transport.bluetooth_transport import BluetoothSerialTransport
 
 from ..telemetry.host_module import TelemetryHostModule
-from ..modules.encoder import EncoderHostModule, EncoderDefaults
-from ..modules.motion import MotionHostModule
-from ..modules.modes import ModeHostModule
-from ..modules.telemetry_ctl import TelemetryControlModule
-from ..modules.logging_ctl import LoggingControlModule
+from ..sensor.encoder import EncoderHostModule, EncoderDefaults
+from ..motor.motion import MotionHostModule
+from ..module.modes import ModeHostModule
+from ..module.telemetry_ctl import TelemetryControlModule
+from ..module.logging_ctl import LoggingControlModule
 
 
 @dataclass

@@ -28,8 +28,10 @@ def load_jsonl(path: str) -> List[Dict[str, Any]]:
     rows = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
-            if line:
+            # JSON parser handles whitespace; skip empty lines without strip
+            if line and line[0] not in ('\n', '\r', ' ', '\t'):
+                rows.append(json.loads(line))
+            elif line.strip():
                 rows.append(json.loads(line))
     return rows
 
@@ -135,7 +137,7 @@ def command_ack_latency(rows: List[Dict]) -> LatencyStats:
         elif event == "cmd.ack":
             seq = row.get("seq")
             if seq in sends:
-                latency_ms = (ts_ns - sends[seq]) / 1e6
+                latency_ms = (ts_ns - sends[seq]) * 1e-6
                 latencies.append(latency_ms)
                 del sends[seq]
 
@@ -159,7 +161,7 @@ def heartbeat_roundtrip(rows: List[Dict]) -> LatencyStats:
             sends.append(ts_ns)
         elif event == "heartbeat.recv" and sends:
             send_ts = sends.pop(0)
-            latency_ms = (ts_ns - send_ts) / 1e6
+            latency_ms = (ts_ns - send_ts) * 1e-6
             latencies.append(latency_ms)
 
     return compute_latency_stats(latencies)
@@ -200,7 +202,7 @@ def compute_jitter(timestamps_ns: Sequence[int]) -> JitterStats:
     intervals_ms = []
     sorted_ts = sorted(timestamps_ns)
     for i in range(1, len(sorted_ts)):
-        interval_ms = (sorted_ts[i] - sorted_ts[i - 1]) / 1e6
+        interval_ms = (sorted_ts[i] - sorted_ts[i - 1]) * 1e-6
         intervals_ms.append(interval_ms)
 
     arr = np.array(intervals_ms)
@@ -268,7 +270,7 @@ def compute_throughput(
     if not timestamps or max(timestamps) == min(timestamps):
         return ThroughputStats()
 
-    duration_s = (max(timestamps) - min(timestamps)) / 1e9
+    duration_s = (max(timestamps) - min(timestamps)) * 1e-9
     total_bytes = sum(int(e.get("n", 0)) for e in events)
     total_messages = len(events)
 
@@ -484,7 +486,7 @@ def analyze_connection_quality(rows: List[Dict]) -> ConnectionQuality:
         return ConnectionQuality()
 
     timestamps = [r.get("ts_ns", 0) for r in rows]
-    total_duration_s = (max(timestamps) - min(timestamps)) / 1e9 if timestamps else 0
+    total_duration_s = (max(timestamps) - min(timestamps)) * 1e-9 if timestamps else 0
 
     disconnect_count = sum(1 for r in rows if r.get("event") == "connection.lost")
     reconnect_count = sum(1 for r in rows if r.get("event") == "connection.restored")

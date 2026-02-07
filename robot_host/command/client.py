@@ -14,7 +14,7 @@ from .coms.connection_monitor import ConnectionMonitor
 from .coms.reliable_commander import ReliableCommander
 from robot_host.config.client_commands import RobotCommandsMixin
 from robot_host.telemetry.binary_parser import parse_telemetry_bin
-from robot_host.config.version import PROTOCOL_VERSION, CLIENT_VERSION
+from robot_host.config.version import PROTOCOL_VERSION, SCHEMA_VERSION, CLIENT_VERSION, CAPABILITIES_MASK
 from robot_host.logger.logger import MaraLogBundle
 from .json_to_binary import JsonToBinaryEncoder
 
@@ -37,6 +37,10 @@ MSG_CMD_BIN          = protocol.MSG_CMD_BIN
 MSG_VERSION_REQUEST  = protocol.MSG_VERSION_REQUEST
 MSG_VERSION_RESPONSE = protocol.MSG_VERSION_RESPONSE
 MSG_TELEMETRY_BIN    = protocol.MSG_TELEMETRY_BIN
+
+# Pre-computed for json.dumps (avoids tuple creation per call)
+_JSON_SEPARATORS = (",", ":")
+
 
 class BaseAsyncRobotClient:
     """
@@ -67,6 +71,9 @@ class BaseAsyncRobotClient:
         self._version_verified = False
         self._firmware_version: Optional[str] = None
         self._protocol_version: Optional[int] = None
+        self._schema_version: Optional[int] = None
+        self._capabilities: Optional[int] = None
+        self._features: Optional[list] = None
         self._board: Optional[str] = None
         self._robot_name: Optional[str] = None
         self._handshake_future: Optional[asyncio.Future] = None
@@ -244,13 +251,18 @@ class BaseAsyncRobotClient:
         # Parse result
         self._firmware_version = result.get("firmware", "unknown")
         self._protocol_version = result.get("protocol", 0)
+        self._schema_version = result.get("schema_version", 0)
+        self._capabilities = result.get("capabilities", 0)
+        self._features = result.get("features", [])
         self._board = result.get("board", "unknown")
         self._robot_name = result.get("name", "unknown")
 
         print(f"[RobotClient] Firmware: {self._firmware_version}, "
             f"Protocol: {self._protocol_version}, "
+            f"Schema: {self._schema_version}, "
             f"Board: {self._board}, "
-            f"Name: {self._robot_name}")
+            f"Name: {self._robot_name}, "
+            f"Features: {self._features}")
 
         if self._protocol_version != PROTOCOL_VERSION:
             update_target = "firmware" if self._protocol_version < PROTOCOL_VERSION else "host"
@@ -320,16 +332,18 @@ class BaseAsyncRobotClient:
         """Called by the transport whenever a complete framed message arrives."""
         if not body:
             return
-            
-        if body[:1] in (b"{", b"["):
-            self.connection.on_message_received()
-            self._handle_json_payload(body)
-            return
-        # Update connection monitor
+
+        # Update connection monitor early
         self.connection.on_message_received()
 
-        msg_type = body[0]
-        payload = body[1:]
+        # Fast path: check first byte directly (avoid slice creation)
+        first_byte = body[0]
+        if first_byte == 0x7B or first_byte == 0x5B:  # '{' or '['
+            self._handle_json_payload(body)
+            return
+
+        msg_type = first_byte
+        payload = body[1:] if len(body) > 1 else b""
 
         if msg_type == MSG_PONG:
             self.bus.publish("pong", {})
@@ -437,7 +451,7 @@ class BaseAsyncRobotClient:
             **(payload or {}),
         }
 
-        data = json.dumps(cmd_obj, separators=(",", ":")).encode("utf-8")
+        data = json.dumps(cmd_obj, separators=_JSON_SEPARATORS).encode("utf-8")
         await self._send_frame(MSG_CMD_JSON, data)
         return seq
 
@@ -615,7 +629,19 @@ class BaseAsyncRobotClient:
     @property
     def protocol_version(self) -> Optional[int]:
         return self._protocol_version
-    
+
+    @property
+    def schema_version(self) -> Optional[int]:
+        return self._schema_version
+
+    @property
+    def capabilities(self) -> Optional[int]:
+        return self._capabilities
+
+    @property
+    def features(self) -> Optional[list]:
+        return self._features
+
     @property
     def board(self) -> Optional[str]:
         return self._board
@@ -630,6 +656,9 @@ class BaseAsyncRobotClient:
             "version_verified": self._version_verified,
             "firmware_version": self._firmware_version,
             "protocol_version": self._protocol_version,
+            "schema_version": self._schema_version,
+            "capabilities": self._capabilities,
+            "features": self._features,
             "time_since_message": self.connection.time_since_last_message,
             **self.commander.stats(),
         }

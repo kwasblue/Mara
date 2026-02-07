@@ -7,7 +7,7 @@ from typing import Callable, Optional, Tuple
 import cv2
 import numpy as np
 
-from robot_host.core.camera_client import Esp32CamClient
+from robot_host.module.camera_client import Esp32CamClient
 
 
 FrameCallback = Callable[[np.ndarray, np.ndarray, float], None]

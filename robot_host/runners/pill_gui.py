@@ -6,8 +6,6 @@ import asyncio
 import threading
 from typing import Optional, Callable
 
-import serial
-
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -31,7 +29,7 @@ from PySide6.QtCore import Qt, QTimer, QTime, QDateTime, Signal, QObject
 
 from robot_host.core.event_bus import EventBus
 from robot_host.command.client import AsyncRobotClient
-from robot_host.transport.stream_transport import StreamTransport
+from robot_host.transport.serial_transport import SerialTransport
 from robot_host.transport.tcp_transport import AsyncTcpTransport
 
 from robot_host.module.pill_test import PillCarousel, PillCarouselConfig
@@ -168,35 +166,6 @@ QStatusBar {
     background-color: #E5E7EB;
 }
 """
-
-
-# ==================== TRANSPORT IMPLEMENTATION ====================
-
-class SerialTransport(StreamTransport):
-    def __init__(self, port: str, baudrate: int = 115200) -> None:
-        super().__init__()
-        self.port = port
-        self.baudrate = baudrate
-        self._ser: Optional[serial.Serial] = None
-
-    def _open(self) -> None:
-        # Light on printing to keep UI snappy
-        self._ser = serial.Serial(self.port, self.baudrate, timeout=0.05)
-
-    def _close(self) -> None:
-        if self._ser and self._ser.is_open:
-            self._ser.close()
-        self._ser = None
-
-    def _read_raw(self, n: int) -> bytes:
-        if not self._ser:
-            return b""
-        return self._ser.read(n)
-
-    def _send_bytes(self, data: bytes) -> None:
-        if not self._ser or not self._ser.is_open:
-            raise RuntimeError("Serial not open")
-        self._ser.write(data)
 
 
 async def tcp_preflight(host: str, port: int, timeout: float = 1.0) -> bool:

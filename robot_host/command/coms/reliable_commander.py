@@ -164,8 +164,8 @@ class ReliableCommander:
 
         self.acks_received += 1
 
-        first_latency_ms = (ack_ns - cmd.first_sent_ns) / 1e6
-        last_latency_ms = (ack_ns - cmd.last_sent_ns) / 1e6
+        first_latency_ms = (ack_ns - cmd.first_sent_ns) * 1e-6
+        last_latency_ms = (ack_ns - cmd.last_sent_ns) * 1e-6
 
         self._emit(
             "cmd.ack",
@@ -219,12 +219,12 @@ class ReliableCommander:
 
         for seq, cmd in list(self._pending.items()):
             # Check for absolute max age (memory leak prevention)
-            absolute_age_s = (now_ns - cmd.first_sent_ns) / 1e9
+            absolute_age_s = (now_ns - cmd.first_sent_ns) * 1e-9
             if absolute_age_s > self.MAX_PENDING_AGE_S:
                 stale.append(seq)
                 continue
 
-            age_s = (now_ns - cmd.last_sent_ns) / 1e9
+            age_s = (now_ns - cmd.last_sent_ns) * 1e-9
             if age_s > self.timeout_s:
                 if cmd.retries < self.max_retries:
                     to_retry.append(cmd)
@@ -241,7 +241,7 @@ class ReliableCommander:
                 "cmd.stale",
                 seq=cmd.seq,
                 cmd_type=cmd.cmd_type,
-                age_s=(now_ns - cmd.first_sent_ns) / 1e9,
+                age_s=(now_ns - cmd.first_sent_ns) * 1e-9,
             )
 
             if cmd.future and not cmd.future.done():

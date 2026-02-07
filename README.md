@@ -67,80 +67,110 @@ pip install -e .
 
 ## Quick Start
 
-### Connect to Robot
+### Basic Usage
 
 ```python
 import asyncio
-from robot_host.transport.serial_transport import SerialTransport
-from robot_host.command.client import AsyncRobotClient
+from robot_host import Robot, GPIO, DifferentialDrive
 
 async def main():
-    # Create transport and client
-    transport = SerialTransport("/dev/ttyUSB0", baudrate=115200)
-    client = AsyncRobotClient(transport=transport)
+    async with Robot("/dev/ttyUSB0") as robot:
+        await robot.arm()
 
-    # Start (performs handshake)
-    await client.start()
-    print(f"Connected to {client.robot_name}")
+        # Use public API classes
+        gpio = GPIO(robot)
+        await gpio.register(0, pin=2, mode="output")
+        await gpio.high(0)
 
-    # Control robot
-    await client.arm()
-    await client.activate()
-    await client.set_vel(vx=0.2, omega=0.0)
-    await asyncio.sleep(2)
-    await client.cmd_stop()
+        drive = DifferentialDrive(robot)
+        await drive.drive_straight(1.0, speed=0.3)
+        await drive.turn(90)
 
-    # Cleanup
-    await client.disarm()
-    await client.stop()
+        await robot.disarm()
 
 asyncio.run(main())
 ```
 
-### TCP Connection
+### With Configuration
 
 ```python
-from robot_host.transport.tcp_transport import AsyncTcpTransport
+from robot_host.config import RobotConfig
 
-transport = AsyncTcpTransport(host="192.168.1.100", port=8080)
-client = AsyncRobotClient(transport=transport)
+config = RobotConfig.load("robots/my_robot.yaml", profile="bench")
+errors = config.validate()
+if errors:
+    print(f"Config errors: {errors}")
+else:
+    async with config.create_robot() as robot:
+        await robot.arm()
+```
+
+### With Runtime Loop
+
+```python
+from robot_host import Robot
+from robot_host.runtime import Runtime
+
+async with Robot("/dev/ttyUSB0") as robot:
+    runtime = Runtime(robot, tick_hz=50.0)
+
+    @runtime.on_tick
+    async def control(dt: float):
+        await robot.motion.set_velocity(0.1, 0.0)
+
+    @runtime.on_start
+    async def setup():
+        await robot.arm()
+
+    await runtime.run(duration=10.0)
 ```
 
 ### Receive Telemetry
 
 ```python
-from robot_host.telemetry.host_module import TelemetryHostModule
-
-# Subscribe to telemetry events
 def on_imu(data):
-    print(f"IMU: ax={data['ax']:.2f}, ay={data['ay']:.2f}, az={data['az']:.2f}")
+    print(f"IMU: ax={data['ax']:.2f}, ay={data['ay']:.2f}")
 
-client.bus.subscribe("telemetry.imu", on_imu)
-
-# Or use TelemetryHostModule for structured data
-telemetry = TelemetryHostModule(client.bus)
-# Access latest: telemetry.latest
+robot.on("telemetry.imu", on_imu)
 ```
 
 ## Architecture
+
+The library provides a clear layered architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      User Application                            │
 ├─────────────────────────────────────────────────────────────────┤
-│                     AsyncRobotClient                             │
-├─────────────┬─────────────┬─────────────┬─────────────┬─────────┤
-│  Transport  │  Command    │  Telemetry  │  Modules    │ Research │
-│  Layer      │  Layer      │  Layer      │             │          │
-├─────────────┼─────────────┼─────────────┼─────────────┼─────────┤
-│ Serial      │ Reliable    │ Parser      │ Motion      │ Simulate │
-│ TCP         │ Commander   │ Models      │ GPIO        │ SysID    │
-│ Bluetooth   │ Connection  │ HostModule  │ Encoder     │ Metrics  │
-│             │ Monitor     │ FileLogger  │ IMU         │ Analysis │
-├─────────────┴─────────────┴─────────────┴─────────────┴─────────┤
-│                         EventBus                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                      Protocol (framing)                          │
+│                                                                  │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────┐  │
+│  │   RobotConfig    │  │     Runtime      │  │     Robot     │  │
+│  │  (config/)       │  │   (runtime/)     │  │  (robot.py)   │  │
+│  └────────┬─────────┘  └────────┬─────────┘  └───────┬───────┘  │
+│           │                     │                    │          │
+│           └─────────────────────┼────────────────────┘          │
+│                                 │                               │
+│  ┌──────────────────────────────┴─────────────────────────────┐ │
+│  │                    Public API (api/)                        │ │
+│  │  GPIO, PWM, DifferentialDrive, PIDController, Encoder, ... │ │
+│  └──────────────────────────────┬─────────────────────────────┘ │
+│                                 │                               │
+├─────────────────────────────────┼───────────────────────────────┤
+│                                 │  INTERNAL                     │
+│  ┌──────────────────────────────┴─────────────────────────────┐ │
+│  │              HostModules (hw/, motor/, sensor/)             │ │
+│  │         GpioHostModule, MotionHostModule, etc.              │ │
+│  └──────────────────────────────┬─────────────────────────────┘ │
+│                                 │                               │
+│  ┌──────────────────────────────┴─────────────────────────────┐ │
+│  │              AsyncRobotClient + EventBus                    │ │
+│  └──────────────────────────────┬─────────────────────────────┘ │
+│                                 │                               │
+│  ┌──────────────────────────────┴─────────────────────────────┐ │
+│  │                    Transport Layer                          │ │
+│  │              Serial  │  TCP  │  Bluetooth                   │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

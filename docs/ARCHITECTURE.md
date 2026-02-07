@@ -6,35 +6,100 @@
 
 ## Overview
 
-The MARA Host library (`robot_host`) follows a layered, async-first architecture for controlling ESP32-based robots. This is the Python component of the MARA framework.
+The MARA Host library (`robot_host`) is a **platform** providing composable building blocks for controlling ESP32-based robots. The design prioritizes flexibility and extensibility over opinionated abstractions.
+
+## Host vs MCU Control Model
+
+The MARA system supports two control architectures:
+
+### Option A: Host Streaming (Teleoperation/Research)
+
+```
+┌─────────────────┐      50Hz       ┌─────────────────┐
+│  Python Host    │ ──SET_VEL────►  │      MCU        │
+│  (controller)   │                 │  (motor driver) │
+└─────────────────┘                 └─────────────────┘
+```
+
+Use when:
+- Teleoperation (joystick control)
+- Research/prototyping (iterate in Python)
+- ML controllers (neural net on host)
+
+```python
+# Host streams velocity commands at 50Hz
+async def teleop_loop(client, joystick):
+    while True:
+        vx = joystick.get_axis(1) * MAX_VEL
+        omega = joystick.get_axis(0) * MAX_OMEGA
+        await client.send_vel_binary(vx, omega)
+        await asyncio.sleep(0.02)  # 50Hz
+```
+
+### Option B: MCU Control (Autonomous/Low-Latency)
+
+```
+┌─────────────────┐    on change    ┌─────────────────┐
+│  Python Host    │ ──SET_SIGNAL──► │      MCU        │
+│  (supervisor)   │                 │ (FreeRTOS ctrl) │
+└─────────────────┘                 └─────────────────┘
+```
+
+Use when:
+- Autonomous navigation
+- Low-latency requirements
+- Disconnection tolerance needed
+
+```python
+# Host sets references, MCU runs 100Hz control loop
+async def nav_loop(client, path_planner):
+    # Configure MCU controller once
+    await client.send_json("CMD_CTRL_SLOT_CONFIG", {...})
+    await client.send_json("CMD_CTRL_SLOT_ENABLE", {"slot": 0, "enable": True})
+
+    while not at_goal:
+        target_vel = path_planner.compute_velocity()
+        await client.send_signal_binary(SIG_VX_REF, target_vel)
+        await asyncio.sleep(0.1)  # 10Hz is fine - MCU handles timing
+```
+
+### Key Methods
+
+| Method | Use Case | Protocol |
+|--------|----------|----------|
+| `send_vel_binary(vx, omega)` | Host streaming | Binary, 9 bytes |
+| `send_signal_binary(id, val)` | MCU control | Binary, 7 bytes |
+| `send_json(cmd, payload)` | Configuration | JSON, ~50 bytes |
+| `send_reliable(cmd, payload)` | Config with ACK | JSON + retry |
 
 ## Layer Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      User Application                            │
-│                  (examples, custom code)                         │
+│                  (examples, custom robots)                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                   AsyncRobotClient                       │    │
-│  │        (main interface, lifecycle, state machine)        │    │
+│  │                        Robot                             │    │
+│  │     (main entry point, exposes HostModules as props)     │    │
+│  │  ┌────────┬────────┬─────────┬─────────┬─────────┐      │    │
+│  │  │ .gpio  │ .pwm   │ .motion │ .client │  .bus   │      │    │
+│  │  └────────┴────────┴─────────┴─────────┴─────────┘      │    │
 │  └───────────────────────────┬─────────────────────────────┘    │
 │                              │                                   │
 │  ┌───────────────────────────┴───────────────────────────┐      │
-│  │                       EventBus                         │      │
-│  │              (publish/subscribe messaging)             │      │
+│  │                    HostModules                         │      │
+│  │     (hw/, motor/, sensor/, module/ - building blocks)  │      │
+│  ├──────────┬──────────┬──────────┬──────────┬───────────┤      │
+│  │ GpioHost │ PwmHost  │ Motion   │ Encoder  │ Telemetry │      │
+│  │ Module   │ Module   │ HostMod  │ HostMod  │ HostMod   │      │
+│  └──────────┴──────────┴──────────┴──────────┴───────────┘      │
+│                              │                                   │
+│  ┌───────────────────────────┴───────────────────────────┐      │
+│  │              AsyncRobotClient + EventBus               │      │
+│  │         (command handling, pub/sub messaging)          │      │
 │  └─────────────────────────┬─────────────────────────────┘      │
-│                            │                                     │
-│  ┌──────────┬──────────┬───┴───┬──────────┬──────────┬─────────┐│
-│  │ Command  │Telemetry │Module │ Control  │ Research │Recording││
-│  │  Layer   │  Layer   │ Layer │  Design  │  Tools   │  Tools  ││
-│  ├──────────┼──────────┼───────┼──────────┼──────────┼─────────┤│
-│  │ Reliable │ Parser   │Motion │StateSpace│Simulation│Recording││
-│  │Commander │ Models   │GPIO   │ LQR/PP   │ SysID    │ Replay  ││
-│  │Connection│HostMod  │Encoder│ Observer │ Metrics  │ Analysis││
-│  │ Monitor  │FileLog  │ IMU   │ Upload   │ Plotting │         ││
-│  └──────────┴──────────┴───────┴──────────┴──────────┴─────────┘│
 │                            │                                     │
 │  ┌─────────────────────────┴─────────────────────────────┐      │
 │  │                    Transport Layer                     │      │
@@ -51,11 +116,53 @@ The MARA Host library (`robot_host`) follows a layered, async-first architecture
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Design Philosophy
+
+The library is a **platform**, not a product:
+
+- **Building blocks** - HostModules are composable primitives
+- **Direct access** - Robot exposes HostModules as lazy properties
+- **No lock-in** - Import HostModules directly for custom setups
+- **Extensible** - Easy to add new modules following the pattern
+
 ## Core Components
+
+### Robot
+
+Main entry point exposing HostModules as lazy properties:
+
+```python
+from robot_host import Robot
+
+async with Robot("/dev/ttyUSB0") as robot:
+    # HostModules via properties
+    await robot.gpio.write(0, 1)
+    await robot.pwm.set(0, duty=0.5)
+    await robot.motion.set_velocity(0.3, 0.0)
+
+    # Direct client access for advanced use
+    await robot.client.cmd_some_command(param=1)
+
+    # EventBus for pub/sub
+    robot.on("telemetry.imu", handler)
+```
+
+### HostModules
+
+Building blocks that wrap client commands. Each takes `(bus, client)`:
+
+```python
+from robot_host.hw.gpio import GpioHostModule
+from robot_host.motor.motion import MotionHostModule
+
+# Use directly with your own infrastructure
+gpio = GpioHostModule(my_bus, my_client)
+await gpio.write(channel=0, value=1)
+```
 
 ### AsyncRobotClient
 
-Main interface for robot communication:
+Low-level interface for robot communication:
 
 ```python
 class AsyncRobotClient:

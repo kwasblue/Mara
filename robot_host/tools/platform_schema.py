@@ -39,9 +39,27 @@ PINS: dict[str, int] = _load_pins(PINS_JSON)
 VERSION: dict[str, any] = {
     "firmware": "1.0.0",
     "protocol": 1,
+    "schema_version": 1,  # Schema evolution version
     "board": "esp32",
     "name": "robot",
 }
+
+# === 2b) CAPABILITIES ===
+# Bitfield for feature advertisement (matches MCU Version.h)
+CAPABILITIES = {
+    "BINARY_PROTOCOL": 0x0001,   # Binary frame protocol support
+    "INTENT_BUFFERING": 0x0002, # Command-to-actuator intent buffering
+    "STATE_SPACE_CTRL": 0x0004, # State-space controller support
+    "OBSERVERS": 0x0008,        # Luenberger observer support
+}
+
+# Combined capability mask (must match MCU)
+CAPABILITIES_MASK = (
+    CAPABILITIES["BINARY_PROTOCOL"] |
+    CAPABILITIES["INTENT_BUFFERING"] |
+    CAPABILITIES["STATE_SPACE_CTRL"] |
+    CAPABILITIES["OBSERVERS"]
+)
 # === 3) COMMANDS: your existing schema, unchanged in spirit ===
 
 COMMANDS: dict[str, dict] = {

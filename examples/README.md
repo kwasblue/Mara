@@ -1,6 +1,6 @@
 # Robot Host Examples
 
-Comprehensive examples demonstrating the full robot_host system for controlling ESP32-based robots.
+Comprehensive examples demonstrating the robot_host platform for controlling ESP32-based robots.
 
 ## Prerequisites
 
@@ -10,20 +10,42 @@ Comprehensive examples demonstrating the full robot_host system for controlling 
 
 ## Quick Start
 
+The recommended way to use robot_host - direct HostModule access:
+
+```python
+from robot_host import Robot
+
+async def main():
+    async with Robot("/dev/ttyUSB0") as robot:
+        await robot.arm()
+
+        # Direct HostModule access via Robot properties
+        await robot.gpio.write(channel=0, value=1)
+        await robot.pwm.set(channel=0, duty=0.5, freq_hz=1000)
+        await robot.motion.set_velocity(vx=0.2, omega=0.0)
+
+        await robot.motion.stop()
+
+asyncio.run(main())
+```
+
 ```bash
-cd robot_host/examples
-
-# Find your serial port
-python 01_serial_connection.py
-
-# Connect to a specific port
-python 01_serial_connection.py /dev/ttyUSB0
-
-# Or connect via TCP/WiFi
-python 02_tcp_connection.py 192.168.1.100
+# Run the getting started example
+python examples/00_getting_started.py
 ```
 
 ## Examples Overview
+
+### Core Examples
+
+| Example | Description | Focus |
+|---------|-------------|-------|
+| 00 | Getting Started | Basic connection and HostModule usage |
+| 10 | Custom Robot Class | Building your own robot abstraction |
+| 11 | Sensors and Telemetry | Encoder, IMU, Ultrasonic |
+| 12 | Velocity Control | High-rate streaming for differential drive |
+
+### Legacy Examples (Low-Level API)
 
 | Example | Description | Requires Hardware |
 |---------|-------------|-------------------|
@@ -36,6 +58,60 @@ python 02_tcp_connection.py 192.168.1.100
 | 07 | Encoder feedback | ESP32 + encoders |
 | 08 | Session recording | ESP32 |
 | 09 | Full robot control | Complete robot |
+
+## Core Examples
+
+### 00: Getting Started
+Basic connection and HostModule usage:
+
+```bash
+python examples/00_getting_started.py
+```
+
+### 10: Custom Robot Class
+Build YOUR robot as a Python class using HostModules:
+
+```python
+from robot_host import Robot
+from robot_host.motor.stepper import StepperHostModule
+
+class PillDispenser:
+    def __init__(self, robot: Robot):
+        self._robot = robot
+        self._stepper = StepperHostModule(robot.bus, robot.client)
+
+    async def dispense(self, count: int):
+        for _ in range(count):
+            await self._stepper.move(motor_id=0, steps=40)
+            await asyncio.sleep(0.5)
+```
+
+### 11: Sensors and Telemetry
+Reading encoders, IMU, and ultrasonic sensors:
+
+```python
+from robot_host import Robot, Encoder
+
+async with Robot("/dev/ttyUSB0") as robot:
+    encoder = Encoder(robot, pin_a=32, pin_b=33)
+    await encoder.attach()
+
+    # Callback-based updates
+    encoder.on_update(lambda r: print(f"Count: {r.count}"))
+```
+
+### 12: Velocity Control
+High-rate velocity streaming using MotionHostModule:
+
+```python
+from robot_host import Robot
+
+async with Robot("/dev/ttyUSB0") as robot:
+    # Direct access via Robot property
+    while running:
+        await robot.motion.set_velocity(vx=0.5, omega=0.1)
+        await asyncio.sleep(0.02)  # 50Hz
+```
 
 ## Examples in Detail
 

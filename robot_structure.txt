@@ -1,7 +1,7 @@
 ================================================================================
 📂 PROJECT STRUCTURE
-Generated: 2026-02-07 01:24:56
-Total Files: 139
+Generated: 2026-02-07 01:52:11
+Total Files: 145
 ================================================================================
 
 📄 examples/01_serial_connection.py
@@ -73,6 +73,17 @@ Total Files: 139
       ├── def is_moving(self)
       └── def __repr__(self)
 
+📄 robot_host/api/differential_drive.py
+   🧱 class DriveConfig
+      (no methods)
+   🧱 class DifferentialDrive
+      ├── def __init__(self, robot, wheel_radius, wheel_base, max_linear_vel, max_angular_vel, control_rate_hz)
+      ├── def config(self)
+      ├── def is_moving(self)
+      ├── def current_velocity(self)
+      ├── def _clamp_velocity(self, vx, omega)
+      └── def __repr__(self)
+
 📄 robot_host/api/encoder.py
    🧱 class EncoderReading
       (no methods)
@@ -85,6 +96,15 @@ Total Files: 139
       ├── def is_attached(self)
       ├── def _on_telemetry(self, data)
       ├── def on_update(self, callback)
+      └── def __repr__(self)
+
+📄 robot_host/api/gpio.py
+   🧱 class GPIO
+      ├── def __init__(self, robot)
+      ├── def registered_channels(self)
+      ├── def is_registered(self, channel)
+      ├── def get_mode(self, channel)
+      ├── def get_pin(self, channel)
       └── def __repr__(self)
 
 📄 robot_host/api/imu.py
@@ -104,6 +124,24 @@ Total Files: 139
       ├── def pitch_rad(self)
       ├── def set_bias(self, accel_bias, gyro_bias)
       ├── def on_update(self, callback)
+      └── def __repr__(self)
+
+📄 robot_host/api/pid_controller.py
+   🧱 class PIDGains
+      (no methods)
+   🧱 class PIDController
+      ├── def __init__(self, robot, motor_id)
+      ├── def is_enabled(self)
+      ├── def target_omega(self)
+      ├── def gains(self)
+      └── def __repr__(self)
+
+📄 robot_host/api/pwm.py
+   🧱 class PWM
+      ├── def __init__(self, robot, default_freq_hz)
+      ├── def active_channels(self)
+      ├── def get_duty(self, channel)
+      ├── def get_frequency(self, channel)
       └── def __repr__(self)
 
 📄 robot_host/api/servo.py
@@ -195,8 +233,8 @@ Total Files: 139
       ├── def __init__(self, robot)
       ├── def list_streams(self)
       ├── def get_spec(self, name)
-      ├── def _is_connected(self)
-      ├── def _pending_count(self)
+      ├── def _is_connected(self, is_connected_attr)
+      ├── def _pending_count(self, commander)
       └── def _ttl_expired(self, spec)
 
 📄 robot_host/command/coms/connection_monitor.py
@@ -250,6 +288,26 @@ Total Files: 139
       └── def summary(self)
    ⚙️  def get_flags()
    ⚙️  def set_flags(self, flags)
+
+📄 robot_host/config/robot_config.py
+   🧱 class TransportConfig
+      └── def from_dict(self, cls, data)
+   🧱 class DriveConfig
+      └── def from_dict(self, cls, data)
+   🧱 class FeaturesConfig
+      └── def from_dict(self, cls, data)
+   🧱 class EncoderDefaults
+      └── def from_dict(self, cls, data)
+   🧱 class SettingsConfig
+      └── def from_dict(self, cls, data)
+   🧱 class RobotConfig
+      ├── def load(self, cls, path, profile)
+      ├── def from_dict(self, cls, data)
+      ├── def _from_dict(self, cls, data)
+      ├── def _merge_dicts(self, cls, base, overlay)
+      ├── def validate(self)
+      ├── def create_robot(self)
+      └── def __repr__(self)
 
 📄 robot_host/control/design.py
    ⚙️  def lqr(self, A, B, Q, R, N)
@@ -306,6 +364,7 @@ Total Files: 139
       (no methods)
 
 📄 robot_host/core/protocol.py
+   ⚙️  def _make_crc16_table()
    ⚙️  def crc16_ccitt(self, data, crc)
    ⚙️  def encode(self, msg_type, payload)
    ⚙️  def extract_frames(self, buffer, on_frame)
@@ -727,10 +786,11 @@ Total Files: 139
       ├── def pwm(self)
       ├── def motion(self)
       ├── def on(self, event, handler)
-      ├── def from_config(self, cls, config_path)
+      ├── def from_config(self, cls, config_path, profile)
       └── def __repr__(self)
    ⚙️  def load_config(self, config_path)
    ⚙️  def robot_from_config(self, config)
+   ⚙️  def _robot_from_dict(self, config)
 
 📄 robot_host/runners/bluetooth_shell.py
    ⚙️  def _print_event(self, tag)
@@ -866,6 +926,23 @@ Total Files: 139
 
 📄 robot_host/runners/test_tcp.py
    ⚙️  def main()
+
+📄 robot_host/runtime/runtime.py
+   🧱 class RuntimeConfig
+      (no methods)
+   🧱 class Runtime
+      ├── def __init__(self, robot, tick_hz, auto_arm)
+      ├── def robot(self)
+      ├── def config(self)
+      ├── def is_running(self)
+      ├── def tick_count(self)
+      ├── def elapsed_time(self)
+      ├── def on_tick(self, callback)
+      ├── def on_telemetry(self, callback)
+      ├── def on_start(self, callback)
+      ├── def on_stop(self, callback)
+      ├── def _on_telemetry_event(self, data)
+      └── def __repr__(self)
 
 📄 robot_host/sensor/encoder.py
    🧱 class EncoderDefaults
@@ -1287,7 +1364,7 @@ Total Files: 139
 ================================================================================
 📊 STATISTICS
 ================================================================================
-Total Classes:    171
-Total Functions:  339
-Total Methods:    425
+Total Classes:    185
+Total Functions:  341
+Total Methods:    471
 ================================================================================

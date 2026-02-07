@@ -1,0 +1,90 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontFamily': 'SF Pro Display, -apple-system, sans-serif',
+    'fontSize': '13px',
+    'primaryColor': '#3b82f6',
+    'primaryTextColor': '#ffffff',
+    'lineColor': '#94a3b8',
+    'textColor': '#334155'
+  }
+}}%%
+
+flowchart TB
+    subgraph COMMAND["<b>📤 COMMAND FLOW</b>  <i>Host → MCU</i>"]
+        direction TB
+
+        C1["<b>👤 User Code</b><br/>robot.motion.set_velocity(0.3, 0.1)"]
+        C2["<b>🔷 Public API</b><br/>DifferentialDrive.drive()"]
+        C3["<b>📡 AsyncRobotClient</b><br/>send_binary(SET_VEL, vx, omega)"]
+        C4["<b>📦 Protocol</b><br/>[0xAA][len][0x51][vx:f32][ω:f32][CRC]"]
+        C5["<b>🔌 Transport</b><br/>Serial / TCP / Bluetooth"]
+
+        C1 --> C2 --> C3 --> C4 --> C5
+    end
+
+    subgraph LINK["<b>⚡ WIRE</b>"]
+        WIRE["USB Serial  •  WiFi TCP:8080  •  Bluetooth SPP"]
+    end
+
+    subgraph MCU_PROC["<b>🔧 MCU PROCESSING</b>"]
+        direction TB
+
+        M1["<b>📥 Transport</b><br/>Receive frame"]
+        M2["<b>🔀 MessageRouter</b><br/>Parse, validate CRC"]
+        M3["<b>📋 MotionHandler</b><br/>Decode SET_VEL opcode"]
+        M4["<b>🎯 IntentBuffer</b><br/>setVelocityIntent(vx, ω)"]
+        M5["<b>⚡ Control Task</b><br/>100Hz FreeRTOS<br/>consumeVelocityIntent()"]
+        M6["<b>🔧 MotionController</b><br/>Diff drive → wheel speeds"]
+        M7["<b>⚙️ DC Motors</b><br/>Apply PWM"]
+
+        M1 --> M2 --> M3 --> M4 --> M5 --> M6 --> M7
+    end
+
+    subgraph TELEMETRY["<b>📊 TELEMETRY FLOW</b>  <i>MCU → Host</i>"]
+        direction TB
+
+        T1["<b>📡 Sensors</b><br/>IMU • Encoder • Ultrasonic"]
+        T2["<b>📦 TelemetryModule</b><br/>Pack binary sections"]
+        T3["<b>🏷️ Section IDs</b><br/>0x01:IMU  0x04:Encoder  0x02:Sonar"]
+        T4["<b>📤 Frame</b><br/>[0xAA][len][0x30][sections...][CRC]"]
+
+        T1 --> T2 --> T3 --> T4
+    end
+
+    subgraph HOST_TELEM["<b>📬 HOST TELEMETRY PARSE</b>"]
+        direction TB
+
+        H1["<b>📥 Transport</b><br/>Receive frame"]
+        H2["<b>🔍 binary_parser.py</b><br/>Parse by section ID"]
+        H3["<b>📬 EventBus</b><br/>publish('telemetry.imu', data)"]
+        H4["<b>🔔 Callbacks</b><br/>robot.on('telemetry.imu', fn)"]
+        H5["<b>📊 Your Module</b><br/>Process data"]
+
+        H1 --> H2 --> H3 --> H4 --> H5
+    end
+
+    %% Main flow
+    COMMAND --> LINK
+    LINK --> MCU_PROC
+    TELEMETRY --> LINK
+    LINK --> HOST_TELEM
+
+    %% Styling
+    style COMMAND fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e40af
+    style MCU_PROC fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#065f46
+    style TELEMETRY fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#c2410c
+    style HOST_TELEM fill:#fdf4ff,stroke:#a855f7,stroke-width:2px,color:#7e22ce
+    style LINK fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#92400e
+
+    style WIRE fill:#fef3c7,stroke:#f59e0b,color:#92400e
+
+    style C1 fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    style C5 fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    style M1 fill:#d1fae5,stroke:#10b981,color:#065f46
+    style M5 fill:#bbf7d0,stroke:#22c55e,color:#166534,stroke-width:2px
+    style M7 fill:#d1fae5,stroke:#10b981,color:#065f46
+    style T1 fill:#ffedd5,stroke:#f97316,color:#c2410c
+    style T4 fill:#ffedd5,stroke:#f97316,color:#c2410c
+    style H1 fill:#f3e8ff,stroke:#a855f7,color:#7e22ce
+    style H5 fill:#f3e8ff,stroke:#a855f7,color:#7e22ce

@@ -1,0 +1,140 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontFamily': 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
+    'fontSize': '14px',
+    'primaryColor': '#3b82f6',
+    'primaryTextColor': '#ffffff',
+    'primaryBorderColor': '#2563eb',
+    'secondaryColor': '#10b981',
+    'secondaryTextColor': '#ffffff',
+    'secondaryBorderColor': '#059669',
+    'tertiaryColor': '#8b5cf6',
+    'tertiaryTextColor': '#ffffff',
+    'tertiaryBorderColor': '#7c3aed',
+    'lineColor': '#64748b',
+    'textColor': '#1e293b',
+    'mainBkg': '#f8fafc',
+    'nodeBorder': '#e2e8f0',
+    'clusterBkg': '#f1f5f9',
+    'clusterBorder': '#cbd5e1'
+  }
+}}%%
+
+flowchart TB
+    subgraph TITLE[" "]
+        direction LR
+        T1[" "]
+    end
+
+    subgraph HOST["<b>🐍 PYTHON HOST</b><br/><i>robot_host package</i>"]
+        direction TB
+
+        subgraph USER_LAYER[" "]
+            USER["<b>👤 Your Application</b><br/>─────────────────<br/>async with Robot('/dev/tty') as robot:<br/>    await robot.arm()<br/>    await robot.motion.set_velocity(0.3, 0)"]
+        end
+
+        subgraph API_LAYER["<b>Public API</b>"]
+            direction LR
+            A1["🎮<br/><b>GPIO</b>"]
+            A2["⚡<br/><b>PWM</b>"]
+            A3["🦾<br/><b>Servo</b>"]
+            A4["🔄<br/><b>Stepper</b>"]
+            A5["⚙️<br/><b>DCMotor</b>"]
+            A6["🚗<br/><b>DiffDrive</b>"]
+            A7["📊<br/><b>Encoder</b>"]
+            A8["🧭<br/><b>IMU</b>"]
+        end
+
+        subgraph CORE_LAYER["<b>Core</b>"]
+            direction LR
+            ROBOT["<b>🤖 Robot</b><br/>───────<br/>• client<br/>• bus<br/>• modules"]
+            RUNTIME["<b>⏱️ Runtime</b><br/>────────<br/>• 50Hz tick<br/>• BaseModule<br/>• lifecycle"]
+        end
+
+        subgraph CMD_LAYER["<b>Command & Events</b>"]
+            direction LR
+            CLIENT["<b>📡 Client</b><br/>─────────<br/>send_json()<br/>send_binary()"]
+            BUS["<b>📬 EventBus</b><br/>──────────<br/>publish()<br/>subscribe()"]
+        end
+
+        subgraph PROTO_LAYER["<b>Protocol</b>"]
+            FRAME["<b>📦 Frame</b>: [0xAA][LEN][TYPE][PAYLOAD][CRC16]"]
+        end
+
+        subgraph TRANS_LAYER["<b>Transport</b>"]
+            direction LR
+            T_SER["🔌<br/><b>Serial</b>"]
+            T_TCP["📶<br/><b>WiFi</b>"]
+            T_BT["📱<br/><b>Bluetooth</b>"]
+        end
+    end
+
+    subgraph WIRE["<b>⚡ Physical Link</b>"]
+        CONN["USB  •  TCP:8080  •  BT SPP"]
+    end
+
+    subgraph MCU["<b>🔧 ESP32 MCU</b><br/><i>FreeRTOS Firmware</i>"]
+        direction TB
+
+        subgraph MCU_TRANS["<b>Transport</b>"]
+            direction LR
+            M_UART["UART"]
+            M_WIFI["WiFi"]
+            M_BLE["BLE"]
+        end
+
+        subgraph MCU_CMD["<b>Command Processing</b>"]
+            direction LR
+            ROUTER["<b>🔀 Router</b><br/>parse frames"]
+            HANDLERS["<b>📋 Handlers</b><br/>Safety, Motion,<br/>GPIO, Servo..."]
+        end
+
+        subgraph MCU_INTENT["<b>Intent Buffer</b>"]
+            INTENTS["<b>🎯 Intents</b><br/>VelocityIntent • ServoIntent • SignalIntent"]
+        end
+
+        subgraph MCU_CTRL["<b>⚡ Control Task</b><br/><i>Core 1 • 100Hz • RT_SAFE</i>"]
+            direction LR
+            SIGBUS["<b>SignalBus</b><br/>O(1) R/W"]
+            KERNEL["<b>Controller</b><br/>PID / LQR"]
+            MOTION["<b>Motion</b><br/>Diff Drive"]
+        end
+
+        subgraph MCU_HW["<b>Hardware</b>"]
+            direction LR
+            HW1["🔌<br/>GPIO"]
+            HW2["⚡<br/>PWM"]
+            HW3["🎯<br/>Motor"]
+            HW4["📏<br/>Encoder"]
+            HW5["🧭<br/>IMU"]
+            HW6["📡<br/>Sonar"]
+        end
+    end
+
+    %% Connections
+    USER_LAYER --> API_LAYER
+    API_LAYER --> CORE_LAYER
+    CORE_LAYER --> CMD_LAYER
+    CMD_LAYER --> PROTO_LAYER
+    PROTO_LAYER --> TRANS_LAYER
+    TRANS_LAYER <--> WIRE
+    WIRE <--> MCU_TRANS
+    MCU_TRANS --> MCU_CMD
+    MCU_CMD --> MCU_INTENT
+    MCU_INTENT --> MCU_CTRL
+    MCU_CTRL --> MCU_HW
+
+    ROBOT <--> RUNTIME
+    CLIENT <--> BUS
+
+    %% Styling
+    style HOST fill:#eff6ff,stroke:#3b82f6,stroke-width:3px,color:#1e40af
+    style MCU fill:#ecfdf5,stroke:#10b981,stroke-width:3px,color:#065f46
+    style WIRE fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#92400e
+    style TITLE fill:none,stroke:none
+
+    style USER fill:#dbeafe,stroke:#3b82f6,stroke-width:2px,color:#1e40af
+    style FRAME fill:#e0e7ff,stroke:#6366f1,stroke-width:1px,color:#3730a3
+    style INTENTS fill:#d1fae5,stroke:#10b981,stroke-width:1px,color:#065f46
+    style CONN fill:#fef3c7,stroke:#f59e0b,color:#92400e

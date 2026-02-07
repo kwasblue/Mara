@@ -1,0 +1,59 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontFamily': 'SF Pro Display, -apple-system, sans-serif',
+    'fontSize': '14px',
+    'primaryColor': '#6366f1',
+    'primaryTextColor': '#ffffff',
+    'lineColor': '#94a3b8',
+    'textColor': '#334155'
+  }
+}}%%
+
+flowchart LR
+    subgraph SOURCE["<b>📋 Single Source of Truth</b>"]
+        direction TB
+        SCHEMA["<b>platform_schema.py</b><br/>━━━━━━━━━━━━━━━━━<br/>COMMANDS<br/>BINARY_COMMANDS<br/>TELEMETRY_SECTIONS<br/>GPIO_CHANNELS<br/>VERSION"]
+        PINS["<b>pins.json</b><br/>━━━━━━━━━<br/>Pin mappings"]
+    end
+
+    subgraph GEN["<b>⚙️ Generators</b>"]
+        direction TB
+        GENALL["<b>generate_all.py</b>"]
+        G1["gen_commands"]
+        G2["gen_binary_commands"]
+        G3["gen_telemetry"]
+        G4["generate_pins"]
+        G5["gpio_mapping_gen"]
+    end
+
+    subgraph PYOUT["<b>🐍 Python Output</b><br/><i>robot_host/</i>"]
+        direction TB
+        PY1["<b>config/</b><br/>command_defs.py<br/>version.py<br/>pin_config.py<br/>gpio_channels.py"]
+        PY2["<b>command/</b><br/>client_commands.py<br/>binary_commands.py<br/>json_to_binary.py"]
+        PY3["<b>telemetry/</b><br/>telemetry_sections.py"]
+    end
+
+    subgraph CPPOUT["<b>⚡ C++ Output</b><br/><i>include/</i>"]
+        direction TB
+        CPP1["<b>config/</b><br/>CommandDefs.h<br/>Version.h<br/>PinConfig.h<br/>GpioChannelDefs.h"]
+        CPP2["<b>command/</b><br/>BinaryCommands.h"]
+        CPP3["<b>telemetry/</b><br/>TelemetrySections.h"]
+    end
+
+    SOURCE --> GEN
+    SCHEMA --> GENALL
+    PINS --> GENALL
+    GENALL --> G1 & G2 & G3 & G4 & G5
+    G1 & G2 & G3 & G4 & G5 --> PYOUT
+    G1 & G2 & G3 & G4 & G5 --> CPPOUT
+
+    %% Styling
+    style SOURCE fill:#eef2ff,stroke:#6366f1,stroke-width:2px,color:#3730a3
+    style GEN fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,color:#92400e
+    style PYOUT fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e40af
+    style CPPOUT fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#065f46
+
+    style SCHEMA fill:#e0e7ff,stroke:#6366f1,color:#3730a3
+    style PINS fill:#e0e7ff,stroke:#6366f1,color:#3730a3
+    style GENALL fill:#fef3c7,stroke:#f59e0b,color:#92400e

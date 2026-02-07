@@ -471,7 +471,7 @@ simulation:
 
 ## MARA Firmware
 
-This library is designed to work with the [MARA Firmware](../PlatformIO/Projects/ESP32%20MCU%20Host) for ESP32.
+This library is designed to work with the [MARA Firmware]((https://github.com/kwasblue/ESP32-MCU-Host)) for ESP32.
 
 ## License
 

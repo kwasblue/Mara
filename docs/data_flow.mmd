@@ -1,0 +1,61 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'lineColor': '#718096'}}}%%
+
+flowchart TB
+    subgraph HOST["🐍 HOST (Python)"]
+        direction TB
+        USER["User Code<br/>robot.motion.set_velocity(0.3, 0.1)"]
+        API["Public API<br/>DifferentialDrive / VelocityController"]
+        CLIENT["AsyncRobotClient<br/>send_binary(SET_VEL, vx, omega)"]
+        PROTO_H["Protocol: Frame encode<br/>[0xAA][len][0x51][payload][CRC]"]
+        TRANS_H["Transport<br/>Serial / TCP / Bluetooth"]
+    end
+
+    subgraph MCU["⚡ MCU (ESP32)"]
+        direction TB
+        TRANS_M["Transport Layer"]
+        ROUTER["MessageRouter<br/>Parse frame, dispatch"]
+        HANDLER["MotionHandler<br/>Decode SET_VEL command"]
+        INTENT["IntentBuffer<br/>setVelocityIntent(vx, omega)"]
+        CTRL["Control Task (100Hz)<br/>consumeVelocityIntent()<br/>MotionController.update()"]
+        MOTOR["DC Motor Manager<br/>Apply PWM to motors"]
+    end
+
+    subgraph TELEM["📊 Telemetry Return Path"]
+        direction TB
+        SENSOR["Sensors<br/>IMU / Encoder / Ultrasonic"]
+        TELEM_MOD["TelemetryModule<br/>Pack binary sections"]
+        PROTO_M["Protocol: Frame encode<br/>[0xAA][len][0x30][sections][CRC]"]
+    end
+
+    subgraph PARSE["🔄 Host Telemetry Parse"]
+        direction TB
+        BINPARSE["binary_parser.py<br/>Parse by section ID"]
+        EVENTBUS["EventBus<br/>publish('telemetry.imu', data)"]
+        CALLBACK["User Callback<br/>robot.on('telemetry.imu', handler)"]
+    end
+
+    %% Command flow (down)
+    USER --> API
+    API --> CLIENT
+    CLIENT --> PROTO_H
+    PROTO_H --> TRANS_H
+    TRANS_H -->|"USB/WiFi/BT"| TRANS_M
+    TRANS_M --> ROUTER
+    ROUTER --> HANDLER
+    HANDLER --> INTENT
+    INTENT --> CTRL
+    CTRL --> MOTOR
+
+    %% Telemetry flow (up)
+    SENSOR --> TELEM_MOD
+    TELEM_MOD --> PROTO_M
+    PROTO_M --> TRANS_M
+    TRANS_H --> BINPARSE
+    BINPARSE --> EVENTBUS
+    EVENTBUS --> CALLBACK
+
+    %% Styling
+    style HOST fill:#4a90d9,stroke:#2c5282,color:#fff
+    style MCU fill:#48bb78,stroke:#276749,color:#fff
+    style TELEM fill:#ed8936,stroke:#c05621,color:#fff
+    style PARSE fill:#9f7aea,stroke:#6b46c1,color:#fff

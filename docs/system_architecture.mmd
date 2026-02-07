@@ -1,0 +1,196 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2c5282', 'lineColor': '#718096', 'secondaryColor': '#48bb78', 'tertiaryColor': '#ed8936'}}}%%
+
+flowchart TB
+    subgraph HOST["🐍 HOST (Python - robot_host)"]
+        direction TB
+
+        subgraph USER["User Application"]
+            APP["async with Robot() as robot:<br/>runtime = Runtime(robot)<br/>await runtime.run()"]
+        end
+
+        subgraph API["Public API Layer"]
+            direction LR
+            GPIO["GPIO"]
+            PWM["PWM"]
+            SERVO["Servo"]
+            STEPPER["Stepper"]
+            DCMOTOR["DCMotor"]
+            DRIVE["DifferentialDrive"]
+            ENC["Encoder"]
+            IMU_API["IMU"]
+            US_API["Ultrasonic"]
+            VEL["VelocityController"]
+            PID["PIDController"]
+            BASEMOD["BaseModule"]
+        end
+
+        subgraph CORE["Robot + Runtime"]
+            ROBOT["Robot<br/>• .client<br/>• .bus<br/>• .on(topic, handler)"]
+            RUNTIME["Runtime<br/>• tick loop (50Hz)<br/>• module lifecycle<br/>• BaseModule composition"]
+        end
+
+        subgraph HOSTMOD["Host Modules (internal)"]
+            direction LR
+            GPIOMOD["GpioHost<br/>Module"]
+            PWMMOD["PwmHost<br/>Module"]
+            MOTIONMOD["MotionHost<br/>Module"]
+            ENCMOD["EncoderHost<br/>Module"]
+            TELEMMOD["TelemetryHost<br/>Module"]
+        end
+
+        subgraph CMD["Command & Telemetry"]
+            CLIENT["AsyncRobotClient<br/>• send_json()<br/>• send_binary()<br/>• send_reliable()"]
+            EVENTBUS["EventBus<br/>• publish(topic, data)<br/>• subscribe(topic, fn)"]
+            RELIABLE["ReliableCommander<br/>• retry logic<br/>• ACK matching"]
+            BINPARSE["binary_parser.py<br/>• telemetry_sections.py<br/>• parse sections by ID"]
+        end
+
+        subgraph PROTO["Protocol Layer"]
+            FRAME["Frame Format<br/>[0xAA][LEN][MSG_TYPE][PAYLOAD][CRC16]"]
+        end
+
+        subgraph TRANS["Transport Layer"]
+            direction LR
+            SERIAL["SerialTransport<br/>/dev/ttyUSB0"]
+            TCP["TcpTransport<br/>WiFi TCP:8080"]
+            BT["BluetoothTransport"]
+        end
+    end
+
+    subgraph LINK["Physical Link"]
+        WIRE["USB Serial / WiFi TCP / Bluetooth"]
+    end
+
+    subgraph MCU["⚡ MCU (ESP32 - FreeRTOS)"]
+        direction TB
+
+        subgraph MCUTRANS["Transport Layer"]
+            direction LR
+            UART["UartTransport"]
+            WIFI["WifiTransport"]
+            BLE["BleTransport"]
+            MQTT["MqttTransport"]
+        end
+
+        subgraph ROUTE["Message Routing"]
+            MSGROUTER["MessageRouter"]
+            HANDLERREG["HandlerRegistry<br/>(string-based)"]
+            CMDREG["CommandRegistry<br/>(enum fallback)"]
+        end
+
+        subgraph HANDLERS["Command Handlers"]
+            direction LR
+            SAFETYH["SafetyHandler<br/>ARM/DISARM/ESTOP"]
+            MOTIONH["MotionHandler<br/>SET_VEL/STOP"]
+            GPIOH["GpioHandler"]
+            SERVOH["ServoHandler"]
+            STEPPERH["StepperHandler"]
+            DCMOTORH["DcMotorHandler"]
+            SENSORH["SensorHandler"]
+            TELEMH["TelemetryHandler"]
+            CTRLH["ControlHandler"]
+        end
+
+        subgraph INTENT["IntentBuffer"]
+            VELINT["VelocityIntent<br/>(latest wins)"]
+            SERVOINT["ServoIntent<br/>(per ID)"]
+            SIGINT["SignalIntent<br/>(ring buffer)"]
+        end
+
+        subgraph TASKS["Execution Model"]
+            MAINLOOP["Main Loop<br/>• Safety watchdogs<br/>• Telemetry emit<br/>• Command parsing<br/>• WiFi/BLE"]
+            CTRLTASK["FreeRTOS Control Task<br/>Core 1, 100Hz, Pri 5<br/>━━━━━━━━━━━━━━━━<br/>RT_SAFE only<br/>• Encoder velocity<br/>• DC motor PID<br/>• MotionController<br/>• SignalBus R/W<br/>• ControlKernel<br/>• Observer update"]
+            TELEMTASK["Telemetry Module<br/>Binary sections:<br/>0x01 IMU<br/>0x02 ULTRASONIC<br/>0x04 ENCODER0<br/>0x06 DC_MOTOR0<br/>0x10 CTRL_SIGNALS"]
+        end
+
+        subgraph CONTROL["Control Layer"]
+            direction LR
+            SIGBUS["SignalBus<br/>O(1) get/set<br/>spinlock safe"]
+            KERNEL["ControlKernel<br/>PID / LQR slots"]
+            OBSERVER["Observer<br/>Luenberger<br/>Kalman"]
+            MOTIONCTRL["MotionController<br/>diff drive kinematics"]
+        end
+
+        subgraph HWMGR["Hardware Managers (Self-Registering)"]
+            direction TB
+            subgraph ACTUATORS["Actuators"]
+                DCACT["DcMotorActuator<br/>L298N/TB6612"]
+                SERVOACT["ServoActuator"]
+                STEPACT["StepperActuator"]
+            end
+            subgraph SENSORS["Sensors"]
+                IMUMGR["ImuManager<br/>MPU6050"]
+                ENCMGR["EncoderManager<br/>Quadrature"]
+                USMGR["UltrasonicManager<br/>HC-SR04"]
+                LIDARMGR["LidarManager<br/>VL53L0X"]
+            end
+        end
+
+        subgraph HWABS["Hardware Abstraction"]
+            direction LR
+            GPIOMGR["GpioManager"]
+            PWMMGR["PwmManager<br/>LEDC"]
+            SAFETYMGR["SafetyManager<br/>E-STOP<br/>Watchdog"]
+        end
+
+        subgraph HW["Physical Hardware"]
+            direction LR
+            MOTORL["Motor L"]
+            MOTORR["Motor R"]
+            SERVOHW["Servo"]
+            STEPHW["Stepper"]
+            ENCHW["Encoder"]
+            IMUHW["IMU"]
+            USHW["Ultrasonic"]
+            LIDARHW["LiDAR"]
+        end
+    end
+
+    %% Connections - Host internal
+    APP --> API
+    API --> CORE
+    CORE --> HOSTMOD
+    HOSTMOD --> CMD
+    CMD --> PROTO
+    PROTO --> TRANS
+
+    ROBOT <--> RUNTIME
+    CLIENT <--> EVENTBUS
+    CLIENT --> RELIABLE
+    EVENTBUS --> BINPARSE
+
+    %% Host to MCU
+    TRANS <--> WIRE
+    WIRE <--> MCUTRANS
+
+    %% MCU internal
+    MCUTRANS --> ROUTE
+    MSGROUTER --> HANDLERREG
+    MSGROUTER --> CMDREG
+    ROUTE --> HANDLERS
+    HANDLERS --> INTENT
+    INTENT --> TASKS
+    TASKS --> CONTROL
+    CONTROL --> HWMGR
+    HWMGR --> HWABS
+    HWABS --> HW
+
+    CTRLTASK <--> SIGBUS
+    CTRLTASK <--> KERNEL
+    CTRLTASK <--> MOTIONCTRL
+
+    %% Telemetry feedback
+    TELEMTASK -.->|binary telemetry| MCUTRANS
+
+    %% Styling
+    classDef hostStyle fill:#4a90d9,stroke:#2c5282,color:#fff
+    classDef mcuStyle fill:#48bb78,stroke:#276749,color:#fff
+    classDef wireStyle fill:#ed8936,stroke:#c05621,color:#fff
+    classDef apiStyle fill:#9f7aea,stroke:#6b46c1,color:#fff
+    classDef hwStyle fill:#fc8181,stroke:#c53030,color:#fff
+
+    class HOST hostStyle
+    class MCU mcuStyle
+    class LINK wireStyle
+    class API apiStyle
+    class HW hwStyle

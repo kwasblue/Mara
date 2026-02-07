@@ -37,11 +37,34 @@ Example:
             await runtime.run(duration=10.0)
 
     asyncio.run(main())
+
+With Modules:
+    from robot_host.runtime import Runtime, BaseModule
+
+    class LoggingModule(BaseModule):
+        name = "logging"
+
+        def topics(self) -> list[str]:
+            return ["telemetry.imu"]
+
+        async def start(self):
+            self._file = open("log.txt", "w")
+
+        async def stop(self):
+            self._file.close()
+
+        def on_telemetry_imu(self, data):
+            self._file.write(f"{data}\\n")
+
+    runtime = Runtime(robot)
+    runtime.add_module(LoggingModule())
 """
 
 from .runtime import Runtime, RuntimeConfig
+from ..module.base import BaseModule
 
 __all__ = [
     "Runtime",
     "RuntimeConfig",
+    "BaseModule",
 ]

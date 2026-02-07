@@ -23,7 +23,7 @@ from typing import Tuple
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from robot_host.research.config_loader import RobotConfig, load_robot
+from robot_host.research.config_loader import SimulationConfig, load_robot
 from robot_host.research.simulation import SimulationRunner, DiffDriveRobot
 from robot_host.research.metrics import (
     analyze_session,
@@ -140,7 +140,7 @@ def main():
     print("\n📦 Step 1: Loading robot configuration...")
 
     config_dir = Path(__file__).parent.parent / "configs"
-    config = RobotConfig(config_dir / "medium_robot.yaml")
+    config = SimulationConfig(config_dir / "medium_robot.yaml")
 
     print(f"   Robot: {config.name}")
     print(f"   Description: {config.description}")

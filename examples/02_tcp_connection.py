@@ -18,12 +18,8 @@ Usage:
 """
 import asyncio
 import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from robot_host.transport.tcp_transport import AsyncTcpTransport
-from robot_host.command.client import AsyncRobotClient
+from robot_host import Robot
 
 
 async def main():
@@ -34,26 +30,12 @@ async def main():
         return
 
     host = sys.argv[1]
-    port = int(sys.argv[2]) if len(sys.argv) > 2 else 8080
+    port = int(sys.argv[2]) if len(sys.argv) > 2 else 3333
 
     print(f"{'='*50}")
     print(f"TCP Connection Example")
     print(f"{'='*50}")
     print(f"Connecting to {host}:{port}")
-
-    # Create TCP transport with auto-reconnect
-    transport = AsyncTcpTransport(
-        host=host,
-        port=port,
-        reconnect_delay=5.0,  # Wait 5s between reconnect attempts
-    )
-
-    # Create client
-    client = AsyncRobotClient(
-        transport=transport,
-        require_version_match=True,
-        handshake_timeout_s=10.0,  # Longer timeout for network
-    )
 
     # Track telemetry
     telemetry_count = 0
@@ -62,27 +44,27 @@ async def main():
         nonlocal telemetry_count
         telemetry_count += 1
 
-    client.bus.subscribe("telemetry", on_telemetry)
-
     try:
-        print("\nStarting client...")
-        await client.start()
+        # Connect using Robot class with TCP
+        async with Robot(host=host, tcp_port=port) as robot:
+            # Subscribe to telemetry
+            robot.on("telemetry", on_telemetry)
 
-        print(f"\nConnected to {client.robot_name}!")
-        print(f"  Firmware: {client.firmware_version}")
-        print(f"  Protocol: {client.protocol_version}")
+            print(f"\nConnected to {robot.name}!")
+            print(f"  Firmware: {robot.firmware_version}")
+            print(f"  Protocol: {robot.protocol_version}")
 
-        # Monitor for 10 seconds
-        print("\nMonitoring for 10 seconds...")
-        print("(Unplug network to test reconnect behavior)\n")
+            # Monitor for 10 seconds
+            print("\nMonitoring for 10 seconds...")
+            print("(Unplug network to test reconnect behavior)\n")
 
-        for i in range(10):
-            await asyncio.sleep(1)
-            status = "Connected" if client.is_connected else "DISCONNECTED"
-            print(f"  [{i+1:2d}s] Status: {status}, "
-                  f"Telemetry packets: {telemetry_count}")
+            for i in range(10):
+                await asyncio.sleep(1)
+                status = "Connected" if robot.is_connected else "DISCONNECTED"
+                print(f"  [{i+1:2d}s] Status: {status}, "
+                      f"Telemetry packets: {telemetry_count}")
 
-        print("\nTest complete!")
+            print("\nTest complete!")
 
     except KeyboardInterrupt:
         print("\nInterrupted by user")
@@ -95,10 +77,7 @@ async def main():
         print("  3. Ensure both devices on same network")
         print("  4. Check firewall settings")
 
-    finally:
-        print("\nStopping client...")
-        await client.stop()
-        print("Done.")
+    print("Done.")
 
 
 if __name__ == "__main__":

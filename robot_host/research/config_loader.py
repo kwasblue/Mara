@@ -201,9 +201,12 @@ def load_delay_config(data: Dict[str, Any]) -> Optional[DelayConfig]:
 # Robot Factory
 # =============================================================================
 
-class RobotConfig:
+class SimulationConfig:
     """
-    Complete robot configuration loaded from file.
+    Complete simulation robot configuration loaded from file.
+
+    This is for simulation/research use. For real robot configuration,
+    use robot_host.config.RobotConfig instead.
 
     Attributes:
         name: Robot name
@@ -278,7 +281,7 @@ def load_robot(config_path: Union[str, Path]) -> DiffDriveRobot:
         robot.set_velocity(0.5, 0.1)
         state = robot.step(0.01)
     """
-    config = RobotConfig(config_path)
+    config = SimulationConfig(config_path)
     return config.create_robot()
 
 
@@ -296,7 +299,7 @@ def load_simulation(
     Returns:
         Configured SimulationRunner
     """
-    config = RobotConfig(config_path)
+    config = SimulationConfig(config_path)
     return config.create_simulation_runner(controller)
 
 

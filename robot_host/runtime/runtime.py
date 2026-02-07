@@ -26,6 +26,26 @@ Example:
                 print(f"IMU: {data.get('imu')}")
 
             await runtime.run()  # Runs until stopped
+
+With Modules:
+    from robot_host import Robot
+    from robot_host.runtime import Runtime
+    from robot_host.module.base import BaseModule
+
+    class LoggingModule(BaseModule):
+        name = "logging"
+
+        def topics(self) -> list[str]:
+            return ["telemetry.imu"]
+
+        def on_telemetry_imu(self, data):
+            print(f"IMU: {data}")
+
+    async def main():
+        async with Robot("/dev/ttyUSB0") as robot:
+            runtime = Runtime(robot)
+            runtime.add_module(LoggingModule())
+            await runtime.run()
 """
 
 from __future__ import annotations
@@ -37,6 +57,7 @@ from typing import TYPE_CHECKING, Any, Callable, Coroutine, List, Optional
 
 if TYPE_CHECKING:
     from ..robot import Robot
+    from ..module.base import BaseModule
 
 
 # Type aliases for callbacks
@@ -94,6 +115,9 @@ class Runtime:
         self._config = RuntimeConfig(tick_hz=tick_hz, auto_arm=auto_arm)
         self._tick_period = 1.0 / tick_hz
 
+        # Modules
+        self._modules: List[BaseModule] = []
+
         # Callbacks
         self._tick_callbacks: List[TickCallback] = []
         self._telemetry_callbacks: List[TelemetryCallback] = []
@@ -134,6 +158,46 @@ class Runtime:
         if self._start_time is None:
             return 0.0
         return time.time() - self._start_time
+
+    @property
+    def modules(self) -> List[BaseModule]:
+        """List of registered modules."""
+        return list(self._modules)
+
+    # --- Module Management ---
+
+    def add_module(self, module: BaseModule) -> BaseModule:
+        """
+        Add a module to the runtime.
+
+        Modules are attached to the robot and started when the runtime starts.
+        They are stopped and detached when the runtime stops.
+
+        Args:
+            module: The module instance to add
+
+        Returns:
+            The module (for chaining)
+
+        Example:
+            runtime.add_module(LoggingModule())
+            runtime.add_module(TelemetryRecorder("session.jsonl"))
+        """
+        if self._running:
+            raise RuntimeError("Cannot add modules while runtime is running")
+        self._modules.append(module)
+        return module
+
+    def remove_module(self, module: BaseModule) -> None:
+        """
+        Remove a module from the runtime.
+
+        Args:
+            module: The module instance to remove
+        """
+        if self._running:
+            raise RuntimeError("Cannot remove modules while runtime is running")
+        self._modules.remove(module)
 
     # --- Callback Registration ---
 
@@ -204,8 +268,8 @@ class Runtime:
         """
         Start the runtime loop.
 
-        This sets up telemetry subscriptions and calls on_start callbacks.
-        The actual loop runs in run().
+        This sets up telemetry subscriptions, attaches and starts modules,
+        and calls on_start callbacks. The actual loop runs in run().
         """
         if self._running:
             return
@@ -217,6 +281,12 @@ class Runtime:
         # Subscribe to telemetry
         for topic in self._config.telemetry_topics:
             self._robot.on(topic, self._on_telemetry_event)
+
+        # Attach and start modules
+        for module in self._modules:
+            module.attach(self._robot)
+        for module in self._modules:
+            await module.start()
 
         # Auto-arm if configured
         if self._config.auto_arm:
@@ -232,7 +302,8 @@ class Runtime:
         """
         Stop the runtime loop.
 
-        This signals the loop to exit and calls on_stop callbacks.
+        This signals the loop to exit, calls on_stop callbacks,
+        and stops/detaches modules.
         """
         if not self._running:
             return
@@ -248,6 +319,12 @@ class Runtime:
         # Auto-disarm if we auto-armed
         if self._config.auto_arm:
             await self._robot.disarm()
+
+        # Stop and detach modules (reverse order)
+        for module in reversed(self._modules):
+            await module.stop()
+        for module in reversed(self._modules):
+            module.detach()
 
     async def run(self, duration: Optional[float] = None) -> None:
         """
@@ -275,6 +352,7 @@ class Runtime:
             # Cache frequently-accessed values for tight loop
             tick_period = self._tick_period
             tick_callbacks = self._tick_callbacks
+            modules = self._modules
             stop_on_error = self._config.stop_on_error
 
             while self._running:
@@ -296,6 +374,15 @@ class Runtime:
                         if stop_on_error:
                             raise
                         print(f"[Runtime] Tick callback error: {e}")
+
+                # Call module on_tick
+                for module in modules:
+                    try:
+                        await module.on_tick(dt)
+                    except Exception as e:
+                        if stop_on_error:
+                            raise
+                        print(f"[Runtime] Module '{module.name}' tick error: {e}")
 
                 self._tick_count += 1
 
@@ -334,4 +421,5 @@ class Runtime:
 
     def __repr__(self) -> str:
         status = "running" if self._running else "stopped"
-        return f"Runtime({status}, tick_hz={self._config.tick_hz}, ticks={self._tick_count})"
+        n_modules = len(self._modules)
+        return f"Runtime({status}, tick_hz={self._config.tick_hz}, modules={n_modules}, ticks={self._tick_count})"

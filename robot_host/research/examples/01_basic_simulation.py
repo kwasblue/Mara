@@ -15,7 +15,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from robot_host.research.config_loader import load_robot, RobotConfig
+from robot_host.research.config_loader import load_robot, SimulationConfig
 from robot_host.research.simulation import SimulationRunner
 from robot_host.research.plotting import plot_trajectory_2d, plot_time_series, create_figure
 
@@ -33,7 +33,7 @@ def main():
     print(f"Robot wheel base: {robot.cfg.wheel_base}m")
 
     # Method 2: Load full config for more control
-    config = RobotConfig(config_path)
+    config = SimulationConfig(config_path)
     print(f"Robot name: {config.name}")
     print(f"Description: {config.description}")
 

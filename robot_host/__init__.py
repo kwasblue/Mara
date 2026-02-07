@@ -22,9 +22,8 @@ Quick Start:
 
     asyncio.run(main())
 
-With Configuration:
-    from robot_host import Robot
-    from robot_host.config import RobotConfig
+With Configuration (recommended):
+    from robot_host import Robot, RobotConfig
 
     config = RobotConfig.load("robots/my_robot.yaml")
     errors = config.validate()
@@ -32,9 +31,8 @@ With Configuration:
         async with config.create_robot() as robot:
             await robot.arm()
 
-With Runtime:
-    from robot_host import Robot
-    from robot_host.runtime import Runtime
+With Runtime (recommended for control loops):
+    from robot_host import Robot, Runtime
 
     async with Robot("/dev/ttyUSB0") as robot:
         runtime = Runtime(robot, tick_hz=50.0)
@@ -45,31 +43,30 @@ With Runtime:
 
         await runtime.run(duration=10.0)
 
-Public API (robot_host.api):
+Public API:
+    Core: Robot, Runtime, RobotConfig, BaseModule
     Actuators: Stepper, Servo, DCMotor
     Sensors: Encoder, IMU, Ultrasonic
     I/O: GPIO, PWM
     Control: VelocityController, PIDController, DifferentialDrive
 
-Configuration (robot_host.config):
-    RobotConfig - First-class configuration object
-
-Runtime (robot_host.runtime):
-    Runtime - Canonical runtime loop
-
-Internal modules (for advanced use):
+Internal modules (not stable, for advanced use only):
     robot_host.hw.* - Hardware HostModules
     robot_host.motor.* - Motor HostModules
     robot_host.sensor.* - Sensor HostModules
-    robot_host.command.client - AsyncRobotClient
-    robot_host.core.event_bus - EventBus
+    robot_host.command.* - Command/client internals
+    robot_host.core.* - Protocol/event internals
+    robot_host.transport.* - Transport layer internals
 """
 
 # Version
 __version__ = "0.4.0"
 
-# Main entry point
+# Core - Main entry points
 from .robot import Robot
+from .runtime.runtime import Runtime
+from .config.robot_config import RobotConfig
+from .module.base import BaseModule
 
 # Public API - Actuators
 from .api.stepper import Stepper
@@ -94,8 +91,11 @@ from .api.differential_drive import DifferentialDrive, DriveConfig
 __all__ = [
     # Version
     "__version__",
-    # Main
+    # Core
     "Robot",
+    "Runtime",
+    "RobotConfig",
+    "BaseModule",
     # Actuators
     "Stepper",
     "Servo",

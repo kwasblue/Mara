@@ -16,7 +16,7 @@ from typing import List, Dict
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from robot_host.research.config_loader import RobotConfig, list_available_robots
+from robot_host.research.config_loader import SimulationConfig, list_available_robots
 from robot_host.research.simulation import DiffDriveRobot
 from robot_host.research.analysis import compute_signal_stats
 
@@ -58,7 +58,7 @@ def run_trajectory(robot: DiffDriveRobot, duration: float, dt: float) -> Dict[st
     }
 
 
-def monte_carlo_trajectories(config: RobotConfig, n_runs: int, duration: float, dt: float) -> List[Dict]:
+def monte_carlo_trajectories(config: SimulationConfig, n_runs: int, duration: float, dt: float) -> List[Dict]:
     """Run multiple trajectories to analyze variance."""
     results = []
 
@@ -78,10 +78,10 @@ def main():
 
     # Load different robot configurations
     configs = {
-        "Ideal (no noise)": RobotConfig(config_dir / "ideal_robot.yaml"),
-        "Small Robot": RobotConfig(config_dir / "small_robot.yaml"),
-        "Medium Robot": RobotConfig(config_dir / "medium_robot.yaml"),
-        "Heavy Robot": RobotConfig(config_dir / "heavy_robot.yaml"),
+        "Ideal (no noise)": SimulationConfig(config_dir / "ideal_robot.yaml"),
+        "Small Robot": SimulationConfig(config_dir / "small_robot.yaml"),
+        "Medium Robot": SimulationConfig(config_dir / "medium_robot.yaml"),
+        "Heavy Robot": SimulationConfig(config_dir / "heavy_robot.yaml"),
     }
 
     print("\nLoaded configurations:")

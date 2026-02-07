@@ -51,13 +51,13 @@ research/
 Load robots from YAML/JSON configuration files:
 
 ```python
-from robot_host.research.config_loader import load_robot, RobotConfig
+from robot_host.research.config_loader import load_robot, SimulationConfig
 
 # Simple loading
 robot = load_robot("configs/medium_robot.yaml")
 
-# Full config access
-config = RobotConfig("configs/medium_robot.yaml")
+# Full config access (for simulation)
+config = SimulationConfig("configs/medium_robot.yaml")
 print(config.name)
 print(config.drive_config.wheel_radius)
 robot = config.create_robot()

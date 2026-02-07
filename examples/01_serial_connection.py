@@ -18,13 +18,8 @@ Usage:
 """
 import asyncio
 import sys
-from pathlib import Path
 
-# Add parent to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from robot_host.transport.serial_transport import SerialTransport
-from robot_host.command.client import AsyncRobotClient
+from robot_host import Robot
 
 
 def find_serial_ports():
@@ -62,44 +57,25 @@ async def main():
     print(f"Connecting to ESP32 on {port}")
     print(f"{'='*50}")
 
-    # Create transport and client
-    transport = SerialTransport(port=port, baudrate=115200)
-    client = AsyncRobotClient(
-        transport=transport,
-        require_version_match=True,  # Verify protocol compatibility
-        handshake_timeout_s=5.0,     # Wait up to 5s for handshake
-    )
-
-    try:
-        # Start client (opens serial, performs handshake)
-        print("\nStarting client...")
-        await client.start()
-
+    # Connect using Robot class - the canonical entry point
+    async with Robot(port=port, baudrate=115200) as robot:
         # Display connection info
         print(f"\nConnection established!")
-        print(f"  Robot name: {client.robot_name}")
-        print(f"  Board: {client.board}")
-        print(f"  Firmware version: {client.firmware_version}")
-        print(f"  Protocol version: {client.protocol_version}")
-        print(f"  Connected: {client.is_connected}")
+        print(f"  Robot name: {robot.name}")
+        print(f"  Board: {robot.board}")
+        print(f"  Firmware version: {robot.firmware_version}")
+        print(f"  Protocol version: {robot.protocol_version}")
+        print(f"  Connected: {robot.is_connected}")
 
         # Keep running for a few seconds to see heartbeats
         print("\nMonitoring connection for 5 seconds...")
         for i in range(5):
             await asyncio.sleep(1)
-            print(f"  [{i+1}s] Connected: {client.is_connected}, "
-                  f"Time since msg: {client.connection.time_since_last_message:.2f}s")
+            print(f"  [{i+1}s] Connected: {robot.is_connected}")
 
         print("\nConnection test successful!")
 
-    except Exception as e:
-        print(f"\nError: {e}")
-
-    finally:
-        # Clean shutdown
-        print("\nStopping client...")
-        await client.stop()
-        print("Done.")
+    print("Done.")
 
 
 if __name__ == "__main__":

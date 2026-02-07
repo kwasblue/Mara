@@ -469,9 +469,52 @@ simulation:
 | Frame parsing | O(n) optimized |
 | Memory stable | Bounded queues |
 
+## Code Generation (Host-MCU Interface)
+
+MARA uses a single source of truth in `robot_host/tools/platform_schema.py` to generate matching code for both Python (Host) and C++ (MCU). This ensures the interface contract stays synchronized.
+
+### Running Generators
+
+```bash
+cd robot_host/tools
+python generate_all.py
+```
+
+### Generated Artifacts
+
+| Schema | Python Output | C++ Output |
+|--------|---------------|------------|
+| `COMMANDS` | `command_defs.py`, `client_commands.py` | `CommandDefs.h` |
+| `BINARY_COMMANDS` | `binary_commands.py`, `json_to_binary.py` | `BinaryCommands.h` |
+| `TELEMETRY_SECTIONS` | `telemetry_sections.py` | `TelemetrySections.h` |
+| `VERSION` | `version.py` | `Version.h` |
+| `GPIO_CHANNELS` | `gpio_channels.py` | `GpioChannelDefs.h` |
+| `pins.json` | `pin_config.py` | `PinConfig.h` |
+
+See `docs/ADDING_COMMANDS.md` for the full workflow.
+
+## Repository Organization
+
+MARA is currently organized as two repositories:
+
+| Repository | Path | Contents |
+|------------|------|----------|
+| **Host** | `Host/` | Python client, telemetry, research tools, codegen |
+| **MCU** | `ESP32 MCU Host/` | ESP32 firmware (PlatformIO) |
+
+The codegen in Host writes to both repositories, creating a cross-repo dependency.
+
+**Trade-offs of current 2-repo setup:**
+- (+) Independent versioning
+- (+) Smaller clone size per repo
+- (-) Cross-repo paths in codegen
+- (-) Harder to make atomic changes across both
+
+**Alternative: Monorepo** would simplify codegen paths and enable atomic commits, at the cost of a larger single repository with mixed Python/C++ toolchains.
+
 ## MARA Firmware
 
-This library is designed to work with the [MARA Firmware]((https://github.com/kwasblue/ESP32-MCU-Host)) for ESP32.
+This library is designed to work with the [MARA Firmware](https://github.com/kwasblue/ESP32-MCU-Host) for ESP32.
 
 ## License
 

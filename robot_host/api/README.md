@@ -73,6 +73,41 @@ async with Robot("/dev/ttyUSB0") as robot:
 | `PIDController` | Velocity PID for DC motors |
 | `DifferentialDrive` | Motion primitives (drive_straight, turn, arc) |
 
+## BaseModule Interface
+
+For building custom runtime modules, extend `BaseModule`:
+
+```python
+from robot_host import Robot, BaseModule
+from robot_host.runtime import Runtime
+
+class OdometryModule(BaseModule):
+    name = "odometry"
+
+    def topics(self):
+        return ["telemetry.encoder0"]
+
+    def on_telemetry_encoder0(self, data):
+        self.x += data["delta_x"]
+        self.y += data["delta_y"]
+
+    async def on_tick(self, dt: float):
+        # Called every tick by Runtime
+        pass
+
+async with Robot("/dev/ttyUSB0") as robot:
+    runtime = Runtime(robot, tick_hz=50.0)
+    runtime.add_module(OdometryModule())
+    await runtime.run(duration=10.0)
+```
+
+BaseModule lifecycle:
+- `attach(robot)` - Called when added to Runtime, subscribes to topics
+- `start()` - Called when Runtime starts
+- `on_tick(dt)` - Called every Runtime tick
+- `stop()` - Called when Runtime stops
+- `detach()` - Called when removed from Runtime
+
 ## Design Principles
 
 1. **Public interface** - These are the classes users should use

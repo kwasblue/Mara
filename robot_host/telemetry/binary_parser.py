@@ -20,18 +20,18 @@ from .models import (
     ControlSlotsTelemetry,
 )
 
-# Section IDs (MUST match MCU registerBinProvider(section_id, ...))
-TELEM_IMU         = 1
-TELEM_ULTRASONIC  = 2
-TELEM_LIDAR       = 3
-TELEM_ENCODER0    = 4
-TELEM_STEPPER0    = 5
-TELEM_DC_MOTOR0   = 6
-
-# Control telemetry section IDs (from ControlTelemetry.h)
-TELEM_CTRL_SIGNALS   = 0x10
-TELEM_CTRL_OBSERVERS = 0x11
-TELEM_CTRL_SLOTS     = 0x12
+# Section IDs (auto-generated from platform_schema.py)
+from .telemetry_sections import (
+    TELEM_IMU,
+    TELEM_ULTRASONIC,
+    TELEM_LIDAR,
+    TELEM_ENCODER0,
+    TELEM_STEPPER0,
+    TELEM_DC_MOTOR0,
+    TELEM_CTRL_SIGNALS,
+    TELEM_CTRL_OBSERVERS,
+    TELEM_CTRL_SLOTS,
+)
 
 # Pre-compiled struct formats for performance (avoid format string parsing each call)
 _PKT_HDR = struct.Struct("<BHIB")  # version(u8), seq(u16), ts_ms(u32), section_count(u8)

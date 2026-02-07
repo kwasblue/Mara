@@ -12,6 +12,7 @@ This document describes how to add new commands to the robot platform. The build
 |------|-----------------|------------|---------------|
 | Commands | `COMMANDS` dict | `CommandDefs.h` | `command_defs.py`, `client_commands.py` |
 | Binary Commands | `BINARY_COMMANDS` dict | `BinaryCommands.h` | `binary_commands.py`, `json_to_binary.py` |
+| Telemetry Sections | `TELEMETRY_SECTIONS` dict | `TelemetrySections.h` | `telemetry_sections.py` |
 | Version | `VERSION` dict | `Version.h` | `version.py` |
 | Pins | `pins.json` | `PinConfig.h` | `pin_config.py` |
 | GPIO Channels | `GPIO_CHANNELS` | `GpioChannelDefs.h` | `gpio_channels.py` |
@@ -284,6 +285,25 @@ This macro expands to:
 4. Implement handler (receives via `onBinaryCommand`)
 5. Run all tests
 
+### Adding a Telemetry Section
+
+Telemetry sections define the binary format for sensor data sent from MCU to Host.
+
+1. Add to `TELEMETRY_SECTIONS` in `platform_schema.py`
+2. Run `python generate_all.py`
+3. Add parser in `binary_parser.py` using the generated section ID constant
+4. Add model in `telemetry/models.py` if needed
+
+```python
+# In TELEMETRY_SECTIONS
+"TELEM_MY_SENSOR": {
+    "id": 0x07,  # Pick next available ID
+    "description": "My sensor data",
+    "format": "sensor_id(u8) value(f32) ts_ms(u32)",
+    "size": 9,  # Fixed size, or None for variable
+},
+```
+
 ### File Locations
 
 | File | Purpose |
@@ -291,6 +311,8 @@ This macro expands to:
 | `Host/robot_host/tools/platform_schema.py` | Single source of truth |
 | `Host/robot_host/tools/generate_all.py` | Run all generators |
 | `Host/robot_host/control/` | Control design tools (LQR, pole placement) |
+| `Host/robot_host/telemetry/telemetry_sections.py` | Generated telemetry section IDs |
+| `ESP32 MCU Host/include/telemetry/TelemetrySections.h` | Generated C++ section IDs |
 | `ESP32 MCU Host/include/command/handlers/` | Command handlers |
 | `ESP32 MCU Host/test/test_runner.h` | Cross-platform test macro |
 | `Host/tests/test_hil_send_commands.py` | HIL tests |

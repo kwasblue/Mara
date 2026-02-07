@@ -51,6 +51,11 @@ def main():
     gen_binary_commands.main()
     print()
 
+    import gen_telemetry
+    print("-" * 60)
+    gen_telemetry.main()
+    print()
+
     print("=" * 60)
     print("All generators completed successfully!")
     print("=" * 60)

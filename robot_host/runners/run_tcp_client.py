@@ -14,34 +14,35 @@ async def main() -> None:
     port = 3333
 
     transport = AsyncTcpTransport(host=host_sta, port = port)
-    client = AsyncRobotClient(transport)
+    client = AsyncRobotClient(transport, connection_timeout_s=6.0)
 
     # Subscribe to events
     client.bus.subscribe("heartbeat", lambda d: print("[TCP] HEARTBEAT", d))
     client.bus.subscribe("pong",      lambda d: print("[TCP] PONG", d))
     client.bus.subscribe("hello",     lambda info: print("[Bus] HELLO:", info))
     client.bus.subscribe("json",      lambda obj: print("[Bus] JSON:", obj))
+    client.bus.subscribe("error",     lambda err: print("[Bus] ERROR:", err))
 
     await client.start()
 
     try:
         last_ping = 0.0
         await client.cmd_set_mode('ACTIVE')
-        await client.send_servo_attach(servo_id=0)
+        await client.cmd_servo_attach(servo_id=0, channel=0, min_us=500, max_us=2500)
         loop = asyncio.get_running_loop()
         while True:
             now = loop.time()
             if now - last_ping >= 5.0:
                 await client.send_ping()
-                await client.send_led_on()
-                await asyncio.sleep(0.5)
-                await client.send_servo_angle(servo_id=0, angle_deg=180)
-                await asyncio.sleep(0.5)
-                await client.send_led_off()
-                await asyncio.sleep(0.5)
-                await client.send_servo_angle(servo_id=0, angle_deg=0)
-                await asyncio.sleep(0.5)
-                await client.send_led_off()
+                await client.cmd_led_on()
+                await asyncio.sleep(0.1)
+                await client.cmd_servo_set_angle(servo_id=0, angle_deg=180, duration_ms=5)
+                await asyncio.sleep(0.25)
+                await client.cmd_led_off()
+                await asyncio.sleep(0.1)
+                await client.cmd_servo_set_angle(servo_id=0, angle_deg=0, duration_ms=5)
+                await asyncio.sleep(0.25)
+                await client.cmd_led_off()
                 last_ping = now
             await asyncio.sleep(0.1)
     except KeyboardInterrupt:

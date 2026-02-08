@@ -238,7 +238,7 @@ class RobotCommandsMixin:
             payload['freq_hz'] = freq_hz
         await self.send_json_cmd('CMD_PWM_SET', payload)
 
-    async def cmd_servo_attach(self, servo_id: int, channel: int, min_us: int = 1000, max_us: int = 2000) -> None:
+    async def cmd_servo_attach(self, servo_id: int, channel: int, min_us: int = 500, max_us: int = 2500) -> None:
         """Attach a servo ID to a physical pin. (CMD_SERVO_ATTACH)"""
         payload: dict[str, Any] = {}
         payload['servo_id'] = servo_id

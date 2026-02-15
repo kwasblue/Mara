@@ -63,19 +63,19 @@ PRESETS: dict[str, CameraConfig] = {
     ),
 
     "fast": CameraConfig(
-        # Maximum frame rate
-        frame_size=FrameSize.QVGA,  # 320x240
-        quality=15,
-        brightness=0,
-        contrast=0,
+        # Fast streaming with good quality
+        frame_size=FrameSize.VGA,  # 640x480
+        quality=12,  # Balance speed and quality
+        brightness=1,
+        contrast=1,
         saturation=0,
         sharpness=0,
         awb_enabled=True,
         awb_mode=0,
         aec_enabled=True,
-        aec_value=300,
+        aec_value=400,
         agc_enabled=True,
-        agc_gain=0,
+        agc_gain=5,
         gain_ceiling=2,
     ),
 
@@ -98,18 +98,19 @@ PRESETS: dict[str, CameraConfig] = {
 
     "ml_inference": CameraConfig(
         # Optimized for ML models (224x224 input)
-        frame_size=FrameSize.QVGA,  # 320x240
+        # VGA provides better detail before downscaling
+        frame_size=FrameSize.VGA,  # 640x480
         quality=10,
-        brightness=0,
-        contrast=0,
+        brightness=1,  # Slight boost for visibility
+        contrast=1,  # Better feature detection
         saturation=0,
         sharpness=0,
         awb_enabled=True,
         awb_mode=0,
         aec_enabled=True,
-        aec_value=300,
+        aec_value=400,  # Balanced exposure
         agc_enabled=True,
-        agc_gain=0,
+        agc_gain=5,  # Slight gain boost
         gain_ceiling=2,
     ),
 

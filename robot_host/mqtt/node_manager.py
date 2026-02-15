@@ -141,8 +141,8 @@ class NodeManager:
         if self._failover:
             await self._failover.start()
 
-        # Start discovery
-        await self._discovery.start()
+        # Note: Discovery is started on-demand by discover() and stopped after scan completes.
+        # This avoids having an idle MQTT connection causing reconnection spam.
 
         # Start health check loop
         self._health_task = asyncio.create_task(self._health_check_loop())
@@ -334,6 +334,10 @@ class NodeManager:
             List of discovered NodeInfo
         """
         nodes = await self._discovery.discover(timeout_s)
+
+        # Stop discovery listener after scan completes - we don't need it running
+        # continuously. This prevents reconnection spam from the idle discovery client.
+        await self._discovery.stop()
 
         if auto_add:
             # IMPORTANT: don't background-start here; await starts so discovery returns "ready" nodes.

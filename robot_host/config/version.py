@@ -2,8 +2,6 @@
 # Generated from VERSION in platform_schema.py
 
 PROTOCOL_VERSION = 1
-SCHEMA_VERSION = 1
 CLIENT_VERSION = "1.0.0"
-CAPABILITIES_MASK = 0
 BOARD = "esp32"
 NAME = "robot"

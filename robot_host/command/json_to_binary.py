@@ -29,13 +29,6 @@ from typing import Dict, Any, Optional, List, Tuple
 
 from .binary_commands import Opcode
 
-# Pre-compiled struct formats for fast encoding
-_SET_VEL_FMT = struct.Struct('<Bff')       # opcode + vx + omega (9 bytes)
-_SET_SIGNAL_FMT = struct.Struct('<BHf')    # opcode + id + value (7 bytes)
-_OPCODE_ONLY_FMT = struct.Struct('<B')     # opcode only (1 byte)
-_SIGNAL_ENTRY_FMT = struct.Struct('<Hf')   # id + value (6 bytes per signal)
-_BATCH_HEADER_FMT = struct.Struct('<BB')   # opcode + count (2 bytes)
-
 
 class JsonToBinaryEncoder:
     """
@@ -94,7 +87,7 @@ class JsonToBinaryEncoder:
         """
         vx = float(cmd.get("vx", 0.0))
         omega = float(cmd.get("omega", 0.0))
-        return _SET_VEL_FMT.pack(Opcode.SET_VEL, vx, omega)
+        return struct.pack('<Bff', Opcode.SET_VEL, vx, omega)
 
     def _encode_set_signal(self, cmd: Dict[str, Any]) -> bytes:
         """
@@ -104,7 +97,7 @@ class JsonToBinaryEncoder:
         """
         id = int(cmd.get("id", 0))
         value = float(cmd.get("value", 0.0))
-        return _SET_SIGNAL_FMT.pack(Opcode.SET_SIGNAL, id, value)
+        return struct.pack('<BHf', Opcode.SET_SIGNAL, id, value)
 
     def _encode_heartbeat(self, cmd: Dict[str, Any]) -> bytes:
         """
@@ -112,7 +105,7 @@ class JsonToBinaryEncoder:
 
         JSON: CMD_HEARTBEAT
         """
-        return _OPCODE_ONLY_FMT.pack(Opcode.HEARTBEAT)
+        return struct.pack('<B', Opcode.HEARTBEAT)
 
     def _encode_stop(self, cmd: Dict[str, Any]) -> bytes:
         """
@@ -120,7 +113,7 @@ class JsonToBinaryEncoder:
 
         JSON: CMD_STOP
         """
-        return _OPCODE_ONLY_FMT.pack(Opcode.STOP)
+        return struct.pack('<B', Opcode.STOP)
 
 
 class JsonToBinaryBatchEncoder(JsonToBinaryEncoder):
@@ -141,15 +134,11 @@ class JsonToBinaryBatchEncoder(JsonToBinaryEncoder):
             Binary payload: [opcode][count:u8][id:u16][value:f32]...
         """
         count = min(len(signals), 255)
-        # Pre-allocate buffer: 2 byte header + 6 bytes per signal
-        buf = bytearray(2 + count * 6)
-        _BATCH_HEADER_FMT.pack_into(buf, 0, Opcode.SET_SIGNALS, count)
-        offset = 2
+        data = struct.pack('<BB', Opcode.SET_SIGNALS, count)
         for i in range(count):
             signal_id, value = signals[i]
-            _SIGNAL_ENTRY_FMT.pack_into(buf, offset, signal_id, value)
-            offset += 6
-        return bytes(buf)
+            data += struct.pack('<Hf', signal_id, value)
+        return data
 
     def encode_signal_cmds(self, cmds: List[Dict[str, Any]]) -> Optional[bytes]:
         """

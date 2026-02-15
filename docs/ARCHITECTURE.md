@@ -276,6 +276,65 @@ Implementations:
 - `SerialTransport` - USB/UART serial
 - `AsyncTcpTransport` - WiFi TCP with auto-reconnect
 - `BluetoothTransport` - Bluetooth Classic
+- `MQTTTransport` - MQTT pub/sub (multi-node capable)
+
+### MQTT Multi-Node Architecture
+
+For controlling multiple ESP32 nodes over MQTT:
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                          HOST                               │
+│  ┌─────────────┐                                           │
+│  │NodeManager  │ ── manages multiple NodeProxy instances   │
+│  └──────┬──────┘                                           │
+│         │                                                   │
+│  ┌──────┴──────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ NodeProxy   │  │ NodeProxy    │  │ NodeProxy    │       │
+│  │ (node0)     │  │ (node1)      │  │ (node2)      │       │
+│  │  └─Client   │  │  └─Client    │  │  └─Client    │       │
+│  │  └─Transport│  │  └─Transport │  │  └─Transport │       │
+│  └─────────────┘  └──────────────┘  └──────────────┘       │
+│         │                │                 │                │
+│    ┌────┴────────────────┴─────────────────┴────┐          │
+│    │              MQTT Broker                    │          │
+│    │           (mosquitto:1883)                  │          │
+│    └────────────────────┬───────────────────────┘          │
+└─────────────────────────┼──────────────────────────────────┘
+                          │
+                     Wi-Fi LAN
+                          │
+      ┌───────────────────┼───────────────────┐
+      │                   │                   │
+┌─────▼─────┐      ┌──────▼──────┐     ┌──────▼──────┐
+│  ESP32    │      │   ESP32     │     │   ESP32     │
+│  node0    │      │   node1     │     │   node2     │
+│           │      │             │     │             │
+│ mara/node0│      │ mara/node1  │     │ mara/node2  │
+│ /cmd /ack │      │ /cmd /ack   │     │ /cmd /ack   │
+└───────────┘      └─────────────┘     └─────────────┘
+```
+
+**Key Components:**
+
+| Component | Role |
+|-----------|------|
+| `NodeManager` | Orchestrates discovery, health monitoring, broadcast |
+| `NodeProxy` | Per-node wrapper with transport + client |
+| `NodeDiscovery` | Fleet-wide discovery via `mara/fleet/discover` |
+| `MQTTTransport` | MQTT-based transport implementing `HasSendBytes` |
+
+**MQTT Topics:**
+
+| Topic | Direction | Description |
+|-------|-----------|-------------|
+| `mara/fleet/discover` | Host → All | Discovery request |
+| `mara/fleet/discover_response` | Node → Host | Node info response |
+| `mara/{node_id}/cmd` | Host → Node | Commands (binary framed) |
+| `mara/{node_id}/ack` | Node → Host | Command ACKs |
+| `mara/{node_id}/telemetry` | Node → Host | Telemetry data |
+
+See [MQTT.md](MQTT.md) for detailed multi-node documentation.
 
 ## Message Flow
 

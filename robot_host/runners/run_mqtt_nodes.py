@@ -26,12 +26,15 @@ async def main(
     broker_port: int,
     fallback_broker: str | None,
     discover_timeout: float,
+    require_handshake: bool = True,
 ) -> None:
     """Main entry point."""
     print(f"MQTT Multi-Node Example")
     print(f"Broker: {broker_host}:{broker_port}")
     if fallback_broker:
         print(f"Fallback: {fallback_broker}")
+    if not require_handshake:
+        print("Handshake: DISABLED (--no-handshake)")
     print()
 
     # Create event bus and node manager
@@ -46,6 +49,7 @@ async def main(
         broker_host=broker_host,
         broker_port=broker_port,
         fallback_broker=fallback_broker,
+        require_version_match=require_handshake,
     )
 
     try:
@@ -133,6 +137,11 @@ def parse_args() -> argparse.Namespace:
         default=5.0,
         help="Discovery timeout in seconds",
     )
+    parser.add_argument(
+        "--no-handshake",
+        action="store_true",
+        help="Skip version handshake (for testing firmware without full protocol)",
+    )
     return parser.parse_args()
 
 
@@ -143,4 +152,5 @@ if __name__ == "__main__":
         broker_port=args.port,
         fallback_broker=args.fallback,
         discover_timeout=args.discover_timeout,
+        require_handshake=not args.no_handshake,
     ))

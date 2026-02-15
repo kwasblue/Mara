@@ -30,7 +30,8 @@ This repository contains the **Python host library** - a comprehensive async fra
 
 ## Key Features
 
-- **Transport Layer**: Serial (USB), TCP (WiFi), Bluetooth Classic
+- **Transport Layer**: Serial (USB), TCP (WiFi), Bluetooth Classic, **MQTT**
+- **Multi-Node**: Control multiple ESP32 robots over MQTT with fleet discovery
 - **Async Client**: Non-blocking robot control with reliable command delivery
 - **Telemetry**: Real-time sensor data processing (IMU, encoders, motors)
 - **Camera Module**: ESP32-CAM integration with streaming, presets, ML preprocessing
@@ -169,7 +170,7 @@ The library provides a clear layered architecture:
 │                                 │                               │
 │  ┌──────────────────────────────┴─────────────────────────────┐ │
 │  │                    Transport Layer                          │ │
-│  │              Serial  │  TCP  │  Bluetooth                   │ │
+│  │          Serial  │  TCP  │  Bluetooth  │  MQTT              │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -216,6 +217,12 @@ robot_host/
 │       ├── host_module.py # CameraHostModule
 │       ├── models.py      # Data models
 │       └── presets.py     # Camera presets
+├── mqtt/            # MQTT multi-node control
+│   ├── node_manager.py    # NodeManager
+│   ├── node_proxy.py      # Per-node proxy
+│   ├── discovery.py       # Fleet discovery
+│   ├── transport.py       # MQTT transport
+│   └── broker_failover.py # Failover support
 ├── control/         # Control design tools
 │   ├── state_space.py     # StateSpaceModel class
 │   ├── design.py          # LQR, pole placement, observer
@@ -254,6 +261,16 @@ See the `examples/` directory for comprehensive examples:
 ```bash
 # Run camera demo with ESP32-CAM
 python -m robot_host.runners.run_camera_host http://10.0.0.66
+```
+
+### MQTT Multi-Node
+
+```bash
+# Discover and control multiple ESP32 nodes over MQTT
+python -m robot_host.runners.run_mqtt_nodes --broker 10.0.0.59
+
+# Test with mock nodes (no hardware required)
+python -m robot_host.tools.mock_node --node-id node1 --broker 10.0.0.59
 ```
 
 ### Robot Examples
@@ -358,6 +375,59 @@ bus.publish("cmd.camera", {
 | `camera.status.<id>` | Device status |
 
 See `robot_host/module/camera/README.md` for detailed camera module documentation.
+
+## MQTT Multi-Node Module
+
+Control multiple ESP32 robots over MQTT for fleet coordination.
+
+### Basic Usage
+
+```python
+import asyncio
+from robot_host.core.event_bus import EventBus
+from robot_host.mqtt import NodeManager
+
+async def main():
+    bus = EventBus()
+    manager = NodeManager(
+        bus=bus,
+        broker_host="10.0.0.59",
+        broker_port=1883,
+    )
+
+    await manager.start()
+
+    # Discover all nodes on the network
+    nodes = await manager.discover(timeout_s=5.0)
+    print(f"Found {len(nodes)} node(s)")
+
+    # Control a specific node
+    node0 = manager.get_node("node0")
+    if node0 and node0.is_online:
+        await node0.client.arm()
+        await node0.client.set_vel(vx=0.2, omega=0.0)
+        await asyncio.sleep(2.0)
+        await node0.client.cmd_stop()
+
+    # Broadcast to all nodes
+    await manager.broadcast_stop()
+
+    await manager.stop()
+
+asyncio.run(main())
+```
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Discovery | Auto-discover nodes via `mara/fleet/discover` |
+| Per-Node Control | Individual `NodeProxy` with `AsyncRobotClient` |
+| Broadcasting | Send commands to all online nodes |
+| Broker Failover | Automatic fallback to backup broker |
+| Health Monitoring | Track online/offline status |
+
+See `docs/MQTT.md` for detailed MQTT multi-node documentation.
 
 ## Control Design Module
 

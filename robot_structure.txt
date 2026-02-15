@@ -1,7 +1,7 @@
 ================================================================================
 📂 PROJECT STRUCTURE
-Generated: 2026-02-07 11:39:37
-Total Files: 147
+Generated: 2026-02-08 09:02:32
+Total Files: 148
 ================================================================================
 
 📄 examples/01_serial_connection.py
@@ -917,6 +917,9 @@ Total Files: 147
    ⚙️  def _print_event(self, tag)
    ⚙️  def _handler(self, data)
 
+📄 robot_host/runners/servo_test.py
+   ⚙️  def main()
+
 📄 robot_host/runners/stepper_tst.py
    ⚙️  def main()
 
@@ -1383,6 +1386,6 @@ Total Files: 147
 📊 STATISTICS
 ================================================================================
 Total Classes:    186
-Total Functions:  344
+Total Functions:  345
 Total Methods:    481
 ================================================================================

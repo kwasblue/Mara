@@ -238,7 +238,7 @@ class RobotCommandsMixin:
             payload['freq_hz'] = freq_hz
         await self.send_json_cmd('CMD_PWM_SET', payload)
 
-    async def cmd_servo_attach(self, servo_id: int, channel: int, min_us: int = 500, max_us: int = 2500) -> None:
+    async def cmd_servo_attach(self, servo_id: int, channel: int, min_us: int = 1000, max_us: int = 2000) -> None:
         """Attach a servo ID to a physical pin. (CMD_SERVO_ATTACH)"""
         payload: dict[str, Any] = {}
         payload['servo_id'] = servo_id
@@ -409,4 +409,148 @@ class RobotCommandsMixin:
         payload['ki'] = ki
         payload['kd'] = kd
         await self.send_json_cmd('CMD_DC_SET_VEL_GAINS', payload)
+
+    async def cmd_cam_get_status(self, camera_id: int = 0) -> None:
+        """Get camera device status (IP, RSSI, heap, uptime). (CMD_CAM_GET_STATUS)"""
+        payload: dict[str, Any] = {}
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_GET_STATUS', payload)
+
+    async def cmd_cam_get_config(self, camera_id: int = 0) -> None:
+        """Get current camera configuration. (CMD_CAM_GET_CONFIG)"""
+        payload: dict[str, Any] = {}
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_GET_CONFIG', payload)
+
+    async def cmd_cam_set_resolution(self, size: int, camera_id: int = 0) -> None:
+        """Set camera resolution. 5=QVGA(320x240), 8=VGA(640x480), 9=SVGA(800x600), 10=XGA(1024x768), 13=UXGA(1600x1200). (CMD_CAM_SET_RESOLUTION)"""
+        payload: dict[str, Any] = {}
+        payload['size'] = size
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_SET_RESOLUTION', payload)
+
+    async def cmd_cam_set_quality(self, quality: int, camera_id: int = 0) -> None:
+        """Set JPEG compression quality. Lower values = better quality, larger files. (CMD_CAM_SET_QUALITY)"""
+        payload: dict[str, Any] = {}
+        payload['quality'] = quality
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_SET_QUALITY', payload)
+
+    async def cmd_cam_set_brightness(self, brightness: int, camera_id: int = 0) -> None:
+        """Set image brightness. (CMD_CAM_SET_BRIGHTNESS)"""
+        payload: dict[str, Any] = {}
+        payload['brightness'] = brightness
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_SET_BRIGHTNESS', payload)
+
+    async def cmd_cam_set_contrast(self, contrast: int, camera_id: int = 0) -> None:
+        """Set image contrast. (CMD_CAM_SET_CONTRAST)"""
+        payload: dict[str, Any] = {}
+        payload['contrast'] = contrast
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_SET_CONTRAST', payload)
+
+    async def cmd_cam_set_saturation(self, saturation: int, camera_id: int = 0) -> None:
+        """Set color saturation. (CMD_CAM_SET_SATURATION)"""
+        payload: dict[str, Any] = {}
+        payload['saturation'] = saturation
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_SET_SATURATION', payload)
+
+    async def cmd_cam_set_sharpness(self, sharpness: int, camera_id: int = 0) -> None:
+        """Set image sharpness. (CMD_CAM_SET_SHARPNESS)"""
+        payload: dict[str, Any] = {}
+        payload['sharpness'] = sharpness
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_SET_SHARPNESS', payload)
+
+    async def cmd_cam_set_flip(self, camera_id: int = 0, hmirror: bool = False, vflip: bool = False) -> None:
+        """Set image flip/mirror options. (CMD_CAM_SET_FLIP)"""
+        payload: dict[str, Any] = {}
+        payload['camera_id'] = camera_id
+        payload['hmirror'] = hmirror
+        payload['vflip'] = vflip
+        await self.send_json_cmd('CMD_CAM_SET_FLIP', payload)
+
+    async def cmd_cam_set_awb(self, enabled: bool, camera_id: int = 0, mode: int = 0) -> None:
+        """Configure auto white balance. (CMD_CAM_SET_AWB)"""
+        payload: dict[str, Any] = {}
+        payload['enabled'] = enabled
+        payload['camera_id'] = camera_id
+        payload['mode'] = mode
+        await self.send_json_cmd('CMD_CAM_SET_AWB', payload)
+
+    async def cmd_cam_set_exposure(self, auto: bool, camera_id: int = 0, value: int = 300) -> None:
+        """Configure exposure settings. (CMD_CAM_SET_EXPOSURE)"""
+        payload: dict[str, Any] = {}
+        payload['auto'] = auto
+        payload['camera_id'] = camera_id
+        payload['value'] = value
+        await self.send_json_cmd('CMD_CAM_SET_EXPOSURE', payload)
+
+    async def cmd_cam_set_gain(self, auto: bool, camera_id: int = 0, value: int = 0, ceiling: int = 2) -> None:
+        """Configure gain settings. (CMD_CAM_SET_GAIN)"""
+        payload: dict[str, Any] = {}
+        payload['auto'] = auto
+        payload['camera_id'] = camera_id
+        payload['value'] = value
+        payload['ceiling'] = ceiling
+        await self.send_json_cmd('CMD_CAM_SET_GAIN', payload)
+
+    async def cmd_cam_flash(self, state: str, camera_id: int = 0) -> None:
+        """Control flash LED. (CMD_CAM_FLASH)"""
+        payload: dict[str, Any] = {}
+        payload['state'] = state
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_FLASH', payload)
+
+    async def cmd_cam_apply_preset(self, preset: str, camera_id: int = 0) -> None:
+        """Apply a predefined camera configuration preset. (CMD_CAM_APPLY_PRESET)"""
+        payload: dict[str, Any] = {}
+        payload['preset'] = preset
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_APPLY_PRESET', payload)
+
+    async def cmd_cam_start_capture(self, camera_id: int = 0, mode: str = 'polling', fps: float = 10.0) -> None:
+        """Start continuous frame capture (polling or streaming mode). (CMD_CAM_START_CAPTURE)"""
+        payload: dict[str, Any] = {}
+        payload['camera_id'] = camera_id
+        payload['mode'] = mode
+        payload['fps'] = fps
+        await self.send_json_cmd('CMD_CAM_START_CAPTURE', payload)
+
+    async def cmd_cam_stop_capture(self, camera_id: int = 0) -> None:
+        """Stop continuous frame capture. (CMD_CAM_STOP_CAPTURE)"""
+        payload: dict[str, Any] = {}
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_STOP_CAPTURE', payload)
+
+    async def cmd_cam_capture_frame(self, camera_id: int = 0, publish: bool = True) -> None:
+        """Capture a single frame (one-shot). (CMD_CAM_CAPTURE_FRAME)"""
+        payload: dict[str, Any] = {}
+        payload['camera_id'] = camera_id
+        payload['publish'] = publish
+        await self.send_json_cmd('CMD_CAM_CAPTURE_FRAME', payload)
+
+    async def cmd_cam_start_recording(self, camera_id: int = 0, output_dir: str = 'recordings', format: str = 'video') -> None:
+        """Start recording frames to disk. (CMD_CAM_START_RECORDING)"""
+        payload: dict[str, Any] = {}
+        payload['camera_id'] = camera_id
+        payload['output_dir'] = output_dir
+        payload['format'] = format
+        await self.send_json_cmd('CMD_CAM_START_RECORDING', payload)
+
+    async def cmd_cam_stop_recording(self, camera_id: int = 0) -> None:
+        """Stop recording. (CMD_CAM_STOP_RECORDING)"""
+        payload: dict[str, Any] = {}
+        payload['camera_id'] = camera_id
+        await self.send_json_cmd('CMD_CAM_STOP_RECORDING', payload)
+
+    async def cmd_cam_set_motion_detection(self, enabled: bool, camera_id: int = 0, sensitivity: int = 30) -> None:
+        """Configure motion detection. (CMD_CAM_SET_MOTION_DETECTION)"""
+        payload: dict[str, Any] = {}
+        payload['enabled'] = enabled
+        payload['camera_id'] = camera_id
+        payload['sensitivity'] = sensitivity
+        await self.send_json_cmd('CMD_CAM_SET_MOTION_DETECTION', payload)
 

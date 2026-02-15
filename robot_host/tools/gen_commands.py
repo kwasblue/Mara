@@ -26,9 +26,9 @@ def validate_commands(cmds: dict) -> None:
             raise ValueError(f"{name}: invalid kind '{kind}'")
 
         direction = spec.get("direction")
-        if direction not in ("host->mcu", "mcu->host", "both"):
+        if direction not in ("host->mcu", "mcu->host", "host->camera", "both"):
             raise ValueError(
-                f"{name}: direction must be 'host->mcu', 'mcu->host', or 'both'"
+                f"{name}: direction must be 'host->mcu', 'mcu->host', 'host->camera', or 'both'"
             )
 
         payload = spec.get("payload")

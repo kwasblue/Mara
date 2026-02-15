@@ -664,6 +664,8 @@ The codegen in Host writes to both repositories, creating a cross-repo dependenc
 
 This library is designed to work with the [MARA Firmware](https://github.com/kwasblue/ESP32-MCU-Host) for ESP32.
 
+The firmware includes a **Hardware Abstraction Layer (HAL)** that enables porting to other MCU platforms (STM32, RP2040) without changing business logic. The HAL provides platform-agnostic interfaces for GPIO, PWM, I2C, Timer, and Watchdog functionality.
+
 ## License
 
 MIT License

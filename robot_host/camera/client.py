@@ -6,6 +6,7 @@ Enhanced ESP32-CAM client with connection resilience, statistics, and control.
 import time
 from typing import Optional, Iterator, Tuple, Callable
 from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor, Future
 
 import requests
 import numpy as np
@@ -88,6 +89,10 @@ class Esp32CamClient:
         self._on_frame: Optional[Callable[[FrameResult], None]] = None
         self._on_error: Optional[Callable[[str], None]] = None
 
+        # Async decode support (ThreadPoolExecutor for JPEG decoding)
+        self._executor: Optional[ThreadPoolExecutor] = None
+        self._pending_decode: Optional[Future] = None
+
     @property
     def control(self) -> CameraControlClient:
         """Get the camera control client."""
@@ -114,6 +119,40 @@ class Esp32CamClient:
         """Set callback for errors."""
         self._on_error = callback
 
+    # ---------- Async decode support ----------
+
+    def enable_async_decode(self, max_workers: int = 2) -> None:
+        """
+        Enable async JPEG decoding using a thread pool.
+
+        This reduces blocking in the main loop by offloading JPEG decode
+        to a background thread. Python's GIL allows this since cv2.imdecode
+        releases the GIL during the actual decode operation.
+
+        :param max_workers: Number of decoder threads (1-2 is usually enough)
+        """
+        if self._executor is None:
+            self._executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    def disable_async_decode(self) -> None:
+        """Disable async JPEG decoding."""
+        if self._executor:
+            self._executor.shutdown(wait=True)
+            self._executor = None
+            self._pending_decode = None
+
+    def _decode_jpeg(self, jpeg_bytes: bytes) -> Tuple[Optional[np.ndarray], float]:
+        """
+        Decode JPEG bytes to BGR array.
+
+        :return: (frame, decode_time_ms)
+        """
+        t0 = time.time()
+        jpg = np.frombuffer(jpeg_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(jpg, cv2.IMREAD_COLOR)
+        decode_ms = (time.time() - t0) * 1000
+        return frame, decode_ms
+
     # ---------- Core frame fetch ----------
 
     def _fetch_raw_bgr(self, retry: bool = True) -> FrameResult:
@@ -134,12 +173,21 @@ class Esp32CamClient:
                 resp = self.session.get(self.snapshot_url, timeout=self.timeout)
                 resp.raise_for_status()
 
-                latency_ms = (time.time() - t0) * 1000
+                fetch_ms = (time.time() - t0) * 1000
                 size_bytes = len(resp.content)
 
-                # Decode JPEG
-                jpg = np.frombuffer(resp.content, dtype=np.uint8)
-                frame = cv2.imdecode(jpg, cv2.IMREAD_COLOR)
+                # Decode JPEG (with timing)
+                if self._executor is not None:
+                    # Async decode - submit to thread pool
+                    future = self._executor.submit(self._decode_jpeg, resp.content)
+                    frame, decode_ms = future.result()  # Wait for result
+                else:
+                    # Sync decode
+                    frame, decode_ms = self._decode_jpeg(resp.content)
+
+                # Track decode time
+                self.stats.record_decode_time(decode_ms)
+                latency_ms = fetch_ms + decode_ms
 
                 if frame is None:
                     self.stats.record_corrupt(latency_ms, size_bytes)
@@ -417,3 +465,16 @@ class Esp32CamClient:
         else:
             print("[Esp32CamClient] Connection failed")
             return False
+
+    def close(self) -> None:
+        """Clean up resources (executor, session)."""
+        self.disable_async_decode()
+        self.session.close()
+
+    def __enter__(self) -> "Esp32CamClient":
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Context manager exit."""
+        self.close()

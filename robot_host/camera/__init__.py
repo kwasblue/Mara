@@ -56,6 +56,8 @@ from .control import (
     MotionConfig,
     DeviceStatus,
     FrameSize,
+    StreamPreset,
+    StreamStats,
 )
 
 # Stats
@@ -101,6 +103,8 @@ __all__ = [
     "MotionConfig",
     "DeviceStatus",
     "FrameSize",
+    "StreamPreset",
+    "StreamStats",
     # Stats
     "StatsTracker",
     "CameraStatistics",

@@ -26,6 +26,14 @@ class FrameSize(IntEnum):
     UXGA = 14      # 1600x1200
 
 
+class StreamPreset(IntEnum):
+    """Streaming resolution presets for bandwidth control."""
+    HIGH = 0       # VGA 640x480, quality 10
+    MEDIUM = 1     # CIF 400x296, quality 12
+    LOW = 2        # QVGA 320x240, quality 15
+    MINIMAL = 3    # QQVGA 160x120, quality 20
+
+
 @dataclass
 class CameraConfig:
     """Camera configuration settings."""
@@ -132,6 +140,53 @@ class DeviceStatus:
             motion_enabled=d.get("motionEnabled", False),
             last_motion=d.get("lastMotion", 0),
         )
+
+
+@dataclass
+class StreamStats:
+    """Streaming performance statistics from ESP32-CAM."""
+    total_frames: int = 0
+    dropped_frames: int = 0
+    error_frames: int = 0
+    current_fps: float = 0.0
+    avg_latency_ms: float = 0.0
+    total_bytes: int = 0
+    uptime_seconds: int = 0
+    active_clients: int = 0
+    current_quality: int = 12
+    target_fps: int = 30
+    quality_scaling: bool = True
+    preset: int = 0
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "StreamStats":
+        return cls(
+            total_frames=d.get("totalFrames", 0),
+            dropped_frames=d.get("droppedFrames", 0),
+            error_frames=d.get("errorFrames", 0),
+            current_fps=d.get("currentFps", 0.0),
+            avg_latency_ms=d.get("avgLatencyMs", 0.0),
+            total_bytes=d.get("totalBytes", 0),
+            uptime_seconds=d.get("uptimeSeconds", 0),
+            active_clients=d.get("activeClients", 0),
+            current_quality=d.get("currentQuality", 12),
+            target_fps=d.get("targetFps", 30),
+            quality_scaling=d.get("qualityScaling", True),
+            preset=d.get("preset", 0),
+        )
+
+    @property
+    def drop_rate(self) -> float:
+        """Calculate frame drop rate as percentage."""
+        total = self.total_frames + self.dropped_frames
+        if total == 0:
+            return 0.0
+        return (self.dropped_frames / total) * 100
+
+    @property
+    def total_mb(self) -> float:
+        """Total bytes transferred in MB."""
+        return self.total_bytes / (1024 * 1024)
 
 
 class CameraControlClient:
@@ -332,3 +387,66 @@ class CameraControlClient:
         """Factory reset the camera (clears all saved settings)."""
         result = self._post("/api/factory-reset")
         return result is not None
+
+    # ---------- Streaming Control ----------
+
+    def get_stream_stats(self) -> Optional[StreamStats]:
+        """Get streaming performance statistics."""
+        data = self._get("/api/stream/stats")
+        if data:
+            return StreamStats.from_dict(data)
+        return None
+
+    def set_stream_preset(self, preset: StreamPreset) -> bool:
+        """
+        Set streaming resolution preset.
+
+        Presets:
+        - HIGH: VGA 640x480, quality 10
+        - MEDIUM: CIF 400x296, quality 12
+        - LOW: QVGA 320x240, quality 15
+        - MINIMAL: QQVGA 160x120, quality 20
+        """
+        result = self._post("/api/stream/preset", {"preset": int(preset)})
+        return result is not None
+
+    def set_stream_config(
+        self,
+        target_fps: Optional[int] = None,
+        quality_scaling: Optional[bool] = None,
+        reset_stats: bool = False,
+    ) -> bool:
+        """
+        Configure streaming settings.
+
+        :param target_fps: Target frames per second (0 = unlimited)
+        :param quality_scaling: Enable/disable dynamic quality based on client count
+        :param reset_stats: Reset streaming statistics
+        """
+        config = {}
+        if target_fps is not None:
+            config["targetFps"] = target_fps
+        if quality_scaling is not None:
+            config["qualityScaling"] = quality_scaling
+        if reset_stats:
+            config["resetStats"] = True
+
+        if not config:
+            return True  # Nothing to update
+
+        result = self._post("/api/stream/config", config)
+        return result is not None
+
+    def set_low_bandwidth_mode(self, enabled: bool = True) -> bool:
+        """
+        Enable or disable low bandwidth mode.
+
+        Low bandwidth: QVGA (320x240), 15 FPS, quality scaling enabled
+        Normal: VGA (640x480), 30 FPS
+        """
+        if enabled:
+            self.set_stream_preset(StreamPreset.LOW)
+            return self.set_stream_config(target_fps=15, quality_scaling=True)
+        else:
+            self.set_stream_preset(StreamPreset.HIGH)
+            return self.set_stream_config(target_fps=30, quality_scaling=True)

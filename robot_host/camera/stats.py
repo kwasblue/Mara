@@ -25,6 +25,7 @@ class CameraStatistics:
     successful_frames: int = 0
     failed_frames: int = 0
     corrupt_frames: int = 0
+    dropped_frames: int = 0  # Frames dropped due to buffer overflow
 
     total_bytes: int = 0
 
@@ -32,6 +33,10 @@ class CameraStatistics:
     avg_latency_ms: float = 0.0
     min_latency_ms: float = float('inf')
     max_latency_ms: float = 0.0
+
+    # Decode timing (for async decode tracking)
+    avg_decode_ms: float = 0.0
+    max_decode_ms: float = 0.0
 
     last_error: Optional[str] = None
     last_frame_time: float = 0.0
@@ -42,6 +47,14 @@ class CameraStatistics:
         if self.total_frames == 0:
             return 0.0
         return self.successful_frames / self.total_frames
+
+    @property
+    def drop_rate(self) -> float:
+        """Percentage of frames dropped."""
+        total = self.successful_frames + self.dropped_frames
+        if total == 0:
+            return 0.0
+        return self.dropped_frames / total
 
     @property
     def avg_frame_size_kb(self) -> float:
@@ -73,8 +86,13 @@ class StatsTracker:
         self._successful_frames = 0
         self._failed_frames = 0
         self._corrupt_frames = 0
+        self._dropped_frames = 0
         self._total_bytes = 0
         self._last_error: Optional[str] = None
+
+        # Decode timing tracking
+        self._decode_times: Deque[float] = deque(maxlen=window_size)
+        self._max_decode_ms: float = 0.0
 
     def record_frame(
         self,
@@ -121,6 +139,18 @@ class StatsTracker:
         """Convenience method for corrupt frame."""
         self.record_frame(latency_ms, size_bytes, success=False, error="corrupt", corrupt=True)
 
+    def record_dropped(self, count: int = 1) -> None:
+        """Record dropped frames (e.g., buffer overflow)."""
+        with self._lock:
+            self._dropped_frames += count
+
+    def record_decode_time(self, decode_ms: float) -> None:
+        """Record JPEG decode time for performance tracking."""
+        with self._lock:
+            self._decode_times.append(decode_ms)
+            if decode_ms > self._max_decode_ms:
+                self._max_decode_ms = decode_ms
+
     def get_stats(self) -> CameraStatistics:
         """Get current aggregated statistics."""
         now = time.time()
@@ -131,9 +161,11 @@ class StatsTracker:
                 successful_frames=self._successful_frames,
                 failed_frames=self._failed_frames,
                 corrupt_frames=self._corrupt_frames,
+                dropped_frames=self._dropped_frames,
                 total_bytes=self._total_bytes,
                 last_error=self._last_error,
                 uptime_seconds=now - self._start_time,
+                max_decode_ms=self._max_decode_ms,
             )
 
             if not self._frames:
@@ -157,19 +189,26 @@ class StatsTracker:
                 stats.max_latency_ms = max(latencies)
                 stats.last_frame_time = successful_in_window[-1].timestamp
 
+            # Calculate decode time stats
+            if self._decode_times:
+                stats.avg_decode_ms = sum(self._decode_times) / len(self._decode_times)
+
             return stats
 
     def reset(self) -> None:
         """Reset all statistics."""
         with self._lock:
             self._frames.clear()
+            self._decode_times.clear()
             self._start_time = time.time()
             self._total_frames = 0
             self._successful_frames = 0
             self._failed_frames = 0
             self._corrupt_frames = 0
+            self._dropped_frames = 0
             self._total_bytes = 0
             self._last_error = None
+            self._max_decode_ms = 0.0
 
     def __str__(self) -> str:
         s = self.get_stats()

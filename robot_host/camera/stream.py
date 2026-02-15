@@ -182,6 +182,33 @@ class MjpegStreamClient:
         """Set callback for disconnection (receives error message)."""
         self._on_disconnect = callback
 
+    def get_stats(self) -> "CameraStatistics":
+        """Get streaming statistics."""
+        from robot_host.camera.stats import CameraStatistics
+        return self.stats.get_stats()
+
+    def get_buffer_usage(self) -> Tuple[int, int]:
+        """
+        Get current buffer usage.
+
+        :return: (current_count, max_size)
+        """
+        with self._buffer_lock:
+            return len(self._frame_buffer), self._frame_buffer.maxlen
+
+    def close(self) -> None:
+        """Stop stream and clean up."""
+        self.stop()
+
+    def __enter__(self) -> "MjpegStreamClient":
+        """Context manager entry - starts stream."""
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Context manager exit - stops stream."""
+        self.close()
+
     # ---------- Internal ----------
 
     def _stream_loop(self) -> None:
@@ -291,11 +318,14 @@ class MjpegStreamClient:
         jpg_array = np.frombuffer(jpeg_data, dtype=np.uint8)
         frame_bgr = cv2.imdecode(jpg_array, cv2.IMREAD_COLOR)
 
-        latency_ms = (time.time() - t0) * 1000
+        decode_ms = (time.time() - t0) * 1000
 
         if frame_bgr is None:
-            self.stats.record_corrupt(latency_ms, len(jpeg_data))
+            self.stats.record_corrupt(decode_ms, len(jpeg_data))
             return
+
+        # Track decode time
+        self.stats.record_decode_time(decode_ms)
 
         self._sequence += 1
         stream_frame = StreamFrame(
@@ -305,12 +335,15 @@ class MjpegStreamClient:
             sequence=self._sequence,
         )
 
-        # Add to buffer
+        # Add to buffer, tracking drops
         with self._buffer_lock:
+            if len(self._frame_buffer) >= self._frame_buffer.maxlen:
+                # Buffer full - oldest frame will be dropped
+                self.stats.record_dropped(1)
             self._frame_buffer.append(stream_frame)
 
         self._frame_event.set()
-        self.stats.record_success(latency_ms, len(jpeg_data))
+        self.stats.record_success(decode_ms, len(jpeg_data))
 
         # Callback
         if self._on_frame:

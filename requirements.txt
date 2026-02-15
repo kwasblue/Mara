@@ -28,3 +28,4 @@ typing_extensions==4.15.0
 urllib3==2.5.0
 aiohttp>=3.9.0
 aiomqtt>=2.0.0
+python-can>=4.0.0

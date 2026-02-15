@@ -1,6 +1,6 @@
 ================================================================================
 📂 PROJECT STRUCTURE
-Generated: 2026-02-15 03:12:33
+Generated: 2026-02-15 15:23:57
 Total Files: 170
 ================================================================================
 
@@ -189,6 +189,301 @@ Total Files: 170
       ├── def is_moving(self)
       └── def __repr__(self)
 
+📄 robot_host/camera/async_client.py
+   🧱 class AsyncFrame
+      (no methods)
+   🧱 class AsyncCameraClient
+      └── def __init__(self, base_url, timeout, max_connections)
+   🧱 class AsyncMjpegClient
+      └── def __init__(self, base_url, timeout)
+
+📄 robot_host/camera/client.py
+   🧱 class FrameResult
+      (no methods)
+   🧱 class Esp32CamClient
+      ├── def __init__(self, base_url, timeout, max_retries, retry_delay, auth)
+      ├── def control(self)
+      ├── def is_healthy(self)
+      ├── def get_stats(self)
+      ├── def set_on_frame(self, callback)
+      ├── def set_on_error(self, callback)
+      ├── def enable_async_decode(self, max_workers)
+      ├── def disable_async_decode(self)
+      ├── def _decode_jpeg(self, jpeg_bytes)
+      ├── def _fetch_raw_bgr(self, retry)
+      ├── def get_frame(self, resize_to, blur_ksize, retry)
+      ├── def get_frame_with_info(self, resize_to, blur_ksize)
+      ├── def get_frame_for_ml(self, target_size, normalize, to_chw)
+      ├── def get_dual_frame(self, display_size, ml_size, blur_ksize, normalize, to_chw)
+      ├── def get_status(self)
+      ├── def set_resolution(self, size)
+      ├── def set_quality(self, quality)
+      ├── def toggle_flash(self)
+      ├── def set_flash(self, on)
+      ├── def get_camera_config(self)
+      ├── def enable_motion_detection(self, sensitivity)
+      ├── def disable_motion_detection(self)
+      ├── def iter_frames(self, delay, max_frames)
+      ├── def test_preview(self, window_name, delay, show_stats)
+      ├── def test_connection(self)
+      ├── def close(self)
+      ├── def __enter__(self)
+      └── def __exit__(self, exc_type, exc_val, exc_tb)
+
+📄 robot_host/camera/control.py
+   🧱 class FrameSize
+      (no methods)
+   🧱 class StreamPreset
+      (no methods)
+   🧱 class CameraConfig
+      ├── def from_dict(self, cls, d)
+      └── def to_dict(self)
+   🧱 class MotionConfig
+      ├── def from_dict(self, cls, d)
+      └── def to_dict(self)
+   🧱 class DeviceStatus
+      └── def from_dict(self, cls, d)
+   🧱 class StreamStats
+      ├── def from_dict(self, cls, d)
+      ├── def drop_rate(self)
+      └── def total_mb(self)
+   🧱 class CameraControlClient
+      ├── def __init__(self, base_url, timeout, auth)
+      ├── def _get(self, path)
+      ├── def _post(self, path, data)
+      ├── def get_status(self)
+      ├── def is_online(self)
+      ├── def get_camera_config(self)
+      ├── def set_camera_config(self, config)
+      ├── def set_resolution(self, size)
+      ├── def set_quality(self, quality)
+      ├── def set_brightness(self, brightness)
+      ├── def set_contrast(self, contrast)
+      ├── def set_hmirror(self, enable)
+      ├── def set_vflip(self, enable)
+      ├── def set_saturation(self, saturation)
+      ├── def set_sharpness(self, sharpness)
+      ├── def set_whitebal(self, enable)
+      ├── def set_wb_mode(self, mode)
+      ├── def set_exposure_ctrl(self, enable)
+      ├── def set_aec_value(self, value)
+      ├── def set_gain_ctrl(self, enable)
+      ├── def set_agc_gain(self, gain)
+      ├── def set_gainceiling(self, ceiling)
+      ├── def toggle_flash(self)
+      ├── def set_flash(self, on)
+      ├── def get_motion_config(self)
+      ├── def set_motion_config(self, config)
+      ├── def enable_motion_detection(self, sensitivity)
+      ├── def disable_motion_detection(self)
+      ├── def reboot(self)
+      ├── def factory_reset(self)
+      ├── def get_stream_stats(self)
+      ├── def set_stream_preset(self, preset)
+      ├── def set_stream_config(self, target_fps, quality_scaling, reset_stats)
+      └── def set_low_bandwidth_mode(self, enabled)
+
+📄 robot_host/camera/host_module.py
+   🧱 class CameraHostModule
+      ├── def __init__(self, bus, cameras, ml_size, stream_port)
+      ├── def subscriptions(self)
+      ├── def _on_cmd_camera(self, msg)
+      ├── def add_camera(self, camera_id, base_url)
+      ├── def remove_camera(self, camera_id)
+      ├── def get_camera_ids(self)
+      ├── def _on_command(self, msg)
+      ├── def _set_resolution(self, camera_id, size)
+      ├── def _set_quality(self, camera_id, quality)
+      ├── def _set_brightness(self, camera_id, brightness)
+      ├── def _set_contrast(self, camera_id, contrast)
+      ├── def _set_saturation(self, camera_id, saturation)
+      ├── def _set_sharpness(self, camera_id, sharpness)
+      ├── def _set_flip(self, camera_id, hmirror, vflip)
+      ├── def _set_awb(self, camera_id, enabled, mode)
+      ├── def _set_exposure(self, camera_id, auto, value)
+      ├── def _set_gain(self, camera_id, auto, value, ceiling)
+      ├── def _set_flash(self, camera_id, state)
+      ├── def _apply_preset(self, camera_id, preset_name)
+      ├── def _set_motion_detection(self, camera_id, enabled, sensitivity)
+      ├── def _update_status(self, camera_id)
+      ├── def _publish_config(self, camera_id)
+      ├── def _publish_stats(self, camera_id)
+      ├── def start_capture(self, camera_id, mode, fps)
+      ├── def stop_capture(self, camera_id)
+      ├── def capture_single(self, camera_id, publish)
+      ├── def _start_polling(self, camera_id)
+      ├── def _polling_loop(self, camera_id)
+      ├── def _start_streaming(self, camera_id)
+      ├── def _publish_frame(self, camera_id, frame)
+      ├── def start_recording(self, camera_id, output_dir, format)
+      ├── def stop_recording(self, camera_id)
+      └── def shutdown(self)
+   ⚙️  def on_frame(self, stream_frame)
+
+📄 robot_host/camera/manager.py
+   🧱 class CameraState
+      (no methods)
+   🧱 class CameraInfo
+      (no methods)
+   🧱 class MultiFrameResult
+      └── def all_success(self)
+   🧱 class CameraManager
+      ├── def __init__(self, health_check_interval, auto_reconnect)
+      ├── def add_camera(self, name, url, auth, auto_start)
+      ├── def remove_camera(self, name)
+      ├── def get_camera(self, name)
+      ├── def list_cameras(self)
+      ├── def get_camera_names(self)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def enable_camera(self, name)
+      ├── def disable_camera(self, name)
+      ├── def _start_camera(self, name)
+      ├── def get_frame(self, name, timeout)
+      ├── def get_all_frames(self, timeout)
+      ├── def get_control(self, name)
+      ├── def set_resolution_all(self, size)
+      ├── def set_quality_all(self, quality)
+      ├── def toggle_flash_all(self)
+      ├── def start_recording(self, name, output_dir)
+      ├── def stop_recording(self, name)
+      ├── def start_recording_all(self, output_dir)
+      ├── def stop_recording_all(self)
+      ├── def set_on_frame(self, callback)
+      ├── def set_on_state_change(self, callback)
+      ├── def set_on_motion(self, callback)
+      ├── def get_stats(self, name)
+      ├── def get_all_stats(self)
+      ├── def print_status(self)
+      ├── def _handle_frame(self, name, frame)
+      ├── def _handle_connect(self, name)
+      ├── def _handle_disconnect(self, name, error)
+      ├── def _notify_state_change(self, name)
+      └── def _health_loop(self)
+
+📄 robot_host/camera/models.py
+   🧱 class FrameSize
+      (no methods)
+   🧱 class CaptureMode
+      (no methods)
+   🧱 class CameraConfig
+      (no methods)
+   🧱 class CameraStatus
+      (no methods)
+   🧱 class CameraFrame
+      (no methods)
+   🧱 class MLFrame
+      (no methods)
+   🧱 class CameraStats
+      (no methods)
+   🧱 class MotionEvent
+      (no methods)
+
+📄 robot_host/camera/module.py
+   🧱 class CaptureMode
+      (no methods)
+   🧱 class CameraModule
+      ├── def __init__(self, base_url, name, mode, display_size, ml_size, blur_ksize, fps, show_preview, show_stats, frame_callback, raw_frame_callback, auth, stream_port)
+      ├── def is_running(self)
+      ├── def last_frame(self)
+      ├── def last_display_frame(self)
+      ├── def last_ml_frame(self)
+      ├── def window_name(self)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def run_foreground(self)
+      ├── def set_mode(self, mode)
+      ├── def set_resolution(self, size)
+      ├── def set_quality(self, quality)
+      ├── def toggle_flash(self)
+      ├── def get_status(self)
+      ├── def get_stats(self)
+      ├── def start_recording(self, output_dir, fps, format)
+      ├── def stop_recording(self)
+      ├── def is_recording(self)
+      ├── def enable_motion_recording(self, output_dir, pre_buffer_seconds, post_buffer_seconds)
+      ├── def trigger_motion_recording(self)
+      ├── def set_frame_callback(self, callback)
+      ├── def set_raw_frame_callback(self, callback)
+      ├── def set_motion_callback(self, callback)
+      ├── def _polling_loop(self)
+      ├── def _capture_frame_polling(self)
+      ├── def _start_streaming(self)
+      ├── def _handle_stream_frame(self, frame)
+      ├── def _streaming_foreground(self)
+      ├── def _display_loop(self)
+      ├── def _process_frame(self, raw_frame, timestamp)
+      ├── def _show_frame(self, display_frame)
+      └── def _throttle(self, start_time)
+
+📄 robot_host/camera/presets.py
+   ⚙️  def get_preset(self, name)
+   ⚙️  def list_presets()
+
+📄 robot_host/camera/recorder.py
+   🧱 class RecordingMetadata
+      (no methods)
+   🧱 class FrameRecorder
+      ├── def __init__(self, output_dir, prefix, fps, codec, format, image_format, jpeg_quality, max_duration_seconds, max_frames)
+      ├── def is_recording(self)
+      ├── def frame_count(self)
+      ├── def duration(self)
+      ├── def start(self, source)
+      ├── def stop(self)
+      ├── def add_frame(self, frame, timestamp)
+      ├── def set_on_frame_written(self, callback)
+      ├── def set_on_recording_stopped(self, callback)
+      ├── def _writer_loop(self, output_path, source)
+      └── def _get_metadata(self, source)
+   🧱 class MotionTriggeredRecorder
+      ├── def __init__(self, pre_buffer_seconds, post_buffer_seconds)
+      ├── def buffer_frame(self, frame)
+      └── def trigger(self, source)
+
+📄 robot_host/camera/stats.py
+   🧱 class FrameStats
+      (no methods)
+   🧱 class CameraStatistics
+      ├── def success_rate(self)
+      ├── def drop_rate(self)
+      └── def avg_frame_size_kb(self)
+   🧱 class StatsTracker
+      ├── def __init__(self, window_size, fps_window_seconds)
+      ├── def record_frame(self, latency_ms, size_bytes, success, error, corrupt)
+      ├── def record_success(self, latency_ms, size_bytes)
+      ├── def record_failure(self, error, latency_ms)
+      ├── def record_corrupt(self, latency_ms, size_bytes)
+      ├── def record_dropped(self, count)
+      ├── def record_decode_time(self, decode_ms)
+      ├── def get_stats(self)
+      ├── def reset(self)
+      └── def __str__(self)
+
+📄 robot_host/camera/stream.py
+   🧱 class StreamFrame
+      (no methods)
+   🧱 class MjpegStreamClient
+      ├── def __init__(self, base_url, buffer_size, timeout, reconnect_delay, max_reconnect_delay, stream_port)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def is_connected(self)
+      ├── def is_running(self)
+      ├── def get_frame(self, timeout)
+      ├── def get_frame_bgr(self, timeout)
+      ├── def get_dual_frame(self, display_size, ml_size, blur_ksize, timeout)
+      ├── def set_on_frame(self, callback)
+      ├── def set_on_connect(self, callback)
+      ├── def set_on_disconnect(self, callback)
+      ├── def get_stats(self)
+      ├── def get_buffer_usage(self)
+      ├── def close(self)
+      ├── def __enter__(self)
+      ├── def __exit__(self, exc_type, exc_val, exc_tb)
+      ├── def _stream_loop(self)
+      ├── def _connect_and_stream(self)
+      ├── def _process_stream(self, response)
+      └── def _process_frame(self, jpeg_data)
+
 📄 robot_host/command/binary_commands.py
    🧱 class Opcode
       (no methods)
@@ -353,11 +648,35 @@ Total Files: 170
       (no methods)
    ⚙️  def _matrix_to_row_major(self, matrix)
 
+📄 robot_host/core/base_module.py
+   🧱 class BaseModule
+      ├── def __init__(self)
+      ├── def robot(self)
+      ├── def attach(self, robot)
+      ├── def detach(self)
+      ├── def _get_handler_for_topic(self, topic)
+      ├── def topics(self)
+      └── def __repr__(self)
+
 📄 robot_host/core/event_bus.py
    🧱 class EventBus
       ├── def __init__(self)
       ├── def subscribe(self, topic, handler)
       └── def publish(self, topic, data)
+
+📄 robot_host/core/host_module.py
+   🧱 class CommandHostModule
+      ├── def __init__(self, bus, client)
+      ├── def bus(self)
+      ├── def client(self)
+      └── def __repr__(self)
+   🧱 class EventHostModule
+      ├── def __init__(self, bus)
+      ├── def bus(self)
+      ├── def subscriptions(self)
+      ├── def _setup_subscriptions(self)
+      ├── def _get_handler(self, topic)
+      └── def __repr__(self)
 
 📄 robot_host/core/messages.py
    🧱 class MsgType
@@ -416,345 +735,6 @@ Total Files: 170
       ├── def __init__(self, name, log_dir, level, console, max_bytes, backup_count, dedup_cooldown_s, jsonl_file, text_file)
       └── def close(self)
 
-📄 robot_host/module/base.py
-   🧱 class BaseModule
-      ├── def __init__(self)
-      ├── def robot(self)
-      ├── def attach(self, robot)
-      ├── def detach(self)
-      ├── def _get_handler_for_topic(self, topic)
-      ├── def topics(self)
-      └── def __repr__(self)
-
-📄 robot_host/module/camera/host_module.py
-   🧱 class CameraHostModule
-      ├── def __init__(self, bus, cameras, ml_size, stream_port)
-      ├── def add_camera(self, camera_id, base_url)
-      ├── def remove_camera(self, camera_id)
-      ├── def get_camera_ids(self)
-      ├── def _on_command(self, msg)
-      ├── def _set_resolution(self, camera_id, size)
-      ├── def _set_quality(self, camera_id, quality)
-      ├── def _set_brightness(self, camera_id, brightness)
-      ├── def _set_contrast(self, camera_id, contrast)
-      ├── def _set_saturation(self, camera_id, saturation)
-      ├── def _set_sharpness(self, camera_id, sharpness)
-      ├── def _set_flip(self, camera_id, hmirror, vflip)
-      ├── def _set_awb(self, camera_id, enabled, mode)
-      ├── def _set_exposure(self, camera_id, auto, value)
-      ├── def _set_gain(self, camera_id, auto, value, ceiling)
-      ├── def _set_flash(self, camera_id, state)
-      ├── def _apply_preset(self, camera_id, preset_name)
-      ├── def _set_motion_detection(self, camera_id, enabled, sensitivity)
-      ├── def _update_status(self, camera_id)
-      ├── def _publish_config(self, camera_id)
-      ├── def _publish_stats(self, camera_id)
-      ├── def start_capture(self, camera_id, mode, fps)
-      ├── def stop_capture(self, camera_id)
-      ├── def capture_single(self, camera_id, publish)
-      ├── def _start_polling(self, camera_id)
-      ├── def _polling_loop(self, camera_id)
-      ├── def _start_streaming(self, camera_id)
-      ├── def _publish_frame(self, camera_id, frame)
-      ├── def start_recording(self, camera_id, output_dir, format)
-      ├── def stop_recording(self, camera_id)
-      └── def shutdown(self)
-   ⚙️  def on_frame(self, stream_frame)
-
-📄 robot_host/module/camera/models.py
-   🧱 class FrameSize
-      (no methods)
-   🧱 class CaptureMode
-      (no methods)
-   🧱 class CameraConfig
-      (no methods)
-   🧱 class CameraStatus
-      (no methods)
-   🧱 class CameraFrame
-      (no methods)
-   🧱 class MLFrame
-      (no methods)
-   🧱 class CameraStats
-      (no methods)
-   🧱 class MotionEvent
-      (no methods)
-
-📄 robot_host/module/camera/presets.py
-   ⚙️  def get_preset(self, name)
-   ⚙️  def list_presets()
-
-📄 robot_host/module/camera_async.py
-   🧱 class AsyncFrame
-      (no methods)
-   🧱 class AsyncCameraClient
-      └── def __init__(self, base_url, timeout, max_connections)
-   🧱 class AsyncMjpegClient
-      └── def __init__(self, base_url, timeout)
-
-📄 robot_host/module/camera_client.py
-   🧱 class FrameResult
-      (no methods)
-   🧱 class Esp32CamClient
-      ├── def __init__(self, base_url, timeout, max_retries, retry_delay, auth)
-      ├── def control(self)
-      ├── def is_healthy(self)
-      ├── def get_stats(self)
-      ├── def set_on_frame(self, callback)
-      ├── def set_on_error(self, callback)
-      ├── def _fetch_raw_bgr(self, retry)
-      ├── def get_frame(self, resize_to, blur_ksize, retry)
-      ├── def get_frame_with_info(self, resize_to, blur_ksize)
-      ├── def get_frame_for_ml(self, target_size, normalize, to_chw)
-      ├── def get_dual_frame(self, display_size, ml_size, blur_ksize, normalize, to_chw)
-      ├── def get_status(self)
-      ├── def set_resolution(self, size)
-      ├── def set_quality(self, quality)
-      ├── def toggle_flash(self)
-      ├── def set_flash(self, on)
-      ├── def get_camera_config(self)
-      ├── def enable_motion_detection(self, sensitivity)
-      ├── def disable_motion_detection(self)
-      ├── def iter_frames(self, delay, max_frames)
-      ├── def test_preview(self, window_name, delay, show_stats)
-      └── def test_connection(self)
-
-📄 robot_host/module/camera_control.py
-   🧱 class FrameSize
-      (no methods)
-   🧱 class CameraConfig
-      ├── def from_dict(self, cls, d)
-      └── def to_dict(self)
-   🧱 class MotionConfig
-      ├── def from_dict(self, cls, d)
-      └── def to_dict(self)
-   🧱 class DeviceStatus
-      └── def from_dict(self, cls, d)
-   🧱 class CameraControlClient
-      ├── def __init__(self, base_url, timeout, auth)
-      ├── def _get(self, path)
-      ├── def _post(self, path, data)
-      ├── def get_status(self)
-      ├── def is_online(self)
-      ├── def get_camera_config(self)
-      ├── def set_camera_config(self, config)
-      ├── def set_resolution(self, size)
-      ├── def set_quality(self, quality)
-      ├── def set_brightness(self, brightness)
-      ├── def set_contrast(self, contrast)
-      ├── def set_hmirror(self, enable)
-      ├── def set_vflip(self, enable)
-      ├── def set_saturation(self, saturation)
-      ├── def set_sharpness(self, sharpness)
-      ├── def set_whitebal(self, enable)
-      ├── def set_wb_mode(self, mode)
-      ├── def set_exposure_ctrl(self, enable)
-      ├── def set_aec_value(self, value)
-      ├── def set_gain_ctrl(self, enable)
-      ├── def set_agc_gain(self, gain)
-      ├── def set_gainceiling(self, ceiling)
-      ├── def toggle_flash(self)
-      ├── def set_flash(self, on)
-      ├── def get_motion_config(self)
-      ├── def set_motion_config(self, config)
-      ├── def enable_motion_detection(self, sensitivity)
-      ├── def disable_motion_detection(self)
-      ├── def reboot(self)
-      └── def factory_reset(self)
-
-📄 robot_host/module/camera_manager.py
-   🧱 class CameraState
-      (no methods)
-   🧱 class CameraInfo
-      (no methods)
-   🧱 class MultiFrameResult
-      └── def all_success(self)
-   🧱 class CameraManager
-      ├── def __init__(self, health_check_interval, auto_reconnect)
-      ├── def add_camera(self, name, url, auth, auto_start)
-      ├── def remove_camera(self, name)
-      ├── def get_camera(self, name)
-      ├── def list_cameras(self)
-      ├── def get_camera_names(self)
-      ├── def start(self)
-      ├── def stop(self)
-      ├── def enable_camera(self, name)
-      ├── def disable_camera(self, name)
-      ├── def _start_camera(self, name)
-      ├── def get_frame(self, name, timeout)
-      ├── def get_all_frames(self, timeout)
-      ├── def get_control(self, name)
-      ├── def set_resolution_all(self, size)
-      ├── def set_quality_all(self, quality)
-      ├── def toggle_flash_all(self)
-      ├── def start_recording(self, name, output_dir)
-      ├── def stop_recording(self, name)
-      ├── def start_recording_all(self, output_dir)
-      ├── def stop_recording_all(self)
-      ├── def set_on_frame(self, callback)
-      ├── def set_on_state_change(self, callback)
-      ├── def set_on_motion(self, callback)
-      ├── def get_stats(self, name)
-      ├── def get_all_stats(self)
-      ├── def print_status(self)
-      ├── def _handle_frame(self, name, frame)
-      ├── def _handle_connect(self, name)
-      ├── def _handle_disconnect(self, name, error)
-      ├── def _notify_state_change(self, name)
-      └── def _health_loop(self)
-
-📄 robot_host/module/camera_module.py
-   🧱 class CaptureMode
-      (no methods)
-   🧱 class CameraModule
-      ├── def __init__(self, base_url, name, mode, display_size, ml_size, blur_ksize, fps, show_preview, show_stats, frame_callback, raw_frame_callback, auth, stream_port)
-      ├── def is_running(self)
-      ├── def last_frame(self)
-      ├── def last_display_frame(self)
-      ├── def last_ml_frame(self)
-      ├── def window_name(self)
-      ├── def start(self)
-      ├── def stop(self)
-      ├── def run_foreground(self)
-      ├── def set_mode(self, mode)
-      ├── def set_resolution(self, size)
-      ├── def set_quality(self, quality)
-      ├── def toggle_flash(self)
-      ├── def get_status(self)
-      ├── def get_stats(self)
-      ├── def start_recording(self, output_dir, fps, format)
-      ├── def stop_recording(self)
-      ├── def is_recording(self)
-      ├── def enable_motion_recording(self, output_dir, pre_buffer_seconds, post_buffer_seconds)
-      ├── def trigger_motion_recording(self)
-      ├── def set_frame_callback(self, callback)
-      ├── def set_raw_frame_callback(self, callback)
-      ├── def set_motion_callback(self, callback)
-      ├── def _polling_loop(self)
-      ├── def _capture_frame_polling(self)
-      ├── def _start_streaming(self)
-      ├── def _handle_stream_frame(self, frame)
-      ├── def _streaming_foreground(self)
-      ├── def _display_loop(self)
-      ├── def _process_frame(self, raw_frame, timestamp)
-      ├── def _show_frame(self, display_frame)
-      └── def _throttle(self, start_time)
-
-📄 robot_host/module/camera_recorder.py
-   🧱 class RecordingMetadata
-      (no methods)
-   🧱 class FrameRecorder
-      ├── def __init__(self, output_dir, prefix, fps, codec, format, image_format, jpeg_quality, max_duration_seconds, max_frames)
-      ├── def is_recording(self)
-      ├── def frame_count(self)
-      ├── def duration(self)
-      ├── def start(self, source)
-      ├── def stop(self)
-      ├── def add_frame(self, frame, timestamp)
-      ├── def set_on_frame_written(self, callback)
-      ├── def set_on_recording_stopped(self, callback)
-      ├── def _writer_loop(self, output_path, source)
-      └── def _get_metadata(self, source)
-   🧱 class MotionTriggeredRecorder
-      ├── def __init__(self, pre_buffer_seconds, post_buffer_seconds)
-      ├── def buffer_frame(self, frame)
-      └── def trigger(self, source)
-
-📄 robot_host/module/camera_stats.py
-   🧱 class FrameStats
-      (no methods)
-   🧱 class CameraStatistics
-      ├── def success_rate(self)
-      └── def avg_frame_size_kb(self)
-   🧱 class StatsTracker
-      ├── def __init__(self, window_size, fps_window_seconds)
-      ├── def record_frame(self, latency_ms, size_bytes, success, error, corrupt)
-      ├── def record_success(self, latency_ms, size_bytes)
-      ├── def record_failure(self, error, latency_ms)
-      ├── def record_corrupt(self, latency_ms, size_bytes)
-      ├── def get_stats(self)
-      ├── def reset(self)
-      └── def __str__(self)
-
-📄 robot_host/module/camera_stream.py
-   🧱 class StreamFrame
-      (no methods)
-   🧱 class MjpegStreamClient
-      ├── def __init__(self, base_url, buffer_size, timeout, reconnect_delay, max_reconnect_delay, stream_port)
-      ├── def start(self)
-      ├── def stop(self)
-      ├── def is_connected(self)
-      ├── def is_running(self)
-      ├── def get_frame(self, timeout)
-      ├── def get_frame_bgr(self, timeout)
-      ├── def get_dual_frame(self, display_size, ml_size, blur_ksize, timeout)
-      ├── def set_on_frame(self, callback)
-      ├── def set_on_connect(self, callback)
-      ├── def set_on_disconnect(self, callback)
-      ├── def _stream_loop(self)
-      ├── def _connect_and_stream(self)
-      ├── def _process_stream(self, response)
-      └── def _process_frame(self, jpeg_data)
-
-📄 robot_host/module/inverse_kin_example.py
-   🧱 class JointConfig
-      (no methods)
-   🧱 class LinkConfig
-      (no methods)
-   🧱 class ArmSettings
-      (no methods)
-   🧱 class ArmKinematics
-      ├── def __init__(self, cfg)
-      ├── def _clamp(self, joint, angle_deg)
-      └── def ik_planar(self, x, y, elbow_up)
-   🧱 class ArmIKModule
-      ├── def __init__(self, bus, client, settings)
-      ├── def start(self)
-      ├── def stop(self)
-      ├── def on_home(self, event)
-      ├── def on_move_joints(self, event)
-      ├── def on_move_cartesian(self, event)
-      ├── def _home(self)
-      ├── def _move_joint_deg(self, joint, angle_deg)
-      ├── def _send_servo_move(self, channel, angle_deg)
-      └── def _send_stepper_move_abs(self, joint, angle_deg)
-
-📄 robot_host/module/logging_ctl.py
-   🧱 class LoggingControlModule
-      └── def __init__(self, bus, client)
-
-📄 robot_host/module/ml_preprocess.py
-   ⚙️  def preprocess_for_ml(self, frame_bgr, target_size, normalize, to_chw)
-
-📄 robot_host/module/modes.py
-   🧱 class ModeHostModule
-      └── def __init__(self, bus, client)
-
-📄 robot_host/module/object_detection.py
-   🧱 class Detection
-      (no methods)
-   🧱 class DetectionModule
-      ├── def __init__(self, model, decode_fn, ml_size, class_names, score_thresh, use_torch, device, show_window, window_name, publish_fn)
-      └── def handle_frame(self, display_frame, ml_frame, ts)
-
-📄 robot_host/module/pill_test.py
-   🧱 class PillCarouselConfig
-      (no methods)
-   🧱 class PillCarousel
-      ├── def __init__(self, client, config)
-      └── def set_current_slot(self, slot_index)
-
-📄 robot_host/module/telemetry_ctl.py
-   🧱 class TelemetryControlModule
-      └── def __init__(self, bus, client)
-
-📄 robot_host/module/yolo_decode.py
-   ⚙️  def decode_yolo_output(self, raw, display_shape, ml_size)
-
-📄 robot_host/module/yolo_detect.py
-   🧱 class YoloWrapper
-      ├── def __init__(self, weights)
-      └── def __call__(self, x)
-
 📄 robot_host/motor/motion.py
    🧱 class MotionHostModule
       └── def __init__(self, bus, client)
@@ -766,89 +746,6 @@ Total Files: 170
 📄 robot_host/motor/stepper.py
    🧱 class StepperHostModule
       └── def __init__(self, bus, client)
-
-📄 robot_host/mqtt/broker_failover.py
-   🧱 class BrokerState
-      (no methods)
-   🧱 class BrokerConfig
-      (no methods)
-   🧱 class BrokerFailover
-      ├── def __init__(self, primary, fallback, max_retries, base_delay_s, max_delay_s, primary_check_interval_s, on_broker_change, on_state_change)
-      ├── def current_broker(self)
-      ├── def state(self)
-      ├── def is_using_fallback(self)
-      ├── def retry_count(self)
-      ├── def notify_connected(self)
-      ├── def notify_disconnected(self)
-      ├── def notify_connection_failed(self)
-      └── def _set_state(self, state)
-
-📄 robot_host/mqtt/discovery.py
-   🧱 class NodeDiscovery
-      ├── def __init__(self, bus, broker_host, broker_port, username, password)
-      ├── def on_node_announce(self, callback)
-      ├── def get_known_nodes(self)
-      ├── def get_node(self, node_id)
-      ├── def _normalize_discovery_payload(self, data)
-      └── def _on_message(self, message)
-   ⚙️  def on_discover(self, info)
-
-📄 robot_host/mqtt/models.py
-   🧱 class NodeState
-      (no methods)
-   🧱 class MQTTConfig
-      (no methods)
-   🧱 class NodeInfo
-      └── def from_discovery_response(self, cls, node_id, data)
-   🧱 class NodeStatus
-      ├── def is_online(self)
-      ├── def mark_seen(self)
-      ├── def mark_heartbeat(self)
-      └── def mark_error(self)
-   ⚙️  def get_cmd_topic(self, node_id)
-   ⚙️  def get_ack_topic(self, node_id)
-   ⚙️  def get_telemetry_topic(self, node_id)
-   ⚙️  def get_state_topic(self, node_id)
-
-📄 robot_host/mqtt/node_manager.py
-   🧱 class NodeManager
-      ├── def __init__(self, bus, broker_host, broker_port, fallback_broker, fallback_port, username, password, heartbeat_timeout_s, health_check_interval_s, require_version_match)
-      ├── def broker_host(self)
-      ├── def broker_port(self)
-      ├── def add_node(self, node_id, start)
-      ├── def _ensure_start_task(self, proxy)
-      ├── def get_node(self, node_id)
-      ├── def get_nodes(self)
-      ├── def get_node_ids(self)
-      ├── def get_online_nodes(self)
-      ├── def get_offline_nodes(self)
-      ├── def _on_node_discovered(self, info)
-      ├── def _check_node_health(self)
-      └── def _on_broker_change(self, broker)
-
-📄 robot_host/mqtt/node_proxy.py
-   🧱 class NodeProxy
-      ├── def __init__(self, node_id, broker_host, broker_port, bus, username, password, heartbeat_timeout_s, require_version_match)
-      ├── def node_id(self)
-      ├── def client(self)
-      ├── def transport(self)
-      ├── def status(self)
-      ├── def info(self)
-      ├── def is_online(self)
-      ├── def is_connected(self)
-      ├── def video_url(self)
-      ├── def set_info(self, info)
-      ├── def set_video_url(self, url)
-      ├── def _on_heartbeat(self, data)
-      └── def _on_telemetry(self, data)
-
-📄 robot_host/mqtt/transport.py
-   🧱 class MQTTTransport
-      ├── def __init__(self, broker_host, broker_port, node_id, username, password, client_id, reconnect_delay)
-      ├── def set_frame_handler(self, handler)
-      ├── def is_connected(self)
-      ├── def node_id(self)
-      └── def _on_message(self, message)
 
 📄 robot_host/research/analysis.py
    ⚙️  def load_session_df(self, jsonl_path)
@@ -1223,6 +1120,9 @@ Total Files: 170
    ⚙️  def on_config(self, config)
    ⚙️  def on_error(self, error)
 
+📄 robot_host/runners/run_can_client.py
+   ⚙️  def parse_args()
+
 📄 robot_host/runners/run_detection.py
    ⚙️  def main()
 
@@ -1262,9 +1162,6 @@ Total Files: 170
 📄 robot_host/runners/serial_interactive_shell.py
    ⚙️  def _print_event(self, tag)
    ⚙️  def _handler(self, data)
-
-📄 robot_host/runners/servo_test.py
-   ⚙️  def main()
 
 📄 robot_host/runners/stepper_tst.py
    ⚙️  def main()
@@ -1317,6 +1214,7 @@ Total Files: 170
       (no methods)
    🧱 class ImuHostModule
       ├── def __init__(self, bus)
+      ├── def subscriptions(self)
       ├── def set_biases(self, accel_bias, gyro_bias)
       └── def _on_imu_raw(self, msg)
 
@@ -1342,6 +1240,8 @@ Total Files: 170
 📄 robot_host/telemetry/host_module.py
    🧱 class TelemetryHostModule
       ├── def __init__(self, bus, source_topic)
+      ├── def subscriptions(self)
+      ├── def _get_handler(self, topic)
       ├── def latest(self)
       └── def _on_raw(self, msg)
 
@@ -1389,6 +1289,13 @@ Total Files: 170
    ⚙️  def generate_cpp_header()
    ⚙️  def generate_py_binary_commands()
    ⚙️  def generate_py_json_to_binary()
+   ⚙️  def main()
+
+📄 robot_host/tools/gen_can.py
+   ⚙️  def calc_struct_size(self, fields)
+   ⚙️  def build_struct_fmt(self, fields)
+   ⚙️  def generate_cpp_header()
+   ⚙️  def generate_python_module()
    ⚙️  def main()
 
 📄 robot_host/tools/gen_commands.py
@@ -1443,6 +1350,13 @@ Total Files: 170
    ⚙️  def _load_pins(self, path)
    ⚙️  def validate_schema()
 
+📄 robot_host/transport/async_base_transport.py
+   🧱 class AsyncBaseTransport
+      ├── def __init__(self)
+      ├── def set_frame_handler(self, handler)
+      ├── def _handle_frame(self, body)
+      └── def is_connected(self)
+
 📄 robot_host/transport/base_transport.py
    🧱 class BaseTransport
       ├── def __init__(self)
@@ -1457,6 +1371,166 @@ Total Files: 170
    🧱 class BluetoothSerialTransport
       ├── def __init__(self, port, baudrate)
       └── def auto(self, cls, device_name, baudrate)
+
+📄 robot_host/transport/can_defs.py
+   🧱 class MsgId
+      (no methods)
+   ⚙️  def make_id(self, base, node_id)
+   ⚙️  def extract_node_id(self, msg_id)
+   ⚙️  def get_base_id(self, msg_id)
+   🧱 class NodeState
+      (no methods)
+   🧱 class SetVelMsg
+      ├── def from_floats(self, cls, vx, omega, seq)
+      ├── def to_floats(self)
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class SetSignalMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class HeartbeatMsg
+      ├── def pack(self)
+      ├── def unpack(self, cls, data)
+      └── def node_state(self)
+   🧱 class EncoderMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class ImuAccelMsg
+      ├── def pack(self)
+      ├── def unpack(self, cls, data)
+      └── def to_g(self)
+   🧱 class ImuGyroMsg
+      ├── def pack(self)
+      ├── def unpack(self, cls, data)
+      └── def to_dps(self)
+   🧱 class StatusMsg
+      ├── def pack(self)
+      ├── def unpack(self, cls, data)
+      ├── def armed(self)
+      ├── def active(self)
+      ├── def estopped(self)
+      ├── def has_error(self)
+      ├── def voltage_v(self)
+      └── def temp_c(self)
+   🧱 class ProtoFrameHeader
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   ⚙️  def encode_protocol_frames(self, data, msg_id)
+   🧱 class ProtoReassembler
+      ├── def __init__(self, timeout_ms)
+      ├── def add_frame(self, node_id, data, timestamp_ms)
+      └── def clear(self, node_id)
+   ⚙️  def encode_set_vel(self, vx, omega, seq)
+   ⚙️  def encode_set_signal(self, signal_id, value)
+   ⚙️  def encode_heartbeat(self, uptime_ms, state, load_pct, errors)
+   ⚙️  def encode_encoder(self, counts, velocity, timestamp)
+
+📄 robot_host/transport/can_transport.py
+   🧱 class CANStats
+      └── def uptime_s(self)
+   🧱 class CANTransport
+      ├── def __init__(self, channel, bustype, bitrate, node_id)
+      ├── def is_connected(self)
+      ├── def node_id(self)
+      ├── def node_id(self, value)
+      ├── def stats(self)
+      ├── def set_velocity_callback(self, callback)
+      ├── def set_signal_callback(self, callback)
+      ├── def set_heartbeat_callback(self, callback)
+      ├── def set_encoder_callback(self, callback)
+      ├── def set_imu_accel_callback(self, callback)
+      ├── def set_imu_gyro_callback(self, callback)
+      ├── def set_status_callback(self, callback)
+      ├── def _process_message(self, msg)
+      ├── def _handle_protocol_frame(self, node_id, data)
+      └── def _handle_native_message(self, base_id, node_id, data)
+   🧱 class VirtualCANTransport
+      └── def __init__(self, channel, node_id)
+
+📄 robot_host/transport/mqtt/broker_failover.py
+   🧱 class BrokerState
+      (no methods)
+   🧱 class BrokerConfig
+      (no methods)
+   🧱 class BrokerFailover
+      ├── def __init__(self, primary, fallback, max_retries, base_delay_s, max_delay_s, primary_check_interval_s, on_broker_change, on_state_change)
+      ├── def current_broker(self)
+      ├── def state(self)
+      ├── def is_using_fallback(self)
+      ├── def retry_count(self)
+      ├── def notify_connected(self)
+      ├── def notify_disconnected(self)
+      ├── def notify_connection_failed(self)
+      └── def _set_state(self, state)
+
+📄 robot_host/transport/mqtt/discovery.py
+   🧱 class NodeDiscovery
+      ├── def __init__(self, bus, broker_host, broker_port, username, password)
+      ├── def on_node_announce(self, callback)
+      ├── def get_known_nodes(self)
+      ├── def get_node(self, node_id)
+      ├── def _normalize_discovery_payload(self, data)
+      └── def _on_message(self, message)
+   ⚙️  def on_discover(self, info)
+
+📄 robot_host/transport/mqtt/models.py
+   🧱 class NodeState
+      (no methods)
+   🧱 class MQTTConfig
+      (no methods)
+   🧱 class NodeInfo
+      └── def from_discovery_response(self, cls, node_id, data)
+   🧱 class NodeStatus
+      ├── def is_online(self)
+      ├── def mark_seen(self)
+      ├── def mark_heartbeat(self)
+      └── def mark_error(self)
+   ⚙️  def get_cmd_topic(self, node_id, versioned)
+   ⚙️  def get_ack_topic(self, node_id, versioned)
+   ⚙️  def get_telemetry_topic(self, node_id, versioned)
+   ⚙️  def get_state_topic(self, node_id, versioned)
+   ⚙️  def get_discover_topic(self, versioned)
+   ⚙️  def get_discover_response_topic(self, versioned)
+
+📄 robot_host/transport/mqtt/node_manager.py
+   🧱 class NodeManager
+      ├── def __init__(self, bus, broker_host, broker_port, fallback_broker, fallback_port, username, password, heartbeat_timeout_s, health_check_interval_s, require_version_match)
+      ├── def broker_host(self)
+      ├── def broker_port(self)
+      ├── def add_node(self, node_id, start)
+      ├── def _ensure_start_task(self, proxy)
+      ├── def get_node(self, node_id)
+      ├── def get_nodes(self)
+      ├── def get_node_ids(self)
+      ├── def get_online_nodes(self)
+      ├── def get_offline_nodes(self)
+      ├── def _on_node_discovered(self, info)
+      ├── def _check_node_health(self)
+      └── def _on_broker_change(self, broker)
+
+📄 robot_host/transport/mqtt/node_proxy.py
+   🧱 class NodeProxy
+      ├── def __init__(self, node_id, broker_host, broker_port, bus, username, password, heartbeat_timeout_s, require_version_match)
+      ├── def node_id(self)
+      ├── def client(self)
+      ├── def transport(self)
+      ├── def status(self)
+      ├── def info(self)
+      ├── def is_online(self)
+      ├── def is_connected(self)
+      ├── def video_url(self)
+      ├── def set_info(self, info)
+      ├── def set_video_url(self, url)
+      ├── def _on_heartbeat(self, data)
+      └── def _on_telemetry(self, data)
+
+📄 robot_host/transport/mqtt/transport.py
+   🧱 class MQTTTransport
+      ├── def __init__(self, broker_host, broker_port, node_id, username, password, client_id, bus, use_versioned_topics)
+      ├── def is_connected(self)
+      ├── def node_id(self)
+      ├── def _publish_event(self, event, data)
+      └── def _on_message(self, message)
 
 📄 robot_host/transport/serial_transport.py
    🧱 class SerialTransport
@@ -1482,7 +1556,40 @@ Total Files: 170
 📄 robot_host/transport/tcp_transport.py
    🧱 class AsyncTcpTransport
       ├── def __init__(self, host, port, reconnect_delay)
-      └── def set_frame_handler(self, handler)
+      └── def is_connected(self)
+
+📄 robot_host/vision/ml_preprocess.py
+   🧱 class NormalizationStats
+      ├── def imagenet(self, cls)
+      └── def none(self, cls)
+   🧱 class PreprocessorCache
+      ├── def __init__(self)
+      ├── def get_buffer(self, key, shape, dtype)
+      └── def clear(self)
+   ⚙️  def preprocess_for_ml(self, frame_bgr, target_size, normalize, to_chw, mean, std, use_fast_resize, use_cache)
+   ⚙️  def preprocess_for_ml_gpu(self, frame_bgr, target_size, normalize, to_chw, mean, std)
+   ⚙️  def _preprocess_torch(self, frame_bgr, target_size, normalize, to_chw, mean, std)
+   ⚙️  def _preprocess_cuda(self, frame_bgr, target_size, normalize, to_chw, mean, std)
+   ⚙️  def preprocess_batch(self, frames_bgr, target_size, normalize, mean, std, use_gpu)
+   ⚙️  def _preprocess_batch_torch(self, frames_bgr, target_size, normalize, mean, std)
+   ⚙️  def is_gpu_available()
+   ⚙️  def get_gpu_backend()
+   ⚙️  def clear_cache()
+
+📄 robot_host/vision/object_detection.py
+   🧱 class Detection
+      (no methods)
+   🧱 class DetectionModule
+      ├── def __init__(self, model, decode_fn, ml_size, class_names, score_thresh, use_torch, device, show_window, window_name, publish_fn)
+      └── def handle_frame(self, display_frame, ml_frame, ts)
+
+📄 robot_host/vision/yolo_decode.py
+   ⚙️  def decode_yolo_output(self, raw, display_shape, ml_size)
+
+📄 robot_host/vision/yolo_detect.py
+   🧱 class YoloWrapper
+      ├── def __init__(self, weights)
+      └── def __call__(self, x)
 
 📄 structure.py
    ⚙️  def load_gitignore(self, project_root)
@@ -1537,58 +1644,6 @@ Total Files: 170
       ├── def publish(self, topic, data)
       ├── def topics(self)
       └── def last(self, topic)
-
-📄 tests/mqtt/test_discovery.py
-   🧱 class MockMessage
-      └── def __init__(self, topic, payload)
-   🧱 class TestNodeDiscovery
-      ├── def test_init(self)
-      ├── def test_on_node_announce_callback(self)
-      ├── def test_on_message_parses_response(self)
-      ├── def test_on_message_updates_existing_node(self)
-      ├── def test_get_known_nodes(self)
-      ├── def test_get_node(self)
-      ├── def test_on_message_handles_invalid_json(self)
-      └── def test_on_message_handles_missing_node_id(self)
-   🧱 class TestNodeInfo
-      ├── def test_from_discovery_response(self)
-      └── def test_from_discovery_response_minimal(self)
-
-📄 tests/mqtt/test_failover.py
-   🧱 class TestBrokerConfig
-      ├── def test_defaults(self)
-      └── def test_custom_values(self)
-   🧱 class TestBrokerFailover
-      ├── def test_init_primary_only(self)
-      ├── def test_init_with_fallback(self)
-      ├── def test_notify_connected(self)
-      ├── def test_notify_disconnected(self)
-      ├── def test_notify_connection_failed(self)
-      └── def test_state_change_callback(self)
-
-📄 tests/mqtt/test_node_manager.py
-   🧱 class TestNodeManager
-      ├── def test_init(self)
-      ├── def test_init_with_failover(self)
-      ├── def test_add_node(self)
-      ├── def test_add_node_duplicate(self)
-      ├── def test_get_node(self)
-      ├── def test_get_online_offline_nodes(self)
-      └── def test_health_check_detects_offline(self)
-   🧱 class TestNodeProxy
-      ├── def test_init(self)
-      ├── def test_set_info(self)
-      └── def test_set_video_url(self)
-
-📄 tests/mqtt/test_transport.py
-   🧱 class TestMQTTTransport
-      ├── def test_init(self)
-      ├── def test_init_with_auth(self)
-      └── def test_set_frame_handler(self)
-   🧱 class TestTopicHelpers
-      ├── def test_get_cmd_topic(self)
-      ├── def test_get_ack_topic(self)
-      └── def test_get_telemetry_topic(self)
 
 📄 tests/test_base_transport.py
    🧱 class DummyTransport
@@ -1786,10 +1841,62 @@ Total Files: 170
    ⚙️  def test_bin_telem_unknown_section_is_ignored()
    ⚙️  def test_bin_telem_short_header_graceful()
 
+📄 tests/transport_mqtt/test_discovery.py
+   🧱 class MockMessage
+      └── def __init__(self, topic, payload)
+   🧱 class TestNodeDiscovery
+      ├── def test_init(self)
+      ├── def test_on_node_announce_callback(self)
+      ├── def test_on_message_parses_response(self)
+      ├── def test_on_message_updates_existing_node(self)
+      ├── def test_get_known_nodes(self)
+      ├── def test_get_node(self)
+      ├── def test_on_message_handles_invalid_json(self)
+      └── def test_on_message_handles_missing_node_id(self)
+   🧱 class TestNodeInfo
+      ├── def test_from_discovery_response(self)
+      └── def test_from_discovery_response_minimal(self)
+
+📄 tests/transport_mqtt/test_failover.py
+   🧱 class TestBrokerConfig
+      ├── def test_defaults(self)
+      └── def test_custom_values(self)
+   🧱 class TestBrokerFailover
+      ├── def test_init_primary_only(self)
+      ├── def test_init_with_fallback(self)
+      ├── def test_notify_connected(self)
+      ├── def test_notify_disconnected(self)
+      ├── def test_notify_connection_failed(self)
+      └── def test_state_change_callback(self)
+
+📄 tests/transport_mqtt/test_node_manager.py
+   🧱 class TestNodeManager
+      ├── def test_init(self)
+      ├── def test_init_with_failover(self)
+      ├── def test_add_node(self)
+      ├── def test_add_node_duplicate(self)
+      ├── def test_get_node(self)
+      ├── def test_get_online_offline_nodes(self)
+      └── def test_health_check_detects_offline(self)
+   🧱 class TestNodeProxy
+      ├── def test_init(self)
+      ├── def test_set_info(self)
+      └── def test_set_video_url(self)
+
+📄 tests/transport_mqtt/test_transport.py
+   🧱 class TestMQTTTransport
+      ├── def test_init(self)
+      ├── def test_init_with_auth(self)
+      └── def test_set_frame_handler(self)
+   🧱 class TestTopicHelpers
+      ├── def test_get_cmd_topic(self)
+      ├── def test_get_ack_topic(self)
+      └── def test_get_telemetry_topic(self)
+
 ================================================================================
 📊 STATISTICS
 ================================================================================
-Total Classes:    239
-Total Functions:  361
-Total Methods:    750
+Total Classes:    250
+Total Functions:  384
+Total Methods:    824
 ================================================================================

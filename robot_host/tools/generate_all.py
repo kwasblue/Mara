@@ -14,6 +14,7 @@ Generated artifacts:
     - Pins: PinConfig.h, pin_config.py
     - GPIO Channels: GpioChannelDefs.h, gpio_channels.py
     - Binary Commands: BinaryCommands.h, binary_commands.py, json_to_binary.py
+    - CAN Bus: CanDefs.h, can_defs_generated.py
 """
 
 import sys
@@ -54,6 +55,11 @@ def main():
     import gen_telemetry
     print("-" * 60)
     gen_telemetry.main()
+    print()
+
+    import gen_can
+    print("-" * 60)
+    gen_can.main()
     print()
 
     print("=" * 60)

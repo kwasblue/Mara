@@ -148,16 +148,16 @@ class TestNodeDiscovery:
 
         assert discovery.get_node("nonexistent") is None
 
-    def test_on_message_handles_invalid_json(self, capsys):
-        """Test handling of invalid JSON."""
+    def test_on_message_handles_invalid_json(self):
+        """Test handling of invalid JSON gracefully (no crash)."""
         bus = EventBus()
         discovery = NodeDiscovery(bus=bus, broker_host="localhost")
 
         msg = MockMessage("", b"not valid json")
+        # Should not raise - handles gracefully
         discovery._on_message(msg)
-
-        captured = capsys.readouterr()
-        assert "Failed to parse" in captured.out
+        # No nodes should be added
+        assert len(discovery.get_known_nodes()) == 0
 
     def test_on_message_handles_missing_node_id(self):
         """Test handling of response without node_id."""

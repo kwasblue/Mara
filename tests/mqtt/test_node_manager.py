@@ -119,10 +119,10 @@ class TestNodeManager:
         manager.add_node("node1", start=False)
         manager.add_node("node2", start=False)
 
-        # Mock online status
-        manager._nodes["node0"]._transport._connected = True
-        manager._nodes["node1"]._transport._connected = True
-        manager._nodes["node2"]._transport._connected = False
+        # Mock online status via _connected_evt (asyncio.Event)
+        manager._nodes["node0"]._transport._connected_evt.set()
+        manager._nodes["node1"]._transport._connected_evt.set()
+        # node2 stays disconnected (event not set)
 
         online = manager.get_online_nodes()
         offline = manager.get_offline_nodes()
@@ -141,9 +141,9 @@ class TestNodeManager:
         manager.add_node("node0", start=False)
         manager.add_node("node1", start=False)
 
-        # Mock transport as connected
-        manager._nodes["node0"]._transport._connected = True
-        manager._nodes["node1"]._transport._connected = True
+        # Mock transport as connected via _connected_evt
+        manager._nodes["node0"]._transport._connected_evt.set()
+        manager._nodes["node1"]._transport._connected_evt.set()
 
         # Mock send_reliable
         for proxy in manager._nodes.values():
@@ -162,7 +162,7 @@ class TestNodeManager:
         manager = NodeManager(bus=bus, broker_host="localhost")
 
         manager.add_node("node0", start=False)
-        manager._nodes["node0"]._transport._connected = True
+        manager._nodes["node0"]._transport._connected_evt.set()
         manager._nodes["node0"].send_reliable = AsyncMock(return_value=(True, None))
 
         results = await manager.broadcast_estop()

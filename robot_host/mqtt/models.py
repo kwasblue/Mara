@@ -93,30 +93,63 @@ class NodeStatus:
         self.error_count += 1
 
 
+# MQTT topic version for protocol evolution
+# Change this when making breaking protocol changes
+TOPIC_VERSION = "v1"
+
 # MQTT topic templates matching firmware
-TOPIC_CMD = "mara/{node_id}/cmd"
-TOPIC_ACK = "mara/{node_id}/ack"
-TOPIC_TELEMETRY = "mara/{node_id}/telemetry"
-TOPIC_STATE = "mara/{node_id}/state"
-TOPIC_FLEET_DISCOVER = "mara/fleet/discover"
-TOPIC_FLEET_DISCOVER_RESPONSE = "mara/fleet/discover_response"
+# Version prefix enables gradual migration between protocol versions
+TOPIC_PREFIX = f"mara/{TOPIC_VERSION}"
+TOPIC_CMD = f"{TOPIC_PREFIX}/{{node_id}}/cmd"
+TOPIC_ACK = f"{TOPIC_PREFIX}/{{node_id}}/ack"
+TOPIC_TELEMETRY = f"{TOPIC_PREFIX}/{{node_id}}/telemetry"
+TOPIC_STATE = f"{TOPIC_PREFIX}/{{node_id}}/state"
+TOPIC_FLEET_DISCOVER = f"{TOPIC_PREFIX}/fleet/discover"
+TOPIC_FLEET_DISCOVER_RESPONSE = f"{TOPIC_PREFIX}/fleet/discover_response"
+
+# Legacy topics (v0 - no version prefix) for backwards compatibility
+TOPIC_CMD_LEGACY = "mara/{node_id}/cmd"
+TOPIC_ACK_LEGACY = "mara/{node_id}/ack"
+TOPIC_TELEMETRY_LEGACY = "mara/{node_id}/telemetry"
+TOPIC_FLEET_DISCOVER_LEGACY = "mara/fleet/discover"
+TOPIC_FLEET_DISCOVER_RESPONSE_LEGACY = "mara/fleet/discover_response"
 
 
-def get_cmd_topic(node_id: str) -> str:
-    """Get command topic for a node."""
-    return TOPIC_CMD.format(node_id=node_id)
+def get_cmd_topic(node_id: str, versioned: bool = False) -> str:
+    """Get command topic for a node.
+
+    Args:
+        node_id: The node identifier
+        versioned: If True, use versioned topic (mara/v1/{node}/cmd).
+                  If False (default), use legacy topic (mara/{node}/cmd).
+    """
+    template = TOPIC_CMD if versioned else TOPIC_CMD_LEGACY
+    return template.format(node_id=node_id)
 
 
-def get_ack_topic(node_id: str) -> str:
+def get_ack_topic(node_id: str, versioned: bool = False) -> str:
     """Get ack topic for a node."""
-    return TOPIC_ACK.format(node_id=node_id)
+    template = TOPIC_ACK if versioned else TOPIC_ACK_LEGACY
+    return template.format(node_id=node_id)
 
 
-def get_telemetry_topic(node_id: str) -> str:
+def get_telemetry_topic(node_id: str, versioned: bool = False) -> str:
     """Get telemetry topic for a node."""
-    return TOPIC_TELEMETRY.format(node_id=node_id)
+    template = TOPIC_TELEMETRY if versioned else TOPIC_TELEMETRY_LEGACY
+    return template.format(node_id=node_id)
 
 
-def get_state_topic(node_id: str) -> str:
+def get_state_topic(node_id: str, versioned: bool = False) -> str:
     """Get state topic for a node."""
-    return TOPIC_STATE.format(node_id=node_id)
+    template = TOPIC_STATE if versioned else "mara/{node_id}/state"
+    return template.format(node_id=node_id)
+
+
+def get_discover_topic(versioned: bool = False) -> str:
+    """Get fleet discovery topic."""
+    return TOPIC_FLEET_DISCOVER if versioned else TOPIC_FLEET_DISCOVER_LEGACY
+
+
+def get_discover_response_topic(versioned: bool = False) -> str:
+    """Get fleet discovery response topic."""
+    return TOPIC_FLEET_DISCOVER_RESPONSE if versioned else TOPIC_FLEET_DISCOVER_RESPONSE_LEGACY

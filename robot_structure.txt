@@ -1,7 +1,7 @@
 ================================================================================
 📂 PROJECT STRUCTURE
-Generated: 2026-02-14 22:09:23
-Total Files: 158
+Generated: 2026-02-15 03:12:33
+Total Files: 170
 ================================================================================
 
 📄 examples/01_serial_connection.py
@@ -375,6 +375,8 @@ Total Files: 158
 
 📄 robot_host/core/settings.py
    🧱 class TransportSettings
+      (no methods)
+   🧱 class MQTTSettings
       (no methods)
    🧱 class FeatureSettings
       (no methods)
@@ -765,6 +767,89 @@ Total Files: 158
    🧱 class StepperHostModule
       └── def __init__(self, bus, client)
 
+📄 robot_host/mqtt/broker_failover.py
+   🧱 class BrokerState
+      (no methods)
+   🧱 class BrokerConfig
+      (no methods)
+   🧱 class BrokerFailover
+      ├── def __init__(self, primary, fallback, max_retries, base_delay_s, max_delay_s, primary_check_interval_s, on_broker_change, on_state_change)
+      ├── def current_broker(self)
+      ├── def state(self)
+      ├── def is_using_fallback(self)
+      ├── def retry_count(self)
+      ├── def notify_connected(self)
+      ├── def notify_disconnected(self)
+      ├── def notify_connection_failed(self)
+      └── def _set_state(self, state)
+
+📄 robot_host/mqtt/discovery.py
+   🧱 class NodeDiscovery
+      ├── def __init__(self, bus, broker_host, broker_port, username, password)
+      ├── def on_node_announce(self, callback)
+      ├── def get_known_nodes(self)
+      ├── def get_node(self, node_id)
+      ├── def _normalize_discovery_payload(self, data)
+      └── def _on_message(self, message)
+   ⚙️  def on_discover(self, info)
+
+📄 robot_host/mqtt/models.py
+   🧱 class NodeState
+      (no methods)
+   🧱 class MQTTConfig
+      (no methods)
+   🧱 class NodeInfo
+      └── def from_discovery_response(self, cls, node_id, data)
+   🧱 class NodeStatus
+      ├── def is_online(self)
+      ├── def mark_seen(self)
+      ├── def mark_heartbeat(self)
+      └── def mark_error(self)
+   ⚙️  def get_cmd_topic(self, node_id)
+   ⚙️  def get_ack_topic(self, node_id)
+   ⚙️  def get_telemetry_topic(self, node_id)
+   ⚙️  def get_state_topic(self, node_id)
+
+📄 robot_host/mqtt/node_manager.py
+   🧱 class NodeManager
+      ├── def __init__(self, bus, broker_host, broker_port, fallback_broker, fallback_port, username, password, heartbeat_timeout_s, health_check_interval_s, require_version_match)
+      ├── def broker_host(self)
+      ├── def broker_port(self)
+      ├── def add_node(self, node_id, start)
+      ├── def _ensure_start_task(self, proxy)
+      ├── def get_node(self, node_id)
+      ├── def get_nodes(self)
+      ├── def get_node_ids(self)
+      ├── def get_online_nodes(self)
+      ├── def get_offline_nodes(self)
+      ├── def _on_node_discovered(self, info)
+      ├── def _check_node_health(self)
+      └── def _on_broker_change(self, broker)
+
+📄 robot_host/mqtt/node_proxy.py
+   🧱 class NodeProxy
+      ├── def __init__(self, node_id, broker_host, broker_port, bus, username, password, heartbeat_timeout_s, require_version_match)
+      ├── def node_id(self)
+      ├── def client(self)
+      ├── def transport(self)
+      ├── def status(self)
+      ├── def info(self)
+      ├── def is_online(self)
+      ├── def is_connected(self)
+      ├── def video_url(self)
+      ├── def set_info(self, info)
+      ├── def set_video_url(self, url)
+      ├── def _on_heartbeat(self, data)
+      └── def _on_telemetry(self, data)
+
+📄 robot_host/mqtt/transport.py
+   🧱 class MQTTTransport
+      ├── def __init__(self, broker_host, broker_port, node_id, username, password, client_id, reconnect_delay)
+      ├── def set_frame_handler(self, handler)
+      ├── def is_connected(self)
+      ├── def node_id(self)
+      └── def _on_message(self, message)
+
 📄 robot_host/research/analysis.py
    ⚙️  def load_session_df(self, jsonl_path)
    ⚙️  def extract_telemetry_df(self, df, event_filter, flatten)
@@ -1144,6 +1229,9 @@ Total Files: 158
 📄 robot_host/runners/run_latency_benchmarks.py
    ⚙️  def main()
 
+📄 robot_host/runners/run_mqtt_nodes.py
+   ⚙️  def parse_args()
+
 📄 robot_host/runners/send_all_commands.py
    🧱 class CmdResult
       (no methods)
@@ -1345,6 +1433,12 @@ Total Files: 158
       ├── def __init__(self, client, samples_needed)
       └── def _on_imu(self, imu)
 
+📄 robot_host/tools/mock_node.py
+   🧱 class MockNode
+      ├── def __init__(self, node_id, broker_host, broker_port, firmware, board)
+      └── def stop(self)
+   ⚙️  def parse_args()
+
 📄 robot_host/tools/platform_schema.py
    ⚙️  def _load_pins(self, path)
    ⚙️  def validate_schema()
@@ -1443,6 +1537,58 @@ Total Files: 158
       ├── def publish(self, topic, data)
       ├── def topics(self)
       └── def last(self, topic)
+
+📄 tests/mqtt/test_discovery.py
+   🧱 class MockMessage
+      └── def __init__(self, topic, payload)
+   🧱 class TestNodeDiscovery
+      ├── def test_init(self)
+      ├── def test_on_node_announce_callback(self)
+      ├── def test_on_message_parses_response(self)
+      ├── def test_on_message_updates_existing_node(self)
+      ├── def test_get_known_nodes(self)
+      ├── def test_get_node(self)
+      ├── def test_on_message_handles_invalid_json(self)
+      └── def test_on_message_handles_missing_node_id(self)
+   🧱 class TestNodeInfo
+      ├── def test_from_discovery_response(self)
+      └── def test_from_discovery_response_minimal(self)
+
+📄 tests/mqtt/test_failover.py
+   🧱 class TestBrokerConfig
+      ├── def test_defaults(self)
+      └── def test_custom_values(self)
+   🧱 class TestBrokerFailover
+      ├── def test_init_primary_only(self)
+      ├── def test_init_with_fallback(self)
+      ├── def test_notify_connected(self)
+      ├── def test_notify_disconnected(self)
+      ├── def test_notify_connection_failed(self)
+      └── def test_state_change_callback(self)
+
+📄 tests/mqtt/test_node_manager.py
+   🧱 class TestNodeManager
+      ├── def test_init(self)
+      ├── def test_init_with_failover(self)
+      ├── def test_add_node(self)
+      ├── def test_add_node_duplicate(self)
+      ├── def test_get_node(self)
+      ├── def test_get_online_offline_nodes(self)
+      └── def test_health_check_detects_offline(self)
+   🧱 class TestNodeProxy
+      ├── def test_init(self)
+      ├── def test_set_info(self)
+      └── def test_set_video_url(self)
+
+📄 tests/mqtt/test_transport.py
+   🧱 class TestMQTTTransport
+      ├── def test_init(self)
+      ├── def test_init_with_auth(self)
+      └── def test_set_frame_handler(self)
+   🧱 class TestTopicHelpers
+      ├── def test_get_cmd_topic(self)
+      ├── def test_get_ack_topic(self)
+      └── def test_get_telemetry_topic(self)
 
 📄 tests/test_base_transport.py
    🧱 class DummyTransport
@@ -1643,7 +1789,7 @@ Total Files: 158
 ================================================================================
 📊 STATISTICS
 ================================================================================
-Total Classes:    217
-Total Functions:  354
-Total Methods:    662
+Total Classes:    239
+Total Functions:  361
+Total Methods:    750
 ================================================================================

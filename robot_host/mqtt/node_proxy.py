@@ -38,13 +38,14 @@ class NodeProxy:
         self._bus = bus or EventBus()
         self._heartbeat_timeout_s = heartbeat_timeout_s
 
-        # Create transport for this node
+        # Create transport for this node (with EventBus for observability)
         self._transport = MQTTTransport(
             broker_host=broker_host,
             broker_port=broker_port,
             node_id=node_id,
             username=username,
             password=password,
+            bus=self._bus,
         )
 
         # Create client using the transport

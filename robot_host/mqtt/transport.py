@@ -13,12 +13,20 @@ from typing import Callable, Optional
 import aiomqtt
 
 from robot_host.core import protocol
+from robot_host.core.event_bus import EventBus
 from .models import (
     MQTTConfig,
     get_cmd_topic,
     get_ack_topic,
     get_telemetry_topic,
 )
+
+# Buffer limits to prevent OOM from corrupt/large messages
+MAX_RX_BUFFER_SIZE = 65536  # 64KB max
+
+# Exponential backoff parameters
+BASE_RECONNECT_DELAY = 1.0  # Start at 1 second
+MAX_RECONNECT_DELAY = 30.0  # Cap at 30 seconds
 
 
 class MQTTTransport:
@@ -43,7 +51,8 @@ class MQTTTransport:
         username: Optional[str] = None,
         password: Optional[str] = None,
         client_id: Optional[str] = None,
-        reconnect_delay: float = 5.0,
+        bus: Optional[EventBus] = None,
+        use_versioned_topics: bool = False,
     ) -> None:
         self._config = MQTTConfig(
             broker_host=broker_host,
@@ -53,12 +62,13 @@ class MQTTTransport:
             client_id=client_id or f"host-{node_id}",
         )
         self._node_id = node_id
-        self._reconnect_delay = reconnect_delay
+        self._bus = bus
+        self._use_versioned_topics = use_versioned_topics
 
-        # Topics
-        self._cmd_topic = get_cmd_topic(node_id)
-        self._ack_topic = get_ack_topic(node_id)
-        self._telemetry_topic = get_telemetry_topic(node_id)
+        # Topics (versioned or legacy based on config)
+        self._cmd_topic = get_cmd_topic(node_id, versioned=use_versioned_topics)
+        self._ack_topic = get_ack_topic(node_id, versioned=use_versioned_topics)
+        self._telemetry_topic = get_telemetry_topic(node_id, versioned=use_versioned_topics)
 
         # Client state
         self._client: Optional[aiomqtt.Client] = None
@@ -69,11 +79,16 @@ class MQTTTransport:
         self._connected_evt = asyncio.Event()
         self._pub_lock = asyncio.Lock()
 
+        # Exponential backoff state
+        self._reconnect_attempts = 0
+        self._current_delay = BASE_RECONNECT_DELAY
+
         # Frame handler (called by AsyncRobotClient)
         self._frame_handler: Callable[[bytes], None] = lambda frame: None
 
-        # RX buffer for frame reassembly
+        # RX buffer for frame reassembly (with size limit)
         self._rx_buffer = bytearray()
+        self._buffer_overflow_count = 0
 
     # ------------------------------------------------------------------
     # HasSendBytes Protocol Implementation
@@ -109,7 +124,7 @@ class MQTTTransport:
         except Exception as e:
             # Clear readiness so callers will block until reconnect is complete
             self._connected_evt.clear()
-            print(f"[MQTTTransport] Publish error: {e}")
+            self._publish_event("transport.publish_error", {"error": str(e)})
             raise
 
     async def start(self, timeout_s: float = 5.0) -> None:
@@ -182,22 +197,41 @@ class MQTTTransport:
     # Internal Methods
     # ------------------------------------------------------------------
 
+    def _publish_event(self, event: str, data: Optional[dict] = None) -> None:
+        """Publish event to EventBus if available."""
+        if self._bus:
+            payload = {"node_id": self._node_id, **(data or {})}
+            self._bus.publish(event, payload)
+
     async def _run(self) -> None:
-        """Main connection/reconnect loop."""
+        """Main connection/reconnect loop with exponential backoff."""
         while self._running:
             try:
                 await self._connect_and_listen()
+                # Successful connection - reset backoff
+                self._reconnect_attempts = 0
+                self._current_delay = BASE_RECONNECT_DELAY
             except asyncio.CancelledError:
                 raise
             except Exception as e:
-                print(f"[MQTTTransport] Error: {e}")
+                self._reconnect_attempts += 1
                 self._connected_evt.clear()
                 self._client = None
 
+                # Publish error event
+                self._publish_event("transport.error", {
+                    "error": str(e),
+                    "attempt": self._reconnect_attempts,
+                })
+
             if self._running:
-                # Only log reconnect delay if we actually intend to retry
-                print(f"[MQTTTransport] Reconnecting in {self._reconnect_delay}s...")
-                await asyncio.sleep(self._reconnect_delay)
+                # Exponential backoff: 1s, 2s, 4s, 8s, ... up to 30s
+                self._current_delay = min(
+                    BASE_RECONNECT_DELAY * (2 ** (self._reconnect_attempts - 1)),
+                    MAX_RECONNECT_DELAY
+                )
+                print(f"[MQTTTransport] Reconnecting in {self._current_delay:.1f}s (attempt {self._reconnect_attempts})...")
+                await asyncio.sleep(self._current_delay)
 
     async def _connect_and_listen(self) -> None:
         """Connect to broker and process messages."""
@@ -227,6 +261,12 @@ class MQTTTransport:
             print(f"[MQTTTransport] Connected, subscribing to {self._node_id} topics...")
             print(f"[MQTTTransport] Subscribed to {self._ack_topic}, {self._telemetry_topic}")
 
+            # Publish connected event
+            self._publish_event("transport.connected", {
+                "broker": self._config.broker_host,
+                "port": self._config.broker_port,
+            })
+
             # Process incoming messages
             async for message in client.messages:
                 if not self._running:
@@ -236,12 +276,24 @@ class MQTTTransport:
         # Disconnected
         self._connected_evt.clear()
         self._client = None
+        self._publish_event("transport.disconnected")
 
     def _on_message(self, message: aiomqtt.Message) -> None:
         """Handle incoming MQTT message."""
         payload = message.payload
         if not isinstance(payload, (bytes, bytearray)):
             payload = bytes(payload) if payload else b""
+
+        # Check buffer size limit to prevent OOM
+        if len(self._rx_buffer) + len(payload) > MAX_RX_BUFFER_SIZE:
+            self._buffer_overflow_count += 1
+            self._publish_event("transport.buffer_overflow", {
+                "buffer_size": len(self._rx_buffer),
+                "payload_size": len(payload),
+                "overflow_count": self._buffer_overflow_count,
+            })
+            # Clear buffer and continue - data is likely corrupt anyway
+            self._rx_buffer.clear()
 
         # Accumulate in buffer and extract frames
         self._rx_buffer.extend(payload)

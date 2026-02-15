@@ -16,8 +16,8 @@ from .models import (
     MQTTConfig,
     NodeInfo,
     NodeState,
-    TOPIC_FLEET_DISCOVER,
-    TOPIC_FLEET_DISCOVER_RESPONSE,
+    get_discover_topic,
+    get_discover_response_topic,
 )
 
 
@@ -49,6 +49,7 @@ class NodeDiscovery:
         password: Optional[str] = None,
         *,
         debug: bool = False,
+        use_versioned_topics: bool = False,
     ) -> None:
         self._bus = bus
         self._config = MQTTConfig(
@@ -58,6 +59,10 @@ class NodeDiscovery:
             password=password,
             client_id="host-discovery",
         )
+
+        # Topic configuration
+        self._discover_topic = get_discover_topic(versioned=use_versioned_topics)
+        self._discover_response_topic = get_discover_response_topic(versioned=use_versioned_topics)
 
         self._client: Optional[aiomqtt.Client] = None
         self._running = False
@@ -102,16 +107,34 @@ class NodeDiscovery:
 
         self._client = None
 
-    async def discover(self, timeout_s: float = 5.0) -> List[NodeInfo]:
+    async def discover(
+        self,
+        timeout_s: float = 5.0,
+        keep_alive: bool = False,
+    ) -> List[NodeInfo]:
         """
         Send discovery request and collect responses.
 
+        Args:
+            timeout_s: How long to wait for responses
+            keep_alive: If True, keep discovery connection open for continuous
+                       monitoring. If False (default), connection is managed
+                       by NodeManager which stops it after scan.
+
         Returns list of discovered nodes within timeout.
+
+        For large fleets (100+ nodes):
+        - Use keep_alive=True to avoid connection churn
+        - Consider multiple discover() calls with shorter timeouts
+        - Use on_node_announce() callback for streaming discovery
         """
+        # Use set for O(1) deduplication instead of O(n) list search
+        discovered_ids: set[str] = set()
         discovered: List[NodeInfo] = []
 
         def on_discover(info: NodeInfo) -> None:
-            if info.node_id not in {n.node_id for n in discovered}:
+            if info.node_id not in discovered_ids:
+                discovered_ids.add(info.node_id)
                 discovered.append(info)
 
         old_callback = self._on_node_announce
@@ -137,6 +160,37 @@ class NodeDiscovery:
             self._on_node_announce = old_callback
 
         return discovered
+
+    async def discover_continuous(
+        self,
+        on_node: Callable[[NodeInfo], None],
+        interval_s: float = 10.0,
+    ) -> None:
+        """
+        Continuously discover nodes at regular intervals.
+
+        This is more efficient for large fleets than repeated discover() calls
+        because it keeps the MQTT connection open.
+
+        Args:
+            on_node: Callback for each discovered node
+            interval_s: How often to send discovery requests
+
+        Call stop() to end continuous discovery.
+        """
+        if not self._running:
+            await self.start()
+
+        self._on_node_announce = on_node
+
+        while self._running:
+            try:
+                await asyncio.wait_for(self._connected_evt.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                continue
+
+            await self._send_discover_request()
+            await asyncio.sleep(interval_s)
 
     def on_node_announce(self, callback: Callable[[NodeInfo], None]) -> None:
         """Register callback for node announcements."""
@@ -190,7 +244,7 @@ class NodeDiscovery:
             self._connected_evt.set()
             print("[NodeDiscovery] Connected, subscribing to discovery responses...")
 
-            await client.subscribe(TOPIC_FLEET_DISCOVER_RESPONSE, qos=1)
+            await client.subscribe(self._discover_response_topic, qos=1)
 
             async for message in client.messages:
                 if not self._running:
@@ -208,7 +262,7 @@ class NodeDiscovery:
             return
 
         try:
-            await self._client.publish(TOPIC_FLEET_DISCOVER, b"{}", qos=1)
+            await self._client.publish(self._discover_topic, b"{}", qos=1)
             print("[NodeDiscovery] Sent discovery request")
         except asyncio.TimeoutError:
             print("[NodeDiscovery] Failed to send discover: Operation timed out")

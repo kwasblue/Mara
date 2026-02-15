@@ -321,7 +321,12 @@ class NodeManager:
     # Discovery
     # ------------------------------------------------------------------
 
-    async def discover(self, timeout_s: float = 5.0, auto_add: bool = True) -> List[NodeInfo]:
+    async def discover(
+        self,
+        timeout_s: float = 5.0,
+        auto_add: bool = True,
+        keep_alive: bool = False,
+    ) -> List[NodeInfo]:
         """
         Discover nodes on the network.
 
@@ -329,15 +334,18 @@ class NodeManager:
             timeout_s: How long to wait for responses
             auto_add: If True, automatically add discovered nodes AND await their start
                       so the caller can immediately interact with them.
+            keep_alive: If True, keep discovery connection open for continuous monitoring.
+                       Useful for large fleets to avoid connection churn.
 
         Returns:
             List of discovered NodeInfo
         """
-        nodes = await self._discovery.discover(timeout_s)
+        nodes = await self._discovery.discover(timeout_s, keep_alive=keep_alive)
 
-        # Stop discovery listener after scan completes - we don't need it running
-        # continuously. This prevents reconnection spam from the idle discovery client.
-        await self._discovery.stop()
+        # Stop discovery listener after scan completes unless keep_alive is requested.
+        # This prevents reconnection spam from the idle discovery client.
+        if not keep_alive:
+            await self._discovery.stop()
 
         if auto_add:
             # IMPORTANT: don't background-start here; await starts so discovery returns "ready" nodes.

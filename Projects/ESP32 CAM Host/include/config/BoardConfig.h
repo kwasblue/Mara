@@ -39,5 +39,5 @@
 #define SD_MMC_CMD      15
 #define SD_MMC_D0       2
 
-// Camera clock frequency
-#define CAM_XCLK_FREQ   20000000  // 20MHz
+// Camera clock frequency (24MHz for faster sensor readout, stable on OV2640)
+#define CAM_XCLK_FREQ   24000000  // 24MHz

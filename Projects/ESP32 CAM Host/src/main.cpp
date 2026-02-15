@@ -124,8 +124,8 @@ void setup() {
     g_pageHandlers = new PageHandlers(g_camera, g_wifiManager);
     g_pageHandlers->registerHandlers(server);
 
-    // Create and register API handlers
-    g_apiHandlers = new ApiHandlers(g_camera, g_motionDetector, g_wifiManager, g_configStore, auth);
+    // Create and register API handlers (with MJPEG server for stats)
+    g_apiHandlers = new ApiHandlers(g_camera, g_motionDetector, g_wifiManager, g_configStore, auth, &g_mjpegServer);
     g_apiHandlers->registerHandlers(server);
 
     // Create and register captive portal

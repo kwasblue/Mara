@@ -6,16 +6,21 @@
 #include "camera/CameraManager.h"
 #include "camera/MotionDetector.h"
 #include "network/WiFiManager.h"
+#include "network/MjpegServer.h"
 #include "storage/ConfigStore.h"
 #include "security/AuthMiddleware.h"
 
 class ApiHandlers {
 public:
     ApiHandlers(CameraManager& camera, MotionDetector& motion,
-                WiFiManager& wifi, ConfigStore& config, AuthMiddleware& auth);
+                WiFiManager& wifi, ConfigStore& config, AuthMiddleware& auth,
+                MjpegServer* mjpegServer = nullptr);
 
     // Register API endpoints
     void registerHandlers(AsyncWebServer& server);
+
+    // Set MJPEG server reference (if not provided in constructor)
+    void setMjpegServer(MjpegServer* server) { mjpegServer_ = server; }
 
 private:
     CameraManager& camera_;
@@ -23,6 +28,7 @@ private:
     WiFiManager& wifi_;
     ConfigStore& config_;
     AuthMiddleware& auth_;
+    MjpegServer* mjpegServer_ = nullptr;
 
     // Status endpoints
     void handleStatus(AsyncWebServerRequest* request);
@@ -43,4 +49,9 @@ private:
     void handleFlash(AsyncWebServerRequest* request);
     void handleReboot(AsyncWebServerRequest* request);
     void handleFactoryReset(AsyncWebServerRequest* request);
+
+    // Streaming endpoints
+    void handleStreamStats(AsyncWebServerRequest* request);
+    void handleStreamPreset(AsyncWebServerRequest* request, uint8_t* data, size_t len);
+    void handleStreamConfig(AsyncWebServerRequest* request, uint8_t* data, size_t len);
 };

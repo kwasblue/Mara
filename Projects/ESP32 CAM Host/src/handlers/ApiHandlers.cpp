@@ -5,8 +5,10 @@
 static const char* TAG = "API";
 
 ApiHandlers::ApiHandlers(CameraManager& camera, MotionDetector& motion,
-                         WiFiManager& wifi, ConfigStore& config, AuthMiddleware& auth)
-    : camera_(camera), motion_(motion), wifi_(wifi), config_(config), auth_(auth) {}
+                         WiFiManager& wifi, ConfigStore& config, AuthMiddleware& auth,
+                         MjpegServer* mjpegServer)
+    : camera_(camera), motion_(motion), wifi_(wifi), config_(config), auth_(auth),
+      mjpegServer_(mjpegServer) {}
 
 void ApiHandlers::registerHandlers(AsyncWebServer& server) {
     // Status (public)
@@ -89,6 +91,33 @@ void ApiHandlers::registerHandlers(AsyncWebServer& server) {
         }
         handleFactoryReset(request);
     });
+
+    // Streaming stats (public)
+    server.on("/api/stream/stats", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleStreamStats(request);
+    });
+
+    // Streaming preset (public)
+    server.on("/api/stream/preset", HTTP_POST,
+        [](AsyncWebServerRequest* request) {},
+        nullptr,
+        [this](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+            if (index == 0 && len == total) {
+                handleStreamPreset(request, data, len);
+            }
+        }
+    );
+
+    // Streaming config (FPS, quality scaling, etc.)
+    server.on("/api/stream/config", HTTP_POST,
+        [](AsyncWebServerRequest* request) {},
+        nullptr,
+        [this](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+            if (index == 0 && len == total) {
+                handleStreamConfig(request, data, len);
+            }
+        }
+    );
 
     LOG_INFO(TAG, "API handlers registered");
 }
@@ -312,4 +341,105 @@ void ApiHandlers::handleFactoryReset(AsyncWebServerRequest* request) {
     WebServerManager::sendSuccess(request, "Factory reset complete. Rebooting...");
     delay(500);
     ESP.restart();
+}
+
+void ApiHandlers::handleStreamStats(AsyncWebServerRequest* request) {
+    JsonDocument doc;
+
+    if (mjpegServer_) {
+        StreamStats stats = mjpegServer_->getStats();
+        doc["totalFrames"] = stats.totalFrames;
+        doc["droppedFrames"] = stats.droppedFrames;
+        doc["errorFrames"] = stats.errorFrames;
+        doc["currentFps"] = stats.currentFps;
+        doc["avgLatencyMs"] = stats.avgLatencyMs;
+        doc["totalBytes"] = stats.totalBytes;
+        doc["uptimeSeconds"] = stats.uptimeSeconds;
+        doc["activeClients"] = stats.activeClients;
+        doc["currentQuality"] = stats.currentQuality;
+        doc["targetFps"] = mjpegServer_->getTargetFps();
+        doc["qualityScaling"] = mjpegServer_->isQualityScalingEnabled();
+        doc["preset"] = (int)mjpegServer_->getCurrentPreset();
+    } else {
+        doc["error"] = "MJPEG server not available";
+    }
+
+    String json;
+    serializeJson(doc, json);
+    WebServerManager::sendJson(request, 200, json);
+}
+
+void ApiHandlers::handleStreamPreset(AsyncWebServerRequest* request, uint8_t* data, size_t len) {
+    if (!mjpegServer_) {
+        WebServerManager::sendError(request, 500, "MJPEG server not available");
+        return;
+    }
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, data, len);
+
+    if (error) {
+        WebServerManager::sendError(request, 400, "Invalid JSON");
+        return;
+    }
+
+    if (!doc.containsKey("preset")) {
+        WebServerManager::sendError(request, 400, "Missing 'preset' field");
+        return;
+    }
+
+    int presetValue = doc["preset"];
+    if (presetValue < 0 || presetValue > 3) {
+        WebServerManager::sendError(request, 400, "Invalid preset (0-3)");
+        return;
+    }
+
+    StreamPreset preset = static_cast<StreamPreset>(presetValue);
+    if (mjpegServer_->applyPreset(preset)) {
+        JsonDocument response;
+        response["preset"] = presetValue;
+        response["presetName"] = presetValue == 0 ? "high" :
+                                  presetValue == 1 ? "medium" :
+                                  presetValue == 2 ? "low" : "minimal";
+
+        String json;
+        serializeJson(response, json);
+        WebServerManager::sendJson(request, 200, json);
+    } else {
+        WebServerManager::sendError(request, 500, "Failed to apply preset");
+    }
+}
+
+void ApiHandlers::handleStreamConfig(AsyncWebServerRequest* request, uint8_t* data, size_t len) {
+    if (!mjpegServer_) {
+        WebServerManager::sendError(request, 500, "MJPEG server not available");
+        return;
+    }
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, data, len);
+
+    if (error) {
+        WebServerManager::sendError(request, 400, "Invalid JSON");
+        return;
+    }
+
+    // Update target FPS
+    if (doc.containsKey("targetFps")) {
+        uint8_t fps = doc["targetFps"];
+        mjpegServer_->setTargetFps(fps);
+    }
+
+    // Update quality scaling
+    if (doc.containsKey("qualityScaling")) {
+        bool enabled = doc["qualityScaling"];
+        mjpegServer_->setQualityScaling(enabled);
+    }
+
+    // Reset stats if requested
+    if (doc.containsKey("resetStats") && doc["resetStats"].as<bool>()) {
+        mjpegServer_->resetStats();
+    }
+
+    WebServerManager::sendSuccess(request, "Stream config updated");
 }

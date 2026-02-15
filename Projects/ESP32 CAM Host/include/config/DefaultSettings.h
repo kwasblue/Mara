@@ -5,7 +5,7 @@
 // ====== Default Camera Settings ======
 #define DEFAULT_FRAME_SIZE      FRAMESIZE_VGA   // 640x480
 #define DEFAULT_JPEG_QUALITY    12              // 0-63, lower = better quality
-#define DEFAULT_FB_COUNT        2               // Frame buffer count
+#define DEFAULT_FB_COUNT        3               // Frame buffer count (3 enables capture pipelining)
 
 #define DEFAULT_BRIGHTNESS      0               // -2 to 2
 #define DEFAULT_CONTRAST        0               // -2 to 2
@@ -54,6 +54,17 @@
 // ====== Streaming Settings ======
 #define MAX_STREAM_CLIENTS      3
 #define STREAM_PART_BOUNDARY    "123456789000000000000987654321"
+
+// Performance tuning
+#define STREAM_TARGET_FPS       30              // Target FPS (adaptive timing)
+#define STREAM_MIN_FRAME_MS     20              // Minimum ms between frames (~50 FPS max)
+#define STREAM_QUALITY_SCALING  1               // Enable quality reduction with multiple clients
+#define STREAM_QUALITY_PER_CLIENT 4             // Quality reduction per additional client (0-63 scale)
+#define STREAM_MAX_QUALITY_REDUCTION 20         // Max quality reduction from base
+
+// Frame skipping
+#define STREAM_ENABLE_FRAME_SKIP 1              // Enable frame skipping under load
+#define STREAM_SKIP_THRESHOLD_MS 100            // Skip frame if capture takes longer than this
 
 // ====== Watchdog Settings ======
 #define WATCHDOG_TIMEOUT_S      30          // Seconds before watchdog resets

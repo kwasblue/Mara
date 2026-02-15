@@ -1,0 +1,235 @@
+================================================================================
+📂 C++ PROJECT STRUCTURE
+Generated: 2026-02-14 22:08:15
+Total Files: 26
+================================================================================
+
+🧩 📄 include/camera/CameraManager.h
+   🧱 class CameraManager
+      └── isInitialized()
+   ⚙️  isInitialized()
+
+🧩 📄 include/camera/MotionDetector.h
+   🧱 class MotionDetector
+      ├── isEnabled()
+      ├── getLastMotionTime()
+      └── getLastChangePercent()
+   ⚙️  isEnabled()
+   ⚙️  getLastMotionTime()
+   ⚙️  getLastChangePercent()
+
+🧩 📄 include/handlers/ApiHandlers.h
+   🧱 class ApiHandlers
+      (no in-class method bodies detected)
+
+🧩 📄 include/handlers/CaptivePortal.h
+   🧱 class CaptivePortal
+      ├── isActive()
+      └── setActive(bool active)
+   ⚙️  isActive()
+   ⚙️  setActive(bool active)
+
+🧩 📄 include/handlers/PageHandlers.h
+   🧱 class PageHandlers
+      (no in-class method bodies detected)
+
+🧩 📄 include/network/MjpegServer.h
+   🧱 class MjpegServer
+      ├── isRunning()
+      ├── getActiveStreams()
+      ├── canAcceptStream()
+      ├── incrementStreams()
+      ├── decrementStreams()
+      └── getCamera()
+   ⚙️  isRunning()
+   ⚙️  getActiveStreams()
+   ⚙️  canAcceptStream()
+   ⚙️  incrementStreams()
+   ⚙️  decrementStreams()
+   ⚙️  getCamera()
+
+🧩 📄 include/network/OTAHandler.h
+   🧱 class OTAHandler
+      ├── isUpdating()
+      ├── getProgress()
+      └── getError()
+   ⚙️  isUpdating()
+   ⚙️  getProgress()
+   ⚙️  getError()
+
+🧩 📄 include/network/StreamHandler.h
+   🧱 class StreamHandler
+      (no in-class method bodies detected)
+
+🧩 📄 include/network/WebServer.h
+   🧱 class WebServerManager
+      ├── getServer()
+      └── getAuth()
+   ⚙️  getServer()
+   ⚙️  getAuth()
+
+🧩 📄 include/network/WiFiManager.h
+   🧾 enum WiFiMode
+   🧱 class WiFiManager
+      ├── getMode()
+      ├── getHostname()
+      ├── isConnected()
+      ├── isAPMode()
+      └── getDNSServer()
+   ⚙️  getMode()
+   ⚙️  getHostname()
+   ⚙️  isConnected()
+   ⚙️  isAPMode()
+   ⚙️  getDNSServer()
+
+🧩 📄 include/security/AuthMiddleware.h
+   🧱 struct RateLimitEntry
+      (no in-class method bodies detected)
+   🧱 class AuthMiddleware
+      └── isEnabled()
+   ⚙️  isEnabled()
+
+🧩 📄 include/storage/ConfigStore.h
+   🧱 struct CameraConfig
+      (no in-class method bodies detected)
+   🧱 struct NetworkConfig
+      (no in-class method bodies detected)
+   🧱 struct MotionConfig
+      (no in-class method bodies detected)
+   🧱 struct SecurityConfig
+      (no in-class method bodies detected)
+   🧱 class ConfigStore
+      (no in-class method bodies detected)
+
+🧩 📄 include/utils/Watchdog.h
+   📦 namespace Watchdog
+   ⚙️  init(uint32_t timeoutSeconds = WATCHDOG_TIMEOUT_S)
+   ⚙️  feed()
+   ⚙️  deinit()
+
+🧩 📄 src/camera/CameraManager.cpp
+   ⚙️  CameraManager::begin()
+   ⚙️  CameraManager::capture()
+   ⚙️  CameraManager::release(camera_fb_t* fb)
+   ⚙️  CameraManager::applyConfig(const CameraConfig& config)
+   ⚙️  CameraManager::getConfig(CameraConfig& config)
+   ⚙️  CameraManager::setFrameSize(framesize_t size)
+   ⚙️  CameraManager::setQuality(uint8_t quality)
+   ⚙️  CameraManager::setBrightness(int8_t brightness)
+   ⚙️  CameraManager::setContrast(int8_t contrast)
+   ⚙️  CameraManager::setSaturation(int8_t saturation)
+   ⚙️  CameraManager::setSharpness(int8_t sharpness)
+   ⚙️  CameraManager::setHMirror(bool enable)
+   ⚙️  CameraManager::setVFlip(bool enable)
+   ⚙️  CameraManager::setFlash(bool on)
+   ⚙️  CameraManager::getFlash()
+   ⚙️  CameraManager::toggleFlash()
+   ⚙️  CameraManager::getSensor()
+
+🧩 📄 src/camera/MotionDetector.cpp
+   ⚙️  MotionDetector::configure(const MotionConfig& config)
+   ⚙️  MotionDetector::setEnabled(bool enabled)
+   ⚙️  MotionDetector::setCallback(MotionCallback callback)
+   ⚙️  MotionDetector::processFrame(camera_fb_t* fb)
+   ⚙️  MotionDetector::calculateDifference(const uint8_t* frame1, const uint8_t* frame2, size_t len)
+
+🧩 📄 src/handlers/ApiHandlers.cpp
+   ⚙️  ApiHandlers::registerHandlers(AsyncWebServer& server)
+   ⚙️  ApiHandlers::handleStatus(AsyncWebServerRequest* request)
+   ⚙️  ApiHandlers::handleGetCameraConfig(AsyncWebServerRequest* request)
+   ⚙️  ApiHandlers::handleSetCameraConfig(AsyncWebServerRequest* request, uint8_t* data, size_t len)
+   ⚙️  ApiHandlers::handleGetNetworkConfig(AsyncWebServerRequest* request)
+   ⚙️  ApiHandlers::handleSetNetworkConfig(AsyncWebServerRequest* request, uint8_t* data, size_t len)
+   ⚙️  ApiHandlers::handleGetMotionConfig(AsyncWebServerRequest* request)
+   ⚙️  ApiHandlers::handleSetMotionConfig(AsyncWebServerRequest* request, uint8_t* data, size_t len)
+   ⚙️  ApiHandlers::handleFlash(AsyncWebServerRequest* request)
+   ⚙️  ApiHandlers::handleReboot(AsyncWebServerRequest* request)
+   ⚙️  ApiHandlers::handleFactoryReset(AsyncWebServerRequest* request)
+
+🧩 📄 src/handlers/CaptivePortal.cpp
+   ⚙️  CaptivePortal::registerHandlers(AsyncWebServer& server)
+   ⚙️  CaptivePortal::handlePortalPage(AsyncWebServerRequest* request)
+   ⚙️  CaptivePortal::handleScan(AsyncWebServerRequest* request)
+   ⚙️  CaptivePortal::handleSaveConfig(AsyncWebServerRequest* request)
+
+🧩 📄 src/handlers/PageHandlers.cpp
+   ⚙️  PageHandlers::registerHandlers(AsyncWebServer& server)
+   ⚙️  PageHandlers::handleRoot(AsyncWebServerRequest* request)
+   ⚙️  PageHandlers::handleConfig(AsyncWebServerRequest* request)
+
+🧩 📄 src/main.cpp
+   ⚙️  onMotionDetected()
+   ⚙️  setup()
+   ⚙️  loop()
+
+🧩 📄 src/network/MjpegServer.cpp
+   ⚙️  camera_(camera)
+   ⚙️  MjpegServer::start(uint16_t port)
+   ⚙️  MjpegServer::stop()
+   ⚙️  streamHandler(httpd_req_t* req)
+
+🧩 📄 src/network/OTAHandler.cpp
+   ⚙️  OTAHandler::registerHandlers(AsyncWebServer& server, bool requireAuth)
+   ⚙️  OTAHandler::handleUploadPage(AsyncWebServerRequest* request)
+   ⚙️  OTAHandler::handleUpload(AsyncWebServerRequest* request, const String& filename,
+                              size_t index, uint8_t* data, size_t len, bool final)
+   ⚙️  OTAHandler::handleUploadComplete(AsyncWebServerRequest* request)
+
+🧩 📄 src/network/StreamHandler.cpp
+   ⚙️  camera_(camera)
+   ⚙️  StreamHandler::registerHandlers(AsyncWebServer& server)
+   ⚙️  StreamHandler::handleCapture(AsyncWebServerRequest* request)
+
+🧩 📄 src/network/WebServer.cpp
+   ⚙️  server_(port)
+   ⚙️  WebServerManager::begin()
+   ⚙️  WebServerManager::setupDefaultHandlers()
+   ⚙️  WebServerManager::addCORSHeaders(AsyncWebServerResponse* response)
+   ⚙️  WebServerManager::sendJson(AsyncWebServerRequest* request, int code, const String& json)
+   ⚙️  WebServerManager::sendError(AsyncWebServerRequest* request, int code, const String& message)
+   ⚙️  WebServerManager::sendSuccess(AsyncWebServerRequest* request, const String& message)
+
+🧩 📄 src/network/WiFiManager.cpp
+   ⚙️  WiFiManager::begin(const NetworkConfig& config)
+   ⚙️  WiFiManager::loop()
+   ⚙️  WiFiManager::connectSTA(const char* ssid, const char* password)
+   ⚙️  WiFiManager::startAP()
+   ⚙️  WiFiManager::setupMDNS()
+   ⚙️  WiFiManager::startDNS()
+   ⚙️  WiFiManager::stopDNS()
+   ⚙️  WiFiManager::getIP()
+   ⚙️  WiFiManager::getRSSI()
+   ⚙️  WiFiManager::getMacAddress()
+
+🧩 📄 src/security/AuthMiddleware.cpp
+   ⚙️  decodeBase64(const String& encoded)
+   ⚙️  AuthMiddleware::setEnabled(bool enabled)
+   ⚙️  AuthMiddleware::setRateLimit(uint8_t requestsPerMinute)
+   ⚙️  AuthMiddleware::authenticate(AsyncWebServerRequest* request)
+   ⚙️  AuthMiddleware::checkRateLimit(AsyncWebServerRequest* request)
+   ⚙️  AuthMiddleware::sendUnauthorized(AsyncWebServerRequest* request)
+   ⚙️  AuthMiddleware::getAuthFilter()
+   ⚙️  AuthMiddleware::getRateLimitEntry(const IPAddress& ip)
+   ⚙️  AuthMiddleware::cleanupRateLimits()
+
+🧩 📄 src/storage/ConfigStore.cpp
+   ⚙️  ConfigStore::begin()
+   ⚙️  ConfigStore::loadCameraConfig(CameraConfig& config)
+   ⚙️  ConfigStore::saveCameraConfig(const CameraConfig& config)
+   ⚙️  ConfigStore::loadNetworkConfig(NetworkConfig& config)
+   ⚙️  ConfigStore::saveNetworkConfig(const NetworkConfig& config)
+   ⚙️  ConfigStore::loadMotionConfig(MotionConfig& config)
+   ⚙️  ConfigStore::saveMotionConfig(const MotionConfig& config)
+   ⚙️  ConfigStore::loadSecurityConfig(SecurityConfig& config)
+   ⚙️  ConfigStore::saveSecurityConfig(const SecurityConfig& config)
+   ⚙️  ConfigStore::factoryReset()
+
+================================================================================
+📊 STATISTICS
+================================================================================
+Namespaces:       1
+Classes/Structs:  17
+Enums:            1
+Free Functions:   116
+In-class Methods: 23
+================================================================================

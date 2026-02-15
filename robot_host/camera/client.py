@@ -11,9 +11,9 @@ import requests
 import numpy as np
 import cv2
 
-from robot_host.module.ml_preprocess import preprocess_for_ml
-from robot_host.module.camera_stats import StatsTracker, CameraStatistics
-from robot_host.module.camera_control import (
+from robot_host.vision.ml_preprocess import preprocess_for_ml
+from robot_host.camera.stats import StatsTracker, CameraStatistics
+from robot_host.camera.control import (
     CameraControlClient,
     CameraConfig,
     MotionConfig,

@@ -17,7 +17,7 @@ import time
 import cv2
 
 from robot_host.core.event_bus import EventBus
-from robot_host.module.camera import (
+from robot_host.camera import (
     CameraHostModule,
     CameraFrame,
     MLFrame,

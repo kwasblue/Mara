@@ -6,7 +6,7 @@ from typing import List, Tuple
 
 import numpy as np
 
-from robot_host.module.object_detection import Detection
+from robot_host.vision.object_detection import Detection
 
 
 def decode_yolo_output(

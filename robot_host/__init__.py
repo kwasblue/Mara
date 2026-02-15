@@ -66,7 +66,7 @@ __version__ = "0.4.0"
 from .robot import Robot
 from .runtime.runtime import Runtime
 from .config.robot_config import RobotConfig
-from .module.base import BaseModule
+from .core.base_module import BaseModule
 
 # Public API - Actuators
 from .api.stepper import Stepper

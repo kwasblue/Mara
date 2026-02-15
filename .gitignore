@@ -36,3 +36,15 @@ robot_host/config/gpio_channels.json
 robot_host/config/client_commands.py
 
 robot_host/scratch
+
+# ---- macOS ----
+.DS_Store
+*.DS_Store
+
+# ---- ML models (large binaries) ----
+*.pt
+*.onnx
+
+# ---- Build artifacts ----
+dist/
+build/

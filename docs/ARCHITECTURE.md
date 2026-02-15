@@ -169,7 +169,7 @@ Standalone module for ESP32-CAM integration (doesn't require AsyncRobotClient):
 
 ```python
 from robot_host.core.event_bus import EventBus
-from robot_host.module.camera import CameraHostModule
+from robot_host.camera import CameraHostModule
 
 bus = EventBus()
 camera = CameraHostModule(bus, cameras={0: "http://10.0.0.66"})

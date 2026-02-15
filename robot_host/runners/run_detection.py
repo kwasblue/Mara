@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from robot_host.module.camera_module import CameraModule
-from robot_host.module.object_detection import DetectionModule
-from robot_host.module.yolo_detect import YoloWrapper
-from robot_host.module.yolo_decode import decode_yolo_output
+from robot_host.camera import CameraModule
+from robot_host.vision import DetectionModule, YoloWrapper, decode_yolo_output
 
 
 def main():

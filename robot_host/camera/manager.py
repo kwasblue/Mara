@@ -9,10 +9,10 @@ from enum import Enum
 
 import numpy as np
 
-from robot_host.module.camera_stream import MjpegStreamClient, StreamFrame
-from robot_host.module.camera_control import CameraControlClient, DeviceStatus, FrameSize
-from robot_host.module.camera_stats import CameraStatistics
-from robot_host.module.camera_recorder import FrameRecorder
+from robot_host.camera.stream import MjpegStreamClient, StreamFrame
+from robot_host.camera.control import CameraControlClient, DeviceStatus, FrameSize
+from robot_host.camera.stats import CameraStatistics
+from robot_host.camera.recorder import FrameRecorder
 
 
 class CameraState(Enum):

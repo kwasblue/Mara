@@ -16,7 +16,7 @@ Integrates ESP32-CAM into the MARA robot host architecture with EventBus-based c
 
 ```python
 from robot_host.core.event_bus import EventBus
-from robot_host.module.camera import CameraHostModule
+from robot_host.camera import CameraHostModule
 
 bus = EventBus()
 
@@ -266,7 +266,7 @@ bus.publish("cmd.camera", {"cmd": "CMD_CAM_APPLY_PRESET", "camera_id": 1, "prese
 import asyncio
 from robot_host import Robot
 from robot_host.core.event_bus import EventBus
-from robot_host.module.camera import CameraHostModule
+from robot_host.camera import CameraHostModule
 
 async def main():
     bus = EventBus()

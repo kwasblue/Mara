@@ -1,4 +1,4 @@
-# robot_host/module/base.py
+# robot_host/core/base_module.py
 """
 Base module interface for Runtime composition.
 
@@ -6,7 +6,7 @@ Modules are pluggable components that extend robot functionality.
 They integrate with the Runtime lifecycle and EventBus for clean composition.
 
 Example:
-    from robot_host.module.base import BaseModule
+    from robot_host.core.base_module import BaseModule
 
     class LoggingModule(BaseModule):
         name = "logging"

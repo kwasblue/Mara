@@ -30,7 +30,7 @@ Example:
 With Modules:
     from robot_host import Robot
     from robot_host.runtime import Runtime
-    from robot_host.module.base import BaseModule
+    from robot_host.core.base_module import BaseModule
 
     class LoggingModule(BaseModule):
         name = "logging"

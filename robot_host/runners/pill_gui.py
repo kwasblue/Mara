@@ -32,7 +32,7 @@ from robot_host.command.client import AsyncRobotClient
 from robot_host.transport.serial_transport import SerialTransport
 from robot_host.transport.tcp_transport import AsyncTcpTransport
 
-from robot_host.module.pill_test import PillCarousel, PillCarouselConfig
+from robot_host.scratch.pill import PillCarousel, PillCarouselConfig
 
 
 # ==================== BASIC CONFIG ====================

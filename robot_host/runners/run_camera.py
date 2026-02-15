@@ -6,7 +6,7 @@ from typing import Optional
 
 import numpy as np
 
-from robot_host.module.camera_module import CameraModule
+from robot_host.camera import CameraModule
 # from robot_host.core.robot_client import RobotClient   # whatever your host uses
 # from robot_host.core.event_bus import EventBus         # if you have one
 

@@ -1,216 +1,177 @@
 #include <Arduino.h>
-#include <WiFi.h>
-#include "esp_camera.h"
 
-#include "config/Wifisecrets.h"
+// Utils
+#include "utils/Logger.h"
+#include "utils/Watchdog.h"
 
-// ====== CAMERA PIN CONFIG (AI Thinker ESP32-CAM) ======
-#define PWDN_GPIO_NUM     32
-#define RESET_GPIO_NUM    -1
-#define XCLK_GPIO_NUM      0
-#define SIOD_GPIO_NUM     26
-#define SIOC_GPIO_NUM     27
+// Config & Storage
+#include "config/BoardConfig.h"
+#include "config/DefaultSettings.h"
+#include "storage/ConfigStore.h"
 
-#define Y9_GPIO_NUM       35
-#define Y8_GPIO_NUM       34
-#define Y7_GPIO_NUM       39
-#define Y6_GPIO_NUM       36
-#define Y5_GPIO_NUM       21
-#define Y4_GPIO_NUM       19
-#define Y3_GPIO_NUM       18
-#define Y2_GPIO_NUM        5
-#define VSYNC_GPIO_NUM    25
-#define HREF_GPIO_NUM     23
-#define PCLK_GPIO_NUM     22
+// Camera
+#include "camera/CameraManager.h"
+#include "camera/MotionDetector.h"
 
-// Onboard white LED "flash" (AI Thinker)
-static constexpr int LED_FLASH_PIN = 4;
+// Network
+#include "network/WiFiManager.h"
+#include "network/WebServer.h"
+#include "network/StreamHandler.h"
+#include "network/MjpegServer.h"
+#include "network/OTAHandler.h"
 
-// ====== CameraServer class ======
-class CameraServer {
-public:
-    explicit CameraServer(uint16_t port = 80)
-        : server_(port) {}
+// Handlers
+#include "handlers/PageHandlers.h"
+#include "handlers/ApiHandlers.h"
+#include "handlers/CaptivePortal.h"
 
-    void begin() {
-        Serial.println(F("[CAM] Booting CameraServer..."));
+static const char* TAG = "Main";
 
-        pinMode(LED_FLASH_PIN, OUTPUT);
-        digitalWrite(LED_FLASH_PIN, LOW);  // flash off by default
+// Global instances
+ConfigStore g_configStore;
+CameraManager g_camera;
+MotionDetector g_motionDetector;
+WiFiManager g_wifiManager;
+WebServerManager g_webServer;
+StreamHandler g_streamHandler(g_camera);
+MjpegServer g_mjpegServer(g_camera);
+OTAHandler g_otaHandler;
+PageHandlers* g_pageHandlers = nullptr;
+ApiHandlers* g_apiHandlers = nullptr;
+CaptivePortal* g_captivePortal = nullptr;
 
-        setupCamera_();
-        setupWifi_();
+// Configuration structures
+CameraConfig g_cameraConfig;
+NetworkConfig g_networkConfig;
+MotionConfig g_motionConfig;
+SecurityConfig g_securityConfig;
 
-        server_.begin();
-        Serial.println(F("[HTTP] Server started. Visit http://<ip>/ or /jpg"));
-    }
-
-    void loop() {
-        // --- WiFi watchdog: reconnect if we got booted ---
-        if (WiFi.status() != WL_CONNECTED) {
-            static uint32_t last_reconnect_attempt = 0;
-            uint32_t now = millis();
-            if (now - last_reconnect_attempt > 5000) {  // every 5s max
-                last_reconnect_attempt = now;
-                Serial.println("[WIFI] Lost connection, trying to reconnect...");
-                WiFi.disconnect();
-                WiFi.begin(CAM_WIFI_SSID, CAM_WIFI_PASSWORD);
-            }
-            // Even if WiFi is down, we can still accept a client (e.g., AP mode),
-            // so don't return here.
-        }
-
-        WiFiClient client = server_.available();
-        if (!client) {
-            delay(5);
-            return;
-        }
-
-        // Wait briefly for data
-        uint32_t start = millis();
-        while (!client.available() && (millis() - start) < 2000) {
-            delay(1);
-        }
-        if (!client.available()) {
-            client.stop();
-            return;
-        }
-
-        handleClient_(client);
-        client.stop();
-    }
-
-private:
-    WiFiServer server_;
-
-    void setupCamera_() {
-        camera_config_t config;
-        config.ledc_channel = LEDC_CHANNEL_0;
-        config.ledc_timer   = LEDC_TIMER_0;
-        config.pin_d0       = Y2_GPIO_NUM;
-        config.pin_d1       = Y3_GPIO_NUM;
-        config.pin_d2       = Y4_GPIO_NUM;
-        config.pin_d3       = Y5_GPIO_NUM;
-        config.pin_d4       = Y6_GPIO_NUM;
-        config.pin_d5       = Y7_GPIO_NUM;
-        config.pin_d6       = Y8_GPIO_NUM;
-        config.pin_d7       = Y9_GPIO_NUM;
-        config.pin_xclk     = XCLK_GPIO_NUM;
-        config.pin_pclk     = PCLK_GPIO_NUM;
-        config.pin_vsync    = VSYNC_GPIO_NUM;
-        config.pin_href     = HREF_GPIO_NUM;
-        config.pin_sccb_sda = SIOD_GPIO_NUM;
-        config.pin_sccb_scl = SIOC_GPIO_NUM;
-        config.pin_pwdn     = PWDN_GPIO_NUM;
-        config.pin_reset    = RESET_GPIO_NUM;
-        config.xclk_freq_hz = 20000000;
-        config.pixel_format = PIXFORMAT_JPEG;
-
-        // Resolution / quality
-        config.frame_size   = FRAMESIZE_QVGA;  // 320x240
-        config.jpeg_quality = 12;
-        config.fb_count     = 2;
-
-        esp_err_t err = esp_camera_init(&config);
-        if (err != ESP_OK) {
-            Serial.printf("[CAM] Camera init failed with error 0x%x\n", err);
-            delay(2000);
-            ESP.restart();
-        }
-
-        Serial.println(F("[CAM] Camera initialized"));
-    }
-
-    void setupWifi_() {
-        Serial.println(F("[WIFI] Connecting..."));
-
-        WiFi.mode(WIFI_STA);
-        WiFi.setSleep(false);  // keep radios fully awake
-        WiFi.begin(CAM_WIFI_SSID, CAM_WIFI_PASSWORD);
-
-        uint32_t start = millis();
-        const uint32_t timeoutMs = 15000;
-
-        while (WiFi.status() != WL_CONNECTED && (millis() - start) < timeoutMs) {
-            delay(500);
-            Serial.print(".");
-        }
-        Serial.println();
-
-        if (WiFi.status() == WL_CONNECTED) {
-            Serial.print(F("[WIFI] Connected, IP: "));
-            Serial.println(WiFi.localIP());
-        } else {
-            Serial.println(F("[WIFI] Failed to connect"));
-        }
-    }
-
-    void sendJpeg_(WiFiClient &client) {
-        camera_fb_t* fb = esp_camera_fb_get();
-        if (!fb) {
-            Serial.println(F("[CAM] fb_get failed"));
-            client.print("HTTP/1.1 500 Internal Server Error\r\n\r\n");
-            return;
-        }
-
-        client.print("HTTP/1.1 200 OK\r\n");
-        client.print("Content-Type: image/jpeg\r\n");
-        client.printf("Content-Length: %u\r\n", fb->len);
-        client.print("Connection: close\r\n");
-        client.print("\r\n");
-
-        client.write(fb->buf, fb->len);
-        esp_camera_fb_return(fb);
-    }
-
-    void handleRoot_(WiFiClient &client) {
-        client.print("HTTP/1.1 200 OK\r\n");
-        client.print("Content-Type: text/html\r\n\r\n");
-        client.print("<html><body><h1>ESP32-CAM</h1>");
-        client.print("<p>Snapshot URL: <code>/jpg</code></p>");
-        client.print("<img src=\"/jpg\" />");
-        client.print("<p>Flash control: <a href=\"/flash_on\">ON</a> | <a href=\"/flash_off\">OFF</a></p>");
-        client.print("</body></html>");
-    }
-
-    void handleClient_(WiFiClient &client) {
-        // Read request line
-        String req = client.readStringUntil('\r');
-        client.readStringUntil('\n'); // consume '\n'
-
-        // Skip headers
-        while (client.available()) {
-            String line = client.readStringUntil('\n');
-            if (line == "\r" || line == "") break;
-        }
-
-        if (req.startsWith("GET /jpg")) {
-            sendJpeg_(client);
-        } else if (req.startsWith("GET /flash_on")) {
-            digitalWrite(LED_FLASH_PIN, HIGH);
-            client.print("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nFlash ON");
-        } else if (req.startsWith("GET /flash_off")) {
-            digitalWrite(LED_FLASH_PIN, LOW);
-            client.print("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nFlash OFF");
-        } else {
-            handleRoot_(client);
-        }
-    }
-};
-
-// ====== Global instance ======
-CameraServer g_cam;
+// Motion detection callback
+void onMotionDetected() {
+    LOG_INFO(TAG, "Motion detected!");
+    // Could trigger recording, send notification, etc.
+}
 
 void setup() {
     Serial.begin(115200);
     delay(1000);
     Serial.println();
-    Serial.println(F("[MCU] ESP32-CAM (PlatformIO) starting..."));
+    LOG_INFO(TAG, "ESP32-CAM Starting...");
+    LOG_INFO(TAG, "Free heap: %d bytes", ESP.getFreeHeap());
 
-    g_cam.begin();
+    // Initialize watchdog
+    if (Watchdog::init(WATCHDOG_TIMEOUT_S)) {
+        LOG_INFO(TAG, "Watchdog initialized (%ds timeout)", WATCHDOG_TIMEOUT_S);
+    }
+
+    // Initialize config store
+    g_configStore.begin();
+
+    // Load configurations
+    g_configStore.loadCameraConfig(g_cameraConfig);
+    g_configStore.loadNetworkConfig(g_networkConfig);
+    g_configStore.loadMotionConfig(g_motionConfig);
+    g_configStore.loadSecurityConfig(g_securityConfig);
+
+    // Initialize camera
+    if (!g_camera.begin()) {
+        LOG_ERROR(TAG, "Camera init failed!");
+        delay(3000);
+        ESP.restart();
+    }
+
+    // Apply camera settings
+    g_camera.applyConfig(g_cameraConfig);
+
+    // Initialize motion detector
+    g_motionDetector.configure(g_motionConfig);
+    g_motionDetector.setCallback(onMotionDetected);
+
+    // Initialize WiFi
+    g_wifiManager.begin(g_networkConfig);
+
+    // Wait for WiFi connection or AP mode
+    uint32_t wifiStart = millis();
+    while (!g_wifiManager.isConnected() && !g_wifiManager.isAPMode()) {
+        g_wifiManager.loop();
+        Watchdog::feed();
+        delay(100);
+
+        if (millis() - wifiStart > DEFAULT_WIFI_TIMEOUT_MS + 5000) {
+            break;
+        }
+    }
+
+    // Initialize web server
+    g_webServer.begin();
+    AsyncWebServer& server = g_webServer.getServer();
+    AuthMiddleware& auth = g_webServer.getAuth();
+
+    // Configure auth
+    auth.setEnabled(g_securityConfig.authEnabled);
+    auth.setRateLimit(g_securityConfig.rateLimit);
+
+    // Register handlers
+    g_streamHandler.registerHandlers(server);
+    g_otaHandler.registerHandlers(server, true);
+
+    // Start dedicated MJPEG stream server on port 81
+    if (!g_mjpegServer.start(81)) {
+        LOG_ERROR(TAG, "Failed to start MJPEG server on port 81");
+    }
+
+    // Create and register page handlers
+    g_pageHandlers = new PageHandlers(g_camera, g_wifiManager);
+    g_pageHandlers->registerHandlers(server);
+
+    // Create and register API handlers
+    g_apiHandlers = new ApiHandlers(g_camera, g_motionDetector, g_wifiManager, g_configStore, auth);
+    g_apiHandlers->registerHandlers(server);
+
+    // Create and register captive portal
+    g_captivePortal = new CaptivePortal(g_configStore, g_wifiManager);
+    g_captivePortal->registerHandlers(server);
+
+    // If in AP mode, activate captive portal
+    if (g_wifiManager.isAPMode()) {
+        g_captivePortal->setActive(true);
+        LOG_INFO(TAG, "Captive portal active");
+    }
+
+    LOG_INFO(TAG, "=================================");
+    LOG_INFO(TAG, "ESP32-CAM Ready!");
+    LOG_INFO(TAG, "IP: %s", g_wifiManager.getIP().toString().c_str());
+    LOG_INFO(TAG, "Hostname: %s.local", g_wifiManager.getHostname());
+    LOG_INFO(TAG, "Dashboard: http://%s/", g_wifiManager.getIP().toString().c_str());
+    LOG_INFO(TAG, "Snapshot: http://%s/jpg", g_wifiManager.getIP().toString().c_str());
+    LOG_INFO(TAG, "Stream: http://%s:81/stream", g_wifiManager.getIP().toString().c_str());
+    LOG_INFO(TAG, "=================================");
+    LOG_INFO(TAG, "Free heap: %d bytes", ESP.getFreeHeap());
 }
 
 void loop() {
-    g_cam.loop();
-    delay(1);  // small yield
+    // Feed watchdog
+    Watchdog::feed();
+
+    // Handle WiFi reconnection
+    g_wifiManager.loop();
+
+    // Process motion detection if enabled
+    if (g_motionDetector.isEnabled() && g_mjpegServer.getActiveStreams() == 0) {
+        // Only check motion when not streaming (to save resources)
+        static uint32_t lastMotionCheck = 0;
+        uint32_t now = millis();
+
+        if (now - lastMotionCheck > 500) {  // Check every 500ms
+            lastMotionCheck = now;
+            camera_fb_t* fb = g_camera.capture();
+            if (fb) {
+                g_motionDetector.processFrame(fb);
+                g_camera.release(fb);
+            }
+        }
+    }
+
+    // Small yield
+    delay(1);
 }

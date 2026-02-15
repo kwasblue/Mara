@@ -2,8 +2,8 @@ import asyncio
 import pytest
 
 from robot_host.core import protocol
-from fakes.fake_async_transport import FakeAsyncTransport
-from helpers import CapturingBus
+from tests.fakes.fake_async_transport import FakeAsyncTransport
+from tests.helpers import CapturingBus
 
 
 def _import_client():

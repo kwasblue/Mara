@@ -1,4 +1,4 @@
-# robot_host/module/camera/host_module.py
+# robot_host/camera/host_module.py
 """
 Camera host module - integrates ESP32-CAM into robot host architecture.
 
@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Optional, Dict, Any, Callable
+from typing import List, Optional, Dict, Any
 
 import numpy as np
 
 from robot_host.core.event_bus import EventBus
+from robot_host.core.host_module import EventHostModule
 from robot_host.camera.client import Esp32CamClient
 from robot_host.camera.stream import MjpegStreamClient
 from robot_host.camera.stats import StatsTracker
@@ -27,7 +28,7 @@ from .models import (
 from .presets import get_preset, list_presets
 
 
-class CameraHostModule:
+class CameraHostModule(EventHostModule):
     """
     Integrates ESP32-CAM into robot host architecture.
 
@@ -50,6 +51,8 @@ class CameraHostModule:
     - cmd.camera: Camera commands (CMD_CAM_*)
     """
 
+    module_name = "camera"
+
     def __init__(
         self,
         bus: EventBus,
@@ -65,7 +68,6 @@ class CameraHostModule:
         :param ml_size: Target size for ML preprocessing
         :param stream_port: Port for MJPEG streaming
         """
-        self._bus = bus
         self._ml_size = ml_size
         self._stream_port = stream_port
 
@@ -86,13 +88,20 @@ class CameraHostModule:
         self._stop_events: Dict[int, threading.Event] = {}
         self._target_fps: Dict[int, float] = {}
 
-        # Initialize cameras
+        # Call parent init (sets up subscriptions)
+        super().__init__(bus)
+
+        # Initialize cameras after bus is set
         if cameras:
             for cam_id, url in cameras.items():
                 self.add_camera(cam_id, url)
 
-        # Subscribe to commands
-        bus.subscribe("cmd.camera", self._on_command)
+    def subscriptions(self) -> List[str]:
+        return ["cmd.camera"]
+
+    def _on_cmd_camera(self, msg: Dict[str, Any]) -> None:
+        """Handle camera commands from EventBus (called by EventHostModule)."""
+        self._on_command(msg)
 
     # ---------- Camera Management ----------
 

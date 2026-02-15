@@ -2,8 +2,8 @@ import json
 
 from robot_host.command.client import BaseAsyncRobotClient
 from robot_host.core import protocol
-from helpers import CapturingBus
-from fakes.fake_async_transport import FakeAsyncTransport
+from tests.helpers import CapturingBus
+from tests.fakes.fake_async_transport import FakeAsyncTransport
 
 
 def test_client_json_telemetry_still_publishes_topics():

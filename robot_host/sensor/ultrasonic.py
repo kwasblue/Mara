@@ -1,4 +1,4 @@
-# robot_host/hardware/ultrasonic.py
+# robot_host/sensor/ultrasonic.py
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from typing import Any
 
 from robot_host.command.client import AsyncRobotClient
 from robot_host.core.event_bus import EventBus
+from robot_host.core.host_module import CommandHostModule
 
 
 @dataclass
@@ -14,7 +15,7 @@ class UltrasonicDefaults:
     sensor_id: int = 0
 
 
-class UltrasonicHostModule:
+class UltrasonicHostModule(CommandHostModule):
     """
     Host-side wrapper around ultrasonic commands + telemetry.
 
@@ -27,6 +28,8 @@ class UltrasonicHostModule:
       - when it sees data['ultrasonic'], republishes on 'telemetry.ultrasonic'
     """
 
+    module_name = "ultrasonic"
+
     def __init__(
         self,
         bus: EventBus,
@@ -34,12 +37,10 @@ class UltrasonicHostModule:
         defaults: UltrasonicDefaults | None = None,
         auto_subscribe: bool = True,
     ) -> None:
-        self._bus = bus
-        self._client = client
+        super().__init__(bus, client)
         self._defaults = defaults or UltrasonicDefaults()
 
         if auto_subscribe:
-            # Assumes EventBus has a subscribe(topic, handler) style API
             self._bus.subscribe("telemetry.raw", self._on_telemetry_raw)
 
     # -------- Commands --------

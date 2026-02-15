@@ -18,7 +18,7 @@ import argparse
 import asyncio
 
 from robot_host.core.event_bus import EventBus
-from robot_host.mqtt import NodeManager, NodeInfo
+from robot_host.transport.mqtt import NodeManager, NodeInfo
 
 
 async def main(

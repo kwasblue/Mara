@@ -1,11 +1,13 @@
-# robot_host/hardware/imu.py
+# robot_host/sensor/imu.py
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional, Callable
+from typing import List, Optional
 import numpy as np
 
 from robot_host.core.event_bus import EventBus
+from robot_host.core.host_module import EventHostModule
+
 
 @dataclass
 class ImuState:
@@ -26,16 +28,18 @@ class ImuState:
     pitch_deg: float
 
 
-class ImuHostModule:
+class ImuHostModule(EventHostModule):
     """Subscribe to telemetry.imu_raw and publish processed IMU state."""
 
+    module_name = "imu"
+
     def __init__(self, bus: EventBus) -> None:
-        self._bus = bus
         self._accel_bias = np.zeros(3, dtype=float)
         self._gyro_bias = np.zeros(3, dtype=float)
+        super().__init__(bus)
 
-        # subscribe to raw IMU telemetry
-        self._bus.subscribe("telemetry.imu_raw", self._on_imu_raw)
+    def subscriptions(self) -> List[str]:
+        return ["telemetry.imu_raw"]
 
     def set_biases(self, accel_bias, gyro_bias) -> None:
         self._accel_bias = np.asarray(accel_bias, dtype=float)

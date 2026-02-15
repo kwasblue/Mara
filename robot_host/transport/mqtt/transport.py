@@ -1,6 +1,6 @@
-# robot_host/mqtt/transport.py
+# robot_host/transport/mqtt/transport.py
 """
-MQTT transport implementing HasSendBytes protocol.
+MQTT transport for ESP32 communication.
 
 Allows AsyncRobotClient to communicate with ESP32 nodes over MQTT.
 """
@@ -8,12 +8,13 @@ Allows AsyncRobotClient to communicate with ESP32 nodes over MQTT.
 from __future__ import annotations
 
 import asyncio
-from typing import Callable, Optional
+from typing import Optional
 
 import aiomqtt
 
 from robot_host.core import protocol
 from robot_host.core.event_bus import EventBus
+from robot_host.transport.async_base_transport import AsyncBaseTransport
 from .models import (
     MQTTConfig,
     get_cmd_topic,
@@ -29,9 +30,9 @@ BASE_RECONNECT_DELAY = 1.0  # Start at 1 second
 MAX_RECONNECT_DELAY = 30.0  # Cap at 30 seconds
 
 
-class MQTTTransport:
+class MQTTTransport(AsyncBaseTransport):
     """
-    Async MQTT transport implementing HasSendBytes protocol.
+    Async MQTT transport.
 
     Publishes commands to: mara/{node_id}/cmd
     Subscribes to: mara/{node_id}/ack, mara/{node_id}/telemetry
@@ -54,6 +55,7 @@ class MQTTTransport:
         bus: Optional[EventBus] = None,
         use_versioned_topics: bool = False,
     ) -> None:
+        super().__init__()
         self._config = MQTTConfig(
             broker_host=broker_host,
             broker_port=broker_port,
@@ -83,26 +85,13 @@ class MQTTTransport:
         self._reconnect_attempts = 0
         self._current_delay = BASE_RECONNECT_DELAY
 
-        # Frame handler (called by AsyncRobotClient)
-        self._frame_handler: Callable[[bytes], None] = lambda frame: None
-
         # RX buffer for frame reassembly (with size limit)
         self._rx_buffer = bytearray()
         self._buffer_overflow_count = 0
 
     # ------------------------------------------------------------------
-    # HasSendBytes Protocol Implementation
+    # AsyncBaseTransport Implementation
     # ------------------------------------------------------------------
-
-    def set_frame_handler(self, handler: Callable[[bytes], None]) -> None:
-        """
-        Register handler for incoming frames.
-
-        handler(body: bytes):
-            body[0] = msg_type (int 0-255)
-            body[1:] = payload bytes
-        """
-        self._frame_handler = handler
 
     async def send_bytes(self, data: bytes) -> None:
         """

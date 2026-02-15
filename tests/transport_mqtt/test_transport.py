@@ -1,4 +1,4 @@
-# tests/mqtt/test_transport.py
+# tests/transport_mqtt/test_transport.py
 """Tests for MQTTTransport."""
 
 import asyncio
@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from robot_host.core import protocol
-from robot_host.mqtt.transport import MQTTTransport
-from robot_host.mqtt.models import get_cmd_topic, get_ack_topic, get_telemetry_topic
+from robot_host.transport.mqtt.transport import MQTTTransport
+from robot_host.transport.mqtt.models import get_cmd_topic, get_ack_topic, get_telemetry_topic
 
 
 class TestMQTTTransport:

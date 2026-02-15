@@ -1,21 +1,20 @@
 import asyncio
-from typing import Callable, Optional
+from typing import Optional
+
 from robot_host.core import protocol
+from robot_host.transport.async_base_transport import AsyncBaseTransport
 
 
-class AsyncTcpTransport:
+class AsyncTcpTransport(AsyncBaseTransport):
     """
-    Async TCP transport:
+    Async TCP transport.
+
+    Features:
       - Maintains a connection to (host, port)
       - Reconnects on failure
-      - Reads BYTES from the socket, then uses protocol.extract_frames()
-        to turn them into framed messages.
-      - Calls a frame handler with `body` where:
-            body[0] = msg_type
-            body[1:] = payload
-
-      - Also exposes send_bytes() so higher-level code (AsyncRobotClient)
-        can send fully-encoded frames directly.
+      - Reads bytes from the socket, then uses protocol.extract_frames()
+        to turn them into framed messages
+      - Calls frame handler with body (msg_type + payload)
     """
 
     def __init__(
@@ -24,6 +23,7 @@ class AsyncTcpTransport:
         port: int,
         reconnect_delay: float = 5.0,
     ) -> None:
+        super().__init__()
         self.host = host
         self.port = port
         self.reconnect_delay = reconnect_delay
@@ -31,26 +31,13 @@ class AsyncTcpTransport:
         self._reader: Optional[asyncio.StreamReader] = None
         self._writer: Optional[asyncio.StreamWriter] = None
         self._running: bool = False
-
-        # Frame handler: gets "body" (msg_type + payload), as produced by protocol.extract_frames
-        self._frame_handler: Callable[[bytes], None] = lambda frame: None
-
         self._task: Optional[asyncio.Task] = None
         self._rx_buffer = bytearray()
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def set_frame_handler(self, handler: Callable[[bytes], None]) -> None:
-        """
-        RobotClient will register its callback here.
-
-        handler(body: bytes):
-            body[0] = msg_type (int 0–255)
-            body[1:] = payload bytes
-        """
-        self._frame_handler = handler
+    @property
+    def is_connected(self) -> bool:
+        """Check if transport is currently connected."""
+        return self._writer is not None
 
     async def start(self) -> None:
         """Start connection/reconnect loop in the background."""

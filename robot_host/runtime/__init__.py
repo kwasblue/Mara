@@ -61,7 +61,7 @@ With Modules:
 """
 
 from .runtime import Runtime, RuntimeConfig
-from ..module.base import BaseModule
+from ..core.base_module import BaseModule
 
 __all__ = [
     "Runtime",

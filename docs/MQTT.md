@@ -81,7 +81,7 @@ allow_anonymous true
 ```python
 import asyncio
 from robot_host.core.event_bus import EventBus
-from robot_host.mqtt import NodeManager
+from robot_host.transport.mqtt import NodeManager
 
 async def main():
     bus = EventBus()
@@ -131,7 +131,7 @@ python -m robot_host.runners.run_mqtt_nodes --broker 10.0.0.59
 ### Initialization
 
 ```python
-from robot_host.mqtt import NodeManager
+from robot_host.transport.mqtt import NodeManager
 
 manager = NodeManager(
     bus=EventBus(),

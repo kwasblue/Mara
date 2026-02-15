@@ -5,8 +5,8 @@ import struct
 
 from robot_host.command.client import BaseAsyncRobotClient
 from robot_host.core import protocol
-from helpers import CapturingBus
-from fakes.fake_async_transport import FakeAsyncTransport
+from tests.helpers import CapturingBus
+from tests.fakes.fake_async_transport import FakeAsyncTransport
 
 SECTION_IMU = 1
 

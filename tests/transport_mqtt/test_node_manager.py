@@ -1,4 +1,4 @@
-# tests/mqtt/test_node_manager.py
+# tests/transport_mqtt/test_node_manager.py
 """Tests for NodeManager."""
 
 import asyncio
@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from robot_host.core.event_bus import EventBus
-from robot_host.mqtt.node_manager import NodeManager
-from robot_host.mqtt.node_proxy import NodeProxy
-from robot_host.mqtt.models import NodeInfo, NodeState
+from robot_host.transport.mqtt.node_manager import NodeManager
+from robot_host.transport.mqtt.node_proxy import NodeProxy
+from robot_host.transport.mqtt.models import NodeInfo, NodeState
 
 
 class TestNodeManager:

@@ -1,4 +1,4 @@
-# robot_host/mqtt/__init__.py
+# robot_host/transport/mqtt/__init__.py
 """
 MQTT transport and multi-node management for ESP32 communication.
 
@@ -9,7 +9,7 @@ This module provides:
 - NodeDiscovery: Fleet-wide node discovery
 
 Example usage (single node):
-    from robot_host.mqtt import MQTTTransport
+    from robot_host.transport.mqtt import MQTTTransport
     from robot_host.command.client import AsyncRobotClient
 
     transport = MQTTTransport(
@@ -21,7 +21,7 @@ Example usage (single node):
     await client.arm()
 
 Example usage (multi-node):
-    from robot_host.mqtt import NodeManager
+    from robot_host.transport.mqtt import NodeManager
     from robot_host.core.event_bus import EventBus
 
     bus = EventBus()

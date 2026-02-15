@@ -385,7 +385,7 @@ Control multiple ESP32 robots over MQTT for fleet coordination.
 ```python
 import asyncio
 from robot_host.core.event_bus import EventBus
-from robot_host.mqtt import NodeManager
+from robot_host.transport.mqtt import NodeManager
 
 async def main():
     bus = EventBus()

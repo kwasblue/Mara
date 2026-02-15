@@ -1,18 +1,37 @@
 # telemetry/host_module.py
 from __future__ import annotations
 
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 
 from robot_host.core.event_bus import EventBus
+from robot_host.core.host_module import EventHostModule
 from .parser import parse_telemetry
 from .models import TelemetryPacket
 
 
-class TelemetryHostModule:
+class TelemetryHostModule(EventHostModule):
+    """
+    Parses raw telemetry and fans out to typed topics.
+
+    Subscribes to: telemetry.raw (configurable)
+    Publishes: telemetry.packet, telemetry.imu, telemetry.ultrasonic, etc.
+    """
+
+    module_name = "telemetry"
+
     def __init__(self, bus: EventBus, source_topic: str = "telemetry.raw") -> None:
-        self._bus = bus
+        self._source_topic = source_topic
         self._latest: Optional[TelemetryPacket] = None
-        bus.subscribe(source_topic, self._on_raw)
+        super().__init__(bus)
+
+    def subscriptions(self) -> List[str]:
+        return [self._source_topic]
+
+    def _get_handler(self, topic: str):
+        # Override to map any source topic to _on_raw
+        if topic == self._source_topic:
+            return self._on_raw
+        return super()._get_handler(topic)
 
     @property
     def latest(self) -> Optional[TelemetryPacket]:

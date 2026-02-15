@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
-from robot_host.command.client import AsyncRobotClient 
+from robot_host.command.client import AsyncRobotClient
 from robot_host.core.event_bus import EventBus
+from robot_host.core.host_module import CommandHostModule
 from robot_host.config.pin_config import ENC0_A, ENC0_B
 
 
@@ -15,12 +15,15 @@ class EncoderDefaults:
     pin_b: int = ENC0_B
 
 
-class EncoderHostModule:
+class EncoderHostModule(CommandHostModule):
     """
     Host-side wrapper around encoder commands.
+
     Wraps CMD_ENCODER_ATTACH / CMD_ENCODER_READ / CMD_ENCODER_RESET,
     using the generated cmd_encoder_* methods on AsyncRobotClient.
     """
+
+    module_name = "encoder"
 
     def __init__(
         self,
@@ -28,8 +31,7 @@ class EncoderHostModule:
         client: AsyncRobotClient,
         defaults: EncoderDefaults | None = None,
     ) -> None:
-        self._bus = bus
-        self._client = client
+        super().__init__(bus, client)
         self._defaults = defaults or EncoderDefaults()
 
     async def attach(

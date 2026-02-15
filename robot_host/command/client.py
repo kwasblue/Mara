@@ -290,13 +290,11 @@ class BaseAsyncRobotClient:
     # ---------- Connection callbacks ----------
 
     def _on_disconnect(self) -> None:
-        print("[RobotClient] Connection lost!")
         self.commander.clear_pending()
         self.bus.publish("connection.lost", {})
         self.logs.events.write("connection.lost")
-    
+
     def _on_reconnect(self) -> None:
-        print("[RobotClient] Connection restored!")
         self.bus.publish("connection.restored", {})
         self.logs.events.write("connection.restored")
 

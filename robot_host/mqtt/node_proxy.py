@@ -48,10 +48,12 @@ class NodeProxy:
         )
 
         # Create client using the transport
+        # Use longer timeout for MQTT (no continuous telemetry stream)
         self._client = AsyncRobotClient(
             transport=self._transport,
             bus=self._bus,
             require_version_match=require_version_match,
+            connection_timeout_s=heartbeat_timeout_s,
         )
 
         # Status tracking

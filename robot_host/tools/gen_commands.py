@@ -5,7 +5,7 @@ Generate command schema artifacts from platform_schema.COMMANDS.
 from typing import Any
 from pathlib import Path
 import json
-from platform_schema import ROOT, COMMANDS, VERSION
+from platform_schema import ROOT, COMMANDS, VERSION, CAPABILITIES_MASK
 
 JSON_OUT = Path("/Users/kwasiaddo/projects/Host/robot_host/config/commands.json")
 CPP_OUT = Path("/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host/include/config/CommandDefs.h")
@@ -213,9 +213,11 @@ def generate_py_version(version: dict) -> str:
 # Generated from VERSION in platform_schema.py
 
 PROTOCOL_VERSION = {version["protocol"]}
+SCHEMA_VERSION = {version["schema_version"]}
 CLIENT_VERSION = "{version["firmware"]}"
 BOARD = "{version["board"]}"
 NAME = "{version["name"]}"
+CAPABILITIES_MASK = 0x{CAPABILITIES_MASK:04X}
 '''
 
 

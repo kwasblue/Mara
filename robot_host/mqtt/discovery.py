@@ -163,7 +163,12 @@ class NodeDiscovery:
                 raise
             except Exception as e:
                 self._connected_evt.clear()
-                print(f"[NodeDiscovery] Error: {e}")
+                # Suppress common disconnect errors during normal operation
+                err_str = str(e).lower()
+                if "disconnect" in err_str or "iteration" in err_str:
+                    pass  # Normal during shutdown or broker hiccup
+                elif self._running:
+                    print(f"[NodeDiscovery] Error: {e}")
 
             if self._running:
                 await asyncio.sleep(2.0)

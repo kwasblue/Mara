@@ -11,12 +11,26 @@ from ..config.pin_config import ENC0_A, ENC0_B
 
 @dataclass
 class TransportSettings:
-    type: str = "tcp"          # "tcp" | "serial" | "ble"
+    type: str = "tcp"          # "tcp" | "serial" | "ble" | "mqtt"
     host: Optional[str] = None
     port: Optional[int] = None
     serial_port: Optional[str] = None
-    baudrate: int = 115200 
+    baudrate: int = 115200
     ble_name: Optional[str] = None
+
+
+@dataclass
+class MQTTSettings:
+    """MQTT transport configuration."""
+    enabled: bool = False
+    broker_host: str = "localhost"
+    broker_port: int = 1883
+    fallback_broker: Optional[str] = None
+    fallback_port: int = 1883
+    username: Optional[str] = None
+    password: Optional[str] = None
+    node_id: str = "node0"
+    heartbeat_timeout_s: float = 5.0
 
 
 @dataclass
@@ -47,6 +61,7 @@ class HostSettings:
     transport: TransportSettings
     features: FeatureSettings
     encoder_defaults: EncoderDefaults
+    mqtt: MQTTSettings
 
     @classmethod
     def load(cls, profile: str = "default") -> "HostSettings":
@@ -60,9 +75,11 @@ class HostSettings:
         encoder_defaults = EncoderDefaults(
             **data.get("encoder_defaults", {})
         )
+        mqtt = MQTTSettings(**data.get("mqtt", {}))
 
         return cls(
             transport=transport,
             features=features,
             encoder_defaults=encoder_defaults,
+            mqtt=mqtt,
         )

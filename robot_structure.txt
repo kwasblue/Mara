@@ -1,7 +1,7 @@
 ================================================================================
 📂 PROJECT STRUCTURE
-Generated: 2026-02-08 09:02:32
-Total Files: 148
+Generated: 2026-02-14 22:09:23
+Total Files: 158
 ================================================================================
 
 📄 examples/01_serial_connection.py
@@ -424,24 +424,274 @@ Total Files: 148
       ├── def topics(self)
       └── def __repr__(self)
 
+📄 robot_host/module/camera/host_module.py
+   🧱 class CameraHostModule
+      ├── def __init__(self, bus, cameras, ml_size, stream_port)
+      ├── def add_camera(self, camera_id, base_url)
+      ├── def remove_camera(self, camera_id)
+      ├── def get_camera_ids(self)
+      ├── def _on_command(self, msg)
+      ├── def _set_resolution(self, camera_id, size)
+      ├── def _set_quality(self, camera_id, quality)
+      ├── def _set_brightness(self, camera_id, brightness)
+      ├── def _set_contrast(self, camera_id, contrast)
+      ├── def _set_saturation(self, camera_id, saturation)
+      ├── def _set_sharpness(self, camera_id, sharpness)
+      ├── def _set_flip(self, camera_id, hmirror, vflip)
+      ├── def _set_awb(self, camera_id, enabled, mode)
+      ├── def _set_exposure(self, camera_id, auto, value)
+      ├── def _set_gain(self, camera_id, auto, value, ceiling)
+      ├── def _set_flash(self, camera_id, state)
+      ├── def _apply_preset(self, camera_id, preset_name)
+      ├── def _set_motion_detection(self, camera_id, enabled, sensitivity)
+      ├── def _update_status(self, camera_id)
+      ├── def _publish_config(self, camera_id)
+      ├── def _publish_stats(self, camera_id)
+      ├── def start_capture(self, camera_id, mode, fps)
+      ├── def stop_capture(self, camera_id)
+      ├── def capture_single(self, camera_id, publish)
+      ├── def _start_polling(self, camera_id)
+      ├── def _polling_loop(self, camera_id)
+      ├── def _start_streaming(self, camera_id)
+      ├── def _publish_frame(self, camera_id, frame)
+      ├── def start_recording(self, camera_id, output_dir, format)
+      ├── def stop_recording(self, camera_id)
+      └── def shutdown(self)
+   ⚙️  def on_frame(self, stream_frame)
+
+📄 robot_host/module/camera/models.py
+   🧱 class FrameSize
+      (no methods)
+   🧱 class CaptureMode
+      (no methods)
+   🧱 class CameraConfig
+      (no methods)
+   🧱 class CameraStatus
+      (no methods)
+   🧱 class CameraFrame
+      (no methods)
+   🧱 class MLFrame
+      (no methods)
+   🧱 class CameraStats
+      (no methods)
+   🧱 class MotionEvent
+      (no methods)
+
+📄 robot_host/module/camera/presets.py
+   ⚙️  def get_preset(self, name)
+   ⚙️  def list_presets()
+
+📄 robot_host/module/camera_async.py
+   🧱 class AsyncFrame
+      (no methods)
+   🧱 class AsyncCameraClient
+      └── def __init__(self, base_url, timeout, max_connections)
+   🧱 class AsyncMjpegClient
+      └── def __init__(self, base_url, timeout)
+
 📄 robot_host/module/camera_client.py
+   🧱 class FrameResult
+      (no methods)
    🧱 class Esp32CamClient
-      ├── def __init__(self, base_url, timeout)
-      ├── def _fetch_raw_bgr(self)
-      ├── def get_frame(self, resize_to, blur_ksize)
+      ├── def __init__(self, base_url, timeout, max_retries, retry_delay, auth)
+      ├── def control(self)
+      ├── def is_healthy(self)
+      ├── def get_stats(self)
+      ├── def set_on_frame(self, callback)
+      ├── def set_on_error(self, callback)
+      ├── def _fetch_raw_bgr(self, retry)
+      ├── def get_frame(self, resize_to, blur_ksize, retry)
+      ├── def get_frame_with_info(self, resize_to, blur_ksize)
       ├── def get_frame_for_ml(self, target_size, normalize, to_chw)
       ├── def get_dual_frame(self, display_size, ml_size, blur_ksize, normalize, to_chw)
-      ├── def iter_frames(self, delay)
-      └── def test_preview(self, window_name, delay)
+      ├── def get_status(self)
+      ├── def set_resolution(self, size)
+      ├── def set_quality(self, quality)
+      ├── def toggle_flash(self)
+      ├── def set_flash(self, on)
+      ├── def get_camera_config(self)
+      ├── def enable_motion_detection(self, sensitivity)
+      ├── def disable_motion_detection(self)
+      ├── def iter_frames(self, delay, max_frames)
+      ├── def test_preview(self, window_name, delay, show_stats)
+      └── def test_connection(self)
+
+📄 robot_host/module/camera_control.py
+   🧱 class FrameSize
+      (no methods)
+   🧱 class CameraConfig
+      ├── def from_dict(self, cls, d)
+      └── def to_dict(self)
+   🧱 class MotionConfig
+      ├── def from_dict(self, cls, d)
+      └── def to_dict(self)
+   🧱 class DeviceStatus
+      └── def from_dict(self, cls, d)
+   🧱 class CameraControlClient
+      ├── def __init__(self, base_url, timeout, auth)
+      ├── def _get(self, path)
+      ├── def _post(self, path, data)
+      ├── def get_status(self)
+      ├── def is_online(self)
+      ├── def get_camera_config(self)
+      ├── def set_camera_config(self, config)
+      ├── def set_resolution(self, size)
+      ├── def set_quality(self, quality)
+      ├── def set_brightness(self, brightness)
+      ├── def set_contrast(self, contrast)
+      ├── def set_hmirror(self, enable)
+      ├── def set_vflip(self, enable)
+      ├── def set_saturation(self, saturation)
+      ├── def set_sharpness(self, sharpness)
+      ├── def set_whitebal(self, enable)
+      ├── def set_wb_mode(self, mode)
+      ├── def set_exposure_ctrl(self, enable)
+      ├── def set_aec_value(self, value)
+      ├── def set_gain_ctrl(self, enable)
+      ├── def set_agc_gain(self, gain)
+      ├── def set_gainceiling(self, ceiling)
+      ├── def toggle_flash(self)
+      ├── def set_flash(self, on)
+      ├── def get_motion_config(self)
+      ├── def set_motion_config(self, config)
+      ├── def enable_motion_detection(self, sensitivity)
+      ├── def disable_motion_detection(self)
+      ├── def reboot(self)
+      └── def factory_reset(self)
+
+📄 robot_host/module/camera_manager.py
+   🧱 class CameraState
+      (no methods)
+   🧱 class CameraInfo
+      (no methods)
+   🧱 class MultiFrameResult
+      └── def all_success(self)
+   🧱 class CameraManager
+      ├── def __init__(self, health_check_interval, auto_reconnect)
+      ├── def add_camera(self, name, url, auth, auto_start)
+      ├── def remove_camera(self, name)
+      ├── def get_camera(self, name)
+      ├── def list_cameras(self)
+      ├── def get_camera_names(self)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def enable_camera(self, name)
+      ├── def disable_camera(self, name)
+      ├── def _start_camera(self, name)
+      ├── def get_frame(self, name, timeout)
+      ├── def get_all_frames(self, timeout)
+      ├── def get_control(self, name)
+      ├── def set_resolution_all(self, size)
+      ├── def set_quality_all(self, quality)
+      ├── def toggle_flash_all(self)
+      ├── def start_recording(self, name, output_dir)
+      ├── def stop_recording(self, name)
+      ├── def start_recording_all(self, output_dir)
+      ├── def stop_recording_all(self)
+      ├── def set_on_frame(self, callback)
+      ├── def set_on_state_change(self, callback)
+      ├── def set_on_motion(self, callback)
+      ├── def get_stats(self, name)
+      ├── def get_all_stats(self)
+      ├── def print_status(self)
+      ├── def _handle_frame(self, name, frame)
+      ├── def _handle_connect(self, name)
+      ├── def _handle_disconnect(self, name, error)
+      ├── def _notify_state_change(self, name)
+      └── def _health_loop(self)
 
 📄 robot_host/module/camera_module.py
+   🧱 class CaptureMode
+      (no methods)
    🧱 class CameraModule
-      ├── def __init__(self, base_url, name, display_size, ml_size, blur_ksize, fps, show_preview, frame_callback)
+      ├── def __init__(self, base_url, name, mode, display_size, ml_size, blur_ksize, fps, show_preview, show_stats, frame_callback, raw_frame_callback, auth, stream_port)
+      ├── def is_running(self)
+      ├── def last_frame(self)
+      ├── def last_display_frame(self)
+      ├── def last_ml_frame(self)
+      ├── def window_name(self)
       ├── def start(self)
       ├── def stop(self)
       ├── def run_foreground(self)
-      ├── def _window_name(self)
-      └── def _run_loop(self)
+      ├── def set_mode(self, mode)
+      ├── def set_resolution(self, size)
+      ├── def set_quality(self, quality)
+      ├── def toggle_flash(self)
+      ├── def get_status(self)
+      ├── def get_stats(self)
+      ├── def start_recording(self, output_dir, fps, format)
+      ├── def stop_recording(self)
+      ├── def is_recording(self)
+      ├── def enable_motion_recording(self, output_dir, pre_buffer_seconds, post_buffer_seconds)
+      ├── def trigger_motion_recording(self)
+      ├── def set_frame_callback(self, callback)
+      ├── def set_raw_frame_callback(self, callback)
+      ├── def set_motion_callback(self, callback)
+      ├── def _polling_loop(self)
+      ├── def _capture_frame_polling(self)
+      ├── def _start_streaming(self)
+      ├── def _handle_stream_frame(self, frame)
+      ├── def _streaming_foreground(self)
+      ├── def _display_loop(self)
+      ├── def _process_frame(self, raw_frame, timestamp)
+      ├── def _show_frame(self, display_frame)
+      └── def _throttle(self, start_time)
+
+📄 robot_host/module/camera_recorder.py
+   🧱 class RecordingMetadata
+      (no methods)
+   🧱 class FrameRecorder
+      ├── def __init__(self, output_dir, prefix, fps, codec, format, image_format, jpeg_quality, max_duration_seconds, max_frames)
+      ├── def is_recording(self)
+      ├── def frame_count(self)
+      ├── def duration(self)
+      ├── def start(self, source)
+      ├── def stop(self)
+      ├── def add_frame(self, frame, timestamp)
+      ├── def set_on_frame_written(self, callback)
+      ├── def set_on_recording_stopped(self, callback)
+      ├── def _writer_loop(self, output_path, source)
+      └── def _get_metadata(self, source)
+   🧱 class MotionTriggeredRecorder
+      ├── def __init__(self, pre_buffer_seconds, post_buffer_seconds)
+      ├── def buffer_frame(self, frame)
+      └── def trigger(self, source)
+
+📄 robot_host/module/camera_stats.py
+   🧱 class FrameStats
+      (no methods)
+   🧱 class CameraStatistics
+      ├── def success_rate(self)
+      └── def avg_frame_size_kb(self)
+   🧱 class StatsTracker
+      ├── def __init__(self, window_size, fps_window_seconds)
+      ├── def record_frame(self, latency_ms, size_bytes, success, error, corrupt)
+      ├── def record_success(self, latency_ms, size_bytes)
+      ├── def record_failure(self, error, latency_ms)
+      ├── def record_corrupt(self, latency_ms, size_bytes)
+      ├── def get_stats(self)
+      ├── def reset(self)
+      └── def __str__(self)
+
+📄 robot_host/module/camera_stream.py
+   🧱 class StreamFrame
+      (no methods)
+   🧱 class MjpegStreamClient
+      ├── def __init__(self, base_url, buffer_size, timeout, reconnect_delay, max_reconnect_delay, stream_port)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def is_connected(self)
+      ├── def is_running(self)
+      ├── def get_frame(self, timeout)
+      ├── def get_frame_bgr(self, timeout)
+      ├── def get_dual_frame(self, display_size, ml_size, blur_ksize, timeout)
+      ├── def set_on_frame(self, callback)
+      ├── def set_on_connect(self, callback)
+      ├── def set_on_disconnect(self, callback)
+      ├── def _stream_loop(self)
+      ├── def _connect_and_stream(self)
+      ├── def _process_stream(self, response)
+      └── def _process_frame(self, jpeg_data)
 
 📄 robot_host/module/inverse_kin_example.py
    🧱 class JointConfig
@@ -879,6 +1129,14 @@ Total Files: 148
       └── def __call__(self, x)
    ⚙️  def simple_decode_fn(self, raw, display_shape, ml_size)
    ⚙️  def main()
+
+📄 robot_host/runners/run_camera_host.py
+   ⚙️  def main()
+   ⚙️  def on_frame(self, frame)
+   ⚙️  def on_ml_frame(self, ml_frame)
+   ⚙️  def on_status(self, status)
+   ⚙️  def on_config(self, config)
+   ⚙️  def on_error(self, error)
 
 📄 robot_host/runners/run_detection.py
    ⚙️  def main()
@@ -1385,7 +1643,7 @@ Total Files: 148
 ================================================================================
 📊 STATISTICS
 ================================================================================
-Total Classes:    186
-Total Functions:  345
-Total Methods:    481
+Total Classes:    217
+Total Functions:  354
+Total Methods:    662
 ================================================================================

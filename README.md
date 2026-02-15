@@ -33,6 +33,7 @@ This repository contains the **Python host library** - a comprehensive async fra
 - **Transport Layer**: Serial (USB), TCP (WiFi), Bluetooth Classic
 - **Async Client**: Non-blocking robot control with reliable command delivery
 - **Telemetry**: Real-time sensor data processing (IMU, encoders, motors)
+- **Camera Module**: ESP32-CAM integration with streaming, presets, ML preprocessing
 - **Control Design**: LQR, pole placement, observer design with scipy
 - **Research Tools**: Simulation, system identification, metrics analysis
 - **Recording/Replay**: Session recording for offline analysis
@@ -210,6 +211,11 @@ robot_host/
 ├── hw/              # Hardware modules
 │   ├── gpio.py            # GpioHostModule
 │   └── pwm.py
+├── module/          # Device modules
+│   └── camera/            # ESP32-CAM integration
+│       ├── host_module.py # CameraHostModule
+│       ├── models.py      # Data models
+│       └── presets.py     # Camera presets
 ├── control/         # Control design tools
 │   ├── state_space.py     # StateSpaceModel class
 │   ├── design.py          # LQR, pole placement, observer
@@ -242,6 +248,15 @@ See the `examples/` directory for comprehensive examples:
 | `07_encoder_feedback.py` | Encoder reading |
 | `08_session_recording.py` | Recording sessions |
 | `09_full_robot_control.py` | Complete control loop |
+
+### Camera Demo
+
+```bash
+# Run camera demo with ESP32-CAM
+python -m robot_host.runners.run_camera_host http://10.0.0.66
+```
+
+### Robot Examples
 
 ```bash
 cd examples
@@ -289,6 +304,60 @@ print(f"Jitter: {metrics.jitter.jitter_ms:.2f} ms")
 ```
 
 See `robot_host/research/README.md` for detailed research module documentation.
+
+## Camera Module
+
+Integrates ESP32-CAM into the robot host architecture for vision-based robotics.
+
+### Basic Usage
+
+```python
+from robot_host.core.event_bus import EventBus
+from robot_host.module.camera import CameraHostModule
+
+bus = EventBus()
+camera = CameraHostModule(bus, cameras={0: "http://10.0.0.66"})
+
+# Subscribe to frames
+bus.subscribe("camera.frame.0", lambda f: print(f"Frame: {f.data.shape}"))
+bus.subscribe("camera.ml_frame.0", lambda f: print(f"ML: {f.data.shape}"))
+
+# Start streaming
+bus.publish("cmd.camera", {
+    "cmd": "CMD_CAM_START_CAPTURE",
+    "camera_id": 0,
+    "mode": "streaming",
+})
+
+# Apply presets
+bus.publish("cmd.camera", {
+    "cmd": "CMD_CAM_APPLY_PRESET",
+    "camera_id": 0,
+    "preset": "night",  # or: fast, high_quality, ml_inference, surveillance, bright
+})
+```
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| MJPEG Streaming | ~15 FPS via port 81 |
+| ML Preprocessing | 224x224, ImageNet normalized, CHW format |
+| 9 Presets | Optimized for streaming, night, ML, surveillance, etc. |
+| Multi-Camera | Support for multiple ESP32-CAMs |
+| Recording | Save frames as video or images |
+| Runtime Control | Resolution, quality, brightness, contrast, exposure, gain |
+
+### Camera Topics
+
+| Topic | Description |
+|-------|-------------|
+| `cmd.camera` | Send commands |
+| `camera.frame.<id>` | BGR image frames |
+| `camera.ml_frame.<id>` | ML-ready preprocessed frames |
+| `camera.status.<id>` | Device status |
+
+See `robot_host/module/camera/README.md` for detailed camera module documentation.
 
 ## Control Design Module
 
@@ -409,6 +478,15 @@ bus.publish("telemetry.imu", {"ax": 0.1, "ay": 0.0, "az": 9.8})
 | `telemetry.encoder0` | Encoder ticks/velocity |
 | `telemetry.dc_motor0` | Motor PWM/current |
 | `telemetry.ultrasonic` | Distance reading |
+
+### Camera Topics
+
+| Topic | Data |
+|-------|------|
+| `cmd.camera` | Camera commands |
+| `camera.frame.<id>` | CameraFrame (BGR image) |
+| `camera.ml_frame.<id>` | MLFrame (224x224, normalized) |
+| `camera.status.<id>` | CameraStatus (IP, RSSI, heap) |
 
 ## Testing
 

@@ -94,7 +94,10 @@ async def nav_loop(client, path_planner):
 │  ├──────────┬──────────┬──────────┬──────────┬───────────┤      │
 │  │ GpioHost │ PwmHost  │ Motion   │ Encoder  │ Telemetry │      │
 │  │ Module   │ Module   │ HostMod  │ HostMod  │ HostMod   │      │
-│  └──────────┴──────────┴──────────┴──────────┴───────────┘      │
+│  ├──────────┴──────────┴──────────┴──────────┴───────────┤      │
+│  │              CameraHostModule (module/camera/)         │      │
+│  │      ESP32-CAM streaming, presets, ML preprocessing    │      │
+│  └───────────────────────────────────────────────────────┘      │
 │                              │                                   │
 │  ┌───────────────────────────┴───────────────────────────┐      │
 │  │              AsyncRobotClient + EventBus               │      │
@@ -160,6 +163,38 @@ gpio = GpioHostModule(my_bus, my_client)
 await gpio.write(channel=0, value=1)
 ```
 
+### CameraHostModule
+
+Standalone module for ESP32-CAM integration (doesn't require AsyncRobotClient):
+
+```python
+from robot_host.core.event_bus import EventBus
+from robot_host.module.camera import CameraHostModule
+
+bus = EventBus()
+camera = CameraHostModule(bus, cameras={0: "http://10.0.0.66"})
+
+# Subscribe to frames
+bus.subscribe("camera.frame.0", on_frame)
+bus.subscribe("camera.ml_frame.0", on_ml_frame)
+
+# Control via commands
+bus.publish("cmd.camera", {
+    "cmd": "CMD_CAM_START_CAPTURE",
+    "camera_id": 0,
+    "mode": "streaming",
+})
+```
+
+Features:
+- MJPEG streaming (~15 FPS) via port 81
+- ML preprocessing (224x224, ImageNet normalized, CHW format)
+- 9 presets (streaming, night, ml_inference, surveillance, etc.)
+- Multi-camera support
+- Recording to video/images
+
+See `robot_host/module/camera/README.md` for full documentation.
+
 ### AsyncRobotClient
 
 Low-level interface for robot communication:
@@ -201,6 +236,9 @@ class EventBus:
 Common topics:
 - `telemetry.*` - Sensor data
 - `cmd.*` - Command ACKs
+- `cmd.camera` - Camera commands
+- `camera.frame.<id>` - Camera frames (BGR)
+- `camera.ml_frame.<id>` - ML-ready frames (224x224, CHW)
 - `connection.*` - Connection events
 - `heartbeat` - Keep-alive
 

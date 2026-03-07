@@ -1,0 +1,2422 @@
+================================================================================
+📂 PROJECT STRUCTURE
+Generated: 2026-03-07 14:38:25
+Total Files: 226
+================================================================================
+
+📄 examples/01_serial_connection.py
+   ⚙️  def find_serial_ports()
+
+📄 examples/02_tcp_connection.py
+   ⚙️  def on_telemetry(self, data)
+
+📄 examples/03_command_basics.py
+   ⚙️  def parse_args()
+
+📄 examples/04_telemetry_stream.py
+   ⚙️  def create_transport(self, arg)
+   🧱 class TelemetryStats
+      (no methods)
+   ⚙️  def on_imu(self, imu_data)
+   ⚙️  def on_encoder(self, enc_data)
+   ⚙️  def on_motor(self, motor_data)
+   ⚙️  def on_ultrasonic(self, us_data)
+   ⚙️  def on_telemetry_raw(self, data)
+
+📄 examples/05_gpio_control.py
+   ⚙️  def create_transport(self, arg)
+   ⚙️  def on_gpio_ack(self, data)
+
+📄 examples/06_motor_control.py
+   ⚙️  def create_transport(self, arg)
+
+📄 examples/07_encoder_feedback.py
+   ⚙️  def create_transport(self, arg)
+   🧱 class EncoderState
+      (no methods)
+   ⚙️  def on_encoder_telemetry(self, data)
+
+📄 examples/08_session_recording.py
+   ⚙️  def create_transport(self, arg)
+
+📄 examples/09_full_robot_control.py
+   🧱 class RobotControlConfig
+      (no methods)
+   🧱 class RobotState
+      (no methods)
+   🧱 class RobotController
+      ├── def __init__(self, transport_arg, config)
+      ├── def _create_transport(self, arg)
+      └── def _setup_subscriptions(self)
+   ⚙️  def on_imu(self, data)
+   ⚙️  def on_encoder(self, data)
+   ⚙️  def on_motor(self, data)
+   ⚙️  def on_connection_lost(self, _)
+   ⚙️  def on_connection_restored(self, _)
+
+📄 examples/10_custom_robot.py
+   🧱 class PillDispenser
+      └── def __init__(self, robot, slots)
+   🧱 class RobotArm
+      └── def __init__(self, robot)
+
+📄 examples/11_sensors_and_telemetry.py
+   ⚙️  def on_encoder_update(self, reading)
+   ⚙️  def on_imu_update(self, reading)
+   ⚙️  def on_telemetry(self, data)
+
+📄 mara_host/api/dc_motor.py
+   🧱 class DCMotor
+      ├── def __init__(self, robot, motor_id)
+      ├── def client(self)
+      ├── def current_speed(self)
+      ├── def is_moving(self)
+      └── def __repr__(self)
+
+📄 mara_host/api/differential_drive.py
+   🧱 class DriveConfig
+      (no methods)
+   🧱 class DifferentialDrive
+      ├── def __init__(self, robot, wheel_radius, wheel_base, max_linear_vel, max_angular_vel, control_rate_hz)
+      ├── def config(self)
+      ├── def is_moving(self)
+      ├── def current_velocity(self)
+      ├── def _clamp_velocity(self, vx, omega)
+      └── def __repr__(self)
+
+📄 mara_host/api/encoder.py
+   🧱 class EncoderReading
+      (no methods)
+   🧱 class Encoder
+      ├── def __init__(self, robot, encoder_id, pin_a, pin_b, counts_per_rev)
+      ├── def client(self)
+      ├── def count(self)
+      ├── def velocity(self)
+      ├── def revolutions(self)
+      ├── def is_attached(self)
+      ├── def _on_telemetry(self, data)
+      ├── def on_update(self, callback)
+      └── def __repr__(self)
+
+📄 mara_host/api/gpio.py
+   🧱 class GPIO
+      ├── def __init__(self, robot)
+      ├── def registered_channels(self)
+      ├── def is_registered(self, channel)
+      ├── def get_mode(self, channel)
+      ├── def get_pin(self, channel)
+      └── def __repr__(self)
+
+📄 mara_host/api/imu.py
+   🧱 class IMUReading
+      (no methods)
+   🧱 class IMU
+      ├── def __init__(self, robot, apply_bias)
+      ├── def _on_telemetry(self, data)
+      ├── def is_online(self)
+      ├── def is_ok(self)
+      ├── def acceleration(self)
+      ├── def gyro(self)
+      ├── def temperature(self)
+      ├── def roll_deg(self)
+      ├── def pitch_deg(self)
+      ├── def roll_rad(self)
+      ├── def pitch_rad(self)
+      ├── def set_bias(self, accel_bias, gyro_bias)
+      ├── def on_update(self, callback)
+      └── def __repr__(self)
+
+📄 mara_host/api/pid_controller.py
+   🧱 class PIDGains
+      (no methods)
+   🧱 class PIDController
+      ├── def __init__(self, robot, motor_id)
+      ├── def is_enabled(self)
+      ├── def target_omega(self)
+      ├── def gains(self)
+      └── def __repr__(self)
+
+📄 mara_host/api/pwm.py
+   🧱 class PWM
+      ├── def __init__(self, robot, default_freq_hz)
+      ├── def active_channels(self)
+      ├── def get_duty(self, channel)
+      ├── def get_frequency(self, channel)
+      └── def __repr__(self)
+
+📄 mara_host/api/servo.py
+   🧱 class Servo
+      ├── def __init__(self, robot, servo_id, channel, min_us, max_us, min_angle, max_angle)
+      ├── def client(self)
+      ├── def is_attached(self)
+      ├── def current_angle(self)
+      ├── def angle_to_pulse(self, angle)
+      ├── def pulse_to_angle(self, pulse_us)
+      └── def __repr__(self)
+
+📄 mara_host/api/stepper.py
+   🧱 class Stepper
+      ├── def __init__(self, robot, motor_id, steps_per_rev)
+      ├── def client(self)
+      ├── def is_enabled(self)
+      ├── def position(self)
+      ├── def position_degrees(self)
+      ├── def position_revolutions(self)
+      ├── def reset_position(self, position)
+      └── def __repr__(self)
+
+📄 mara_host/api/ultrasonic.py
+   🧱 class UltrasonicReading
+      (no methods)
+   🧱 class Ultrasonic
+      ├── def __init__(self, robot, sensor_id, max_distance_cm)
+      ├── def client(self)
+      ├── def _on_telemetry(self, data)
+      ├── def distance_cm(self)
+      ├── def distance_m(self)
+      ├── def distance_inches(self)
+      ├── def is_ok(self)
+      ├── def is_attached(self)
+      ├── def is_in_range(self)
+      ├── def on_update(self, callback)
+      └── def __repr__(self)
+
+📄 mara_host/api/velocity.py
+   🧱 class VelocityController
+      ├── def __init__(self, robot, use_binary)
+      ├── def client(self)
+      ├── def current_velocity(self)
+      ├── def is_moving(self)
+      └── def __repr__(self)
+
+📄 mara_host/benchmarks/commands/send_all.py
+   🧱 class CmdResult
+      (no methods)
+   🧱 class RunContext
+      (no methods)
+   ⚙️  def parse_hostport(self, s)
+   ⚙️  def load_payloads(self, path)
+   ⚙️  def ensure_artifacts_dir()
+   ⚙️  def _import_class(self, dotted)
+   ⚙️  def _module_name_from_file(self, pkg_root, py_file, pkg_name)
+   ⚙️  def _discover_transport_via_ast(self, pkg_name, token_sets, exclude_dirs)
+   ⚙️  def _resolve_transport_class(self, explicit, mode)
+   ⚙️  def _construct_transport(self, TransportCls)
+   ⚙️  def _send_reliable_supports_timeout(self, client)
+   ⚙️  def ack_is_ok(self, ack)
+   ⚙️  def should_skip_cmd(self, cmd)
+   ⚙️  def build_argparser()
+   ⚙️  def get_command_category(self, cmd)
+   ⚙️  def filter_commands(self, cmds, only, skip, category)
+   ⚙️  def list_commands()
+   ⚙️  def reorder_state_machine_aware(self, cmds)
+   ⚙️  def _allowed_motion_cmd(self, c)
+   ⚙️  def _payload_items(self, spec)
+   ⚙️  def _per_cmd_timeout(self, args, cmd)
+   ⚙️  def _extra_delay_ms(self, args, cmd)
+   ⚙️  def main()
+
+📄 mara_host/benchmarks/latency/basic_latency.py
+   🧱 class PingLatencyMeasurer
+      ├── def __init__(self, bus, client)
+      └── def _on_pong(self, msg)
+
+📄 mara_host/benchmarks/latency/dc_motor_latency.py
+   🧱 class DcAckWaiter
+      ├── def __init__(self, bus)
+      └── def _on_ack(self, msg)
+
+📄 mara_host/benchmarks/latency/led_latency.py
+   ⚙️  def on_led_ack(self, msg)
+
+📄 mara_host/benchmarks/latency/run_benchmarks.py
+   ⚙️  def main()
+
+📄 mara_host/camera/async_client.py
+   🧱 class AsyncFrame
+      (no methods)
+   🧱 class AsyncCameraClient
+      └── def __init__(self, base_url, timeout, max_connections)
+   🧱 class AsyncMjpegClient
+      └── def __init__(self, base_url, timeout)
+
+📄 mara_host/camera/client.py
+   🧱 class FrameResult
+      (no methods)
+   🧱 class Esp32CamClient
+      ├── def __init__(self, base_url, timeout, max_retries, retry_delay, auth)
+      ├── def control(self)
+      ├── def is_healthy(self)
+      ├── def get_stats(self)
+      ├── def set_on_frame(self, callback)
+      ├── def set_on_error(self, callback)
+      ├── def enable_async_decode(self, max_workers)
+      ├── def disable_async_decode(self)
+      ├── def _decode_jpeg(self, jpeg_bytes)
+      ├── def _fetch_raw_bgr(self, retry)
+      ├── def get_frame(self, resize_to, blur_ksize, retry)
+      ├── def get_frame_with_info(self, resize_to, blur_ksize)
+      ├── def get_frame_for_ml(self, target_size, normalize, to_chw)
+      ├── def get_dual_frame(self, display_size, ml_size, blur_ksize, normalize, to_chw)
+      ├── def get_status(self)
+      ├── def set_resolution(self, size)
+      ├── def set_quality(self, quality)
+      ├── def toggle_flash(self)
+      ├── def set_flash(self, on)
+      ├── def get_camera_config(self)
+      ├── def enable_motion_detection(self, sensitivity)
+      ├── def disable_motion_detection(self)
+      ├── def iter_frames(self, delay, max_frames)
+      ├── def test_preview(self, window_name, delay, show_stats)
+      ├── def test_connection(self)
+      ├── def close(self)
+      ├── def __enter__(self)
+      └── def __exit__(self, exc_type, exc_val, exc_tb)
+
+📄 mara_host/camera/control.py
+   🧱 class CameraControlClient
+      ├── def __init__(self, base_url, timeout, auth)
+      ├── def _get(self, path)
+      ├── def _post(self, path, data)
+      ├── def get_status(self)
+      ├── def is_online(self)
+      ├── def get_camera_config(self)
+      ├── def set_camera_config(self, config)
+      ├── def set_resolution(self, size)
+      ├── def set_quality(self, quality)
+      ├── def set_brightness(self, brightness)
+      ├── def set_contrast(self, contrast)
+      ├── def set_hmirror(self, enable)
+      ├── def set_vflip(self, enable)
+      ├── def set_saturation(self, saturation)
+      ├── def set_sharpness(self, sharpness)
+      ├── def set_whitebal(self, enable)
+      ├── def set_wb_mode(self, mode)
+      ├── def set_exposure_ctrl(self, enable)
+      ├── def set_aec_value(self, value)
+      ├── def set_gain_ctrl(self, enable)
+      ├── def set_agc_gain(self, gain)
+      ├── def set_gainceiling(self, ceiling)
+      ├── def toggle_flash(self)
+      ├── def set_flash(self, on)
+      ├── def get_motion_config(self)
+      ├── def set_motion_config(self, config)
+      ├── def enable_motion_detection(self, sensitivity)
+      ├── def disable_motion_detection(self)
+      ├── def reboot(self)
+      ├── def factory_reset(self)
+      ├── def get_stream_stats(self)
+      ├── def set_stream_preset(self, preset)
+      ├── def set_stream_config(self, target_fps, quality_scaling, reset_stats)
+      └── def set_low_bandwidth_mode(self, enabled)
+
+📄 mara_host/camera/host_module.py
+   🧱 class CameraHostModule
+      ├── def __init__(self, bus, cameras, ml_size, stream_port)
+      ├── def subscriptions(self)
+      ├── def _on_cmd_camera(self, msg)
+      ├── def add_camera(self, camera_id, base_url)
+      ├── def remove_camera(self, camera_id)
+      ├── def get_camera_ids(self)
+      ├── def _on_command(self, msg)
+      ├── def _set_resolution(self, camera_id, size)
+      ├── def _set_quality(self, camera_id, quality)
+      ├── def _set_brightness(self, camera_id, brightness)
+      ├── def _set_contrast(self, camera_id, contrast)
+      ├── def _set_saturation(self, camera_id, saturation)
+      ├── def _set_sharpness(self, camera_id, sharpness)
+      ├── def _set_flip(self, camera_id, hmirror, vflip)
+      ├── def _set_awb(self, camera_id, enabled, mode)
+      ├── def _set_exposure(self, camera_id, auto, value)
+      ├── def _set_gain(self, camera_id, auto, value, ceiling)
+      ├── def _set_flash(self, camera_id, state)
+      ├── def _apply_preset(self, camera_id, preset_name)
+      ├── def _set_motion_detection(self, camera_id, enabled, sensitivity)
+      ├── def _update_status(self, camera_id)
+      ├── def _publish_config(self, camera_id)
+      ├── def _publish_stats(self, camera_id)
+      ├── def start_capture(self, camera_id, mode, fps)
+      ├── def stop_capture(self, camera_id)
+      ├── def capture_single(self, camera_id, publish)
+      ├── def _start_polling(self, camera_id)
+      ├── def _polling_loop(self, camera_id)
+      ├── def _start_streaming(self, camera_id)
+      ├── def _publish_frame(self, camera_id, frame)
+      ├── def start_recording(self, camera_id, output_dir, format)
+      ├── def stop_recording(self, camera_id)
+      └── def shutdown(self)
+   ⚙️  def on_frame(self, stream_frame)
+
+📄 mara_host/camera/manager.py
+   🧱 class CameraState
+      (no methods)
+   🧱 class CameraInfo
+      (no methods)
+   🧱 class MultiFrameResult
+      └── def all_success(self)
+   🧱 class CameraManager
+      ├── def __init__(self, health_check_interval, auto_reconnect)
+      ├── def add_camera(self, name, url, auth, auto_start)
+      ├── def remove_camera(self, name)
+      ├── def get_camera(self, name)
+      ├── def list_cameras(self)
+      ├── def get_camera_names(self)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def enable_camera(self, name)
+      ├── def disable_camera(self, name)
+      ├── def _start_camera(self, name)
+      ├── def get_frame(self, name, timeout)
+      ├── def get_all_frames(self, timeout)
+      ├── def get_control(self, name)
+      ├── def set_resolution_all(self, size)
+      ├── def set_quality_all(self, quality)
+      ├── def toggle_flash_all(self)
+      ├── def start_recording(self, name, output_dir)
+      ├── def stop_recording(self, name)
+      ├── def start_recording_all(self, output_dir)
+      ├── def stop_recording_all(self)
+      ├── def set_on_frame(self, callback)
+      ├── def set_on_state_change(self, callback)
+      ├── def set_on_motion(self, callback)
+      ├── def get_stats(self, name)
+      ├── def get_all_stats(self)
+      ├── def print_status(self)
+      ├── def _handle_frame(self, name, frame)
+      ├── def _handle_connect(self, name)
+      ├── def _handle_disconnect(self, name, error)
+      ├── def _notify_state_change(self, name)
+      └── def _health_loop(self)
+
+📄 mara_host/camera/models.py
+   🧱 class FrameSize
+      (no methods)
+   🧱 class CaptureMode
+      (no methods)
+   🧱 class StreamPreset
+      (no methods)
+   🧱 class CameraConfig
+      ├── def from_dict(self, cls, d)
+      └── def to_dict(self)
+   🧱 class MotionConfig
+      ├── def from_dict(self, cls, d)
+      └── def to_dict(self)
+   🧱 class DeviceStatus
+      └── def from_dict(self, cls, d)
+   🧱 class CameraStatus
+      (no methods)
+   🧱 class StreamStats
+      ├── def from_dict(self, cls, d)
+      ├── def drop_rate(self)
+      └── def total_mb(self)
+   🧱 class CameraStats
+      (no methods)
+   🧱 class CameraFrame
+      (no methods)
+   🧱 class MLFrame
+      (no methods)
+   🧱 class MotionEvent
+      (no methods)
+
+📄 mara_host/camera/module.py
+   🧱 class CameraModule
+      ├── def __init__(self, base_url, name, mode, display_size, ml_size, blur_ksize, fps, show_preview, show_stats, frame_callback, raw_frame_callback, auth, stream_port)
+      ├── def is_running(self)
+      ├── def last_frame(self)
+      ├── def last_display_frame(self)
+      ├── def last_ml_frame(self)
+      ├── def window_name(self)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def run_foreground(self)
+      ├── def set_mode(self, mode)
+      ├── def set_resolution(self, size)
+      ├── def set_quality(self, quality)
+      ├── def toggle_flash(self)
+      ├── def get_status(self)
+      ├── def get_stats(self)
+      ├── def start_recording(self, output_dir, fps, format)
+      ├── def stop_recording(self)
+      ├── def is_recording(self)
+      ├── def enable_motion_recording(self, output_dir, pre_buffer_seconds, post_buffer_seconds)
+      ├── def trigger_motion_recording(self)
+      ├── def set_frame_callback(self, callback)
+      ├── def set_raw_frame_callback(self, callback)
+      ├── def set_motion_callback(self, callback)
+      ├── def _polling_loop(self)
+      ├── def _capture_frame_polling(self)
+      ├── def _start_streaming(self)
+      ├── def _handle_stream_frame(self, frame)
+      ├── def _streaming_foreground(self)
+      ├── def _display_loop(self)
+      ├── def _process_frame(self, raw_frame, timestamp)
+      ├── def _show_frame(self, display_frame)
+      └── def _throttle(self, start_time)
+
+📄 mara_host/camera/presets.py
+   ⚙️  def get_preset(self, name)
+   ⚙️  def list_presets()
+
+📄 mara_host/camera/recorder.py
+   🧱 class RecordingMetadata
+      (no methods)
+   🧱 class FrameRecorder
+      ├── def __init__(self, output_dir, prefix, fps, codec, format, image_format, jpeg_quality, max_duration_seconds, max_frames)
+      ├── def is_recording(self)
+      ├── def frame_count(self)
+      ├── def duration(self)
+      ├── def start(self, source)
+      ├── def stop(self)
+      ├── def add_frame(self, frame, timestamp)
+      ├── def set_on_frame_written(self, callback)
+      ├── def set_on_recording_stopped(self, callback)
+      ├── def _writer_loop(self, output_path, source)
+      └── def _get_metadata(self, source)
+   🧱 class MotionTriggeredRecorder
+      ├── def __init__(self, pre_buffer_seconds, post_buffer_seconds)
+      ├── def buffer_frame(self, frame)
+      └── def trigger(self, source)
+
+📄 mara_host/camera/stats.py
+   🧱 class FrameStats
+      (no methods)
+   🧱 class CameraStatistics
+      ├── def success_rate(self)
+      ├── def drop_rate(self)
+      └── def avg_frame_size_kb(self)
+   🧱 class StatsTracker
+      ├── def __init__(self, window_size, fps_window_seconds)
+      ├── def record_frame(self, latency_ms, size_bytes, success, error, corrupt)
+      ├── def record_success(self, latency_ms, size_bytes)
+      ├── def record_failure(self, error, latency_ms)
+      ├── def record_corrupt(self, latency_ms, size_bytes)
+      ├── def record_dropped(self, count)
+      ├── def record_decode_time(self, decode_ms)
+      ├── def get_stats(self)
+      ├── def reset(self)
+      └── def __str__(self)
+
+📄 mara_host/camera/stream.py
+   🧱 class StreamFrame
+      (no methods)
+   🧱 class MjpegStreamClient
+      ├── def __init__(self, base_url, buffer_size, timeout, reconnect_delay, max_reconnect_delay, stream_port)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def is_connected(self)
+      ├── def is_running(self)
+      ├── def get_frame(self, timeout)
+      ├── def get_frame_bgr(self, timeout)
+      ├── def get_dual_frame(self, display_size, ml_size, blur_ksize, timeout)
+      ├── def set_on_frame(self, callback)
+      ├── def set_on_connect(self, callback)
+      ├── def set_on_disconnect(self, callback)
+      ├── def get_stats(self)
+      ├── def get_buffer_usage(self)
+      ├── def close(self)
+      ├── def __enter__(self)
+      ├── def __exit__(self, exc_type, exc_val, exc_tb)
+      ├── def _stream_loop(self)
+      ├── def _connect_and_stream(self)
+      ├── def _process_stream(self, response)
+      └── def _process_frame(self, jpeg_data)
+
+📄 mara_host/cli/cli_config.py
+   ⚙️  def find_config_file()
+   ⚙️  def load_config()
+   ⚙️  def get(self, key, default)
+   ⚙️  def get_serial_port()
+   ⚙️  def get_baudrate()
+   ⚙️  def get_tcp_host()
+   ⚙️  def get_tcp_port()
+   ⚙️  def get_build_env()
+   ⚙️  def get_build_preset()
+   ⚙️  def create_default_config()
+   ⚙️  def init_config(self, path)
+   ⚙️  def apply_defaults(self, parser_defaults)
+
+📄 mara_host/cli/commands/build.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def add_common_args(self, parser)
+   ⚙️  def add_feature_args(self, parser)
+   ⚙️  def _get_features(self, args)
+   ⚙️  def cmd_compile(self, args)
+   ⚙️  def _build_with_progress(self, env, features)
+   ⚙️  def cmd_upload(self, args)
+   ⚙️  def cmd_clean(self, args)
+   ⚙️  def cmd_test(self, args)
+   ⚙️  def cmd_features(self, args)
+   ⚙️  def _show_size_summary(self, env)
+   ⚙️  def _make_bar(self, percentage, width)
+   ⚙️  def _get_firmware_size(self, env)
+   ⚙️  def cmd_size(self, args)
+   ⚙️  def cmd_watch(self, args)
+   ⚙️  def _get_latest_mtime(self, dirs)
+
+📄 mara_host/cli/commands/calibrate/_common.py
+   ⚙️  def add_transport_args(self, p)
+   ⚙️  def create_client_from_args(self, args)
+   ⚙️  def show_calibrations()
+
+📄 mara_host/cli/commands/calibrate/_registry.py
+   ⚙️  def register(self, subparsers)
+
+📄 mara_host/cli/commands/calibrate/encoder.py
+   ⚙️  def cmd_encoder(self, args)
+   ⚙️  def on_telemetry(self, data)
+
+📄 mara_host/cli/commands/calibrate/imu.py
+   ⚙️  def cmd_imu(self, args)
+   ⚙️  def on_telemetry(self, data)
+
+📄 mara_host/cli/commands/calibrate/motor.py
+   ⚙️  def cmd_motor(self, args)
+
+📄 mara_host/cli/commands/calibrate/pid.py
+   ⚙️  def cmd_pid(self, args)
+
+📄 mara_host/cli/commands/calibrate/servo.py
+   ⚙️  def cmd_servo(self, args)
+
+📄 mara_host/cli/commands/calibrate/wheels.py
+   ⚙️  def cmd_wheels(self, args)
+
+📄 mara_host/cli/commands/config.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def _find_config_files()
+   ⚙️  def cmd_show(self, args)
+   ⚙️  def cmd_validate(self, args)
+   ⚙️  def cmd_init(self, args)
+   ⚙️  def _template_minimal(self, name)
+   ⚙️  def _template_differential(self, name)
+   ⚙️  def _template_full(self, name)
+   ⚙️  def cmd_cli(self, args)
+
+📄 mara_host/cli/commands/dashboard.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_dashboard(self, args)
+
+📄 mara_host/cli/commands/flash.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def _find_esp32_ports()
+   ⚙️  def cmd_ports(self, args)
+   ⚙️  def cmd_auto(self, args)
+   ⚙️  def cmd_erase(self, args)
+   ⚙️  def cmd_info(self, args)
+   ⚙️  def _run_esptool(self, esptool_args, port)
+
+📄 mara_host/cli/commands/generate.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def _run_generator(self, name, module_name)
+   ⚙️  def cmd_all(self, args)
+   ⚙️  def cmd_commands(self, args)
+   ⚙️  def cmd_pins(self, args)
+   ⚙️  def cmd_can(self, args)
+   ⚙️  def cmd_telemetry(self, args)
+   ⚙️  def cmd_binary(self, args)
+   ⚙️  def cmd_gpio(self, args)
+
+📄 mara_host/cli/commands/logs.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def _find_sessions(self, log_dir)
+   ⚙️  def cmd_list(self, args)
+   ⚙️  def _format_size(self, size_bytes)
+   ⚙️  def cmd_show(self, args)
+   ⚙️  def cmd_tail(self, args)
+   ⚙️  def _print_event(self, event)
+   ⚙️  def cmd_search(self, args)
+   ⚙️  def cmd_stats(self, args)
+   ⚙️  def cmd_delete(self, args)
+   ⚙️  def cmd_export(self, args)
+
+📄 mara_host/cli/commands/monitor.py
+   🧱 class MonitorState
+      (no methods)
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_monitor(self, args)
+   ⚙️  def on_heartbeat(self, data)
+   ⚙️  def on_telemetry(self, data)
+   ⚙️  def on_error(self, data)
+   ⚙️  def _generate_display(self, state, args)
+
+📄 mara_host/cli/commands/pins.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_pinout(self, args)
+   ⚙️  def cmd_list(self, args)
+   ⚙️  def cmd_free(self, args)
+   ⚙️  def print_pin_section(self, title, gpios, style)
+   ⚙️  def cmd_info(self, args)
+   ⚙️  def cmd_assign(self, args)
+   ⚙️  def cmd_remove(self, args)
+   ⚙️  def cmd_suggest(self, args)
+   ⚙️  def cmd_validate(self, args)
+   ⚙️  def cmd_conflicts(self, args)
+   ⚙️  def cmd_interactive(self, args)
+   ⚙️  def _interactive_help()
+   ⚙️  def _do_assign(self, name, gpio, force)
+   ⚙️  def _do_remove(self, name)
+   ⚙️  def cmd_wizard(self, args)
+   ⚙️  def _wizard_motor()
+   ⚙️  def _wizard_encoder()
+   ⚙️  def _wizard_stepper()
+   ⚙️  def _wizard_servo()
+   ⚙️  def _wizard_i2c()
+   ⚙️  def _wizard_spi()
+   ⚙️  def _wizard_uart()
+   ⚙️  def cmd_clear(self, args)
+
+📄 mara_host/cli/commands/record.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_record(self, args)
+   ⚙️  def _run_recording(self, session, port, tcp_host, duration, show_console)
+   ⚙️  def cmd_replay(self, args)
+   ⚙️  def _replay_session(self, log_dir, speed)
+   ⚙️  def _replay_to_metrics(self, log_dir, output)
+
+📄 mara_host/cli/commands/run/_common.py
+   ⚙️  def add_logging_args(self, parser)
+   ⚙️  def get_log_params(self, args)
+   ⚙️  def show_transports()
+
+📄 mara_host/cli/commands/run/_registry.py
+   ⚙️  def register(self, subparsers)
+
+📄 mara_host/cli/commands/run/can.py
+   ⚙️  def cmd_can(self, args)
+   ⚙️  def _run_can_client(self, channel, bustype, node_id, virtual, log_level, log_dir)
+
+📄 mara_host/cli/commands/run/mqtt.py
+   ⚙️  def cmd_mqtt(self, args)
+
+📄 mara_host/cli/commands/run/serial.py
+   ⚙️  def cmd_serial(self, args)
+   ⚙️  def _run_serial_client(self, port, baudrate, log_level, log_dir)
+   ⚙️  def _run_serial_shell(self, port, baudrate, log_level, log_dir)
+
+📄 mara_host/cli/commands/run/shell.py
+   ⚙️  def cmd_shell(self, args)
+   ⚙️  def log_event(self, topic, data)
+   ⚙️  def handle_event(self, topic, data, style)
+   🧱 class InteractiveShell
+      └── def __init__(self, client, event_log)
+   ⚙️  def on_identity_response(self, data)
+
+📄 mara_host/cli/commands/run/tcp.py
+   ⚙️  def cmd_tcp(self, args)
+   ⚙️  def _run_tcp_client(self, host, port, log_level, log_dir)
+
+📄 mara_host/cli/commands/sim.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_virtual(self, args)
+   ⚙️  def cmd_replay(self, args)
+   🧱 class ReplayArgs
+      (no methods)
+   ⚙️  def cmd_loopback(self, args)
+   🧱 class LoopbackTransport
+      ├── def __init__(self)
+      └── def set_frame_handler(self, handler)
+   ⚙️  def on_event(self, topic)
+   ⚙️  def handler(self, data)
+
+📄 mara_host/cli/commands/test/_common.py
+   🧱 class TestResult
+      (no methods)
+   ⚙️  def print_results(self, results, show_expected)
+   ⚙️  def create_client_from_args(self, args)
+
+📄 mara_host/cli/commands/test/_registry.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def add_transport_args(self, p)
+
+📄 mara_host/cli/commands/test/all.py
+   ⚙️  def cmd_all(self, args)
+   ⚙️  def on_pong(self, data)
+   ⚙️  def on_heartbeat(self, data)
+
+📄 mara_host/cli/commands/test/commands.py
+   ⚙️  def _load_payloads(self, path)
+   ⚙️  def _get_category(self, cmd)
+   ⚙️  def _get_commands_for_category(self, category, payloads)
+   ⚙️  def _filter_by_features(self, commands, features)
+   ⚙️  def _reorder_commands(self, commands, include_motion)
+   ⚙️  def _is_expected_failure(self, error)
+   ⚙️  def cmd_commands(self, args)
+
+📄 mara_host/cli/commands/test/connection.py
+   ⚙️  def cmd_connection(self, args)
+
+📄 mara_host/cli/commands/test/encoders.py
+   ⚙️  def cmd_encoders(self, args)
+   ⚙️  def on_telemetry(self, data)
+
+📄 mara_host/cli/commands/test/gpio.py
+   ⚙️  def cmd_gpio(self, args)
+
+📄 mara_host/cli/commands/test/latency.py
+   ⚙️  def cmd_latency(self, args)
+   ⚙️  def on_pong(self, data)
+
+📄 mara_host/cli/commands/test/motors.py
+   ⚙️  def cmd_motors(self, args)
+
+📄 mara_host/cli/commands/test/sensors.py
+   ⚙️  def cmd_sensors(self, args)
+   ⚙️  def on_telemetry(self, data)
+
+📄 mara_host/cli/commands/test/servos.py
+   ⚙️  def cmd_servos(self, args)
+
+📄 mara_host/cli/commands/test/stepper.py
+   ⚙️  def cmd_stepper(self, args)
+
+📄 mara_host/cli/completions.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_completions(self, args)
+   ⚙️  def _generate_bash()
+   ⚙️  def _generate_zsh()
+   ⚙️  def _generate_fish()
+   ⚙️  def _install_completions(self, shell, script)
+
+📄 mara_host/cli/console.py
+   ⚙️  def print_header(self, title, subtitle)
+   ⚙️  def print_success(self, message)
+   ⚙️  def print_error(self, message)
+   ⚙️  def print_warning(self, message)
+   ⚙️  def print_info(self, message)
+   ⚙️  def print_table(self, title, columns, rows, show_header)
+   ⚙️  def create_pin_table(self, title)
+   ⚙️  def spinner(self, message)
+   ⚙️  def print_pinout_panel(self, pinout_text, title)
+   ⚙️  def format_pin_status(self, gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
+   ⚙️  def confirm(self, message, default)
+
+📄 mara_host/cli/main.py
+   ⚙️  def create_parser()
+   ⚙️  def cmd_version(self, args)
+   ⚙️  def main(self, argv)
+
+📄 mara_host/command/__init__.py
+   ⚙️  def __getattr__(self, name)
+
+📄 mara_host/command/binary_commands.py
+   🧱 class Opcode
+      (no methods)
+   🧱 class BinaryStreamer
+      ├── def encode_set_vel(self, vx, omega)
+      ├── def encode_set_signal(self, id, value)
+      ├── def encode_set_signals(self, signals)
+      ├── def encode_heartbeat(self)
+      └── def encode_stop(self)
+
+📄 mara_host/command/client.py
+   🧱 class HasSendBytes
+      ├── def set_frame_handler(self, handler)
+      ├── def start(self)
+      └── def stop(self)
+   🧱 class BaseMaraClient
+      ├── def __init__(self, transport, bus, heartbeat_interval_s, connection_timeout_s, command_timeout_s, max_retries, require_version_match, handshake_timeout_s, log_level, log_dir)
+      ├── def _handle_version_response(self, payload)
+      ├── def _on_disconnect(self)
+      ├── def _on_reconnect(self)
+      ├── def _on_frame(self, body)
+      ├── def _handle_json_payload(self, payload)
+      ├── def _next_seq(self)
+      ├── def set_prefer_binary(self, prefer)
+      ├── def is_connected(self)
+      ├── def version_verified(self)
+      ├── def firmware_version(self)
+      ├── def protocol_version(self)
+      ├── def schema_version(self)
+      ├── def capabilities(self)
+      ├── def features(self)
+      ├── def board(self)
+      ├── def robot_name(self)
+      └── def get_stats(self)
+   🧱 class MaraClient
+      (no methods)
+
+📄 mara_host/command/command_streamer.py
+   🧱 class StreamSpec
+      (no methods)
+   🧱 class CommandStreamer
+      ├── def __init__(self, robot)
+      ├── def list_streams(self)
+      ├── def get_spec(self, name)
+      ├── def _is_connected(self, is_connected_attr)
+      ├── def _pending_count(self, commander)
+      └── def _ttl_expired(self, spec)
+
+📄 mara_host/command/coms/connection_monitor.py
+   🧱 class ConnectionMonitor
+      ├── def __init__(self, timeout_s, on_disconnect, on_reconnect)
+      ├── def on_message_received(self)
+      ├── def check(self)
+      ├── def connected(self)
+      ├── def time_since_last_message(self)
+      └── def reset(self)
+
+📄 mara_host/command/coms/reliable_commander.py
+   🧱 class CommandStatus
+      (no methods)
+   🧱 class PendingCommand
+      (no methods)
+   🧱 class ReliableCommander
+      ├── def __init__(self, send_func, timeout_s, max_retries, on_event)
+      ├── def _emit(self, event)
+      ├── def on_ack(self, seq, ok, error)
+      ├── def pending_count(self)
+      ├── def clear_pending(self)
+      └── def stats(self)
+
+📄 mara_host/command/factory.py
+   🧱 class ClientConfig
+      (no methods)
+   🧱 class MaraClientFactory
+      ├── def __init__(self, bus)
+      ├── def create_serial_client(self, port, baudrate, config, bus)
+      ├── def create_tcp_client(self, host, port, config, bus)
+      ├── def create_can_client(self, channel, bustype, node_id, virtual, config, bus)
+      └── def from_args(self, args, config, bus)
+   ⚙️  def create_client_from_args(self, args, config, bus)
+
+📄 mara_host/command/interfaces.py
+   🧱 class IMaraClient
+      └── def is_connected(self)
+   🧱 class ITransport
+      ├── def set_frame_handler(self, handler)
+      ├── def start(self)
+      └── def stop(self)
+
+📄 mara_host/command/json_to_binary.py
+   🧱 class JsonToBinaryEncoder
+      ├── def encode(self, cmd)
+      ├── def supports_binary(self, cmd_type)
+      ├── def _encode_set_vel(self, cmd)
+      ├── def _encode_set_signal(self, cmd)
+      ├── def _encode_heartbeat(self, cmd)
+      └── def _encode_stop(self, cmd)
+   🧱 class JsonToBinaryBatchEncoder
+      ├── def encode_signals(self, signals)
+      └── def encode_signal_cmds(self, cmds)
+
+📄 mara_host/config/client_commands.py
+   🧱 class RobotCommandsMixin
+      (no methods)
+
+📄 mara_host/config/feature_flags.py
+   ⚙️  def _env_bool(self, key, default)
+   🧱 class FeatureFlags
+      ├── def __post_init__(self)
+      ├── def from_env(self, cls)
+      ├── def minimal(self, cls)
+      ├── def motors(self, cls)
+      ├── def sensors(self, cls)
+      ├── def control(self, cls)
+      ├── def full(self, cls)
+      ├── def has_any_motor(self)
+      ├── def has_any_sensor(self)
+      ├── def has_any_transport(self)
+      ├── def has_any_control(self)
+      └── def summary(self)
+   ⚙️  def get_flags()
+   ⚙️  def set_flags(self, flags)
+
+📄 mara_host/config/robot_config.py
+   🧱 class TransportConfig
+      └── def from_dict(self, cls, data)
+   🧱 class DriveConfig
+      └── def from_dict(self, cls, data)
+   🧱 class FeaturesConfig
+      └── def from_dict(self, cls, data)
+   🧱 class EncoderDefaults
+      └── def from_dict(self, cls, data)
+   🧱 class SettingsConfig
+      └── def from_dict(self, cls, data)
+   🧱 class RobotConfig
+      ├── def load(self, cls, path, profile)
+      ├── def from_dict(self, cls, data)
+      ├── def _from_dict(self, cls, data)
+      ├── def _merge_dicts(self, cls, base, overlay)
+      ├── def validate(self)
+      ├── def create_robot(self)
+      └── def __repr__(self)
+
+📄 mara_host/control/design.py
+   ⚙️  def lqr(self, A, B, Q, R, N)
+   ⚙️  def lqr_discrete(self, A, B, Q, R, N)
+   ⚙️  def pole_placement(self, A, B, poles)
+   ⚙️  def acker(self, A, B, poles)
+   ⚙️  def observer_gains(self, A, C, poles)
+   ⚙️  def lqe(self, A, C, Q, R)
+   ⚙️  def check_stability(self, A, B, K, continuous)
+   ⚙️  def reference_gain(self, A, B, C, K)
+   ⚙️  def integral_gain(self, n_states, n_outputs, ki_diag)
+
+📄 mara_host/control/examples.py
+   ⚙️  def example_mass_spring_damper()
+   ⚙️  def example_dc_motor_velocity()
+   ⚙️  def example_discretization_comparison()
+
+📄 mara_host/control/state_space.py
+   🧱 class StateSpaceModel
+      ├── def __post_init__(self)
+      ├── def _validate(self)
+      ├── def num_states(self)
+      ├── def num_inputs(self)
+      ├── def num_outputs(self)
+      ├── def poles(self)
+      ├── def is_stable(self)
+      ├── def is_marginally_stable(self)
+      ├── def is_controllable(self, tol)
+      ├── def is_observable(self, tol)
+      ├── def controllability_matrix(self)
+      ├── def observability_matrix(self)
+      ├── def to_discrete(self, dt, method)
+      ├── def simulate(self, t, u, x0)
+      └── def __repr__(self)
+   ⚙️  def discretize(self, sys, dt, method)
+
+📄 mara_host/control/upload.py
+   🧱 class SignalDefinition
+      (no methods)
+   🧱 class ControllerConfig
+      (no methods)
+   🧱 class ObserverConfig
+      (no methods)
+   ⚙️  def _matrix_to_row_major(self, matrix)
+
+📄 mara_host/core/base_module.py
+   🧱 class BaseModule
+      ├── def __init__(self)
+      ├── def robot(self)
+      ├── def attach(self, robot)
+      ├── def detach(self)
+      ├── def _get_handler_for_topic(self, topic)
+      ├── def topics(self)
+      └── def __repr__(self)
+
+📄 mara_host/core/event_bus.py
+   🧱 class EventBus
+      ├── def __init__(self)
+      ├── def subscribe(self, topic, handler)
+      └── def publish(self, topic, data)
+
+📄 mara_host/core/host_module.py
+   🧱 class CommandHostModule
+      ├── def __init__(self, bus, client)
+      ├── def bus(self)
+      ├── def client(self)
+      └── def __repr__(self)
+   🧱 class EventHostModule
+      ├── def __init__(self, bus)
+      ├── def bus(self)
+      ├── def subscriptions(self)
+      ├── def _setup_subscriptions(self)
+      ├── def _get_handler(self, topic)
+      └── def __repr__(self)
+
+📄 mara_host/core/messages.py
+   🧱 class MsgType
+      (no methods)
+
+📄 mara_host/core/protocol.py
+   ⚙️  def _make_crc16_table()
+   ⚙️  def crc16_ccitt(self, data, crc)
+   ⚙️  def encode(self, msg_type, payload)
+   ⚙️  def extract_frames(self, buffer, on_frame)
+
+📄 mara_host/core/robot_runtime.py
+   🧱 class BaseRobotRuntime
+      (no methods)
+
+📄 mara_host/core/settings.py
+   🧱 class TransportSettings
+      (no methods)
+   🧱 class MQTTSettings
+      (no methods)
+   🧱 class FeatureSettings
+      (no methods)
+   🧱 class EncoderDefaults
+      (no methods)
+   🧱 class HostSettings
+      └── def load(self, cls, profile)
+
+📄 mara_host/examples/applications/camera_basic.py
+   🧱 class DummyModel
+      └── def __call__(self, x)
+   ⚙️  def frame_callback(self, display_frame, ml_frame, ts)
+   ⚙️  def main()
+
+📄 mara_host/examples/applications/camera_detection.py
+   🧱 class DummyModel
+      └── def __call__(self, x)
+   ⚙️  def simple_decode_fn(self, raw, display_shape, ml_size)
+   ⚙️  def main()
+
+📄 mara_host/examples/applications/camera_host.py
+   ⚙️  def main()
+   ⚙️  def on_frame(self, frame)
+   ⚙️  def on_ml_frame(self, ml_frame)
+   ⚙️  def on_status(self, status)
+   ⚙️  def on_config(self, config)
+   ⚙️  def on_error(self, error)
+
+📄 mara_host/examples/applications/detection.py
+   ⚙️  def main()
+
+📄 mara_host/examples/applications/mqtt_nodes.py
+   ⚙️  def parse_args()
+
+📄 mara_host/examples/applications/pill_carousel.py
+   ⚙️  def main()
+
+📄 mara_host/examples/applications/pill_gui.py
+   🧱 class RobotController
+      ├── def __init__(self, log_fn)
+      └── def _log(self, msg)
+   🧱 class GuiSignals
+      └── def __init__(self, parent)
+   🧱 class PillDispenserWindow
+      ├── def __init__(self)
+      ├── def _build_tabs(self, log_container)
+      ├── def _log_from_controller(self, msg)
+      ├── def _append_log(self, msg)
+      ├── def _set_status(self, text)
+      ├── def _on_connect_done(self, fut)
+      ├── def _update_next_slot_label(self)
+      ├── def on_dispense_clicked(self)
+      ├── def on_manual_goto(self)
+      ├── def on_manual_next(self)
+      ├── def on_manual_prev(self)
+      ├── def on_manual_full_rev(self)
+      ├── def on_manual_recalibrate(self)
+      ├── def on_schedule_clicked(self)
+      └── def closeEvent(self, event)
+   ⚙️  def done_callback(self, f)
+   ⚙️  def done_callback(self, f)
+   ⚙️  def _fire()
+   ⚙️  def done_callback(self, f)
+   ⚙️  def main()
+
+📄 mara_host/examples/connections/can_basic.py
+   ⚙️  def parse_args()
+
+📄 mara_host/examples/connections/tcp_test.py
+   ⚙️  def main()
+
+📄 mara_host/examples/motors/pid_sweep.py
+   ⚙️  def make_ack_waiter(self, topic)
+   ⚙️  def _cb(self, msg)
+
+📄 mara_host/examples/motors/pid_test.py
+   ⚙️  def on_dc_ack(self, msg)
+
+📄 mara_host/examples/motors/stepper_test.py
+   ⚙️  def main()
+
+📄 mara_host/examples/recording/replay_metrics.py
+   ⚙️  def main()
+
+📄 mara_host/examples/shells/bluetooth_shell.py
+   ⚙️  def _print_event(self, tag)
+   ⚙️  def _handler(self, data)
+   ⚙️  def _print_ultra(self, ultra)
+   ⚙️  def _print_imu(self, imu)
+
+📄 mara_host/examples/shells/interactive_shell.py
+   ⚙️  def _print_event(self, tag)
+   ⚙️  def _handler(self, data)
+   ⚙️  def _print_ultra(self, ultra)
+   ⚙️  def _print_imu(self, imu)
+
+📄 mara_host/examples/shells/serial_shell.py
+   ⚙️  def _print_event(self, tag)
+   ⚙️  def _handler(self, data)
+
+📄 mara_host/examples/shells/telemetry_shell.py
+   ⚙️  def attach_telemetry_prints(self, bus)
+   ⚙️  def _get(self, obj, attr, default)
+   ⚙️  def on_imu(self, imu)
+   ⚙️  def on_ultra(self, ultra)
+   ⚙️  def on_lidar(self, lidar)
+   ⚙️  def on_stepper(self, step)
+   ⚙️  def on_dc(self, dc)
+
+📄 mara_host/examples/streaming/stream_basic.py
+   ⚙️  def _parse_json_payload(self, s)
+   ⚙️  def provider()
+   ⚙️  def provider()
+
+📄 mara_host/hw/gpio.py
+   🧱 class GpioHostModule
+      └── def __init__(self, bus, client)
+
+📄 mara_host/hw/pwm.py
+   🧱 class PwmHostModule
+      └── def __init__(self, bus, client)
+
+📄 mara_host/logger/logger.py
+   🧱 class DedupFilter
+      ├── def __init__(self, cooldown_s)
+      └── def filter(self, record)
+   🧱 class Logger
+      ├── def __init__(self, log_file, logger_name, log_dir, level, timestamp_format, propagate, max_bytes, backup_count, console, dedup_cooldown_s)
+      ├── def get_logger(self)
+      ├── def debug(self, msg)
+      ├── def info(self, msg)
+      ├── def warning(self, msg)
+      ├── def error(self, msg)
+      └── def critical(self, msg)
+   🧱 class JsonlLogger
+      ├── def __init__(self, path, mkdirs)
+      ├── def write(self, event)
+      ├── def close(self)
+      ├── def __enter__(self)
+      ├── def __exit__(self, exc_type, exc, tb)
+      └── def _normalize(self, obj)
+   🧱 class MaraLogBundle
+      ├── def __init__(self, name, log_dir, level, console, max_bytes, backup_count, dedup_cooldown_s, jsonl_file, text_file)
+      └── def close(self)
+
+📄 mara_host/motor/motion.py
+   🧱 class MotionHostModule
+      └── def __init__(self, bus, client)
+
+📄 mara_host/motor/pill_carousel.py
+   🧱 class PillCarouselConfig
+      (no methods)
+   🧱 class PillCarousel
+      ├── def __init__(self, client, config)
+      └── def set_current_slot(self, slot_index)
+
+📄 mara_host/motor/servo.py
+   🧱 class ServoHostModule
+      └── def __init__(self, bus, client)
+
+📄 mara_host/motor/stepper.py
+   🧱 class StepperHostModule
+      └── def __init__(self, bus, client)
+
+📄 mara_host/research/analysis.py
+   ⚙️  def load_session_df(self, jsonl_path)
+   ⚙️  def extract_telemetry_df(self, df, event_filter, flatten)
+   ⚙️  def lowpass_filter(self, data, cutoff_hz, sample_rate_hz, order)
+   ⚙️  def highpass_filter(self, data, cutoff_hz, sample_rate_hz, order)
+   ⚙️  def bandpass_filter(self, data, low_hz, high_hz, sample_rate_hz, order)
+   ⚙️  def moving_average(self, data, window)
+   ⚙️  def exponential_moving_average(self, data, alpha)
+   ⚙️  def median_filter(self, data, window)
+   ⚙️  def resample_uniform(self, times, values, target_rate_hz, method)
+   ⚙️  def fill_gaps(self, df, max_gap_s, method)
+   ⚙️  def cross_correlation(self, x, y, max_lag)
+   ⚙️  def find_lag(self, x, y, max_lag)
+   ⚙️  def autocorrelation(self, x, max_lag)
+   ⚙️  def correlation_matrix(self, df)
+   🧱 class SignalStats
+      └── def to_dict(self)
+   ⚙️  def compute_signal_stats(self, data)
+   ⚙️  def compute_rate(self, timestamps_s)
+   ⚙️  def segment_by_gaps(self, timestamps, gap_threshold_s)
+   ⚙️  def detect_outliers_zscore(self, data, threshold)
+   ⚙️  def detect_outliers_iqr(self, data, factor)
+   ⚙️  def detect_outliers_mad(self, data, threshold)
+   ⚙️  def remove_outliers(self, data, method)
+   ⚙️  def differentiate(self, times, values, smooth_window)
+   ⚙️  def integrate(self, times, values, method)
+   ⚙️  def compute_fft(self, data, sample_rate_hz)
+   ⚙️  def compute_psd(self, data, sample_rate_hz, nperseg)
+   ⚙️  def find_dominant_frequency(self, data, sample_rate_hz, min_freq_hz, max_freq_hz)
+
+📄 mara_host/research/config_loader.py
+   ⚙️  def load_yaml(self, path)
+   ⚙️  def load_json(self, path)
+   ⚙️  def load_config(self, path)
+   ⚙️  def save_yaml(self, data, path)
+   ⚙️  def save_json(self, data, path, indent)
+   ⚙️  def dict_to_dataclass(self, cls, data)
+   ⚙️  def dataclass_to_dict(self, obj)
+   ⚙️  def load_motor_config(self, data)
+   ⚙️  def load_noise_config(self, data)
+   ⚙️  def load_diff_drive_config(self, data)
+   ⚙️  def load_delay_config(self, data)
+   🧱 class SimulationConfig
+      ├── def __init__(self, config_path)
+      ├── def create_robot(self)
+      ├── def create_simulation_runner(self, controller)
+      ├── def to_dict(self)
+      └── def save(self, path)
+   ⚙️  def load_robot(self, config_path)
+   ⚙️  def load_simulation(self, config_path, controller)
+   ⚙️  def create_default_config(self, name)
+   ⚙️  def generate_config_template(self, output_path)
+   ⚙️  def find_configs(self, directory, recursive)
+   ⚙️  def list_available_robots(self, config_dir)
+
+📄 mara_host/research/examples/01_basic_simulation.py
+   ⚙️  def main()
+
+📄 mara_host/research/examples/02_control_loop_analysis.py
+   🧱 class PIDController
+      ├── def __post_init__(self)
+      ├── def reset(self)
+      └── def update(self, setpoint, measured, dt)
+   ⚙️  def run_step_response_test(self, robot, pid, setpoint, duration, dt)
+   ⚙️  def main()
+
+📄 mara_host/research/examples/03_system_identification.py
+   ⚙️  def collect_motor_step_response(self, motor, voltage, duration, dt)
+   ⚙️  def main()
+
+📄 mara_host/research/examples/04_signal_analysis.py
+   ⚙️  def generate_noisy_signal(self, duration, sample_rate)
+   ⚙️  def main()
+
+📄 mara_host/research/examples/05_metrics_and_recording.py
+   ⚙️  def record_session(self, robot, session_name, duration, dt)
+   ⚙️  def main()
+
+📄 mara_host/research/examples/06_noise_comparison.py
+   ⚙️  def run_trajectory(self, robot, duration, dt)
+   ⚙️  def monte_carlo_trajectories(self, config, n_runs, duration, dt)
+   ⚙️  def main()
+
+📄 mara_host/research/examples/07_full_pipeline.py
+   🧱 class VelocityPID
+      ├── def __post_init__(self)
+      ├── def set_target(self, vx, omega)
+      ├── def update(self, state, dt)
+      └── def reset(self)
+   ⚙️  def generate_test_trajectory(self, t)
+   ⚙️  def main()
+
+📄 mara_host/research/experiments.py
+   ⚙️  def _maybe_await(self, x)
+   🧱 class ExperimentConfig
+      (no methods)
+   🧱 class ExperimentResult
+      (no methods)
+   🧱 class ExperimentRunner
+      └── def __init__(self)
+
+📄 mara_host/research/metrics.py
+   ⚙️  def load_jsonl(self, path)
+   ⚙️  def filter_events(self, rows, event_prefix)
+   ⚙️  def basic_metrics(self, jsonl_path)
+   🧱 class LatencyStats
+      └── def to_dict(self)
+   ⚙️  def compute_latency_stats(self, latencies_ms)
+   ⚙️  def command_ack_latency(self, rows)
+   ⚙️  def heartbeat_roundtrip(self, rows)
+   🧱 class JitterStats
+      └── def to_dict(self)
+   ⚙️  def compute_jitter(self, timestamps_ns)
+   ⚙️  def telemetry_jitter(self, rows, event)
+   🧱 class ThroughputStats
+      └── def to_dict(self)
+   ⚙️  def compute_throughput(self, rows, direction)
+   🧱 class ControlMetrics
+      └── def to_dict(self)
+   ⚙️  def compute_tracking_error(self, setpoints, actuals)
+   ⚙️  def analyze_step_response(self, times_s, values, setpoint, initial, settling_threshold)
+   ⚙️  def velocity_tracking_metrics(self, rows)
+   🧱 class ConnectionQuality
+      └── def to_dict(self)
+   ⚙️  def analyze_connection_quality(self, rows)
+   🧱 class SessionMetrics
+      └── def to_dict(self)
+   ⚙️  def analyze_session(self, jsonl_path)
+   ⚙️  def compare_sessions(self, paths)
+
+📄 mara_host/research/plotting.py
+   ⚙️  def apply_style()
+   ⚙️  def create_figure(self, rows, cols, figsize, sharex, sharey)
+   ⚙️  def plot_time_series(self, times, values, label, ax, title, xlabel, ylabel, color, alpha, linestyle)
+   ⚙️  def plot_multi_series(self, times, series, ax, title, xlabel, ylabel, colors)
+   ⚙️  def plot_telemetry_dashboard(self, df, columns, figsize, title)
+   ⚙️  def plot_setpoint_vs_actual(self, times, setpoint, actual, ax, title, ylabel, show_error)
+   ⚙️  def plot_control_loop(self, times, setpoint, actual, control_effort, figsize, title)
+   ⚙️  def plot_step_response(self, times, response, setpoint, metrics, ax, title)
+   ⚙️  def plot_trajectory_2d(self, x, y, ax, title, show_start_end, color_by_time)
+   ⚙️  def plot_pose_trajectory(self, x, y, theta, ax, arrow_spacing, title)
+   ⚙️  def plot_fft(self, data, sample_rate_hz, ax, title, max_freq_hz, log_scale)
+   ⚙️  def plot_psd(self, data, sample_rate_hz, ax, title, max_freq_hz)
+   ⚙️  def plot_bode(self, freqs, magnitude_db, phase_deg, figsize, title)
+   ⚙️  def plot_histogram(self, data, ax, title, xlabel, bins, show_stats)
+   ⚙️  def plot_latency_cdf(self, latencies_ms, ax, title, percentiles)
+   ⚙️  def plot_latency_stats(self, stats, ax, title)
+   ⚙️  def plot_imu_data(self, times, accel, gyro, figsize, title)
+   ⚙️  def save_figure(self, fig, path, dpi, tight)
+   ⚙️  def show()
+
+📄 mara_host/research/recording.py
+   🧱 class RecordingConfig
+      (no methods)
+   🧱 class RecordingEventBus
+      ├── def __init__(self, inner_bus, bundle)
+      ├── def subscribe(self, topic, handler)
+      └── def publish(self, topic, data)
+   🧱 class RecordingTransport
+      ├── def __init__(self, inner_transport, bundle)
+      ├── def set_frame_handler(self, handler)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def send_frame(self, msg_type, payload)
+      └── def _send_bytes(self, data)
+   ⚙️  def wrapped(self, body)
+
+📄 mara_host/research/replay.py
+   🧱 class SessionReplay
+      ├── def __init__(self, jsonl_path)
+      ├── def _load(self, path)
+      └── def to_dataframe(self)
+
+📄 mara_host/research/simulation.py
+   🧱 class GaussianNoise
+      ├── def sample(self)
+      └── def add_to(self, value)
+   🧱 class IMUNoiseModel
+      ├── def add_accel_noise(self, accel)
+      └── def add_gyro_noise(self, gyro, dt)
+   🧱 class EncoderNoiseModel
+      └── def quantize(self, angle_rad)
+   🧱 class UltrasonicNoiseModel
+      └── def add_noise(self, distance)
+   🧱 class DCMotorConfig
+      (no methods)
+   🧱 class DCMotor
+      ├── def __init__(self, config)
+      ├── def step(self, voltage, load_torque, dt)
+      └── def reset(self)
+   🧱 class DiffDriveConfig
+      (no methods)
+   🧱 class DiffDriveRobot
+      ├── def __init__(self, config, imu_noise, encoder_noise)
+      ├── def set_velocity(self, vx, omega)
+      ├── def set_motor_voltages(self, left_voltage, right_voltage, dt)
+      ├── def step(self, dt)
+      ├── def get_state(self)
+      ├── def get_imu_reading(self)
+      ├── def get_encoder_velocities(self)
+      └── def reset(self, x, y, theta)
+   🧱 class DelayConfig
+      (no methods)
+   🧱 class DelaySimulator
+      ├── def __init__(self, config)
+      ├── def send(self, message, current_time_s)
+      ├── def receive(self, current_time_s)
+      └── def clear(self)
+   🧱 class SimulationRunner
+      ├── def __init__(self, robot, controller, dt, delay_config)
+      ├── def step(self)
+      ├── def run(self, duration_s)
+      └── def reset(self)
+   🧱 class DiffDrivePhysics
+      ├── def __init__(self)
+      ├── def set_velocity(self, vx, omega)
+      ├── def step(self, dt)
+      ├── def imu(self)
+      ├── def encoders(self)
+      └── def get_state(self)
+
+📄 mara_host/research/sysid.py
+   🧱 class FirstOrderParams
+      ├── def transfer_function(self)
+      └── def to_dict(self)
+   🧱 class SecondOrderParams
+      ├── def fn_hz(self)
+      ├── def is_underdamped(self)
+      ├── def is_critically_damped(self)
+      ├── def is_overdamped(self)
+      ├── def transfer_function(self)
+      └── def to_dict(self)
+   🧱 class DCMotorParams
+      ├── def compute_derived(self)
+      └── def to_dict(self)
+   🧱 class DifferentialDriveParams
+      └── def to_dict(self)
+   ⚙️  def identify_first_order_step(self, times, response, input_amplitude, initial_value)
+   ⚙️  def identify_second_order_step(self, times, response, input_amplitude, initial_value)
+   ⚙️  def fit_step_response(self, times, response, order, input_amplitude)
+   ⚙️  def model(self, params)
+   ⚙️  def cost(self, params)
+   ⚙️  def model(self, params)
+   ⚙️  def cost(self, params)
+   ⚙️  def estimate_frequency_response(self, input_signal, output_signal, sample_rate_hz, nperseg)
+   ⚙️  def fit_transfer_function(self, freqs, magnitude_db, phase_deg, order)
+   ⚙️  def model(self, params)
+   ⚙️  def cost(self, params)
+   ⚙️  def model(self, params)
+   ⚙️  def cost(self, params)
+   ⚙️  def identify_dc_motor_step(self, times, voltage, velocity, current)
+   ⚙️  def identify_velocity_pid_plant(self, times, setpoint, velocity, pwm)
+   ⚙️  def identify_arx(self, u, y, na, nb, nk)
+   ⚙️  def identify_coulomb_friction(self, velocity, torque_or_current)
+   ⚙️  def identify_stribeck_friction(self, velocity, torque)
+   ⚙️  def model(self, params, v)
+   ⚙️  def cost(self, params)
+
+📄 mara_host/robot.py
+   🧱 class Session
+      ├── def __init__(self, robot, name, log_dir)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def __enter__(self)
+      └── def __exit__(self, exc_type, exc_val, exc_tb)
+   🧱 class Robot
+      ├── def __init__(self, port, host, tcp_port, baudrate)
+      ├── def _setup(self)
+      ├── def client(self)
+      ├── def bus(self)
+      ├── def is_connected(self)
+      ├── def capabilities(self)
+      ├── def firmware_version(self)
+      ├── def name(self)
+      ├── def gpio(self)
+      ├── def pwm(self)
+      ├── def motion(self)
+      ├── def on(self, event, handler)
+      ├── def from_config(self, cls, config_path, profile)
+      └── def __repr__(self)
+   ⚙️  def load_config(self, config_path)
+   ⚙️  def robot_from_config(self, config)
+   ⚙️  def _robot_from_dict(self, config)
+
+📄 mara_host/runners/__init__.py
+   ⚙️  def __getattr__(self, name)
+
+📄 mara_host/runtime/runtime.py
+   🧱 class RuntimeConfig
+      (no methods)
+   🧱 class Runtime
+      ├── def __init__(self, robot, tick_hz, auto_arm)
+      ├── def robot(self)
+      ├── def config(self)
+      ├── def is_running(self)
+      ├── def tick_count(self)
+      ├── def elapsed_time(self)
+      ├── def modules(self)
+      ├── def add_module(self, module)
+      ├── def remove_module(self, module)
+      ├── def on_tick(self, callback)
+      ├── def on_telemetry(self, callback)
+      ├── def on_start(self, callback)
+      ├── def on_stop(self, callback)
+      ├── def _on_telemetry_event(self, data)
+      └── def __repr__(self)
+
+📄 mara_host/sensor/encoder.py
+   🧱 class EncoderDefaults
+      (no methods)
+   🧱 class EncoderHostModule
+      └── def __init__(self, bus, client, defaults)
+
+📄 mara_host/sensor/imu.py
+   🧱 class ImuState
+      (no methods)
+   🧱 class ImuHostModule
+      ├── def __init__(self, bus)
+      ├── def subscriptions(self)
+      ├── def set_biases(self, accel_bias, gyro_bias)
+      └── def _on_imu_raw(self, msg)
+
+📄 mara_host/sensor/ultrasonic.py
+   🧱 class UltrasonicDefaults
+      (no methods)
+   🧱 class UltrasonicHostModule
+      ├── def __init__(self, bus, client, defaults, auto_subscribe)
+      └── def _on_telemetry_raw(self, msg)
+
+📄 mara_host/services/codegen/generator_service.py
+   🧱 class GeneratorType
+      (no methods)
+   🧱 class GeneratorResult
+      (no methods)
+   🧱 class GenerationSummary
+      ├── def all_success(self)
+      └── def failed_count(self)
+   🧱 class CodeGeneratorService
+      ├── def __init__(self)
+      ├── def generate_all(self)
+      ├── def generate(self, generator_type)
+      ├── def list_generated_files(self, generator_type)
+      ├── def get_schema_path(self)
+      ├── def set_progress_callback(self, callback)
+      ├── def _notify_progress(self, gen_type, message)
+      └── def get_available_generators()
+
+📄 mara_host/services/pins/pin_service.py
+   🧱 class PinConflict
+      (no methods)
+   🧱 class PinRecommendation
+      (no methods)
+   🧱 class GroupRecommendation
+      (no methods)
+   🧱 class PinService
+      ├── def __init__(self, pins_json_path)
+      ├── def get_all_pins(self)
+      ├── def get_pin_info(self, gpio)
+      ├── def get_assignments(self)
+      ├── def get_assignments_by_gpio(self)
+      ├── def get_free_pins(self, required_caps)
+      ├── def get_safe_pins(self)
+      ├── def capability_string(self, gpio)
+      ├── def is_flash_pin(self, gpio)
+      ├── def is_boot_pin(self, gpio)
+      ├── def is_input_only(self, gpio)
+      ├── def is_safe_pin(self, gpio)
+      ├── def get_flash_pins(self)
+      ├── def get_boot_pins(self)
+      ├── def get_input_only_pins(self)
+      ├── def get_safe_pin_set(self)
+      ├── def get_free_pins_by_category(self)
+      ├── def get_use_case_notes(self, use_case)
+      ├── def assign(self, name, gpio)
+      ├── def remove(self, name)
+      ├── def clear_all(self)
+      ├── def detect_conflicts(self)
+      ├── def _check_i2c_conflicts(self, assignments)
+      ├── def _check_uart_conflicts(self, assignments)
+      ├── def _check_adc2_conflicts(self, assignments)
+      ├── def suggest_pins(self, use_case, count)
+      ├── def recommend_motor_pins(self, motor_id)
+      ├── def recommend_encoder_pins(self, encoder_id)
+      ├── def recommend_i2c_pins(self)
+      ├── def recommend_spi_pins(self)
+      ├── def recommend_uart_pins(self, uart_num)
+      ├── def recommend_stepper_pins(self, stepper_id)
+      ├── def recommend_servo_pins(self, servo_id)
+      ├── def _recommend_group_pins(self, group_type, prefix)
+      ├── def _cap_to_use_case(self, cap)
+      ├── def generate_pinout_diagram(self)
+      └── def validate(self)
+
+📄 mara_host/services/recording/recording_service.py
+   🧱 class RecordedEvent
+      (no methods)
+   🧱 class SessionInfo
+      (no methods)
+   🧱 class RecordingConfig
+      (no methods)
+   🧱 class RecordingService
+      ├── def __init__(self, config)
+      ├── def client(self)
+      └── def session_path(self)
+   ⚙️  def count_event(self, data)
+   🧱 class ReplayService
+      ├── def __init__(self, session_name, log_dir)
+      ├── def get_session_info(self)
+      ├── def events(self)
+      ├── def filter_events(self, topics, event_types, start_time, end_time)
+      └── def list_sessions(self, log_dir)
+
+📄 mara_host/services/testing/test_service.py
+   🧱 class TestStatus
+      (no methods)
+   🧱 class TestResult
+      (no methods)
+   🧱 class TestService
+      ├── def __init__(self, client)
+      ├── def results(self)
+      ├── def passed_count(self)
+      ├── def failed_count(self)
+      └── def all_passed(self)
+   ⚙️  def on_pong(self, data)
+   ⚙️  def on_heartbeat(self, data)
+   ⚙️  def on_encoder(self, data)
+   ⚙️  def on_imu(self, data)
+   ⚙️  def on_ultrasonic(self, data)
+
+📄 mara_host/services/transport/connection_service.py
+   🧱 class TransportType
+      (no methods)
+   🧱 class ConnectionConfig
+      (no methods)
+   🧱 class ConnectionInfo
+      └── def __post_init__(self)
+   🧱 class ConnectionService
+      ├── def __init__(self, config)
+      ├── def _create_transport(self)
+      ├── def on_event(self, topic, handler)
+      └── def is_connected(self)
+
+📄 mara_host/services/transport/robot_control.py
+   🧱 class ServoConfig
+      (no methods)
+   🧱 class RobotControlService
+      ├── def __init__(self, client)
+      ├── def is_armed(self)
+      ├── def is_active(self)
+      └── def attached_servos(self)
+
+📄 mara_host/telemetry/binary_parser.py
+   ⚙️  def _make_empty(self, ts_ms, raw_len, meta)
+   ⚙️  def parse_telemetry_bin(self, payload)
+
+📄 mara_host/telemetry/file_logger.py
+   🧱 class TelemetryFileLogger
+      ├── def __init__(self, bus, log_dir)
+      ├── def start(self)
+      ├── def stop(self)
+      ├── def _on_imu(self, imu)
+      └── def _on_ultra(self, ultra)
+
+📄 mara_host/telemetry/host_module.py
+   🧱 class TelemetryHostModule
+      ├── def __init__(self, bus, source_topic)
+      ├── def subscriptions(self)
+      ├── def _get_handler(self, topic)
+      ├── def latest(self)
+      └── def _on_raw(self, msg)
+
+📄 mara_host/telemetry/models.py
+   🧱 class ImuTelemetry
+      (no methods)
+   🧱 class UltrasonicTelemetry
+      (no methods)
+   🧱 class LidarTelemetry
+      (no methods)
+   🧱 class EncoderTelemetry
+      (no methods)
+   🧱 class StepperTelemetry
+      (no methods)
+   🧱 class DcMotorTelemetry
+      (no methods)
+   🧱 class SignalTelemetry
+      (no methods)
+   🧱 class ControlSignalsTelemetry
+      (no methods)
+   🧱 class ObserverTelemetry
+      (no methods)
+   🧱 class ControlObserversTelemetry
+      (no methods)
+   🧱 class ControlSlotTelemetry
+      (no methods)
+   🧱 class ControlSlotsTelemetry
+      (no methods)
+   🧱 class TelemetryPacket
+      (no methods)
+
+📄 mara_host/telemetry/parser.py
+   ⚙️  def _float_or_none(self, v)
+   ⚙️  def _int_or_none(self, v)
+   ⚙️  def parse_telemetry(self, msg)
+
+📄 mara_host/tools/build_firmware.py
+   ⚙️  def parse_features(self, features_str, no_features_str)
+   ⚙️  def features_to_flags(self, features)
+   ⚙️  def run_pio(self, args, verbose, extra_flags)
+   ⚙️  def generate()
+   ⚙️  def build(self, env, verbose, features)
+   ⚙️  def upload(self, env, verbose, features)
+   ⚙️  def test(self, native, device, filter_pattern, verbose)
+   ⚙️  def clean(self, env)
+   ⚙️  def list_features()
+   ⚙️  def main()
+
+📄 mara_host/tools/build_world.py
+   ⚙️  def main()
+
+📄 mara_host/tools/gen_binary_commands.py
+   ⚙️  def to_pascal_case(self, name)
+   ⚙️  def to_snake_case(self, name)
+   ⚙️  def get_struct_format(self, payload)
+   ⚙️  def get_payload_size(self, payload)
+   ⚙️  def generate_cpp_header()
+   ⚙️  def generate_py_binary_commands()
+   ⚙️  def generate_py_json_to_binary()
+   ⚙️  def main()
+
+📄 mara_host/tools/gen_can.py
+   ⚙️  def calc_struct_size(self, fields)
+   ⚙️  def build_struct_fmt(self, fields)
+   ⚙️  def generate_cpp_header()
+   ⚙️  def generate_python_module()
+   ⚙️  def main()
+
+📄 mara_host/tools/gen_commands.py
+   ⚙️  def validate_commands(self, cmds)
+   ⚙️  def generate_json(self, commands)
+   ⚙️  def generate_cpp_header(self, commands)
+   ⚙️  def generate_py_module(self, commands)
+   ⚙️  def python_type_for(self, field)
+   ⚙️  def write_python_client_mixin(self, commands)
+   ⚙️  def generate_cpp_version(self, version)
+   ⚙️  def generate_py_version(self, version)
+   ⚙️  def write_version_files(self, version, cpp_path, py_path)
+   ⚙️  def main()
+
+📄 mara_host/tools/gen_telemetry.py
+   ⚙️  def generate_cpp_header()
+   ⚙️  def generate_py_module()
+   ⚙️  def main()
+
+📄 mara_host/tools/gen_version.py
+   ⚙️  def generate_cpp_version(self, version)
+   ⚙️  def generate_py_version(self, version)
+   ⚙️  def write_version_files(self, version, cpp_path, py_path)
+   ⚙️  def main()
+
+📄 mara_host/tools/generate_all.py
+   ⚙️  def main()
+
+📄 mara_host/tools/generate_pins.py
+   ⚙️  def generate_cpp(self, pins)
+   ⚙️  def generate_py(self, pins)
+   ⚙️  def main()
+
+📄 mara_host/tools/gpio_mapping_gen.py
+   ⚙️  def generate_json(self, channels)
+   ⚙️  def generate_cpp_header(self, channels)
+   ⚙️  def generate_py_module(self, channels)
+   ⚙️  def main()
+
+📄 mara_host/tools/imu_calibrator.py
+   🧱 class ImuCalibrator
+      ├── def __init__(self, client, samples_needed)
+      └── def _on_imu(self, imu)
+
+📄 mara_host/tools/mock_node.py
+   🧱 class MockNode
+      ├── def __init__(self, node_id, broker_host, broker_port, firmware, board)
+      └── def stop(self)
+   ⚙️  def parse_args()
+
+📄 mara_host/tools/pins.py
+   🧱 class Capability
+      (no methods)
+   🧱 class PinInfo
+      (no methods)
+   ⚙️  def load_pins()
+   ⚙️  def save_pins(self, pins)
+   ⚙️  def get_assignments()
+   ⚙️  def cap_str(self, cap)
+   ⚙️  def generate_pinout()
+   ⚙️  def fmt_label(self, gpio, max_len)
+   ⚙️  def pin_marker(self, gpio)
+
+📄 mara_host/tools/platform_schema.py
+   ⚙️  def _load_pins(self, path)
+   ⚙️  def validate_schema()
+
+📄 mara_host/transport/async_base_transport.py
+   🧱 class AsyncBaseTransport
+      ├── def __init__(self)
+      ├── def set_frame_handler(self, handler)
+      ├── def _handle_frame(self, body)
+      └── def is_connected(self)
+
+📄 mara_host/transport/base_transport.py
+   🧱 class BaseTransport
+      ├── def __init__(self)
+      ├── def set_frame_handler(self, handler)
+      ├── def _handle_body(self, body)
+      ├── def send_frame(self, msg_type, payload)
+      ├── def start(self)
+      ├── def stop(self)
+      └── def _send_bytes(self, data)
+
+📄 mara_host/transport/bluetooth_transport.py
+   🧱 class BluetoothSerialTransport
+      ├── def __init__(self, port, baudrate)
+      └── def auto(self, cls, device_name, baudrate)
+
+📄 mara_host/transport/can_defs.py
+   🧱 class MsgId
+      (no methods)
+   ⚙️  def make_id(self, base, node_id)
+   ⚙️  def extract_node_id(self, msg_id)
+   ⚙️  def get_base_id(self, msg_id)
+   🧱 class NodeState
+      (no methods)
+   🧱 class SetVelMsg
+      ├── def from_floats(self, cls, vx, omega, seq)
+      ├── def to_floats(self)
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class SetSignalMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class HeartbeatMsg
+      ├── def pack(self)
+      ├── def unpack(self, cls, data)
+      └── def node_state(self)
+   🧱 class EncoderMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class ImuAccelMsg
+      ├── def pack(self)
+      ├── def unpack(self, cls, data)
+      └── def to_g(self)
+   🧱 class ImuGyroMsg
+      ├── def pack(self)
+      ├── def unpack(self, cls, data)
+      └── def to_dps(self)
+   🧱 class StatusMsg
+      ├── def pack(self)
+      ├── def unpack(self, cls, data)
+      ├── def armed(self)
+      ├── def active(self)
+      ├── def estopped(self)
+      ├── def has_error(self)
+      ├── def voltage_v(self)
+      └── def temp_c(self)
+   🧱 class ProtoFrameHeader
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   ⚙️  def encode_protocol_frames(self, data, msg_id)
+   🧱 class ProtoReassembler
+      ├── def __init__(self, timeout_ms)
+      ├── def add_frame(self, node_id, data, timestamp_ms)
+      └── def clear(self, node_id)
+   ⚙️  def encode_set_vel(self, vx, omega, seq)
+   ⚙️  def encode_set_signal(self, signal_id, value)
+   ⚙️  def encode_heartbeat(self, uptime_ms, state, load_pct, errors)
+   ⚙️  def encode_encoder(self, counts, velocity, timestamp)
+
+📄 mara_host/transport/can_defs_generated.py
+   🧱 class MsgId
+      (no methods)
+   🧱 class NodeState
+      (no methods)
+   🧱 class SetVelMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class SetSignalMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class HeartbeatMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class EncoderMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class ImuAccelMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class ImuGyroMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class StatusMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+
+📄 mara_host/transport/can_transport.py
+   🧱 class CANStats
+      └── def uptime_s(self)
+   🧱 class CANTransport
+      ├── def __init__(self, channel, bustype, bitrate, node_id)
+      ├── def is_connected(self)
+      ├── def node_id(self)
+      ├── def node_id(self, value)
+      ├── def stats(self)
+      ├── def set_velocity_callback(self, callback)
+      ├── def set_signal_callback(self, callback)
+      ├── def set_heartbeat_callback(self, callback)
+      ├── def set_encoder_callback(self, callback)
+      ├── def set_imu_accel_callback(self, callback)
+      ├── def set_imu_gyro_callback(self, callback)
+      ├── def set_status_callback(self, callback)
+      ├── def _process_message(self, msg)
+      ├── def _handle_protocol_frame(self, node_id, data)
+      └── def _handle_native_message(self, base_id, node_id, data)
+   🧱 class VirtualCANTransport
+      └── def __init__(self, channel, node_id)
+
+📄 mara_host/transport/mqtt/broker_failover.py
+   🧱 class BrokerState
+      (no methods)
+   🧱 class BrokerConfig
+      (no methods)
+   🧱 class BrokerFailover
+      ├── def __init__(self, primary, fallback, max_retries, base_delay_s, max_delay_s, primary_check_interval_s, on_broker_change, on_state_change)
+      ├── def current_broker(self)
+      ├── def state(self)
+      ├── def is_using_fallback(self)
+      ├── def retry_count(self)
+      ├── def notify_connected(self)
+      ├── def notify_disconnected(self)
+      ├── def notify_connection_failed(self)
+      └── def _set_state(self, state)
+
+📄 mara_host/transport/mqtt/discovery.py
+   🧱 class NodeDiscovery
+      ├── def __init__(self, bus, broker_host, broker_port, username, password)
+      ├── def on_node_announce(self, callback)
+      ├── def get_known_nodes(self)
+      ├── def get_node(self, node_id)
+      ├── def _normalize_discovery_payload(self, data)
+      └── def _on_message(self, message)
+   ⚙️  def on_discover(self, info)
+
+📄 mara_host/transport/mqtt/models.py
+   🧱 class NodeState
+      (no methods)
+   🧱 class MQTTConfig
+      (no methods)
+   🧱 class NodeInfo
+      └── def from_discovery_response(self, cls, node_id, data)
+   🧱 class NodeStatus
+      ├── def is_online(self)
+      ├── def mark_seen(self)
+      ├── def mark_heartbeat(self)
+      └── def mark_error(self)
+   ⚙️  def get_cmd_topic(self, node_id, versioned)
+   ⚙️  def get_ack_topic(self, node_id, versioned)
+   ⚙️  def get_telemetry_topic(self, node_id, versioned)
+   ⚙️  def get_state_topic(self, node_id, versioned)
+   ⚙️  def get_discover_topic(self, versioned)
+   ⚙️  def get_discover_response_topic(self, versioned)
+
+📄 mara_host/transport/mqtt/node_manager.py
+   🧱 class NodeManager
+      ├── def __init__(self, bus, broker_host, broker_port, fallback_broker, fallback_port, username, password, heartbeat_timeout_s, health_check_interval_s, require_version_match)
+      ├── def broker_host(self)
+      ├── def broker_port(self)
+      ├── def add_node(self, node_id, start)
+      ├── def _ensure_start_task(self, proxy)
+      ├── def get_node(self, node_id)
+      ├── def get_nodes(self)
+      ├── def get_node_ids(self)
+      ├── def get_online_nodes(self)
+      ├── def get_offline_nodes(self)
+      ├── def _on_node_discovered(self, info)
+      ├── def _check_node_health(self)
+      └── def _on_broker_change(self, broker)
+
+📄 mara_host/transport/mqtt/node_proxy.py
+   🧱 class NodeProxy
+      ├── def __init__(self, node_id, broker_host, broker_port, bus, username, password, heartbeat_timeout_s, require_version_match)
+      ├── def node_id(self)
+      ├── def client(self)
+      ├── def transport(self)
+      ├── def status(self)
+      ├── def info(self)
+      ├── def is_online(self)
+      ├── def is_connected(self)
+      ├── def video_url(self)
+      ├── def set_info(self, info)
+      ├── def set_video_url(self, url)
+      ├── def _on_heartbeat(self, data)
+      └── def _on_telemetry(self, data)
+
+📄 mara_host/transport/mqtt/transport.py
+   🧱 class MQTTTransport
+      ├── def __init__(self, broker_host, broker_port, node_id, username, password, client_id, bus, use_versioned_topics)
+      ├── def is_connected(self)
+      ├── def node_id(self)
+      ├── def _publish_event(self, event, data)
+      └── def _on_message(self, message)
+
+📄 mara_host/transport/serial_transport.py
+   🧱 class SerialTransport
+      ├── def __init__(self, port, baudrate)
+      ├── def _open(self)
+      ├── def _close(self)
+      ├── def _read_raw(self, n)
+      └── def _send_bytes(self, data)
+
+📄 mara_host/transport/stream_transport.py
+   🧱 class StreamTransport
+      ├── def __init__(self)
+      ├── def _open(self)
+      ├── def _close(self)
+      ├── def _read_raw(self, n)
+      ├── def _send_bytes(self, data)
+      ├── def is_open(self)
+      ├── def start(self)
+      ├── def stop(self)
+      └── def _reader_loop(self)
+   ⚙️  def _locked_send()
+
+📄 mara_host/transport/tcp_transport.py
+   🧱 class AsyncTcpTransport
+      ├── def __init__(self, host, port, reconnect_delay)
+      └── def is_connected(self)
+
+📄 mara_host/vision/ml_preprocess.py
+   🧱 class NormalizationStats
+      ├── def imagenet(self, cls)
+      └── def none(self, cls)
+   🧱 class PreprocessorCache
+      ├── def __init__(self)
+      ├── def get_buffer(self, key, shape, dtype)
+      └── def clear(self)
+   ⚙️  def preprocess_for_ml(self, frame_bgr, target_size, normalize, to_chw, mean, std, use_fast_resize, use_cache)
+   ⚙️  def preprocess_for_ml_gpu(self, frame_bgr, target_size, normalize, to_chw, mean, std)
+   ⚙️  def _preprocess_torch(self, frame_bgr, target_size, normalize, to_chw, mean, std)
+   ⚙️  def _preprocess_cuda(self, frame_bgr, target_size, normalize, to_chw, mean, std)
+   ⚙️  def preprocess_batch(self, frames_bgr, target_size, normalize, mean, std, use_gpu)
+   ⚙️  def _preprocess_batch_torch(self, frames_bgr, target_size, normalize, mean, std)
+   ⚙️  def is_gpu_available()
+   ⚙️  def get_gpu_backend()
+   ⚙️  def clear_cache()
+
+📄 mara_host/vision/object_detection.py
+   🧱 class Detection
+      (no methods)
+   🧱 class DetectionModule
+      ├── def __init__(self, model, decode_fn, ml_size, class_names, score_thresh, use_torch, device, show_window, window_name, publish_fn)
+      └── def handle_frame(self, display_frame, ml_frame, ts)
+
+📄 mara_host/vision/yolo_decode.py
+   ⚙️  def decode_yolo_output(self, raw, display_shape, ml_size)
+
+📄 mara_host/vision/yolo_detect.py
+   🧱 class YoloWrapper
+      ├── def __init__(self, weights)
+      └── def __call__(self, x)
+
+📄 structure.py
+   ⚙️  def load_gitignore(self, project_root)
+   ⚙️  def attach_parents(self, tree)
+   ⚙️  def extract_defs_from_file(self, filepath)
+   ⚙️  def should_ignore_path(self, rel_path)
+   ⚙️  def scan_directory(self, base_path, respect_gitignore)
+   ⚙️  def format_args(self, args)
+   ⚙️  def print_structure(self, structure, output_file, show_line_numbers)
+   ⚙️  def generate_tree_view(self, structure)
+   ⚙️  def main()
+
+📄 tests/conftest.py
+   ⚙️  def bus()
+   ⚙️  def transport()
+   ⚙️  def pytest_addoption(self, parser)
+   ⚙️  def pytest_configure(self, config)
+   ⚙️  def pytest_collection_modifyitems(self, config, items)
+   ⚙️  def mara_host(self, request)
+   ⚙️  def robot_port(self, request)
+   ⚙️  def hil_timeout(self, request)
+   ⚙️  def hil(self, robot)
+   🧱 class HIL
+      └── def __init__(self, r)
+   ⚙️  def event_loop()
+   ⚙️  def attach_bus_dump(self, client, path, cycle)
+   ⚙️  def _ser(self, x)
+   ⚙️  def log(self, topic, obj)
+
+📄 tests/fakes/fake_async_transport.py
+   🧱 class FakeAsyncTransport
+      ├── def __init__(self, auto_ack)
+      ├── def set_frame_handler(self, handler)
+      ├── def start(self)
+      ├── def stop(self)
+      └── def _inject_body(self, body)
+
+📄 tests/fakes/fake_transport.py
+   🧱 class FakeTransport
+      ├── def __init__(self)
+      ├── def set_frame_handler(self, handler)
+      ├── def start(self)
+      └── def stop(self)
+
+📄 tests/helpers.py
+   ⚙️  def _decode_frames_from_bytes(self, blob)
+   🧱 class PublishedEvent
+      (no methods)
+   🧱 class CapturingBus
+      ├── def __init__(self)
+      ├── def subscribe(self, topic, handler)
+      ├── def publish(self, topic, data)
+      ├── def topics(self)
+      └── def last(self, topic)
+
+📄 tests/test_base_transport.py
+   🧱 class DummyTransport
+      ├── def __init__(self)
+      ├── def start(self)
+      ├── def stop(self)
+      └── def _send_bytes(self, data)
+   ⚙️  def test_base_transport_send_frame_encodes()
+
+📄 tests/test_client_async.py
+   ⚙️  def _import_client()
+
+📄 tests/test_client_json_telemetry.py
+   ⚙️  def test_client_json_telemetry_still_publishes_topics()
+
+📄 tests/test_client_safety.py
+   🧱 class TestConnectionMonitor
+      ├── def test_initial_state_is_disconnected(self)
+      ├── def test_message_received_sets_connected(self)
+      ├── def test_timeout_triggers_disconnect(self)
+      ├── def test_message_prevents_timeout(self)
+      ├── def test_reconnect_callback_fires(self)
+      └── def test_reset_clears_state(self)
+   🧱 class TestReliableCommander
+      ├── def mock_send(self)
+      └── def test_stats_structure(self, mock_send)
+   🧱 class TestDisconnectClearsPending
+      (no methods)
+   ⚙️  def on_disconnect()
+
+📄 tests/test_client_telemetry_bin_routing.py
+   ⚙️  def _build_sectioned_payload(self, ts_ms, seq)
+
+📄 tests/test_connection_monitor.py
+   ⚙️  def _import_connection_monitor()
+   ⚙️  def fake_monotonic()
+   ⚙️  def on_disc()
+   ⚙️  def on_rec()
+
+📄 tests/test_control_design.py
+   🧱 class TestStateSpaceModel
+      ├── def test_create_model(self)
+      ├── def test_create_with_D(self)
+      ├── def test_dimension_validation(self)
+      ├── def test_poles(self)
+      ├── def test_stability_check(self)
+      ├── def test_controllability(self)
+      └── def test_observability(self)
+   🧱 class TestDiscretization
+      ├── def test_euler_discretization(self)
+      ├── def test_zoh_discretization(self)
+      └── def test_bilinear_discretization(self)
+   🧱 class TestLQR
+      ├── def test_lqr_basic(self)
+      ├── def test_lqr_higher_Q_faster_response(self)
+      └── def test_lqr_discrete(self)
+   🧱 class TestPolePlacement
+      ├── def test_pole_placement_basic(self)
+      ├── def test_pole_placement_complex(self)
+      └── def test_acker_matches_pole_placement(self)
+   🧱 class TestObserverGains
+      ├── def test_observer_gains_basic(self)
+      ├── def test_observer_faster_than_controller(self)
+      └── def test_lqe_kalman_filter(self)
+   🧱 class TestUtilityFunctions
+      ├── def test_check_stability_continuous(self)
+      ├── def test_check_stability_discrete(self)
+      ├── def test_reference_gain(self)
+      └── def test_integral_gain(self)
+   🧱 class TestIntegration
+      └── def test_mass_spring_damper_design(self)
+
+📄 tests/test_event_bus.py
+   ⚙️  def test_event_bus_subscribe_publish()
+   ⚙️  def handler(self, data)
+
+📄 tests/test_hil_churn.py
+   ⚙️  def _get_mcu_port(self, request)
+   ⚙️  def _get_churn_cycles(self, request)
+   ⚙️  def _on_state(self, evt)
+
+📄 tests/test_hil_mini_soak.py
+   ⚙️  def pytest_addoption(self, parser)
+   ⚙️  def _get_mcu_port(self, request)
+   ⚙️  def _get_float_opt(self, request, cli_name, env_name, default)
+   ⚙️  def _get_log_dir(self, request)
+   ⚙️  def _want_event_dump(self, request)
+   ⚙️  def _ensure_dir(self, p)
+   ⚙️  def _now_ts()
+   ⚙️  def _safe_json(self, obj)
+   ⚙️  def _attach_bus_dump(self, client, filepath, tag)
+   ⚙️  def _write(self, topic, payload)
+   ⚙️  def close()
+   ⚙️  def _dump_snapshot(self, client, filepath, reason, recent, extra)
+   ⚙️  def _log_cmd(self, entry)
+   ⚙️  def _on_lost(self, _evt)
+   ⚙️  def _pending_size()
+
+📄 tests/test_hil_send_commands.py
+   🧱 class TestSafety
+      (no methods)
+   🧱 class TestRates
+      (no methods)
+   🧱 class TestControlSignals
+      (no methods)
+   🧱 class TestControlSlots
+      (no methods)
+   🧱 class TestGPIO
+      (no methods)
+   🧱 class TestPWM
+      (no methods)
+   🧱 class TestLED
+      (no methods)
+   🧱 class TestServo
+      (no methods)
+   🧱 class TestStepper
+      (no methods)
+   🧱 class TestEncoder
+      (no methods)
+   🧱 class TestDCMotor
+      (no methods)
+   🧱 class TestMotion
+      (no methods)
+   🧱 class TestTelemetry
+      (no methods)
+   🧱 class TestLogging
+      (no methods)
+   🧱 class TestObserver
+      (no methods)
+   🧱 class TestObserverStateSpace
+      (no methods)
+
+📄 tests/test_hil_smoke.py
+   ⚙️  def _get_mcu_port(self, request)
+
+📄 tests/test_identity_handshake.py
+   ⚙️  def _import_client()
+
+📄 tests/test_json_to_binary.py
+   🧱 class TestJsonToBinaryEncoder
+      ├── def setup_method(self)
+      ├── def test_encode_set_vel(self)
+      ├── def test_encode_set_vel_defaults(self)
+      ├── def test_encode_set_signal(self)
+      ├── def test_encode_heartbeat(self)
+      ├── def test_encode_stop(self)
+      ├── def test_encode_unsupported_returns_none(self)
+      ├── def test_supports_binary(self)
+      └── def test_wire_size_comparison(self)
+   🧱 class TestJsonToBinaryBatchEncoder
+      ├── def setup_method(self)
+      ├── def test_encode_signals_batch(self)
+      └── def test_encode_signal_cmds(self)
+
+📄 tests/test_jsonl_logger.py
+   ⚙️  def _import_jsonl_logger()
+   ⚙️  def test_jsonl_logger_writes_valid_json_lines(self, tmp_path)
+
+📄 tests/test_metrics_and_benchmarks_artifacts.py
+   ⚙️  def _import_metrics_and_bench()
+   ⚙️  def test_basic_metrics_and_benchmark_outputs(self, tmp_path)
+
+📄 tests/test_pin_service.py
+   🧱 class TestPinClassification
+      ├── def test_flash_pin_identification(self)
+      ├── def test_boot_pin_identification(self)
+      ├── def test_input_only_identification(self)
+      ├── def test_safe_pin_identification(self)
+      └── def test_get_free_pins_by_category_structure(self)
+   🧱 class TestConflictDetection
+      ├── def setup_method(self)
+      ├── def teardown_method(self)
+      ├── def test_detect_conflicts_returns_list(self)
+      ├── def test_conflict_has_required_fields(self)
+      └── def test_conflict_severity_values(self)
+   🧱 class TestPinRecommendations
+      ├── def test_suggest_pins_returns_list(self)
+      ├── def test_suggest_pins_excludes_flash_pins(self)
+      ├── def test_suggest_pins_for_adc_prefers_adc1(self)
+      └── def test_suggest_pins_for_output_excludes_input_only(self)
+   🧱 class TestGroupRecommendations
+      ├── def test_recommend_motor_pins_structure(self)
+      ├── def test_recommend_motor_pins_names(self)
+      ├── def test_recommend_encoder_pins_structure(self)
+      ├── def test_recommend_i2c_pins_uses_defaults(self)
+      ├── def test_recommend_spi_pins_structure(self)
+      ├── def test_recommend_uart_pins_structure(self)
+      ├── def test_recommend_stepper_pins_structure(self)
+      ├── def test_recommend_servo_pins_structure(self)
+      └── def test_group_recommendations_use_unique_pins(self)
+   🧱 class TestUseCaseNotes
+      ├── def test_adc_notes_mention_wifi(self)
+      ├── def test_i2c_notes_mention_defaults(self)
+      └── def test_unknown_use_case_returns_empty(self)
+   🧱 class TestPinGroupsConstant
+      ├── def test_all_groups_have_required_fields(self)
+      ├── def test_pins_and_capabilities_match_length(self)
+      └── def test_expected_groups_exist(self)
+   🧱 class TestServiceReadOperations
+      ├── def test_get_all_pins_returns_dict(self)
+      ├── def test_get_pin_info_returns_info_or_none(self)
+      ├── def test_capability_string_returns_string(self)
+      └── def test_generate_pinout_diagram_returns_string(self)
+   🧱 class TestServiceIntegration
+      ├── def test_recommend_then_assign_workflow(self)
+      └── def test_validate_is_alias_for_detect_conflicts(self)
+
+📄 tests/test_protocol.py
+   ⚙️  def test_encode_decode_roundtrip_single_frame()
+   ⚙️  def test_extract_multiple_frames_with_noise_and_partial()
+   ⚙️  def test_bad_checksum_resync()
+   ⚙️  def test_crc16_ccitt_known_values()
+   ⚙️  def test_frame_format_has_2_byte_crc()
+   ⚙️  def test_empty_payload_frame()
+
+📄 tests/test_protocol_to_telemetry_integration.py
+   ⚙️  def _build_sectioned_payload(self, ts_ms, seq)
+
+📄 tests/test_recording_event_bus.py
+   ⚙️  def _import_bus_and_recording()
+   ⚙️  def test_recording_event_bus_passthrough_and_logs(self, tmp_path)
+   ⚙️  def handler(self, data)
+
+📄 tests/test_reliable_commander.py
+   ⚙️  def _import_reliable_commander()
+
+📄 tests/test_reliable_commander_stats.py
+   ⚙️  def _import_commander()
+   ⚙️  def on_event(self, evt)
+
+📄 tests/test_session_replay.py
+   ⚙️  def _import_replay()
+   ⚙️  def test_session_replay_to_dataframe(self, tmp_path)
+
+📄 tests/test_telemetry_binary_parser.py
+   ⚙️  def build_sectioned_packet(self, ts_ms, seq, sections, ver)
+   ⚙️  def test_bin_telem_imu_v1_parses()
+   ⚙️  def test_bin_telem_ultrasonic_v1_parses()
+   ⚙️  def test_bin_telem_multiple_sections()
+   ⚙️  def test_bin_telem_unknown_section_is_ignored()
+   ⚙️  def test_bin_telem_short_header_graceful()
+
+📄 tests/transport_mqtt/test_discovery.py
+   🧱 class MockMessage
+      └── def __init__(self, topic, payload)
+   🧱 class TestNodeDiscovery
+      ├── def test_init(self)
+      ├── def test_on_node_announce_callback(self)
+      ├── def test_on_message_parses_response(self)
+      ├── def test_on_message_updates_existing_node(self)
+      ├── def test_get_known_nodes(self)
+      ├── def test_get_node(self)
+      ├── def test_on_message_handles_invalid_json(self)
+      └── def test_on_message_handles_missing_node_id(self)
+   🧱 class TestNodeInfo
+      ├── def test_from_discovery_response(self)
+      └── def test_from_discovery_response_minimal(self)
+
+📄 tests/transport_mqtt/test_failover.py
+   🧱 class TestBrokerConfig
+      ├── def test_defaults(self)
+      └── def test_custom_values(self)
+   🧱 class TestBrokerFailover
+      ├── def test_init_primary_only(self)
+      ├── def test_init_with_fallback(self)
+      ├── def test_notify_connected(self)
+      ├── def test_notify_disconnected(self)
+      ├── def test_notify_connection_failed(self)
+      └── def test_state_change_callback(self)
+
+📄 tests/transport_mqtt/test_node_manager.py
+   🧱 class TestNodeManager
+      ├── def test_init(self)
+      ├── def test_init_with_failover(self)
+      ├── def test_add_node(self)
+      ├── def test_add_node_duplicate(self)
+      ├── def test_get_node(self)
+      ├── def test_get_online_offline_nodes(self)
+      └── def test_health_check_detects_offline(self)
+   🧱 class TestNodeProxy
+      ├── def test_init(self)
+      ├── def test_set_info(self)
+      └── def test_set_video_url(self)
+
+📄 tests/transport_mqtt/test_transport.py
+   🧱 class TestMQTTTransport
+      ├── def test_init(self)
+      ├── def test_init_with_auth(self)
+      └── def test_set_frame_handler(self)
+   🧱 class TestTopicHelpers
+      ├── def test_get_cmd_topic(self)
+      ├── def test_get_ack_topic(self)
+      └── def test_get_telemetry_topic(self)
+
+================================================================================
+📊 STATISTICS
+================================================================================
+Total Classes:    300
+Total Functions:  590
+Total Methods:    956
+================================================================================

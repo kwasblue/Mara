@@ -2,7 +2,7 @@
 // Top-level runtime orchestrator for ESP32 MCU Host
 //
 // Usage:
-//   static mcu::Runtime runtime;
+//   static mara::Runtime runtime;
 //   void setup() { runtime.setup(); }
 //   void loop()  { runtime.loop(); }
 //
@@ -20,7 +20,7 @@
 #include "core/LoopRates.h"
 #include "setup/SetupModules.h"
 
-namespace mcu {
+namespace mara {
 
 /// Runtime configuration
 struct RuntimeConfig {
@@ -86,4 +86,4 @@ private:
     void runMainLoop(uint32_t now_ms);
 };
 
-} // namespace mcu
+} // namespace mara

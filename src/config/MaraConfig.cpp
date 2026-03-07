@@ -1,24 +1,24 @@
-// src/config/RobotConfig.cpp
+// src/config/MaraConfig.cpp
 // Unified robot configuration implementation
 
-#include "config/RobotConfig.h"
+#include "config/MaraConfig.h"
 #include <ArduinoJson.h>
 #include <cstring>
 
 namespace config {
 
 // Global config instance
-static RobotConfig g_robotConfig;
+static MaraConfig g_robotConfig;
 
-RobotConfig& getRobotConfig() {
+MaraConfig& getMaraConfig() {
     return g_robotConfig;
 }
 
-void resetRobotConfig() {
-    g_robotConfig = RobotConfig::defaults();
+void resetMaraConfig() {
+    g_robotConfig = MaraConfig::defaults();
 }
 
-bool RobotConfig::applyOverrides(const char* json) {
+bool MaraConfig::applyOverrides(const char* json) {
     if (!json || !*json) return false;
 
     JsonDocument doc;
@@ -108,7 +108,7 @@ bool RobotConfig::applyOverrides(const char* json) {
     return changed;
 }
 
-int RobotConfig::toJson(char* buffer, size_t bufferSize) const {
+int MaraConfig::toJson(char* buffer, size_t bufferSize) const {
     JsonDocument doc;
 
     // Safety

@@ -4,7 +4,7 @@
 #include "motor/MotionController.h"
 #include "command/ModeManager.h"
 
-namespace mcu {
+namespace mara {
 
 // Encoder / PID config for DC motor 0
 constexpr float ENCODER0_TICKS_PER_REV = 1632.67f;
@@ -34,4 +34,4 @@ void runControlLoop(ServiceContext& ctx, uint32_t now_ms, float dt) {
     }
 }
 
-} // namespace mcu
+} // namespace mara

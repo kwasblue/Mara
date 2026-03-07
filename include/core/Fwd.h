@@ -7,7 +7,7 @@
 #pragma once
 
 // Core infrastructure
-namespace mcu {
+namespace mara {
     class IClock;
     class SystemClock;
     class IntentBuffer;

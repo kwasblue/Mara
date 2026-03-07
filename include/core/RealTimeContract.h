@@ -113,7 +113,7 @@
 // Jitter warning threshold in microseconds
 #define RT_JITTER_WARN_US 500
 
-namespace mcu {
+namespace mara {
 
 /**
  * Real-time timing statistics for control task monitoring.
@@ -153,7 +153,7 @@ struct RtTimingStats {
     }
 };
 
-} // namespace mcu
+} // namespace mara
 
 // =============================================================================
 // Function annotations for documentation

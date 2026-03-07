@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace mcu {
+namespace mara {
 
 struct ServiceContext;
 
@@ -42,4 +42,4 @@ ControlTaskStats getControlTaskStats();
 /// Reset control task statistics
 void resetControlTaskStats();
 
-} // namespace mcu
+} // namespace mara

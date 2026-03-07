@@ -26,8 +26,8 @@ struct CommandContext {
     // Core dependencies
     EventBus& bus;
     ModeManager& mode;
-    mcu::IClock* clock = nullptr;      // Time abstraction (optional, falls back to millis())
-    mcu::IntentBuffer* intents = nullptr;  // Intent buffer for command-to-actuator separation
+    mara::IClock* clock = nullptr;      // Time abstraction (optional, falls back to millis())
+    mara::IntentBuffer* intents = nullptr;  // Intent buffer for command-to-actuator separation
 
     // ACK cache for duplicate detection
     static constexpr int kAckCacheSize = 8;
@@ -41,7 +41,7 @@ struct CommandContext {
     int ackCacheWrite = 0;
 
     CommandContext(EventBus& b, ModeManager& m) : bus(b), mode(m) {}
-    CommandContext(EventBus& b, ModeManager& m, mcu::IClock* clk)
+    CommandContext(EventBus& b, ModeManager& m, mara::IClock* clk)
         : bus(b), mode(m), clock(clk) {}
 
     // -------------------------------------------------------------------------
@@ -51,7 +51,7 @@ struct CommandContext {
     /// Get current time in milliseconds (uses injected clock or falls back to system clock)
     uint32_t now_ms() const {
         if (clock) return clock->millis();
-        return mcu::getSystemClock().millis();
+        return mara::getSystemClock().millis();
     }
 
     // -------------------------------------------------------------------------
@@ -94,7 +94,7 @@ struct CommandContext {
     // -------------------------------------------------------------------------
 
     bool requireIdle(const char* cmdName) {
-        if (mode.mode() == RobotMode::IDLE) {
+        if (mode.mode() == MaraMode::IDLE) {
             return true;
         }
         sendError(cmdName, "not_idle");

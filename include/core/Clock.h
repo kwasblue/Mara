@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-namespace mcu {
+namespace mara {
 
 /**
  * Clock interface for time abstraction.
@@ -69,4 +69,4 @@ private:
 /// Get the global system clock instance (for cases where DI isn't practical)
 SystemClock& getSystemClock();
 
-} // namespace mcu
+} // namespace mara

@@ -5,14 +5,14 @@
 #include <Arduino.h>
 #include <cmath>
 
-const char* robotModeToString(RobotMode m) {
+const char* maraModeToString(MaraMode m) {
     switch (m) {
-        case RobotMode::BOOT:         return "BOOT";
-        case RobotMode::DISCONNECTED: return "DISCONNECTED";
-        case RobotMode::IDLE:         return "IDLE";
-        case RobotMode::ARMED:        return "ARMED";
-        case RobotMode::ACTIVE:       return "ACTIVE";
-        case RobotMode::ESTOPPED:     return "ESTOPPED";
+        case MaraMode::BOOT:         return "BOOT";
+        case MaraMode::DISCONNECTED: return "DISCONNECTED";
+        case MaraMode::IDLE:         return "IDLE";
+        case MaraMode::ARMED:        return "ARMED";
+        case MaraMode::ACTIVE:       return "ACTIVE";
+        case MaraMode::ESTOPPED:     return "ESTOPPED";
         default:                      return "UNKNOWN";
     }
 }
@@ -39,7 +39,7 @@ void ModeManager::begin() {
         }
     }
 
-    mode_ = RobotMode::DISCONNECTED;
+    mode_ = MaraMode::DISCONNECTED;
 }
 
 void ModeManager::update(uint32_t now_ms) {
@@ -52,15 +52,15 @@ void ModeManager::update(uint32_t now_ms) {
     if (hostEverSeen_ && isConnected() && !isEstopped()) {
         uint32_t dt = now_ms - lastHostHeartbeat_;
         if (dt > cfg_.host_timeout_ms) {
-            mcu::CriticalSection lock(lock_);
+            mara::CriticalSection lock(lock_);
             triggerStop();
 
-            if (mode_ == RobotMode::ACTIVE) {
-                mode_ = RobotMode::ARMED;     // fall back from ACTIVE
-            } else if (mode_ == RobotMode::ARMED) {
-                mode_ = RobotMode::ARMED;     // stay ARMED (don't disarm)
+            if (mode_ == MaraMode::ACTIVE) {
+                mode_ = MaraMode::ARMED;     // fall back from ACTIVE
+            } else if (mode_ == MaraMode::ARMED) {
+                mode_ = MaraMode::ARMED;     // stay ARMED (don't disarm)
             } else {
-                mode_ = RobotMode::IDLE;
+                mode_ = MaraMode::IDLE;
             }
 
             lastHostHeartbeat_ = now_ms;      // prevent retrigger spam
@@ -69,12 +69,12 @@ void ModeManager::update(uint32_t now_ms) {
 
     // Motion timeout (only in ACTIVE and only if robot was actually moving)
     // This prevents timeout spam during testing when no motion is commanded
-    if (mode_ == RobotMode::ACTIVE && lastMotionCmd_ > 0 && wasMoving_) {
+    if (mode_ == MaraMode::ACTIVE && lastMotionCmd_ > 0 && wasMoving_) {
         uint32_t dtm = now_ms - lastMotionCmd_;
         if (dtm > cfg_.motion_timeout_ms) {
-            mcu::CriticalSection lock(lock_);
+            mara::CriticalSection lock(lock_);
             triggerStop();
-            mode_ = RobotMode::ARMED;
+            mode_ = MaraMode::ARMED;
             wasMoving_ = false;
 
             // Prevent re-triggering every loop iteration
@@ -83,8 +83,8 @@ void ModeManager::update(uint32_t now_ms) {
     }
     if (mode_ != lastLoggedMode_) {
         Serial.printf("[MODE] %s -> %s  hostAge=%lu  motionAge=%lu\n",
-            robotModeToString(lastLoggedMode_),
-            robotModeToString(mode_),
+            maraModeToString(lastLoggedMode_),
+            maraModeToString(mode_),
             (unsigned long)hostAgeMs(now_ms),
             (unsigned long)motionAgeMs(now_ms)
         );
@@ -118,8 +118,8 @@ void ModeManager::onHostHeartbeat(uint32_t now_ms) {
         hostEverSeen_ = true;
     }
 
-    if (mode_ == RobotMode::DISCONNECTED) {
-        mode_ = RobotMode::IDLE;
+    if (mode_ == MaraMode::DISCONNECTED) {
+        mode_ = MaraMode::IDLE;
     }
 }
 
@@ -132,67 +132,67 @@ void ModeManager::onMotionCommand(uint32_t now_ms, float vx, float omega) {
     }
 }
 
-bool ModeManager::canTransition(RobotMode from, RobotMode to) {
+bool ModeManager::canTransition(MaraMode from, MaraMode to) {
     switch (from) {
-        case RobotMode::BOOT:
-            return to == RobotMode::DISCONNECTED;
-        case RobotMode::DISCONNECTED:
-            return to == RobotMode::IDLE || to == RobotMode::ESTOPPED;
-        case RobotMode::IDLE:
-            return to == RobotMode::ARMED || to == RobotMode::DISCONNECTED || to == RobotMode::ESTOPPED;
-        case RobotMode::ARMED:
-            return to == RobotMode::IDLE || to == RobotMode::ACTIVE || to == RobotMode::DISCONNECTED || to == RobotMode::ESTOPPED;
-        case RobotMode::ACTIVE:
-            return to == RobotMode::ARMED || to == RobotMode::DISCONNECTED || to == RobotMode::ESTOPPED;
-        case RobotMode::ESTOPPED:
-            return to == RobotMode::IDLE;
+        case MaraMode::BOOT:
+            return to == MaraMode::DISCONNECTED;
+        case MaraMode::DISCONNECTED:
+            return to == MaraMode::IDLE || to == MaraMode::ESTOPPED;
+        case MaraMode::IDLE:
+            return to == MaraMode::ARMED || to == MaraMode::DISCONNECTED || to == MaraMode::ESTOPPED;
+        case MaraMode::ARMED:
+            return to == MaraMode::IDLE || to == MaraMode::ACTIVE || to == MaraMode::DISCONNECTED || to == MaraMode::ESTOPPED;
+        case MaraMode::ACTIVE:
+            return to == MaraMode::ARMED || to == MaraMode::DISCONNECTED || to == MaraMode::ESTOPPED;
+        case MaraMode::ESTOPPED:
+            return to == MaraMode::IDLE;
         default:
             return false;
     }
 }
 
 void ModeManager::arm() {
-    mcu::CriticalSection lock(lock_);
-    if (mode_ == RobotMode::IDLE) {
-        mode_ = RobotMode::ARMED;
+    mara::CriticalSection lock(lock_);
+    if (mode_ == MaraMode::IDLE) {
+        mode_ = MaraMode::ARMED;
     }
 }
 
 void ModeManager::activate() {
-    mcu::CriticalSection lock(lock_);
-    if (mode_ == RobotMode::ARMED) {
+    mara::CriticalSection lock(lock_);
+    if (mode_ == MaraMode::ARMED) {
         lastMotionCmd_ = now_ms();
-        mode_ = RobotMode::ACTIVE;
+        mode_ = MaraMode::ACTIVE;
     }
 }
 
 void ModeManager::deactivate() {
-    mcu::CriticalSection lock(lock_);
-    if (mode_ == RobotMode::ACTIVE) {
+    mara::CriticalSection lock(lock_);
+    if (mode_ == MaraMode::ACTIVE) {
         triggerStop();
-        mode_ = RobotMode::ARMED;
+        mode_ = MaraMode::ARMED;
         lastMotionCmd_ = now_ms();
     }
 }
 
 void ModeManager::disarm() {
-    mcu::CriticalSection lock(lock_);
-    if (mode_ == RobotMode::ARMED || mode_ == RobotMode::ACTIVE) {
+    mara::CriticalSection lock(lock_);
+    if (mode_ == MaraMode::ARMED || mode_ == MaraMode::ACTIVE) {
         triggerStop();
-        mode_ = RobotMode::IDLE;
+        mode_ = MaraMode::IDLE;
     }
 }
 
 void ModeManager::estop() {
-    mcu::CriticalSection lock(lock_);
+    mara::CriticalSection lock(lock_);
     // Emergency stop: trigger both normal and emergency callbacks
     triggerStop();
     triggerEmergencyStop();  // Direct motor disable - doesn't rely on motion controller
-    mode_ = RobotMode::ESTOPPED;
+    mode_ = MaraMode::ESTOPPED;
 }
 
 bool ModeManager::clearEstop() {
-    mcu::CriticalSection lock(lock_);
+    mara::CriticalSection lock(lock_);
     if (!isEstopped()) {
         return true;
     }
@@ -204,7 +204,7 @@ bool ModeManager::clearEstop() {
         }
     }
 
-    mode_ = RobotMode::IDLE;
+    mode_ = MaraMode::IDLE;
     return true;
 }
 

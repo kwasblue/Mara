@@ -28,8 +28,8 @@ static constexpr bool USE_FREERTOS_CONTROL = true;
 // -----------------------------------------------------------------------------
 // Global Storage and Context
 // -----------------------------------------------------------------------------
-static mcu::ServiceStorage g_storage;
-static mcu::ServiceContext g_ctx;
+static mara::ServiceStorage g_storage;
+static mara::ServiceContext g_ctx;
 
 // Critical failure flag - if true, loop() does nothing
 static bool g_criticalFailure = false;
@@ -67,6 +67,9 @@ void setup() {
     // =========================================================================
     // Phase 1: Initialize storage components that need runtime parameters
     // =========================================================================
+    // Wire HAL to managers (GPIO, PWM, I2C, etc.) - must be called first
+    g_storage.initHal();
+
     g_storage.initTransports(Serial, 115200, 3333,
                               MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_ROBOT_ID);
     g_storage.initRouter();
@@ -80,18 +83,18 @@ void setup() {
     // =========================================================================
     // Phase 2: Run setup modules from manifest
     // =========================================================================
-    mcu::ISetupModule** manifest = getSetupManifest();
+    mara::ISetupModule** manifest = getSetupManifest();
     size_t manifestSize = getSetupManifestSize();
 
     for (size_t i = 0; i < manifestSize; ++i) {
-        mcu::ISetupModule* mod = manifest[i];
+        mara::ISetupModule* mod = manifest[i];
         if (!mod) continue;
 
         auto result = mod->setup(g_ctx);
         if (result.isError()) {
             Serial.printf("[%s] FAILED: %s\n",
                           mod->name(),
-                          mcu::errorCodeToString(result.errorCode()));
+                          mara::errorCodeToString(result.errorCode()));
 
             // Halt on critical module failure
             if (mod->isCritical()) {
@@ -118,13 +121,13 @@ void setup() {
     // Phase 3: Start FreeRTOS control task (if enabled)
     // =========================================================================
     if (USE_FREERTOS_CONTROL) {
-        mcu::ControlTaskConfig taskCfg;
+        mara::ControlTaskConfig taskCfg;
         taskCfg.rate_hz = 100;      // 100Hz control loop
         taskCfg.stack_size = 4096;
         taskCfg.priority = 5;       // High priority
         taskCfg.core = 1;           // Core 1 (Core 0 handles WiFi)
 
-        if (mcu::startControlTask(g_ctx, taskCfg)) {
+        if (mara::startControlTask(g_ctx, taskCfg)) {
             Serial.println("[MCU] FreeRTOS control task started");
         } else {
             Serial.println("[MCU] WARNING: FreeRTOS control task failed to start, using cooperative scheduling");
@@ -166,7 +169,7 @@ void loop() {
     uint32_t now_ms = millis();
 
     // Get timing reference
-    mcu::LoopTiming& timing = mcu::getLoopTiming();
+    mara::LoopTiming& timing = mara::getLoopTiming();
 
     // OTA
     ArduinoOTA.handle();
@@ -177,21 +180,21 @@ void loop() {
     // Rate-limited safety loop
     if (g_ctx.safetyScheduler && g_ctx.safetyScheduler->tick(now_ms)) {
         uint32_t t0 = micros();
-        mcu::runSafetyLoop(g_ctx, now_ms);
+        mara::runSafetyLoop(g_ctx, now_ms);
         timing.safety_us = micros() - t0;
     }
 
     // Rate-limited control loop (skip if FreeRTOS task is handling it)
-    if (!mcu::isControlTaskRunning()) {
+    if (!mara::isControlTaskRunning()) {
         if (g_ctx.controlScheduler && g_ctx.controlScheduler->tick(now_ms)) {
             uint32_t t0 = micros();
             float ctrl_dt = getLoopRates().ctrl_period_ms() / 1000.0f;
-            mcu::runControlLoop(g_ctx, now_ms, ctrl_dt);
+            mara::runControlLoop(g_ctx, now_ms, ctrl_dt);
             timing.control_us = micros() - t0;
         }
     } else {
         // Get timing from FreeRTOS task
-        mcu::ControlTaskStats taskStats = mcu::getControlTaskStats();
+        mara::ControlTaskStats taskStats = mara::getControlTaskStats();
         timing.control_us = taskStats.last_exec_us;
         if (taskStats.last_exec_us > timing.control_peak_us) {
             timing.control_peak_us = taskStats.last_exec_us;

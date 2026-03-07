@@ -54,7 +54,7 @@ private:
         mode_.onHostHeartbeat(ctx.now_ms());
 
         JsonDocument resp;
-        resp["state"] = robotModeToString(mode_.mode());
+        resp["state"] = maraModeToString(mode_.mode());
         ctx.sendAck("CMD_HEARTBEAT", true, resp);
     }
 
@@ -63,8 +63,8 @@ private:
         mode_.arm();
 
         JsonDocument resp;
-        resp["state"] = robotModeToString(mode_.mode());
-        bool ok = (mode_.mode() == RobotMode::ARMED);
+        resp["state"] = maraModeToString(mode_.mode());
+        bool ok = (mode_.mode() == MaraMode::ARMED);
         if (!ok) {
             resp["error"] = "invalid_transition";
         }
@@ -76,8 +76,8 @@ private:
         mode_.disarm();
 
         JsonDocument resp;
-        resp["state"] = robotModeToString(mode_.mode());
-        bool ok = (mode_.mode() == RobotMode::IDLE);
+        resp["state"] = maraModeToString(mode_.mode());
+        bool ok = (mode_.mode() == MaraMode::IDLE);
         if (!ok) {
             resp["error"] = "invalid_transition";
         }
@@ -89,8 +89,8 @@ private:
         mode_.activate();
 
         JsonDocument resp;
-        resp["state"] = robotModeToString(mode_.mode());
-        bool ok = (mode_.mode() == RobotMode::ACTIVE);
+        resp["state"] = maraModeToString(mode_.mode());
+        bool ok = (mode_.mode() == MaraMode::ACTIVE);
         if (!ok) {
             resp["error"] = "invalid_transition";
         }
@@ -102,7 +102,7 @@ private:
         mode_.deactivate();
 
         JsonDocument resp;
-        resp["state"] = robotModeToString(mode_.mode());
+        resp["state"] = maraModeToString(mode_.mode());
         ctx.sendAck("CMD_DEACTIVATE", true, resp);
     }
 
@@ -111,7 +111,7 @@ private:
         mode_.estop();
 
         JsonDocument resp;
-        resp["state"] = robotModeToString(mode_.mode());
+        resp["state"] = maraModeToString(mode_.mode());
         ctx.sendAck("CMD_ESTOP", true, resp);
     }
 
@@ -120,7 +120,7 @@ private:
         bool cleared = mode_.clearEstop();
 
         JsonDocument resp;
-        resp["state"] = robotModeToString(mode_.mode());
+        resp["state"] = maraModeToString(mode_.mode());
         if (!cleared) {
             resp["error"] = "cannot_clear";
         }
@@ -159,7 +159,7 @@ private:
 
         JsonDocument resp;
         resp["mode"] = modeStr;
-        resp["state"] = robotModeToString(mode_.mode());
+        resp["state"] = maraModeToString(mode_.mode());
         if (!ok && error) {
             resp["error"] = error;
         }

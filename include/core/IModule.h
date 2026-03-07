@@ -3,7 +3,7 @@
 #include "core/Event.h"
 
 // Forward declaration
-namespace mcu {
+namespace mara {
 struct ServiceContext;
 }
 
@@ -59,7 +59,7 @@ public:
      * Called after all modules are registered, before setup().
      * Self-registered modules should override this to get dependencies.
      */
-    virtual void init(mcu::ServiceContext& ctx) { (void)ctx; }
+    virtual void init(mara::ServiceContext& ctx) { (void)ctx; }
 
     /**
      * One-time setup after init(). Called before loop() starts.

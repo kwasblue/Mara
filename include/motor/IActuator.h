@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-namespace mcu {
+namespace mara {
 
 struct ServiceContext;
 
@@ -53,4 +53,4 @@ protected:
     bool online_ = false;
 };
 
-} // namespace mcu
+} // namespace mara

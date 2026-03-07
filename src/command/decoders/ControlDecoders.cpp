@@ -5,7 +5,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace mcu {
+namespace mara {
 namespace cmd {
 
 // =============================================================================
@@ -119,4 +119,4 @@ SignalDefResult decodeSignalDef(JsonVariantConst payload) {
 }
 
 } // namespace cmd
-} // namespace mcu
+} // namespace mara

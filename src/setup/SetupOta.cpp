@@ -6,11 +6,11 @@
 
 namespace {
 
-class SetupOtaModule : public mcu::ISetupModule {
+class SetupOtaModule : public mara::ISetupModule {
 public:
     const char* name() const override { return "OTA"; }
 
-    mcu::Result<void> setup(mcu::ServiceContext& ctx) override {
+    mara::Result<void> setup(mara::ServiceContext& ctx) override {
         (void)ctx; // OTA doesn't need services
 
         ArduinoOTA.setHostname("ESP32-bot");
@@ -38,7 +38,7 @@ public:
         ArduinoOTA.begin();
         Serial.println("[OTA] Ready. You can now upload OTA as 'ESP32-bot.local'");
 
-        return mcu::Result<void>::ok();
+        return mara::Result<void>::ok();
     }
 };
 
@@ -46,6 +46,6 @@ SetupOtaModule g_setupOta;
 
 } // anonymous namespace
 
-mcu::ISetupModule* getSetupOtaModule() {
+mara::ISetupModule* getSetupOtaModule() {
     return &g_setupOta;
 }

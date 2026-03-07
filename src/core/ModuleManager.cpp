@@ -61,7 +61,7 @@ void ModuleManager::finalize() {
     }
 }
 
-void ModuleManager::initAll(mcu::ServiceContext& ctx) {
+void ModuleManager::initAll(mara::ServiceContext& ctx) {
     if (!finalized_) {
         DBG_PRINTLN("[MMAN] Warning: initAll() called before finalize()");
         finalize();

@@ -3,7 +3,7 @@
 //
 // Usage:
 //   {
-//       mcu::CriticalSection lock(lock_);
+//       mara::CriticalSection lock(lock_);
 //       // ... protected code ...
 //   }  // Automatically exits critical section
 //
@@ -28,7 +28,7 @@
 #include <freertos/portmacro.h>
 #endif
 
-namespace mcu {
+namespace mara {
 
 // =============================================================================
 // Spinlock Type (platform-specific)
@@ -41,7 +41,7 @@ using SpinlockType = portMUX_TYPE;
 // Stub for native testing - no actual locking
 struct SpinlockStub {};
 using SpinlockType = SpinlockStub;
-#define MCU_SPINLOCK_INIT ::mcu::SpinlockStub{}
+#define MCU_SPINLOCK_INIT ::mara::SpinlockStub{}
 #endif
 
 // =============================================================================
@@ -127,4 +127,4 @@ private:
 using CriticalSectionISR = CriticalSection;
 #endif
 
-} // namespace mcu
+} // namespace mara

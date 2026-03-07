@@ -7,7 +7,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace mcu {
+namespace mara {
 
 ActuatorRegistry& ActuatorRegistry::instance() {
     static ActuatorRegistry s_instance;
@@ -103,4 +103,4 @@ const IActuator* ActuatorRegistry::find(const char* name) const {
     return nullptr;
 }
 
-} // namespace mcu
+} // namespace mara

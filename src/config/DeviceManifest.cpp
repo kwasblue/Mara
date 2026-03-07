@@ -11,7 +11,7 @@
 #include "motor/ActuatorRegistry.h"
 #include "motor/IActuator.h"
 
-namespace mcu {
+namespace mara {
 
 DeviceManifest buildManifest(const ServiceContext& ctx) {
     DeviceManifest m;
@@ -105,4 +105,4 @@ const char* capBitToName(uint32_t bit) {
     }
 }
 
-} // namespace mcu
+} // namespace mara

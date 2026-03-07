@@ -12,7 +12,7 @@
 #include "config/FeatureFlags.h"
 #include "core/LoopRates.h"
 
-namespace mcu {
+namespace mara {
 
 // Forward declarations
 struct ServiceContext;
@@ -54,6 +54,10 @@ namespace DeviceCap {
     constexpr uint32_t SAFETY            = 0x02000000;
     constexpr uint32_t AUDIO             = 0x04000000;
     constexpr uint32_t OTA               = 0x08000000;
+
+    // Hardware I/O capabilities (bits 28-31)
+    constexpr uint32_t GPIO              = 0x10000000;
+    constexpr uint32_t PWM               = 0x20000000;
 }
 
 /// Device manifest containing all capability and configuration info
@@ -169,6 +173,14 @@ inline uint32_t buildDeviceCaps() {
     caps |= DeviceCap::AUDIO;
 #endif
 
+    // Hardware I/O capabilities
+#if HAS_GPIO_MANAGER
+    caps |= DeviceCap::GPIO;
+#endif
+#if HAS_PWM_MANAGER
+    caps |= DeviceCap::PWM;
+#endif
+
     return caps;
 }
 
@@ -178,4 +190,4 @@ DeviceManifest buildManifest(const ServiceContext& ctx);
 /// Convert capability bit to name (for JSON output)
 const char* capBitToName(uint32_t bit);
 
-} // namespace mcu
+} // namespace mara

@@ -8,7 +8,7 @@
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 
-namespace mcu {
+namespace mara {
 
 bool Runtime::setup(const RuntimeConfig& config) {
     config_ = config;
@@ -38,8 +38,13 @@ bool Runtime::setup(const RuntimeConfig& config) {
     }
 
     // Phase 4: Final wiring
-    if (ctx_.host && ctx_.control) {
-        ctx_.host->addModule(ctx_.control);
+    if (ctx_.host) {
+        if (ctx_.control) {
+            ctx_.host->addModule(ctx_.control);
+        }
+        if (ctx_.heartbeat) {
+            ctx_.host->addModule(ctx_.heartbeat);
+        }
     }
 
     updateLoopSchedulers();
@@ -114,7 +119,7 @@ bool Runtime::startControlTask() {
     taskCfg.priority = config_.control_priority;
     taskCfg.core = config_.control_core;
 
-    controlTaskStarted_ = mcu::startControlTask(ctx_, taskCfg);
+    controlTaskStarted_ = mara::startControlTask(ctx_, taskCfg);
     if (controlTaskStarted_) {
         Serial.println("[Runtime] FreeRTOS control task started");
     }
@@ -212,4 +217,4 @@ void Runtime::runMainLoop(uint32_t now_ms) {
     delay(1);
 }
 
-} // namespace mcu
+} // namespace mara

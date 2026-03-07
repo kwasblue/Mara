@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <ArduinoJson.h>
 
-namespace mcu {
+namespace mara {
 
 class ISensor;
 
@@ -77,4 +77,4 @@ private:
     bool initialized_ = false;
 };
 
-} // namespace mcu
+} // namespace mara

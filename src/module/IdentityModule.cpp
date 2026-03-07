@@ -25,7 +25,7 @@ void IdentityModule::onEventStatic(const Event& evt) {
 }
 
 static void publishIdentity(EventBus& bus) {
-    using namespace mcu;
+    using namespace mara;
 
     // Build unified capability mask
     uint32_t caps = buildDeviceCaps();
@@ -39,25 +39,26 @@ static void publishIdentity(EventBus& bus) {
     doc["name"]           = Version::NAME;
     doc["capabilities"]   = caps;
 
-    // Feature array for human-readable capability list
+    // Feature array - use direct string literals (matching IdentityHandler pattern)
     JsonArray features = doc["features"].to<JsonArray>();
 
-    // Iterate through all capability bits and add enabled ones
-    static constexpr uint32_t CAP_BITS[] = {
-        DeviceCap::BINARY_PROTOCOL, DeviceCap::INTENT_BUFFERING,
-        DeviceCap::STATE_SPACE_CTRL, DeviceCap::OBSERVERS,
-        DeviceCap::UART, DeviceCap::WIFI, DeviceCap::BLE, DeviceCap::MQTT,
-        DeviceCap::DC_MOTOR, DeviceCap::SERVO, DeviceCap::STEPPER, DeviceCap::MOTION_CTRL,
-        DeviceCap::ENCODER, DeviceCap::IMU, DeviceCap::LIDAR, DeviceCap::ULTRASONIC,
-        DeviceCap::SIGNAL_BUS, DeviceCap::CONTROL_KERNEL, DeviceCap::OBSERVER,
-        DeviceCap::TELEMETRY, DeviceCap::SAFETY, DeviceCap::AUDIO
-    };
-
-    for (uint32_t bit : CAP_BITS) {
-        if (caps & bit) {
-            features.add(capBitToName(bit));
-        }
-    }
+    if (caps & DeviceCap::UART) features.add("uart");
+    if (caps & DeviceCap::WIFI) features.add("wifi");
+    if (caps & DeviceCap::BLE) features.add("ble");
+    if (caps & DeviceCap::MQTT) features.add("mqtt");
+    if (caps & DeviceCap::DC_MOTOR) features.add("dc_motor");
+    if (caps & DeviceCap::SERVO) features.add("servo");
+    if (caps & DeviceCap::STEPPER) features.add("stepper");
+    if (caps & DeviceCap::MOTION_CTRL) features.add("motion_ctrl");
+    if (caps & DeviceCap::ENCODER) features.add("encoder");
+    if (caps & DeviceCap::IMU) features.add("imu");
+    if (caps & DeviceCap::LIDAR) features.add("lidar");
+    if (caps & DeviceCap::ULTRASONIC) features.add("ultrasonic");
+    if (caps & DeviceCap::SIGNAL_BUS) features.add("signal_bus");
+    if (caps & DeviceCap::CONTROL_KERNEL) features.add("control_kernel");
+    if (caps & DeviceCap::TELEMETRY) features.add("telemetry");
+    if (caps & DeviceCap::GPIO) features.add("gpio");
+    if (caps & DeviceCap::PWM) features.add("pwm");
 
     // Add loop rates
     const auto& rates = getLoopRates();

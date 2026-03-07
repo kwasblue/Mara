@@ -7,7 +7,7 @@
 #include "core/IModule.h"
 
 // Forward declaration
-namespace mcu {
+namespace mara {
 struct ServiceContext;
 }
 
@@ -56,7 +56,7 @@ public:
      * Initialize all registered modules with service dependencies.
      * @param ctx ServiceContext with all services
      */
-    void initAll(mcu::ServiceContext& ctx);
+    void initAll(mara::ServiceContext& ctx);
 
     /**
      * Call setup() on all registered modules.

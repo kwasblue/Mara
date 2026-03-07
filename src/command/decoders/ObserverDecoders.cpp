@@ -4,7 +4,7 @@
 #include "command/decoders/ObserverDecoders.h"
 #include "command/decoders/ControlDecoders.h"  // For extractUint16Array
 
-namespace mcu {
+namespace mara {
 namespace cmd {
 
 ObserverConfigResult decodeObserverConfig(JsonVariantConst payload) {
@@ -45,4 +45,4 @@ ObserverConfigResult decodeObserverConfig(JsonVariantConst payload) {
 }
 
 } // namespace cmd
-} // namespace mcu
+} // namespace mara

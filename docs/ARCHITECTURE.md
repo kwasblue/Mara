@@ -653,11 +653,11 @@ ActuatorRegistry::instance().setAvailableCaps(caps);
 #include "sensor/SensorMacros.h"
 #include "config/PinConfig.h"
 
-class TempSensor : public mcu::ISensor {
+class TempSensor : public mara::ISensor {
 public:
     static constexpr const char* NAME = "temp";
     const char* name() const override { return NAME; }
-    uint32_t requiredCaps() const override { return mcu::SensorCap::TEMP; }
+    uint32_t requiredCaps() const override { return mara::SensorCap::TEMP; }
 
     void init() override {
         pinMode(Pins::TEMP_PIN, INPUT);
@@ -682,12 +682,12 @@ Include in `AllSensors.h`:
 #include "motor/IActuator.h"
 #include "motor/ActuatorRegistry.h"
 
-class BrushlessActuator : public mcu::IActuator {
+class BrushlessActuator : public mara::IActuator {
 public:
     static constexpr const char* NAME = "brushless";
     const char* name() const override { return NAME; }
 
-    void init(mcu::ServiceContext& ctx) override {
+    void init(mara::ServiceContext& ctx) override {
         pwm_ = ctx.pwm;
         online_ = (pwm_ != nullptr);
     }
@@ -712,11 +712,11 @@ Include in `AllActuators.h`:
 // include/transport/CanTransport.h
 #include "transport/TransportRegistry.h"
 
-class CanTransport : public mcu::IRegisteredTransport {
+class CanTransport : public mara::IRegisteredTransport {
 public:
     static constexpr const char* NAME = "can";
     const char* name() const override { return NAME; }
-    uint32_t requiredCaps() const override { return mcu::TransportCap::CAN; }
+    uint32_t requiredCaps() const override { return mara::TransportCap::CAN; }
 
     void begin() override { /* init CAN */ }
     void loop() override { /* poll */ }
@@ -999,7 +999,7 @@ Commands use a decode-then-execute pattern for unified JSON/binary handling:
 
 **Typed command structs** (`TypedCommands.h`):
 ```cpp
-namespace mcu::cmd {
+namespace mara::cmd {
     struct SetVelocityCmd {
         float vx = 0.0f;
         float omega = 0.0f;
@@ -1042,7 +1042,7 @@ void handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx) {
 static constexpr bool USE_FREERTOS_CONTROL = true;
 
 // Task configuration
-mcu::ControlTaskConfig taskCfg;
+mara::ControlTaskConfig taskCfg;
 taskCfg.rate_hz = 100;      // 10-1000 Hz supported
 taskCfg.stack_size = 4096;  // 4KB stack
 taskCfg.priority = 5;       // High priority
@@ -1141,7 +1141,7 @@ public:
 };
 
 // Usage in main.cpp - uses central manifest
-mcu::ISetupModule** manifest = getSetupManifest();
+mara::ISetupModule** manifest = getSetupManifest();
 for (size_t i = 0; i < getSetupManifestSize(); ++i) {
     auto result = manifest[i]->setup(g_ctx);
     if (result.isError() && manifest[i]->isCritical()) {
@@ -1156,7 +1156,7 @@ All setup modules are defined in `src/setup/SetupManifest.cpp`:
 
 ```cpp
 // The definitive ordered list of setup modules
-mcu::ISetupModule* g_setupManifest[] = {
+mara::ISetupModule* g_setupManifest[] = {
     nullptr,  // [0] WiFi
     nullptr,  // [1] OTA
     nullptr,  // [2] Safety (CRITICAL)
@@ -1194,7 +1194,7 @@ public:
     virtual ~IModule() = default;
 
     // Two-phase initialization for self-registered modules
-    virtual void init(mcu::ServiceContext& ctx) {}  // Get dependencies
+    virtual void init(mara::ServiceContext& ctx) {}  // Get dependencies
     virtual void setup() {}                          // One-time setup
     virtual void loop(uint32_t now_ms) {}           // Called every tick
     virtual const char* name() const = 0;
@@ -1233,7 +1233,7 @@ class StatusLedModule : public IModule {
 public:
     StatusLedModule() = default;  // Default constructor required
 
-    void init(mcu::ServiceContext& ctx) override {
+    void init(mara::ServiceContext& ctx) override {
         bus_ = ctx.bus;  // Get dependencies from context
     }
 
@@ -1291,7 +1291,7 @@ Modules can self-register their commands, telemetry providers, and event subscri
 ```cpp
 class MyModule : public IModule {
 public:
-    void init(mcu::ServiceContext& ctx) override {
+    void init(mara::ServiceContext& ctx) override {
         // Store dependencies
         bus_ = ctx.bus;
         telemetry_ = ctx.telemetry;

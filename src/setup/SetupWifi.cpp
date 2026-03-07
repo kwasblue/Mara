@@ -22,11 +22,11 @@ namespace {
 const char* AP_SSID = "RobotAP";
 const char* AP_PASS = "robotpass";
 
-class SetupWifiModule : public mcu::ISetupModule {
+class SetupWifiModule : public mara::ISetupModule {
 public:
     const char* name() const override { return "WiFi"; }
 
-    mcu::Result<void> setup(mcu::ServiceContext& ctx) override {
+    mara::Result<void> setup(mara::ServiceContext& ctx) override {
         Serial.println("[WiFi] Starting AP + optional STA...");
 
         WiFi.mode(WIFI_AP_STA);
@@ -73,7 +73,7 @@ public:
             ctx.wifi->begin();
         }
 
-        return mcu::Result<void>::ok();
+        return mara::Result<void>::ok();
     }
 };
 
@@ -82,6 +82,6 @@ SetupWifiModule g_setupWifi;
 } // anonymous namespace
 
 // Global accessor for setup module array
-mcu::ISetupModule* getSetupWifiModule() {
+mara::ISetupModule* getSetupWifiModule() {
     return &g_setupWifi;
 }

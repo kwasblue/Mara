@@ -2,6 +2,7 @@
 #include "core/Debug.h"
 #include "command/BinaryCommands.h"
 #include "config/Version.h"
+#include "config/DeviceManifest.h"
 #include <ArduinoJson.h>
 
 MessageRouter* MessageRouter::s_instance = nullptr;
@@ -192,11 +193,33 @@ void MessageRouter::sendSimple(uint8_t msgType) {
 }
 
 void MessageRouter::sendVersionResponse() {
+    using namespace mara;
+
+    // Build capability mask from compile-time flags
+    uint32_t caps = buildDeviceCaps();
+
     JsonDocument doc;
-    doc["firmware"] = Version::FIRMWARE;
-    doc["protocol"] = Version::PROTOCOL;
-    doc["board"]    = Version::BOARD;
-    doc["name"]     = Version::NAME;
+    doc["firmware"]       = Version::FIRMWARE;
+    doc["protocol"]       = Version::PROTOCOL;
+    doc["schema_version"] = Version::SCHEMA_VERSION;
+    doc["board"]          = Version::BOARD;
+    doc["name"]           = Version::NAME;
+    doc["capabilities"]   = caps;
+
+    // Feature array
+    JsonArray features = doc["features"].to<JsonArray>();
+    if (caps & DeviceCap::UART) features.add("uart");
+    if (caps & DeviceCap::WIFI) features.add("wifi");
+    if (caps & DeviceCap::DC_MOTOR) features.add("dc_motor");
+    if (caps & DeviceCap::SERVO) features.add("servo");
+    if (caps & DeviceCap::STEPPER) features.add("stepper");
+    if (caps & DeviceCap::ENCODER) features.add("encoder");
+    if (caps & DeviceCap::IMU) features.add("imu");
+    if (caps & DeviceCap::TELEMETRY) features.add("telemetry");
+    if (caps & DeviceCap::SIGNAL_BUS) features.add("signal_bus");
+    if (caps & DeviceCap::CONTROL_KERNEL) features.add("control_kernel");
+    if (caps & DeviceCap::GPIO) features.add("gpio");
+    if (caps & DeviceCap::PWM) features.add("pwm");
 
     std::string json;
     serializeJson(doc, json);

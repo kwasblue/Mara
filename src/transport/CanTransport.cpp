@@ -10,7 +10,7 @@
 
 static const char* TAG = "CANTransport";
 
-namespace mcu {
+namespace mara {
 
 CanTransport::CanTransport() {
     // Initialize reassembly buffers
@@ -308,6 +308,6 @@ void CanTransport::handleProtocolFrame(uint8_t srcNode, const uint8_t* data, siz
     }
 }
 
-} // namespace mcu
+} // namespace mara
 
 #endif // HAS_CAN

@@ -3,7 +3,7 @@
 #include "setup/ISetupModule.h"
 #include <cstddef>
 
-namespace mcu {
+namespace mara {
 struct ServiceContext;
 }
 
@@ -18,13 +18,13 @@ struct ServiceContext;
 // =============================================================================
 
 // Individual setup module accessors
-mcu::ISetupModule* getSetupWifiModule();
-mcu::ISetupModule* getSetupOtaModule();
-mcu::ISetupModule* getSetupSafetyModule();
-mcu::ISetupModule* getSetupTransportModule();
-mcu::ISetupModule* getSetupMotorsModule();
-mcu::ISetupModule* getSetupSensorsModule();
-mcu::ISetupModule* getSetupTelemetryModule();
+mara::ISetupModule* getSetupWifiModule();
+mara::ISetupModule* getSetupOtaModule();
+mara::ISetupModule* getSetupSafetyModule();
+mara::ISetupModule* getSetupTransportModule();
+mara::ISetupModule* getSetupMotorsModule();
+mara::ISetupModule* getSetupSensorsModule();
+mara::ISetupModule* getSetupTelemetryModule();
 
 /**
  * Get the complete setup module manifest.
@@ -40,7 +40,7 @@ mcu::ISetupModule* getSetupTelemetryModule();
  * 6. Transport - Router, commands, host (CRITICAL)
  * 7. Telemetry - Telemetry providers
  */
-mcu::ISetupModule** getSetupManifest();
+mara::ISetupModule** getSetupManifest();
 
 /**
  * Get the number of modules in the manifest.

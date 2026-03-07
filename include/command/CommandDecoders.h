@@ -15,7 +15,7 @@
 #include <cmath>
 #include "command/TypedCommands.h"
 
-namespace mcu {
+namespace mara {
 namespace cmd {
 
 // =============================================================================
@@ -214,4 +214,4 @@ inline bool validateArraySize(size_t actual, size_t expected, const char* name, 
 }
 
 } // namespace cmd
-} // namespace mcu
+} // namespace mara

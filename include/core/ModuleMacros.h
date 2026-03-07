@@ -16,7 +16,7 @@
  *   public:
  *       MyModule() = default;  // Must have default constructor
  *
- *       void init(mcu::ServiceContext& ctx) override {
+ *       void init(mara::ServiceContext& ctx) override {
  *           bus_ = ctx.bus;  // Get dependencies from context
  *       }
  *

@@ -1,4 +1,4 @@
-// include/config/RobotConfig.h
+// include/config/MaraConfig.h
 // Unified robot configuration with runtime override support
 //
 // This consolidates all configuration structs into a single hierarchy.
@@ -94,7 +94,7 @@ struct Motion {
 // =============================================================================
 // Unified Robot Configuration
 // =============================================================================
-struct RobotConfig {
+struct MaraConfig {
     Safety safety;
     LoopRates rates;
     ControlTask control_task;
@@ -113,7 +113,7 @@ struct RobotConfig {
     int toJson(char* buffer, size_t bufferSize) const;
 
     /// Get default configuration
-    static RobotConfig defaults() { return RobotConfig{}; }
+    static MaraConfig defaults() { return MaraConfig{}; }
 };
 
 // =============================================================================
@@ -121,9 +121,9 @@ struct RobotConfig {
 // =============================================================================
 
 /// Get the active robot configuration (mutable)
-RobotConfig& getRobotConfig();
+MaraConfig& getMaraConfig();
 
 /// Reset config to defaults
-void resetRobotConfig();
+void resetMaraConfig();
 
 } // namespace config

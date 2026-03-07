@@ -16,7 +16,7 @@ extern "C" {
 // -------------------- Clock stubs --------------------
 #include "core/Clock.h"
 
-namespace mcu {
+namespace mara {
 
 uint32_t SystemClock::millis() const { return __test_millis; }
 uint32_t SystemClock::micros() const { return __test_micros; }
@@ -25,7 +25,7 @@ static SystemClock g_systemClock;
 
 SystemClock& getSystemClock() { return g_systemClock; }
 
-} // namespace mcu
+} // namespace mara
 
 // Include project headers using include/ as the root (PlatformIO adds include/ to the include path)
 #include "command/ModeManager.h"
@@ -34,55 +34,55 @@ SystemClock& getSystemClock() { return g_systemClock; }
 #include "sensor/EncoderManager.h"
 #include "motor/MotionController.h"
 
-// -------------------- robotModeToString --------------------
+// -------------------- maraModeToString --------------------
 // Declared somewhere in your project (ModeManager/State), but implementation lives in MCU build.
 // Provide a native definition so CommandHandler can link.
-const char* robotModeToString(RobotMode mode) {
+const char* maraModeToString(MaraMode mode) {
     switch (mode) {
-        case RobotMode::DISARMED:  return "DISARMED";
-        case RobotMode::ARMED:     return "ARMED";
-        case RobotMode::ACTIVE:    return "ACTIVE";
-        case RobotMode::ESTOP:     return "ESTOP";
+        case MaraMode::DISARMED:  return "DISARMED";
+        case MaraMode::ARMED:     return "ARMED";
+        case MaraMode::ACTIVE:    return "ACTIVE";
+        case MaraMode::ESTOP:     return "ESTOP";
         default:                   return "UNKNOWN";
     }
 }
 
 // -------------------- ModeManager stubs (with working state machine) --------------------
 void ModeManager::begin() {
-    mode_ = RobotMode::IDLE;
+    mode_ = MaraMode::IDLE;
 }
 
 void ModeManager::arm() {
-    if (mode_ == RobotMode::IDLE) {
-        mode_ = RobotMode::ARMED;
+    if (mode_ == MaraMode::IDLE) {
+        mode_ = MaraMode::ARMED;
     }
 }
 
 void ModeManager::disarm() {
-    if (mode_ == RobotMode::ARMED || mode_ == RobotMode::ACTIVE) {
-        mode_ = RobotMode::IDLE;
+    if (mode_ == MaraMode::ARMED || mode_ == MaraMode::ACTIVE) {
+        mode_ = MaraMode::IDLE;
     }
 }
 
 void ModeManager::activate() {
-    if (mode_ == RobotMode::ARMED) {
-        mode_ = RobotMode::ACTIVE;
+    if (mode_ == MaraMode::ARMED) {
+        mode_ = MaraMode::ACTIVE;
     }
 }
 
 void ModeManager::deactivate() {
-    if (mode_ == RobotMode::ACTIVE) {
-        mode_ = RobotMode::ARMED;
+    if (mode_ == MaraMode::ACTIVE) {
+        mode_ = MaraMode::ARMED;
     }
 }
 
 void ModeManager::estop() {
-    mode_ = RobotMode::ESTOPPED;
+    mode_ = MaraMode::ESTOPPED;
 }
 
 bool ModeManager::clearEstop() {
-    if (mode_ == RobotMode::ESTOPPED) {
-        mode_ = RobotMode::IDLE;
+    if (mode_ == MaraMode::ESTOPPED) {
+        mode_ = MaraMode::IDLE;
         return true;
     }
     return false;

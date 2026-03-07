@@ -67,12 +67,12 @@ public:
     /**
      * Set clock for time injection.
      */
-    void setClock(mcu::IClock* clk) { ctx_.clock = clk; }
+    void setClock(mara::IClock* clk) { ctx_.clock = clk; }
 
     /**
      * Set intent buffer for command-to-actuator separation.
      */
-    void setIntentBuffer(mcu::IntentBuffer* ib) { ctx_.intents = ib; }
+    void setIntentBuffer(mara::IntentBuffer* ib) { ctx_.intents = ib; }
 
     /**
      * Set handler registry for explicit wiring (composition root pattern).

@@ -24,7 +24,7 @@
 | Component | Repository | Description |
 |-----------|------------|-------------|
 | **Firmware** | `ESP32 MCU Host` (this repo) | Real-time motor control, sensor fusion, communication |
-| **Host** | [`robot_host`](../../../Host) | Python async client, telemetry, research tools |
+| **Host** | [`mara_host`](../../../Host) | Python async client, telemetry, research tools |
 
 This repository contains the **ESP32 firmware** - a modular, configurable firmware for ESP32-based robot control systems. Supports differential drive robots, sensors (IMU, encoders, LIDAR, ultrasonic), and multiple communication transports (USB Serial, WiFi, Bluetooth, MQTT).
 
@@ -355,7 +355,7 @@ pio test -e native -v
 This firmware is designed to work with the [MARA Host](../../../Host) Python package:
 
 ```python
-from robot_host import Robot
+from mara_host import Robot
 
 async with Robot("/dev/ttyUSB0") as robot:
     await robot.arm()
@@ -365,7 +365,7 @@ async with Robot("/dev/ttyUSB0") as robot:
 
 ### Code Generation
 
-Several headers are auto-generated from `robot_host/tools/platform_schema.py`:
+Several headers are auto-generated from `mara_host/tools/platform_schema.py`:
 
 | Generated Header | Schema Source |
 |-----------------|---------------|
@@ -378,7 +378,7 @@ Several headers are auto-generated from `robot_host/tools/platform_schema.py`:
 
 To regenerate, run from the Host repository:
 ```bash
-cd robot_host/tools
+cd mara_host/tools
 python generate_all.py
 ```
 

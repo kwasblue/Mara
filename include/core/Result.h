@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace mcu {
+namespace mara {
 
 // =============================================================================
 // ERROR MODEL DESIGN
@@ -245,7 +245,7 @@ using VoidResult = Result<void>;
     do { \
         auto _mcu_try_result = (expr); \
         if (_mcu_try_result.isError()) { \
-            return ::mcu::Result<void>::err(_mcu_try_result.errorCode()); \
+            return ::mara::Result<void>::err(_mcu_try_result.errorCode()); \
         } \
     } while(0)
 
@@ -254,7 +254,7 @@ using VoidResult = Result<void>;
 #define MCU_TRY_VAL(var, expr) \
     auto _mcu_try_##var##_result = (expr); \
     if (_mcu_try_##var##_result.isError()) { \
-        return ::mcu::Result<decltype(var)>::err(_mcu_try_##var##_result.errorCode()); \
+        return ::mara::Result<decltype(var)>::err(_mcu_try_##var##_result.errorCode()); \
     } \
     var = _mcu_try_##var##_result.value()
 
@@ -263,4 +263,4 @@ using VoidResult = Result<void>;
 #define TRY(expr) MCU_TRY(expr)
 #endif
 
-} // namespace mcu
+} // namespace mara

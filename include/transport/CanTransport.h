@@ -26,7 +26,7 @@
 #include "hal/ICan.h"
 #include "config/CanDefs.h"
 
-namespace mcu {
+namespace mara {
 
 // Callback types for native CAN messages
 using VelocityCallback = std::function<void(float vx, float omega, uint16_t seq)>;
@@ -165,16 +165,16 @@ private:
     bool sendCanFrame(uint16_t id, const uint8_t* data, size_t len);
 };
 
-} // namespace mcu
+} // namespace mara
 
 // Auto-register with transport registry
-REGISTER_TRANSPORT(mcu::CanTransport);
+REGISTER_TRANSPORT(mara::CanTransport);
 
 #else // !HAS_CAN
 
 #include "TransportRegistry.h"
 
-namespace mcu {
+namespace mara {
 
 // Stub implementation when CAN is disabled
 class CanTransport : public IRegisteredTransport {
@@ -186,6 +186,6 @@ public:
     uint32_t requiredCaps() const override { return 0xFFFFFFFF; }  // Never enabled
 };
 
-} // namespace mcu
+} // namespace mara
 
 #endif // HAS_CAN

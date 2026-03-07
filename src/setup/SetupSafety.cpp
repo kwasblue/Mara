@@ -9,14 +9,14 @@
 
 namespace {
 
-class SetupSafetyModule : public mcu::ISetupModule {
+class SetupSafetyModule : public mara::ISetupModule {
 public:
     const char* name() const override { return "Safety"; }
     bool isCritical() const override { return true; }  // System cannot run safely without this
 
-    mcu::Result<void> setup(mcu::ServiceContext& ctx) override {
+    mara::Result<void> setup(mara::ServiceContext& ctx) override {
         if (!ctx.mode) {
-            return mcu::Result<void>::err(mcu::ErrorCode::NotInitialized);
+            return mara::Result<void>::err(mara::ErrorCode::NotInitialized);
         }
 
         SafetyConfig config;
@@ -66,7 +66,7 @@ public:
 
         Serial.println("[SAFETY] ModeManager configured and started");
 
-        return mcu::Result<void>::ok();
+        return mara::Result<void>::ok();
     }
 };
 
@@ -74,6 +74,6 @@ SetupSafetyModule g_setupSafety;
 
 } // anonymous namespace
 
-mcu::ISetupModule* getSetupSafetyModule() {
+mara::ISetupModule* getSetupSafetyModule() {
     return &g_setupSafety;
 }

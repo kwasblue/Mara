@@ -2,7 +2,7 @@
 // Self-registration macro for sensors
 //
 // Usage:
-//   class MySensor : public mcu::ISensor {
+//   class MySensor : public mara::ISensor {
 //       // ... implementation
 //   };
 //   REGISTER_SENSOR(MySensor);
@@ -17,6 +17,6 @@
     static ClassName __sensor_instance_##ClassName; \
     static struct __sensor_registrar_##ClassName { \
         __sensor_registrar_##ClassName() { \
-            mcu::SensorRegistry::instance().registerSensor(&__sensor_instance_##ClassName); \
+            mara::SensorRegistry::instance().registerSensor(&__sensor_instance_##ClassName); \
         } \
     } __sensor_registrar_obj_##ClassName

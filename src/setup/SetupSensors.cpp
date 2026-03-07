@@ -17,27 +17,27 @@ namespace {
 uint32_t buildSensorCaps() {
     uint32_t caps = 0;
 #if HAS_ENCODER
-    caps |= mcu::SensorCap::ENCODER;
+    caps |= mara::SensorCap::ENCODER;
 #endif
 #if HAS_IMU
-    caps |= mcu::SensorCap::IMU;
+    caps |= mara::SensorCap::IMU;
 #endif
 #if HAS_ULTRASONIC
-    caps |= mcu::SensorCap::ULTRASONIC;
+    caps |= mara::SensorCap::ULTRASONIC;
 #endif
 #if HAS_LIDAR
-    caps |= mcu::SensorCap::LIDAR;
+    caps |= mara::SensorCap::LIDAR;
 #endif
     return caps;
 }
 
-class SetupSensorsModule : public mcu::ISetupModule {
+class SetupSensorsModule : public mara::ISetupModule {
 public:
     const char* name() const override { return "Sensors"; }
 
-    mcu::Result<void> setup(mcu::ServiceContext& ctx) override {
+    mara::Result<void> setup(mara::ServiceContext& ctx) override {
         if (!ctx.sensorRegistry) {
-            return mcu::Result<void>::err(mcu::ErrorCode::NotInitialized);
+            return mara::Result<void>::err(mara::ErrorCode::NotInitialized);
         }
 
         // Set available sensor capabilities
@@ -65,7 +65,7 @@ public:
 
         Serial.println("[SENSORS] Sensor initialization complete");
 
-        return mcu::Result<void>::ok();
+        return mara::Result<void>::ok();
     }
 };
 
@@ -73,6 +73,6 @@ SetupSensorsModule g_setupSensors;
 
 } // anonymous namespace
 
-mcu::ISetupModule* getSetupSensorsModule() {
+mara::ISetupModule* getSetupSensorsModule() {
     return &g_setupSensors;
 }

@@ -7,7 +7,7 @@
 #include "control/ControlKernel.h"
 #include "control/SignalBus.h"
 
-namespace mcu {
+namespace mara {
 namespace cmd {
 
 // =============================================================================
@@ -53,4 +53,4 @@ size_t extractUint16Array(JsonArrayConst arr, uint16_t* out, size_t maxLen);
 size_t extractFloatArray(JsonArrayConst arr, float* out, size_t maxLen);
 
 } // namespace cmd
-} // namespace mcu
+} // namespace mara

@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <ArduinoJson.h>
 
-namespace mcu {
+namespace mara {
 
 /// Base interface for all sensors
 class ISensor {
@@ -56,4 +56,4 @@ namespace SensorCap {
     constexpr uint32_t BATTERY    = (1 << 5);
 }
 
-} // namespace mcu
+} // namespace mara

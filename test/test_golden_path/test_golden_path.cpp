@@ -18,11 +18,11 @@
 // Test Fixtures
 // =============================================================================
 
-static mcu::IntentBuffer* pIntents = nullptr;
+static mara::IntentBuffer* pIntents = nullptr;
 
 void setUp() {
     if (!pIntents) {
-        pIntents = new mcu::IntentBuffer();
+        pIntents = new mara::IntentBuffer();
     }
 }
 
@@ -43,7 +43,7 @@ void test_velocity_intent_set_and_consume() {
     pIntents->setVelocityIntent(0.5f, 0.3f, 1000);
 
     // Simulate control loop consuming intent
-    mcu::VelocityIntent intent;
+    mara::VelocityIntent intent;
     bool consumed = pIntents->consumeVelocityIntent(intent);
 
     TEST_ASSERT_TRUE(consumed);
@@ -64,7 +64,7 @@ void test_velocity_intent_latest_wins() {
     pIntents->setVelocityIntent(0.3f, 0.3f, 300);  // This should win
 
     // Control loop consumes only the latest
-    mcu::VelocityIntent intent;
+    mara::VelocityIntent intent;
     bool consumed = pIntents->consumeVelocityIntent(intent);
 
     TEST_ASSERT_TRUE(consumed);
@@ -79,7 +79,7 @@ void test_servo_intent_set_and_consume() {
     pIntents->setServoIntent(0, 90.0f, 500, 1000);
 
     // Consume
-    mcu::ServoIntent intent;
+    mara::ServoIntent intent;
     bool consumed = pIntents->consumeServoIntent(0, intent);
 
     TEST_ASSERT_TRUE(consumed);
@@ -94,7 +94,7 @@ void test_dc_motor_intent_set_and_consume() {
     pIntents->setDcMotorIntent(1, 0.75f, 1000);
 
     // Consume
-    mcu::DcMotorIntent intent;
+    mara::DcMotorIntent intent;
     bool consumed = pIntents->consumeDcMotorIntent(1, intent);
 
     TEST_ASSERT_TRUE(consumed);
@@ -108,7 +108,7 @@ void test_stepper_intent_set_and_consume() {
     pIntents->setStepperIntent(0, 200, 100.0f, 1000);
 
     // Consume
-    mcu::StepperIntent intent;
+    mara::StepperIntent intent;
     bool consumed = pIntents->consumeStepperIntent(0, intent);
 
     TEST_ASSERT_TRUE(consumed);
@@ -127,7 +127,7 @@ void test_signal_intent_queue() {
     TEST_ASSERT_EQUAL_UINT8(3, pIntents->pendingSignalCount());
 
     // Consume in FIFO order
-    mcu::SignalIntent intent;
+    mara::SignalIntent intent;
 
     bool c1 = pIntents->consumeSignalIntent(intent);
     TEST_ASSERT_TRUE(c1);
@@ -159,13 +159,13 @@ void test_clear_all_intents() {
     pIntents->clearAll();
 
     // All should be empty
-    mcu::VelocityIntent vel;
+    mara::VelocityIntent vel;
     TEST_ASSERT_FALSE(pIntents->consumeVelocityIntent(vel));
 
-    mcu::ServoIntent servo;
+    mara::ServoIntent servo;
     TEST_ASSERT_FALSE(pIntents->consumeServoIntent(0, servo));
 
-    mcu::DcMotorIntent dc;
+    mara::DcMotorIntent dc;
     TEST_ASSERT_FALSE(pIntents->consumeDcMotorIntent(0, dc));
 
     TEST_ASSERT_EQUAL_UINT8(0, pIntents->pendingSignalCount());
@@ -179,7 +179,7 @@ void test_independent_motor_ids() {
     pIntents->setDcMotorIntent(2, 0.25f, 100);
 
     // Consume each independently
-    mcu::DcMotorIntent intent0, intent1, intent2;
+    mara::DcMotorIntent intent0, intent1, intent2;
 
     TEST_ASSERT_TRUE(pIntents->consumeDcMotorIntent(0, intent0));
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.5f, intent0.speed);

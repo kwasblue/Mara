@@ -8,7 +8,7 @@
 
 class MessageRouter;  // forward-declare
 
-namespace mcu {
+namespace mara {
 struct ServiceContext;
 }
 
@@ -35,7 +35,7 @@ public:
      * Initialize and finalize all modules.
      * @param ctx ServiceContext for self-registered modules (optional)
      */
-    void setup(mcu::ServiceContext* ctx = nullptr);
+    void setup(mara::ServiceContext* ctx = nullptr);
 
     /**
      * Run all module loops.
@@ -51,7 +51,7 @@ public:
 private:
     EventBus&             bus_;
     MessageRouter*        router_ = nullptr;
-    mcu::ServiceContext*  ctx_ = nullptr;  // Stored for explicit registry access
+    mara::ServiceContext*  ctx_ = nullptr;  // Stored for explicit registry access
     std::vector<IModule*> modules_;  // Manually added modules
     uint32_t              lastHeartbeatMs_ = 0;
     std::function<void()> routerLoop_;

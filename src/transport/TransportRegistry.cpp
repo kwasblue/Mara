@@ -6,7 +6,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace mcu {
+namespace mara {
 
 TransportRegistry& TransportRegistry::instance() {
     static TransportRegistry s_instance;
@@ -93,4 +93,4 @@ IRegisteredTransport* TransportRegistry::find(const char* name) {
     return nullptr;
 }
 
-} // namespace mcu
+} // namespace mara

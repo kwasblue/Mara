@@ -9,14 +9,14 @@
 
 namespace {
 
-class SetupTransportModule : public mcu::ISetupModule {
+class SetupTransportModule : public mara::ISetupModule {
 public:
     const char* name() const override { return "Transport"; }
     bool isCritical() const override { return true; }  // No transport = no commands = unsafe
 
-    mcu::Result<void> setup(mcu::ServiceContext& ctx) override {
+    mara::Result<void> setup(mara::ServiceContext& ctx) override {
         if (!ctx.commands || !ctx.router || !ctx.host) {
-            return mcu::Result<void>::err(mcu::ErrorCode::NotInitialized);
+            return mara::Result<void>::err(mara::ErrorCode::NotInitialized);
         }
 
         // Note: Handlers are already registered in ServiceStorage.initCommands()
@@ -41,7 +41,7 @@ public:
 
         Serial.println("[TRANSPORT] Router and host configured");
 
-        return mcu::Result<void>::ok();
+        return mara::Result<void>::ok();
     }
 };
 
@@ -49,6 +49,6 @@ SetupTransportModule g_setupTransport;
 
 } // anonymous namespace
 
-mcu::ISetupModule* getSetupTransportModule() {
+mara::ISetupModule* getSetupTransportModule() {
     return &g_setupTransport;
 }

@@ -124,14 +124,14 @@ Total Files: 170
    🧱 class CommandRegistry
       ├── setControlModule(ControlModule* cm)
       ├── setMotionController(MotionController* mc)
-      ├── setClock(mcu::IClock* clk)
-      ├── setIntentBuffer(mcu::IntentBuffer* ib)
+      ├── setClock(mara::IClock* clk)
+      ├── setIntentBuffer(mara::IntentBuffer* ib)
       ├── setHandlerRegistry(HandlerRegistry* hr)
       └── context()
    ⚙️  setControlModule(ControlModule* cm)
    ⚙️  setMotionController(MotionController* mc)
-   ⚙️  setClock(mcu::IClock* clk)
-   ⚙️  setIntentBuffer(mcu::IntentBuffer* ib)
+   ⚙️  setClock(mara::IClock* clk)
+   ⚙️  setIntentBuffer(mara::IntentBuffer* ib)
    ⚙️  setHandlerRegistry(HandlerRegistry* hr)
    ⚙️  context()
 
@@ -180,7 +180,7 @@ Total Files: 170
       ├── motionAgeMs(uint32_t now_ms)
       ├── onStop(StopCallback cb)
       ├── onEmergencyStop(StopCallback cb)
-      ├── setClock(mcu::IClock* clk)
+      ├── setClock(mara::IClock* clk)
       └── now_ms()
    ⚙️  ModeManager()
    ⚙️  configure(const SafetyConfig& cfg)
@@ -193,7 +193,7 @@ Total Files: 170
    ⚙️  motionAgeMs(uint32_t now_ms)
    ⚙️  onStop(StopCallback cb)
    ⚙️  onEmergencyStop(StopCallback cb)
-   ⚙️  setClock(mcu::IClock* clk)
+   ⚙️  setClock(mara::IClock* clk)
    ⚙️  now_ms()
 
 🧩 📄 include/command/TypedCommands.h
@@ -287,7 +287,7 @@ Total Files: 170
    ⚙️  handleLedOff(CommandContext& ctx)
 
 🧩 📄 include/command/handlers/MotionHandler.h
-   ⚙️  executeSetVelocity(const mcu::cmd::SetVelocityCmd& cmd, CommandContext& ctx)
+   ⚙️  executeSetVelocity(const mara::cmd::SetVelocityCmd& cmd, CommandContext& ctx)
 
 🧩 📄 include/command/handlers/ObserverHandler.h
    ⚙️  setControlModule(ControlModule* cm)
@@ -691,13 +691,13 @@ Total Files: 170
 🧩 📄 include/core/IModule.h
    📦 namespace mcu
    🧱 class IModule
-      ├── init(mcu::ServiceContext& ctx)
+      ├── init(mara::ServiceContext& ctx)
       ├── setup()
       ├── loop(uint32_t now_ms)
       ├── handleEvent(const Event& evt)
       ├── priority()
       └── domain()
-   ⚙️  init(mcu::ServiceContext& ctx)
+   ⚙️  init(mara::ServiceContext& ctx)
    ⚙️  setup()
    ⚙️  loop(uint32_t now_ms)
    ⚙️  handleEvent(const Event& evt)
@@ -1027,10 +1027,10 @@ Total Files: 170
 🧩 📄 include/motor/MotionController.h
    🧱 class MotionController
       ├── baseEnabled()
-      ├── setClock(mcu::IClock* clk)
+      ├── setClock(mara::IClock* clk)
       └── now_ms()
    ⚙️  baseEnabled()
-   ⚙️  setClock(mcu::IClock* clk)
+   ⚙️  setClock(mara::IClock* clk)
    ⚙️  now_ms()
 
 🧩 📄 include/motor/PID.h
@@ -1565,7 +1565,7 @@ Total Files: 170
 
 🧩 📄 src/core/McuHost.cpp
    ⚙️  MCUHost::addModule(IModule* module)
-   ⚙️  MCUHost::setup(mcu::ServiceContext* ctx)
+   ⚙️  MCUHost::setup(mara::ServiceContext* ctx)
    ⚙️  MCUHost::loop(uint32_t now_ms)
    ⚙️  MCUHost::onEventStatic(const Event& evt)
    ⚙️  MCUHost::onEvent(const Event& evt)
@@ -1576,7 +1576,7 @@ Total Files: 170
    ⚙️  ModuleManager::instance()
    ⚙️  ModuleManager::registerModule(IModule* module)
    ⚙️  ModuleManager::finalize()
-   ⚙️  ModuleManager::initAll(mcu::ServiceContext& ctx)
+   ⚙️  ModuleManager::initAll(mara::ServiceContext& ctx)
    ⚙️  ModuleManager::setupAll()
    ⚙️  ModuleManager::loopAll(uint32_t now_ms)
    ⚙️  ModuleManager::loopDomain(uint32_t now_ms, LoopDomain domain)

@@ -17,13 +17,13 @@
 
 namespace {
 
-class SetupTelemetryModule : public mcu::ISetupModule {
+class SetupTelemetryModule : public mara::ISetupModule {
 public:
     const char* name() const override { return "Telemetry"; }
 
-    mcu::Result<void> setup(mcu::ServiceContext& ctx) override {
+    mara::Result<void> setup(mara::ServiceContext& ctx) override {
         if (!ctx.telemetry) {
-            return mcu::Result<void>::err(mcu::ErrorCode::NotInitialized);
+            return mara::Result<void>::err(mara::ErrorCode::NotInitialized);
         }
 
         ctx.telemetry->setInterval(0);
@@ -34,7 +34,7 @@ public:
             ctx.telemetry->registerProvider(
                 "mode",
                 [mode](ArduinoJson::JsonObject node) {
-                    node["state"]     = robotModeToString(mode->mode());
+                    node["state"]     = maraModeToString(mode->mode());
                     node["can_move"]  = mode->canMove();
                     node["estopped"]  = mode->isEstopped();
                     node["connected"] = mode->isConnected();
@@ -58,7 +58,7 @@ public:
         ctx.telemetry->registerProvider(
             "timing",
             [](ArduinoJson::JsonObject node) {
-                mcu::LoopTiming& t = mcu::getLoopTiming();
+                mara::LoopTiming& t = mara::getLoopTiming();
                 // Current values (microseconds)
                 node["safety_us"]    = t.safety_us;
                 node["control_us"]   = t.control_us;
@@ -76,9 +76,9 @@ public:
                 node["overruns"]   = t.overruns;
 
                 // FreeRTOS control task stats (if running)
-                node["freertos_ctrl"] = mcu::isControlTaskRunning();
-                if (mcu::isControlTaskRunning()) {
-                    mcu::ControlTaskStats stats = mcu::getControlTaskStats();
+                node["freertos_ctrl"] = mara::isControlTaskRunning();
+                if (mara::isControlTaskRunning()) {
+                    mara::ControlTaskStats stats = mara::getControlTaskStats();
                     node["ctrl_task_exec_us"]  = stats.last_exec_us;
                     node["ctrl_task_peak_us"]  = stats.max_exec_us;
                     node["ctrl_task_iters"]    = stats.iterations;
@@ -217,7 +217,7 @@ public:
 
         Serial.println("[TELEMETRY] Providers registered");
 
-        return mcu::Result<void>::ok();
+        return mara::Result<void>::ok();
     }
 };
 
@@ -225,6 +225,6 @@ SetupTelemetryModule g_setupTelemetry;
 
 } // anonymous namespace
 
-mcu::ISetupModule* getSetupTelemetryModule() {
+mara::ISetupModule* getSetupTelemetryModule() {
     return &g_setupTelemetry;
 }

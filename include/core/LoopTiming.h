@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace mcu {
+namespace mara {
 
 /// Timing instrumentation for main loop phases.
 /// Tracks execution time for each phase to identify bottlenecks.
@@ -49,4 +49,4 @@ struct LoopTiming {
 /// Global accessor for loop timing
 LoopTiming& getLoopTiming();
 
-} // namespace mcu
+} // namespace mara

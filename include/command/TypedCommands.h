@@ -12,7 +12,7 @@
 #include "core/Result.h"
 #include "config/CommandDefs.h"
 
-namespace mcu {
+namespace mara {
 namespace cmd {
 
 // =============================================================================
@@ -167,4 +167,4 @@ struct DecodeResult {
 };
 
 } // namespace cmd
-} // namespace mcu
+} // namespace mara

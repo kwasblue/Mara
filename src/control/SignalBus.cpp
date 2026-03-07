@@ -63,7 +63,7 @@ bool SignalBus::exists(uint16_t id) const {
 }
 
 bool SignalBus::set(uint16_t id, float v, uint32_t now_ms) {
-    mcu::CriticalSection lock(lock_);
+    mara::CriticalSection lock(lock_);
     int idx = indexOf_(id);
     if (idx < 0) {
         return false;
@@ -76,7 +76,7 @@ bool SignalBus::set(uint16_t id, float v, uint32_t now_ms) {
 }
 
 SignalBus::SetResult SignalBus::setWithRateLimit(uint16_t id, float v, uint32_t now_ms) {
-    mcu::CriticalSection lock(lock_);
+    mara::CriticalSection lock(lock_);
     int idx = indexOf_(id);
     if (idx < 0) {
         return SetResult::SIGNAL_NOT_FOUND;
@@ -118,7 +118,7 @@ void SignalBus::setGlobalRateLimit(uint32_t min_interval_ms, uint16_t max_update
 }
 
 bool SignalBus::get(uint16_t id, float& out) const {
-    mcu::CriticalSection lock(lock_);
+    mara::CriticalSection lock(lock_);
     int idx = indexOf_(id);
     if (idx < 0) {
         return false;
@@ -128,7 +128,7 @@ bool SignalBus::get(uint16_t id, float& out) const {
 }
 
 bool SignalBus::getTimestamp(uint16_t id, uint32_t& out) const {
-    mcu::CriticalSection lock(lock_);
+    mara::CriticalSection lock(lock_);
     int idx = indexOf_(id);
     if (idx < 0) {
         return false;
@@ -232,7 +232,7 @@ bool SignalBus::setByName(const char* name, float v, uint32_t now_ms) {
 size_t SignalBus::snapshot(SignalSnapshot* out, size_t max_count) const {
     if (!out || max_count == 0) return 0;
 
-    mcu::CriticalSection lock(lock_);
+    mara::CriticalSection lock(lock_);
     size_t count = signals_.size();
     if (count > max_count) count = max_count;
 

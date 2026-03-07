@@ -24,7 +24,7 @@ void MCUHost::addModule(IModule* module) {
     }
 }
 
-void MCUHost::setup(mcu::ServiceContext* ctx) {
+void MCUHost::setup(mara::ServiceContext* ctx) {
     ctx_ = ctx;  // Store for use in loop()
 
     // 1. Finalize and initialize self-registered modules

@@ -7,7 +7,7 @@
 #include <cstring>
 #include <algorithm>
 
-namespace mcu {
+namespace mara {
 
 SensorRegistry& SensorRegistry::instance() {
     static SensorRegistry s_instance;
@@ -111,4 +111,4 @@ const ISensor* SensorRegistry::find(const char* name) const {
     return nullptr;
 }
 
-} // namespace mcu
+} // namespace mara

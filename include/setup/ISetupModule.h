@@ -2,7 +2,7 @@
 
 #include "core/Result.h"
 
-namespace mcu {
+namespace mara {
 
 // Forward declaration
 struct ServiceContext;
@@ -28,4 +28,4 @@ public:
     virtual Result<void> setup(ServiceContext& ctx) = 0;
 };
 
-} // namespace mcu
+} // namespace mara

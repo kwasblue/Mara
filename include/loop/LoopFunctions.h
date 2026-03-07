@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace mcu {
+namespace mara {
 
 struct ServiceContext;
 
@@ -17,4 +17,4 @@ void runControlLoop(ServiceContext& ctx, uint32_t now_ms, float dt);
 /// @param now_ms Current time in milliseconds
 void runSafetyLoop(ServiceContext& ctx, uint32_t now_ms);
 
-} // namespace mcu
+} // namespace mara

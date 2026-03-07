@@ -79,7 +79,7 @@ class MCUHost;
 class LoopScheduler;
 class ObserverManager;
 
-namespace mcu {
+namespace mara {
 class IClock;
 class IntentBuffer;
 }
@@ -88,7 +88,7 @@ class IntentBuffer;
 class UartTransport;
 class WifiTransport;
 class BleTransport;
-namespace mcu { class CanTransport; }
+namespace mara { class CanTransport; }
 
 // Base class types (using base classes avoids needing inheritance info)
 class ICommandHandler;
@@ -99,13 +99,13 @@ class HandlerRegistry;
 class ModuleManager;
 
 // Forward declaration in mcu namespace
-namespace mcu {
+namespace mara {
     class SensorRegistry;
     class TransportRegistry;
     class ActuatorRegistry;
 }
 
-namespace mcu {
+namespace mara {
 
 /// ServiceContext provides dependency injection for all services.
 /// Instead of using globals, services receive a pointer to this context
@@ -242,4 +242,4 @@ struct ServiceContext {
     }
 };
 
-} // namespace mcu
+} // namespace mara

@@ -13,7 +13,7 @@
 // Forward declaration
 class MultiTransport;
 
-namespace mcu {
+namespace mara {
 
 /// Capability flags for transports
 namespace TransportCap {
@@ -32,7 +32,7 @@ public:
     virtual uint32_t requiredCaps() const { return 0; }
     virtual int priority() const { return 100; }
 
-    /// Called after registration to configure from RobotConfig
+    /// Called after registration to configure from MaraConfig
     virtual void configure() {}
 
     bool isEnabled() const { return enabled_; }
@@ -84,13 +84,13 @@ private:
     bool initialized_ = false;
 };
 
-} // namespace mcu
+} // namespace mara
 
 /// Register a transport class with the global registry
 #define REGISTER_TRANSPORT(ClassName) \
     static ClassName __transport_instance_##ClassName; \
     static struct __transport_registrar_##ClassName { \
         __transport_registrar_##ClassName() { \
-            mcu::TransportRegistry::instance().registerTransport(&__transport_instance_##ClassName); \
+            mara::TransportRegistry::instance().registerTransport(&__transport_instance_##ClassName); \
         } \
     } __transport_registrar_obj_##ClassName

@@ -6,7 +6,7 @@
 #include <ArduinoJson.h>
 #include "control/Observer.h"
 
-namespace mcu {
+namespace mara {
 namespace cmd {
 
 // =============================================================================
@@ -25,4 +25,4 @@ struct ObserverConfigResult {
 ObserverConfigResult decodeObserverConfig(JsonVariantConst payload);
 
 } // namespace cmd
-} // namespace mcu
+} // namespace mara

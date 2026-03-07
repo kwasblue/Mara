@@ -4,7 +4,7 @@
 #include "core/IntentBuffer.h"
 #include "core/CriticalSection.h"
 
-namespace mcu {
+namespace mara {
 
 // =============================================================================
 // Velocity Intent
@@ -174,4 +174,4 @@ void IntentBuffer::clearAll() {
     signalTail_ = 0;
 }
 
-} // namespace mcu
+} // namespace mara

@@ -75,7 +75,7 @@ private:
         if (!ctx.requireIdle(ACK)) return;
         if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
 
-        auto result = mcu::cmd::decodeSignalDef(payload);
+        auto result = mara::cmd::decodeSignalDef(payload);
         if (!result.valid) { ctx.sendError(ACK, result.error); return; }
 
         const char* kindS = signalKindToString(result.kind);
@@ -214,7 +214,7 @@ private:
         if (!ctx.requireIdle(ACK)) return;
         if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
 
-        auto result = mcu::cmd::decodeSlotConfig(payload);
+        auto result = mara::cmd::decodeSlotConfig(payload);
         if (!result.valid) { ctx.sendError(ACK, result.error); return; }
 
         bool ok = controlModule_->kernel().configureSlot(result.config, result.controllerType);
@@ -316,7 +316,7 @@ private:
         }
 
         float values[12];  // Max size for K matrix (2x6)
-        size_t len = mcu::cmd::extractFloatArray(arr, values, sizeof(values) / sizeof(values[0]));
+        size_t len = mara::cmd::extractFloatArray(arr, values, sizeof(values) / sizeof(values[0]));
 
         bool ok = controlModule_->kernel().setParamArray(slot, key, values, len);
 

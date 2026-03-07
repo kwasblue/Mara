@@ -24,12 +24,12 @@ extern "C" {
     uint32_t __test_micros = 0;
 }
 
-namespace mcu {
+namespace mara {
 uint32_t SystemClock::millis() const { return __test_millis; }
 uint32_t SystemClock::micros() const { return __test_micros; }
 static SystemClock g_systemClock;
 SystemClock& getSystemClock() { return g_systemClock; }
-} // namespace mcu
+} // namespace mara
 
 // ============================================================================
 // LoopRates
@@ -43,14 +43,14 @@ LoopRates& getLoopRates() {
 // ============================================================================
 // ModeManager stubs
 // ============================================================================
-const char* robotModeToString(RobotMode mode) {
+const char* maraModeToString(MaraMode mode) {
     switch (mode) {
-        case RobotMode::BOOT:         return "BOOT";
-        case RobotMode::DISCONNECTED: return "DISCONNECTED";
-        case RobotMode::IDLE:         return "IDLE";
-        case RobotMode::ARMED:        return "ARMED";
-        case RobotMode::ACTIVE:       return "ACTIVE";
-        case RobotMode::ESTOPPED:     return "ESTOPPED";
+        case MaraMode::BOOT:         return "BOOT";
+        case MaraMode::DISCONNECTED: return "DISCONNECTED";
+        case MaraMode::IDLE:         return "IDLE";
+        case MaraMode::ARMED:        return "ARMED";
+        case MaraMode::ACTIVE:       return "ACTIVE";
+        case MaraMode::ESTOPPED:     return "ESTOPPED";
         default:                      return "UNKNOWN";
     }
 }
@@ -64,12 +64,12 @@ bool ModeManager::validateVelocity(float vx, float omega, float& outVx, float& o
     return true;
 }
 
-void ModeManager::arm() { mode_ = RobotMode::ARMED; }
-void ModeManager::activate() { mode_ = RobotMode::ACTIVE; }
-void ModeManager::deactivate() { mode_ = RobotMode::ARMED; }
-void ModeManager::disarm() { mode_ = RobotMode::IDLE; }
-void ModeManager::estop() { mode_ = RobotMode::ESTOPPED; }
-bool ModeManager::clearEstop() { mode_ = RobotMode::IDLE; return true; }
+void ModeManager::arm() { mode_ = MaraMode::ARMED; }
+void ModeManager::activate() { mode_ = MaraMode::ACTIVE; }
+void ModeManager::deactivate() { mode_ = MaraMode::ARMED; }
+void ModeManager::disarm() { mode_ = MaraMode::IDLE; }
+void ModeManager::estop() { mode_ = MaraMode::ESTOPPED; }
+bool ModeManager::clearEstop() { mode_ = MaraMode::IDLE; return true; }
 
 // ============================================================================
 // SignalBus stubs
@@ -421,7 +421,7 @@ void MotionController::update(float dt) {
 // ============================================================================
 // IntentBuffer stubs
 // ============================================================================
-namespace mcu {
+namespace mara {
 
 void IntentBuffer::setVelocityIntent(float vx, float omega, uint32_t now_ms) {
     velocity_.vx = vx;
@@ -521,12 +521,12 @@ void IntentBuffer::clearAll() {
     signalTail_ = 0;
 }
 
-} // namespace mcu
+} // namespace mara
 
 // ============================================================================
 // Control/Observer Decoder stubs
 // ============================================================================
-namespace mcu {
+namespace mara {
 namespace cmd {
 
 size_t extractUint16Array(JsonArrayConst arr, uint16_t* out, size_t maxLen) {
@@ -615,4 +615,4 @@ ObserverConfigResult decodeObserverConfig(JsonVariantConst payload) {
 }
 
 } // namespace cmd
-} // namespace mcu
+} // namespace mara

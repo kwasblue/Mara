@@ -13,3 +13,4 @@
 #include "command/handlers/TelemetryHandler.h"
 #include "command/handlers/ControlHandler.h"
 #include "command/handlers/ObserverHandler.h"
+#include "command/handlers/IdentityHandler.h"

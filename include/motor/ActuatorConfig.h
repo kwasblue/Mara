@@ -9,7 +9,7 @@
 #include "config/PinConfig.h"
 #include "config/FeatureFlags.h"
 
-namespace mcu {
+namespace mara {
 
 /// Auto-configure DC motors from Pins:: constants
 /// Call this in SetupMotors instead of manual attach() calls
@@ -112,4 +112,4 @@ struct ActuatorAutoConfig {
     }
 };
 
-} // namespace mcu
+} // namespace mara

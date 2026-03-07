@@ -11,12 +11,13 @@
 #include "transport/MqttTransport.h"
 #include "transport/CanTransport.h"
 
-namespace mcu {
+namespace mara {
 
 ServiceStorage::~ServiceStorage() {
     // Delete in reverse dependency order (Tier 5 → Tier 1)
 
     // Handlers
+    delete identityHandler;
     delete observerHandler;
     delete controlHandler;
     delete telemetryHandler;
@@ -101,6 +102,7 @@ void ServiceStorage::initCommands() {
     telemetryHandler = new TelemetryHandler(telemetry);
     controlHandler   = new ControlHandler();
     observerHandler  = new ObserverHandler();
+    identityHandler  = new IdentityHandler();
 
     // Register legacy handlers
     commands->registerHandler(safetyHandler);
@@ -113,6 +115,7 @@ void ServiceStorage::initCommands() {
     commands->registerHandler(telemetryHandler);
     commands->registerHandler(controlHandler);
     commands->registerHandler(observerHandler);
+    commands->registerHandler(identityHandler);
 
     // Set available capabilities from feature flags
     HandlerRegistry::instance().setAvailableCaps(buildCapabilityMask());
@@ -228,4 +231,4 @@ ServiceContext ServiceStorage::buildContext() {
     return ctx;
 }
 
-} // namespace mcu
+} // namespace mara

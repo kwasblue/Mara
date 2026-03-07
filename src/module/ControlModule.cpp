@@ -77,8 +77,8 @@ void ControlModule::loop(uint32_t now_ms) {
     bool is_active = false;
     
     if (mode_) {
-        is_armed = mode_->mode() >= RobotMode::ARMED;
-        is_active = mode_->mode() == RobotMode::ACTIVE;
+        is_armed = mode_->mode() >= MaraMode::ARMED;
+        is_active = mode_->mode() == MaraMode::ACTIVE;
     }
     
     // Step observers FIRST (they provide state estimates to controllers)

@@ -8,7 +8,7 @@
 #include "hal/IGpio.h"
 #include "hal/IWatchdog.h"
 
-enum class RobotMode : uint8_t {
+enum class MaraMode : uint8_t {
     BOOT,
     DISCONNECTED,
     IDLE,
@@ -17,7 +17,7 @@ enum class RobotMode : uint8_t {
     ESTOPPED
 };
 
-const char* robotModeToString(RobotMode m);
+const char* maraModeToString(MaraMode m);
 
 struct SafetyConfig {
     uint32_t host_timeout_ms = 3000;
@@ -56,10 +56,10 @@ public:
     bool clearEstop();
     
     // Queries
-    RobotMode mode() const { return mode_; }
-    bool canMove() const { return mode_ == RobotMode::ARMED || mode_ == RobotMode::ACTIVE; }
-    bool isEstopped() const { return mode_ == RobotMode::ESTOPPED; }
-    bool isConnected() const { return mode_ != RobotMode::BOOT && mode_ != RobotMode::DISCONNECTED; }
+    MaraMode mode() const { return mode_; }
+    bool canMove() const { return mode_ == MaraMode::ARMED || mode_ == MaraMode::ACTIVE; }
+    bool isEstopped() const { return mode_ == MaraMode::ESTOPPED; }
+    bool isConnected() const { return mode_ != MaraMode::BOOT && mode_ != MaraMode::DISCONNECTED; }
     bool isBypassed() const { return bypassed_; }
     uint32_t hostAgeMs(uint32_t now_ms) const { return now_ms - lastHostHeartbeat_; }
     uint32_t motionAgeMs(uint32_t now_ms) const { return now_ms - lastMotionCmd_; }
@@ -75,7 +75,7 @@ public:
     void onEmergencyStop(StopCallback cb) { emergencyStopCallback_ = cb; }
 
     // Clock injection for testability
-    void setClock(mcu::IClock* clk) { clock_ = clk; }
+    void setClock(mara::IClock* clk) { clock_ = clk; }
 
     /// Set HAL GPIO driver (for E-stop, bypass, relay pins)
     void setHalGpio(hal::IGpio* gpio) { halGpio_ = gpio; }
@@ -87,8 +87,8 @@ private:
     hal::IGpio*     halGpio_     = nullptr;
     hal::IWatchdog* halWatchdog_ = nullptr;
     SafetyConfig cfg_;
-    RobotMode mode_ = RobotMode::BOOT;
-    RobotMode lastLoggedMode_ = RobotMode::BOOT;
+    MaraMode mode_ = MaraMode::BOOT;
+    MaraMode lastLoggedMode_ = MaraMode::BOOT;
 
     uint32_t lastHostHeartbeat_ = 0;
     uint32_t lastMotionCmd_ = 0;
@@ -98,32 +98,32 @@ private:
 
     StopCallback stopCallback_;
     StopCallback emergencyStopCallback_;  // Direct motor disable for E-stop
-    mcu::IClock* clock_ = nullptr;
+    mara::IClock* clock_ = nullptr;
 
     /// Get current time from clock or fallback to system clock
     uint32_t now_ms() const {
         if (clock_) return clock_->millis();
-        return mcu::getSystemClock().millis();
+        return mara::getSystemClock().millis();
     }
 
-    mcu::SpinlockType lock_ = MCU_SPINLOCK_INIT;
+    mara::SpinlockType lock_ = MCU_SPINLOCK_INIT;
 
     void triggerStop();
     void triggerEmergencyStop();  // Direct motor disable
     void readHardwareInputs();
-    bool canTransition(RobotMode from, RobotMode to);
+    bool canTransition(MaraMode from, MaraMode to);
 
 };
 
 // Helper to convert mode to string
-// inline const char* robotModeToString(RobotMode m) {
+// inline const char* maraModeToString(MaraMode m) {
 //     switch (m) {
-//         case RobotMode::BOOT: return "BOOT";
-//         case RobotMode::DISCONNECTED: return "DISCONNECTED";
-//         case RobotMode::IDLE: return "IDLE";
-//         case RobotMode::ARMED: return "ARMED";
-//         case RobotMode::ACTIVE: return "ACTIVE";
-//         case RobotMode::ESTOPPED: return "ESTOPPED";
+//         case MaraMode::BOOT: return "BOOT";
+//         case MaraMode::DISCONNECTED: return "DISCONNECTED";
+//         case MaraMode::IDLE: return "IDLE";
+//         case MaraMode::ARMED: return "ARMED";
+//         case MaraMode::ACTIVE: return "ACTIVE";
+//         case MaraMode::ESTOPPED: return "ESTOPPED";
 //         default: return "UNKNOWN";
 //     }
 // }       

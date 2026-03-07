@@ -10,7 +10,7 @@
 // This mirrors the core logic from src/core/ModeManager.cpp
 // -----------------------------------------------------------------------------
 
-enum class RobotMode : uint8_t {
+enum class MaraMode : uint8_t {
     BOOT,
     DISCONNECTED,
     IDLE,
@@ -37,12 +37,12 @@ public:
         if (hostEverSeen_ && isConnected() && !isEstopped()) {
             if (now_ms - lastHostHeartbeat_ > cfg_.host_timeout_ms) {
                 triggerStop();
-                mode_ = RobotMode::DISCONNECTED;
+                mode_ = MaraMode::DISCONNECTED;
             }
         }
         
         // Motion timeout (only in ACTIVE)
-        if (mode_ == RobotMode::ACTIVE && lastMotionCmd_ > 0) {
+        if (mode_ == MaraMode::ACTIVE && lastMotionCmd_ > 0) {
             if (now_ms - lastMotionCmd_ > cfg_.motion_timeout_ms) {
                 triggerStop();
             }
@@ -54,8 +54,8 @@ public:
         if (!hostEverSeen_) {
             hostEverSeen_ = true;
         }
-        if (mode_ == RobotMode::DISCONNECTED) {
-            mode_ = RobotMode::IDLE;
+        if (mode_ == MaraMode::DISCONNECTED) {
+            mode_ = MaraMode::IDLE;
         }
     }
     
@@ -64,39 +64,39 @@ public:
     }
     
     void arm() {
-        if (mode_ == RobotMode::IDLE) {
-            mode_ = RobotMode::ARMED;
+        if (mode_ == MaraMode::IDLE) {
+            mode_ = MaraMode::ARMED;
         }
     }
     
     void activate() {
-        if (mode_ == RobotMode::ARMED) {
-            mode_ = RobotMode::ACTIVE;
+        if (mode_ == MaraMode::ARMED) {
+            mode_ = MaraMode::ACTIVE;
         }
     }
     
     void deactivate() {
-        if (mode_ == RobotMode::ACTIVE) {
+        if (mode_ == MaraMode::ACTIVE) {
             triggerStop();
-            mode_ = RobotMode::ARMED;
+            mode_ = MaraMode::ARMED;
         }
     }
     
     void disarm() {
-        if (mode_ == RobotMode::ARMED || mode_ == RobotMode::ACTIVE) {
+        if (mode_ == MaraMode::ARMED || mode_ == MaraMode::ACTIVE) {
             triggerStop();
-            mode_ = RobotMode::IDLE;
+            mode_ = MaraMode::IDLE;
         }
     }
     
     void estop() {
         triggerStop();
-        mode_ = RobotMode::ESTOPPED;
+        mode_ = MaraMode::ESTOPPED;
     }
     
     bool clearEstop() {
         if (!isEstopped()) return true;
-        mode_ = RobotMode::IDLE;
+        mode_ = MaraMode::IDLE;
         return true;
     }
     
@@ -118,17 +118,17 @@ public:
         return true;
     }
     
-    RobotMode mode() const { return mode_; }
-    bool canMove() const { return mode_ == RobotMode::ARMED || mode_ == RobotMode::ACTIVE; }
-    bool isEstopped() const { return mode_ == RobotMode::ESTOPPED; }
-    bool isConnected() const { return mode_ != RobotMode::BOOT && mode_ != RobotMode::DISCONNECTED; }
+    MaraMode mode() const { return mode_; }
+    bool canMove() const { return mode_ == MaraMode::ARMED || mode_ == MaraMode::ACTIVE; }
+    bool isEstopped() const { return mode_ == MaraMode::ESTOPPED; }
+    bool isConnected() const { return mode_ != MaraMode::BOOT && mode_ != MaraMode::DISCONNECTED; }
     
     void onStop(StopCallback cb) { stopCallback_ = cb; }
     int stopCount() const { return stopCount_; }
     
 private:
     SafetyConfig cfg_;
-    RobotMode mode_ = RobotMode::DISCONNECTED;
+    MaraMode mode_ = MaraMode::DISCONNECTED;
     uint32_t lastHostHeartbeat_ = 0;
     uint32_t lastMotionCmd_ = 0;
     bool hostEverSeen_ = false;
@@ -175,12 +175,12 @@ void tearDown() {
 
 void test_host_timeout_triggers_stop() {
     g_mode->onHostHeartbeat(0);
-    TEST_ASSERT_EQUAL(RobotMode::IDLE, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::IDLE, g_mode->mode());
     
     g_mode->update(600);
     
     TEST_ASSERT_TRUE(g_stopCalled);
-    TEST_ASSERT_EQUAL(RobotMode::DISCONNECTED, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::DISCONNECTED, g_mode->mode());
 }
 
 void test_heartbeat_prevents_timeout() {
@@ -190,14 +190,14 @@ void test_heartbeat_prevents_timeout() {
     g_mode->update(800);
     
     TEST_ASSERT_FALSE(g_stopCalled);
-    TEST_ASSERT_EQUAL(RobotMode::IDLE, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::IDLE, g_mode->mode());
 }
 
 void test_no_timeout_before_first_heartbeat() {
     g_mode->update(2000);
     
     TEST_ASSERT_FALSE(g_stopCalled);
-    TEST_ASSERT_EQUAL(RobotMode::DISCONNECTED, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::DISCONNECTED, g_mode->mode());
 }
 
 // -----------------------------------------------------------------------------
@@ -215,7 +215,7 @@ void test_motion_timeout_triggers_stop() {
     g_mode->update(700);
     
     TEST_ASSERT_TRUE(g_stopCalled);
-    TEST_ASSERT_EQUAL(RobotMode::ACTIVE, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::ACTIVE, g_mode->mode());
 }
 
 void test_motion_commands_prevent_timeout() {
@@ -250,25 +250,25 @@ void test_motion_timeout_only_in_active() {
 void test_arm_from_idle() {
     g_mode->onHostHeartbeat(0);
     g_mode->arm();
-    TEST_ASSERT_EQUAL(RobotMode::ARMED, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::ARMED, g_mode->mode());
 }
 
 void test_arm_from_disconnected_fails() {
     g_mode->arm();
-    TEST_ASSERT_EQUAL(RobotMode::DISCONNECTED, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::DISCONNECTED, g_mode->mode());
 }
 
 void test_activate_from_armed() {
     g_mode->onHostHeartbeat(0);
     g_mode->arm();
     g_mode->activate();
-    TEST_ASSERT_EQUAL(RobotMode::ACTIVE, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::ACTIVE, g_mode->mode());
 }
 
 void test_activate_from_idle_fails() {
     g_mode->onHostHeartbeat(0);
     g_mode->activate();
-    TEST_ASSERT_EQUAL(RobotMode::IDLE, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::IDLE, g_mode->mode());
 }
 
 void test_deactivate_triggers_stop() {
@@ -278,7 +278,7 @@ void test_deactivate_triggers_stop() {
     g_mode->deactivate();
     
     TEST_ASSERT_TRUE(g_stopCalled);
-    TEST_ASSERT_EQUAL(RobotMode::ARMED, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::ARMED, g_mode->mode());
 }
 
 void test_disarm_from_active_triggers_stop() {
@@ -288,7 +288,7 @@ void test_disarm_from_active_triggers_stop() {
     g_mode->disarm();
     
     TEST_ASSERT_TRUE(g_stopCalled);
-    TEST_ASSERT_EQUAL(RobotMode::IDLE, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::IDLE, g_mode->mode());
 }
 
 // -----------------------------------------------------------------------------
@@ -302,7 +302,7 @@ void test_estop_from_active() {
     g_mode->estop();
     
     TEST_ASSERT_TRUE(g_stopCalled);
-    TEST_ASSERT_EQUAL(RobotMode::ESTOPPED, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::ESTOPPED, g_mode->mode());
 }
 
 void test_estop_blocks_arm() {
@@ -310,7 +310,7 @@ void test_estop_blocks_arm() {
     g_mode->estop();
     g_mode->arm();
     
-    TEST_ASSERT_EQUAL(RobotMode::ESTOPPED, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::ESTOPPED, g_mode->mode());
 }
 
 void test_clear_estop_returns_to_idle() {
@@ -318,7 +318,7 @@ void test_clear_estop_returns_to_idle() {
     g_mode->estop();
     g_mode->clearEstop();
     
-    TEST_ASSERT_EQUAL(RobotMode::IDLE, g_mode->mode());
+    TEST_ASSERT_EQUAL(MaraMode::IDLE, g_mode->mode());
 }
 
 void test_can_move_states() {

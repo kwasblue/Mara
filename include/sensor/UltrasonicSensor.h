@@ -15,7 +15,7 @@
 #include "config/PinConfig.h"
 #include <Arduino.h>
 
-namespace mcu {
+namespace mara {
 
 class UltrasonicSensor : public ISensor {
 public:
@@ -161,12 +161,12 @@ private:
 
 REGISTER_SENSOR(UltrasonicSensor);
 
-} // namespace mcu
+} // namespace mara
 
 #else // !HAS_ULTRASONIC
 
 // Stub when disabled - no registration
-namespace mcu {
+namespace mara {
 class UltrasonicSensor {
 public:
     static constexpr const char* NAME = "ultrasonic";

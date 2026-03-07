@@ -47,7 +47,7 @@
 #include "module/TelemetryModule.h"
 #include "module/ControlModule.h"
 
-namespace mcu {
+namespace mara {
 
 // =============================================================================
 // SERVICE OWNERSHIP MODEL
@@ -203,6 +203,7 @@ struct ServiceStorage {
     TelemetryHandler* telemetryHandler = nullptr;
     ControlHandler*   controlHandler   = nullptr;
     ObserverHandler*  observerHandler  = nullptr;
+    IdentityHandler*  identityHandler  = nullptr;
 
     // =========================================================================
     // Loop Schedulers
@@ -264,4 +265,4 @@ struct ServiceStorage {
     ServiceContext buildContext();
 };
 
-} // namespace mcu
+} // namespace mara

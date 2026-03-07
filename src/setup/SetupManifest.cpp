@@ -23,7 +23,7 @@ namespace {
 // - Transport after motors/sensors: can query state
 // - Telemetry last: needs all providers registered
 //
-mcu::ISetupModule* g_setupManifest[] = {
+mara::ISetupModule* g_setupManifest[] = {
     // --- Network ---
     nullptr,  // [0] WiFi - populated at runtime (getSetupWifiModule())
     nullptr,  // [1] OTA  - populated at runtime (getSetupOtaModule())
@@ -67,7 +67,7 @@ void populateManifest() {
 
 } // anonymous namespace
 
-mcu::ISetupModule** getSetupManifest() {
+mara::ISetupModule** getSetupManifest() {
     populateManifest();
     return g_setupManifest;
 }

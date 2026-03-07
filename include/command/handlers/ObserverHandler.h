@@ -53,7 +53,7 @@ private:
         if (!ctx.requireIdle(ACK)) return;
         if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
 
-        auto result = mcu::cmd::decodeObserverConfig(payload);
+        auto result = mara::cmd::decodeObserverConfig(payload);
         if (!result.valid) { ctx.sendError(ACK, result.error); return; }
 
         bool ok = controlModule_->observers().configure(result.slot, result.config, result.rate_hz);
@@ -158,7 +158,7 @@ private:
 
         // Extract float array (max 36 for 6x6 matrix)
         float values[36];
-        size_t len = mcu::cmd::extractFloatArray(arr, values, sizeof(values) / sizeof(values[0]));
+        size_t len = mara::cmd::extractFloatArray(arr, values, sizeof(values) / sizeof(values[0]));
 
         bool ok = controlModule_->observers().setParamArray(slot, key, values, len);
 

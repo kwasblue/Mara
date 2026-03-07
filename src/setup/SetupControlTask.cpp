@@ -14,7 +14,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-namespace mcu {
+namespace mara {
 
 // Task state
 static TaskHandle_t g_controlTaskHandle = nullptr;
@@ -70,7 +70,7 @@ static void controlTaskFunc(void* param) {
         // =====================================================================
         if (ctx->intents) {
             // Velocity intent (latest wins)
-            mcu::VelocityIntent vel;
+            mara::VelocityIntent vel;
             if (ctx->intents->consumeVelocityIntent(vel)) {
                 if (ctx->motion) {
                     ctx->motion->setVelocity(vel.vx, vel.omega);
@@ -78,8 +78,8 @@ static void controlTaskFunc(void* param) {
             }
 
             // Servo intents (per-servo)
-            for (uint8_t i = 0; i < mcu::IntentBuffer::MAX_SERVO_INTENTS; ++i) {
-                mcu::ServoIntent servo;
+            for (uint8_t i = 0; i < mara::IntentBuffer::MAX_SERVO_INTENTS; ++i) {
+                mara::ServoIntent servo;
                 if (ctx->intents->consumeServoIntent(i, servo)) {
                     if (ctx->motion) {
                         if (servo.duration_ms == 0) {
@@ -96,8 +96,8 @@ static void controlTaskFunc(void* param) {
             }
 
             // DC motor intents (per-motor)
-            for (uint8_t i = 0; i < mcu::IntentBuffer::MAX_DC_MOTOR_INTENTS; ++i) {
-                mcu::DcMotorIntent dc;
+            for (uint8_t i = 0; i < mara::IntentBuffer::MAX_DC_MOTOR_INTENTS; ++i) {
+                mara::DcMotorIntent dc;
                 if (ctx->intents->consumeDcMotorIntent(i, dc)) {
                     if (ctx->dcMotor) {
                         ctx->dcMotor->setSpeed(dc.id, dc.speed);
@@ -106,8 +106,8 @@ static void controlTaskFunc(void* param) {
             }
 
             // Stepper intents (per-motor)
-            for (int i = 0; i < mcu::IntentBuffer::MAX_STEPPER_INTENTS; ++i) {
-                mcu::StepperIntent step;
+            for (int i = 0; i < mara::IntentBuffer::MAX_STEPPER_INTENTS; ++i) {
+                mara::StepperIntent step;
                 if (ctx->intents->consumeStepperIntent(i, step)) {
                     if (ctx->motion) {
                         ctx->motion->moveStepperRelative(step.motor_id, step.steps, step.speed_steps_s);
@@ -116,7 +116,7 @@ static void controlTaskFunc(void* param) {
             }
 
             // Signal intents (consume all queued)
-            mcu::SignalIntent sig;
+            mara::SignalIntent sig;
             while (ctx->intents->consumeSignalIntent(sig)) {
                 if (ctx->control) {
                     ctx->control->signals().set(sig.id, sig.value, sig.timestamp_ms);
@@ -247,4 +247,4 @@ void resetControlTaskStats() {
     g_rtStats.reset();
 }
 
-} // namespace mcu
+} // namespace mara

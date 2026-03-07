@@ -1,10 +1,10 @@
 // test/test_result/test_result.cpp
-// Unit tests for mcu::Result<T> type
+// Unit tests for mara::Result<T> type
 
 #include "../test_runner.h"
 #include "core/Result.h"
 
-using namespace mcu;
+using namespace mara;
 
 // =============================================================================
 // Result<T> tests

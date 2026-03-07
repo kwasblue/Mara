@@ -1,8 +1,8 @@
 // include/mcu.h
-// Public API for ESP32 MCU Host Firmware
+// Public API for MARA (Modular Asynchronous Robotics Architecture) MCU Firmware
 //
 // This is the main entry point header for external code integrating with
-// the MCU firmware. It exposes the key interfaces and types needed for:
+// the MARA firmware. It exposes the key interfaces and types needed for:
 // - Creating custom modules
 // - Adding command handlers
 // - Extending functionality
@@ -45,7 +45,7 @@
 // Configuration structs and feature flags
 
 #include "config/FeatureFlags.h"    // HAS_* feature flags
-#include "config/RobotConfig.h"     // Unified configuration
+#include "config/MaraConfig.h"     // Unified configuration
 
 // =============================================================================
 // RUNTIME
@@ -68,7 +68,7 @@
 // - include/command/IStringHandler.h
 // - include/command/CommandContext.h
 // - include/config/FeatureFlags.h
-// - include/config/RobotConfig.h
+// - include/config/MaraConfig.h
 // - include/core/Runtime.h
 //
 // INTERNAL HEADERS (implementation details, may change):

@@ -58,15 +58,15 @@ public:
     RT_SAFE void update(float dt);
 
     // Clock injection for testability
-    void setClock(mcu::IClock* clk) { clock_ = clk; }
+    void setClock(mara::IClock* clk) { clock_ = clk; }
 
 private:
-    mcu::IClock* clock_ = nullptr;
+    mara::IClock* clock_ = nullptr;
 
     /// Get current time from clock or fallback to system clock
     uint32_t now_ms() const {
         if (clock_) return clock_->millis();
-        return mcu::getSystemClock().millis();
+        return mara::getSystemClock().millis();
     }
 
     // References

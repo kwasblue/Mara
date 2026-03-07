@@ -1,7 +1,7 @@
 #include "core/ServiceContext.h"
 #include "command/ModeManager.h"
 
-namespace mcu {
+namespace mara {
 
 void runSafetyLoop(ServiceContext& ctx, uint32_t now_ms) {
     if (ctx.mode) {
@@ -9,4 +9,4 @@ void runSafetyLoop(ServiceContext& ctx, uint32_t now_ms) {
     }
 }
 
-} // namespace mcu
+} // namespace mara

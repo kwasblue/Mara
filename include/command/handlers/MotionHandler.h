@@ -28,7 +28,7 @@ public:
     void handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx) override {
         if (cmd == CmdType::SET_VEL) {
             // Decode JSON to typed command
-            auto result = mcu::cmd::decodeSetVelocity(payload);
+            auto result = mara::cmd::decodeSetVelocity(payload);
             if (!result.valid) {
                 ctx.sendError("CMD_SET_VEL", result.error);
                 return;
@@ -39,7 +39,7 @@ public:
     }
 
     /// Execute a typed SetVelocityCmd (can be called from binary path too)
-    void executeSetVelocity(const mcu::cmd::SetVelocityCmd& cmd, CommandContext& ctx) {
+    void executeSetVelocity(const mara::cmd::SetVelocityCmd& cmd, CommandContext& ctx) {
         const uint32_t now_ms = ctx.now_ms();
 
         float safe_vx = 0.0f, safe_omega = 0.0f;
@@ -63,14 +63,14 @@ public:
             JsonDocument resp;
             resp["vx"] = safe_vx;
             resp["omega"] = safe_omega;
-            resp["state"] = robotModeToString(ctx.mode.mode());
+            resp["state"] = maraModeToString(ctx.mode.mode());
             ctx.sendAck("CMD_SET_VEL", true, resp);
             return;
         }
 
         // Gate non-zero motion
         if (!ctx.mode.canMove()) {
-            DBG_PRINTF("[MOTION] SET_VEL rejected: mode=%s\n", robotModeToString(ctx.mode.mode()));
+            DBG_PRINTF("[MOTION] SET_VEL rejected: mode=%s\n", maraModeToString(ctx.mode.mode()));
             ctx.sendError("CMD_SET_VEL", "not_armed");
             return;
         }
@@ -86,7 +86,7 @@ public:
         JsonDocument resp;
         resp["vx"] = safe_vx;
         resp["omega"] = safe_omega;
-        resp["state"] = robotModeToString(ctx.mode.mode());
+        resp["state"] = maraModeToString(ctx.mode.mode());
         ctx.sendAck("CMD_SET_VEL", true, resp);
     }
 

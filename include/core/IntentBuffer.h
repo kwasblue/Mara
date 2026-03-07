@@ -62,7 +62,7 @@
 #include "core/CriticalSection.h"
 #include "core/RealTimeContract.h"
 
-namespace mcu {
+namespace mara {
 
 // =============================================================================
 // Intent Structs
@@ -203,4 +203,4 @@ private:
     uint8_t signalTail_ = 0;  // Read position
 };
 
-} // namespace mcu
+} // namespace mara

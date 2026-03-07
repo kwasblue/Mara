@@ -10,19 +10,20 @@
 #include "motor/DcMotorManager.h"
 #include "motor/StepperManager.h"
 #include "motor/ActuatorConfig.h"
+#include "motor/IActuator.h"  // For ActuatorCap
 
 // Include all self-registering actuators (triggers static registration)
 #include "motor/AllActuators.h"
 
 namespace {
 
-class SetupMotorsModule : public mcu::ISetupModule {
+class SetupMotorsModule : public mara::ISetupModule {
 public:
     const char* name() const override { return "Motors"; }
 
-    mcu::Result<void> setup(mcu::ServiceContext& ctx) override {
+    mara::Result<void> setup(mara::ServiceContext& ctx) override {
         if (!ctx.gpio) {
-            return mcu::Result<void>::err(mcu::ErrorCode::NotInitialized);
+            return mara::Result<void>::err(mara::ErrorCode::NotInitialized);
         }
 
         // Setup status LED
@@ -38,16 +39,16 @@ public:
         // Build actuator capability mask from feature flags
         uint32_t actuatorCaps = 0;
 #if HAS_DC_MOTOR
-        actuatorCaps |= mcu::ActuatorCap::DC_MOTOR;
+        actuatorCaps |= mara::ActuatorCap::DC_MOTOR;
 #endif
 #if HAS_SERVO
-        actuatorCaps |= mcu::ActuatorCap::SERVO;
+        actuatorCaps |= mara::ActuatorCap::SERVO;
 #endif
 #if HAS_STEPPER
-        actuatorCaps |= mcu::ActuatorCap::STEPPER;
+        actuatorCaps |= mara::ActuatorCap::STEPPER;
 #endif
 #if HAS_ENCODER
-        actuatorCaps |= mcu::ActuatorCap::ENCODER;
+        actuatorCaps |= mara::ActuatorCap::ENCODER;
 #endif
 
         // Initialize self-registered actuators
@@ -62,25 +63,25 @@ public:
         // Legacy actuators (until fully migrated)
         // Auto-configure steppers from Pins::
         if (ctx.stepper) {
-            mcu::autoConfigureSteppers(*ctx.stepper);
+            mara::autoConfigureSteppers(*ctx.stepper);
             ctx.stepper->dumpAllStepperMappings();
         }
 
         // Legacy DC motors (can be removed once DcMotorActuator is fully tested)
         if (ctx.dcMotor) {
-            int dcCount = mcu::autoConfigureDcMotors(*ctx.dcMotor);
+            int dcCount = mara::autoConfigureDcMotors(*ctx.dcMotor);
             Serial.printf("[MOTORS] Legacy: Auto-configured %d DC motors\n", dcCount);
             ctx.dcMotor->dumpAllMotorMappings();
         }
 
         // Auto-configure encoders from Pins::
         if (ctx.encoder) {
-            mcu::autoConfigureEncoders(*ctx.encoder);
+            mara::autoConfigureEncoders(*ctx.encoder);
         }
 
         Serial.println("[MOTORS] GPIO and actuators configured");
 
-        return mcu::Result<void>::ok();
+        return mara::Result<void>::ok();
     }
 };
 
@@ -88,6 +89,6 @@ SetupMotorsModule g_setupMotors;
 
 } // anonymous namespace
 
-mcu::ISetupModule* getSetupMotorsModule() {
+mara::ISetupModule* getSetupMotorsModule() {
     return &g_setupMotors;
 }

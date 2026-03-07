@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace mcu {
+namespace mara {
 
 class IActuator;
 struct ServiceContext;
@@ -68,13 +68,13 @@ private:
     bool initialized_ = false;
 };
 
-} // namespace mcu
+} // namespace mara
 
 /// Register an actuator class with the global registry
 #define REGISTER_ACTUATOR(ClassName) \
     static ClassName __actuator_instance_##ClassName; \
     static struct __actuator_registrar_##ClassName { \
         __actuator_registrar_##ClassName() { \
-            mcu::ActuatorRegistry::instance().registerActuator(&__actuator_instance_##ClassName); \
+            mara::ActuatorRegistry::instance().registerActuator(&__actuator_instance_##ClassName); \
         } \
     } __actuator_registrar_obj_##ClassName

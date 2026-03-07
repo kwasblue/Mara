@@ -53,6 +53,7 @@ enum class CmdType {
     ENCODER_READ,
     ENCODER_RESET,
     ESTOP,
+    GET_IDENTITY,
     GET_RATES,
     GPIO_READ,
     GPIO_REGISTER_CHANNEL,
@@ -135,6 +136,7 @@ inline CmdType cmdTypeFromString(const std::string& s) {
     if (s == "CMD_ENCODER_READ") return CmdType::ENCODER_READ;
     if (s == "CMD_ENCODER_RESET") return CmdType::ENCODER_RESET;
     if (s == "CMD_ESTOP") return CmdType::ESTOP;
+    if (s == "CMD_GET_IDENTITY") return CmdType::GET_IDENTITY;
     if (s == "CMD_GET_RATES") return CmdType::GET_RATES;
     if (s == "CMD_GPIO_READ") return CmdType::GPIO_READ;
     if (s == "CMD_GPIO_REGISTER_CHANNEL") return CmdType::GPIO_REGISTER_CHANNEL;
@@ -218,6 +220,7 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::ENCODER_READ: return "CMD_ENCODER_READ";
         case CmdType::ENCODER_RESET: return "CMD_ENCODER_RESET";
         case CmdType::ESTOP: return "CMD_ESTOP";
+        case CmdType::GET_IDENTITY: return "CMD_GET_IDENTITY";
         case CmdType::GET_RATES: return "CMD_GET_RATES";
         case CmdType::GPIO_READ: return "CMD_GPIO_READ";
         case CmdType::GPIO_REGISTER_CHANNEL: return "CMD_GPIO_REGISTER_CHANNEL";

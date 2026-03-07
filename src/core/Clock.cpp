@@ -12,7 +12,7 @@ extern "C" {
 }
 #endif
 
-namespace mcu {
+namespace mara {
 
 uint32_t SystemClock::millis() const {
 #ifdef ARDUINO
@@ -37,4 +37,4 @@ SystemClock& getSystemClock() {
     return g_systemClock;
 }
 
-} // namespace mcu
+} // namespace mara

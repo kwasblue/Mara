@@ -23,7 +23,7 @@
 class SignalBus {
 public:
     SignalBus() {
-        mcu::initSpinlock(lock_);
+        mara::initSpinlock(lock_);
     }
 
     enum class Kind : uint8_t {
@@ -150,7 +150,7 @@ private:
     std::vector<Alias> aliases_;
 
     // Thread safety (spinlock)
-    mutable mcu::SpinlockType lock_ = MCU_SPINLOCK_INIT;
+    mutable mara::SpinlockType lock_ = MCU_SPINLOCK_INIT;
 };
 
 // -----------------------------------------------------------------------------

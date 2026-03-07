@@ -1,6 +1,6 @@
 #include "core/LoopTiming.h"
 
-namespace mcu {
+namespace mara {
 
 static LoopTiming g_loopTiming;
 
@@ -8,4 +8,4 @@ LoopTiming& getLoopTiming() {
     return g_loopTiming;
 }
 
-} // namespace mcu
+} // namespace mara

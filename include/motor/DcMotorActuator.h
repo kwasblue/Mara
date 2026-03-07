@@ -19,7 +19,7 @@
 #include "hw/PwmManager.h"
 #include <Arduino.h>
 
-namespace mcu {
+namespace mara {
 
 class DcMotorActuator : public IActuator {
 public:
@@ -209,11 +209,11 @@ private:
 
 REGISTER_ACTUATOR(DcMotorActuator);
 
-} // namespace mcu
+} // namespace mara
 
 #else // !HAS_DC_MOTOR
 
-namespace mcu {
+namespace mara {
 class DcMotorActuator {
 public:
     static constexpr const char* NAME = "dc_motor";

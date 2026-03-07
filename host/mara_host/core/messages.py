@@ -1,5 +1,5 @@
 from enum import IntEnum
-import protocol
+from . import protocol
 
 class MsgType(IntEnum):
     HEARTBEAT = protocol.MSG_HEARTBEAT

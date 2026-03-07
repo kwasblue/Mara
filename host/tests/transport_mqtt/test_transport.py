@@ -61,7 +61,8 @@ class TestMQTTTransport:
     @pytest.mark.asyncio
     async def test_send_bytes_not_connected(self):
         """Test send_bytes raises timeout when not connected."""
-        transport = MQTTTransport(broker_host="localhost", node_id="node0")
+        # Use short timeout for fast test
+        transport = MQTTTransport(broker_host="localhost", node_id="node0", connection_timeout_s=0.1)
 
         with pytest.raises(TimeoutError):
             await transport.send_bytes(b"test")

@@ -64,3 +64,22 @@ def __getattr__(name: str):
         return getattr(module, name)
 
     raise AttributeError(f"module 'mara_host.command' has no attribute '{name}'")
+
+
+# Explicit public API declaration
+__all__ = [
+    # Main client classes
+    "MaraClient",
+    "BaseMaraClient",
+    # Factory
+    "MaraClientFactory",
+    "ClientConfig",
+    "create_client_from_args",
+    # Interfaces
+    "IMaraClient",
+    "ITransport",
+    # Deprecated (for discovery, actual access triggers warning)
+    "AsyncRobotClient",
+    "RobotClientFactory",
+    "IRobotClient",
+]

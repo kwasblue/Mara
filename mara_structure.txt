@@ -1,7 +1,7 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-07 15:48:55
-Total Files: 418
+Generated: 2026-03-07 16:06:54
+Total Files: 419
 ================================================================================
 
 
@@ -1005,9 +1005,6 @@ HOST (Python)
     [Fn] encode(msg_type, payload)
     [Fn] extract_frames(buffer, on_frame)
 
-  host/mara_host/core/robot_runtime.py
-    [Class] BaseRobotRuntime
-
   host/mara_host/core/settings.py
     [Class] TransportSettings
     [Class] MQTTSettings
@@ -1451,6 +1448,9 @@ HOST (Python)
 
   host/mara_host/runners/__init__.py
     [Fn] __getattr__(name)
+
+  host/mara_host/runtime/robot_runtime.py
+    [Class] BaseRobotRuntime
 
   host/mara_host/runtime/runtime.py
     [Class] RuntimeConfig
@@ -2034,6 +2034,25 @@ HOST (Python)
       |-- publish(self, topic, data)
       |-- topics(self)
       `-- last(self, topic)
+
+  host/tests/test_architecture.py
+    [Fn] get_imports_from_file(filepath)
+    [Fn] get_mara_imports_from_file(filepath)
+    [Class] TestPublicAPIBoundary
+      |-- test_mara_host_has_all_defined(self)
+      `-- test_public_api_does_not_expose_internals(self)
+    [Class] TestTransportLayerBoundary
+      |-- test_transport_does_not_import_command(self)
+      `-- test_transport_does_not_import_api(self)
+    [Class] TestCoreLayerBoundary
+      |-- test_core_does_not_import_motor(self)
+      |-- test_core_does_not_import_sensor(self)
+      `-- test_core_does_not_import_api(self)
+    [Class] TestInternalModulesHaveAll
+      `-- test_internal_module_has_all(self, module_name)
+    [Class] TestNoCircularImports
+      |-- test_can_import_all_public_symbols(self)
+      `-- test_can_import_internal_modules_independently(self)
 
   host/tests/test_base_transport.py
     [Class] DummyTransport
@@ -4274,10 +4293,10 @@ ROOT
 ================================================================================
 STATISTICS
 ================================================================================
-Python Files:     236
+Python Files:     237
 C++ Files:        182
-Total Classes:    537
+Total Classes:    542
 Total Structs:    136
-Total Functions:  1755
-Total Methods:    956
+Total Functions:  1757
+Total Methods:    966
 ================================================================================

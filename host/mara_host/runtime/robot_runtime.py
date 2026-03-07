@@ -1,12 +1,18 @@
-# mara_host/core/runtime.py
+# mara_host/runtime/robot_runtime.py
+"""
+Base robot runtime wiring - orchestrates all host modules.
+
+This module belongs in runtime/ because it orchestrates domain modules
+(motor, sensor, telemetry) rather than providing core infrastructure.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .event_bus import EventBus
+from ..core.event_bus import EventBus
 from ..command.client import MaraClient
-from .settings import HostSettings
+from ..core.settings import HostSettings
 
 from ..transport.tcp_transport import AsyncTcpTransport
 from ..transport.serial_transport import SerialTransport

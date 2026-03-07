@@ -54,8 +54,10 @@ class MQTTTransport(AsyncBaseTransport):
         client_id: Optional[str] = None,
         bus: Optional[EventBus] = None,
         use_versioned_topics: bool = False,
+        connection_timeout_s: float = 5.0,
     ) -> None:
         super().__init__()
+        self._connection_timeout_s = connection_timeout_s
         self._config = MQTTConfig(
             broker_host=broker_host,
             broker_port=broker_port,
@@ -101,7 +103,7 @@ class MQTTTransport(AsyncBaseTransport):
 
         IMPORTANT: waits for connection instead of dropping.
         """
-        await self.ensure_connected(timeout_s=5.0)
+        await self.ensure_connected(timeout_s=self._connection_timeout_s)
 
         if not self._client:
             # Should not happen if connected_evt is set, but be defensive.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate CAN bus message definitions from platform_schema.
+Generate CAN bus message definitions from schema.
 
 This generator creates:
     - C++ CanDefs.h for MCU firmware
@@ -19,7 +19,7 @@ Usage:
 from pathlib import Path
 from typing import Dict, List, Any
 
-from mara_host.tools.platform_schema import (
+from mara_host.tools.schema import (
     CAN_CONFIG,
     CAN_MESSAGE_IDS,
     CAN_MESSAGES,
@@ -86,7 +86,7 @@ def generate_cpp_header() -> str:
     """Generate C++ CanDefs.h content."""
     lines = [
         "// AUTO-GENERATED FILE — DO NOT EDIT BY HAND",
-        "// Generated from CAN_MESSAGES in platform_schema.py",
+        "// Generated from CAN_MESSAGES in schema.py",
         "//",
         "// CAN bus message definitions for hybrid real-time/protocol transport.",
         "",
@@ -198,7 +198,7 @@ def generate_python_module() -> str:
     """Generate Python can_defs_generated.py content."""
     lines = [
         "# AUTO-GENERATED FILE — DO NOT EDIT BY HAND",
-        "# Generated from CAN_MESSAGES in platform_schema.py",
+        "# Generated from CAN_MESSAGES in schema.py",
         "#",
         "# This file validates that can_defs.py matches the schema.",
         "# Import can_defs.py directly for runtime use.",
@@ -285,7 +285,7 @@ def generate_python_module() -> str:
 
 def main() -> None:
     """Generate CAN definition files."""
-    print("[gen_can] Generating CAN definitions from platform_schema...")
+    print("[gen_can] Generating CAN definitions from schema...")
 
     # Generate C++ header
     print(f"[gen_can] Generating C++ header: {CPP_OUT}")

@@ -68,14 +68,14 @@ def hil_timeout(request) -> float:
 @pytest.fixture
 async def robot(request, mara_host, robot_port, hil_timeout, tmp_path):
     """
-    Connected AsyncRobotClient for HIL tests.
+    Connected MaraClient for HIL tests.
     Ensures safe state on setup and teardown.
     """
     from mara_host.transport.tcp_transport import AsyncTcpTransport
-    from mara_host.command.client import AsyncRobotClient
+    from mara_host.command.client import MaraClient
     
     transport = AsyncTcpTransport(mara_host, robot_port)
-    client = AsyncRobotClient(
+    client = MaraClient(
         transport,
         command_timeout_s=hil_timeout,
         handshake_timeout_s=hil_timeout * 2,

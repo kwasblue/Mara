@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Run all code generators from platform_schema.py.
+Run all code generators from schema.py.
 
 This is the single entry point for regenerating all generated code artifacts
 for both the Host (Python) and MCU (C++) projects.
@@ -27,7 +27,7 @@ sys.path.insert(0, str(TOOLS_DIR))
 
 def main():
     print("=" * 60)
-    print("Running all code generators from platform_schema.py")
+    print("Running all code generators from schema.py")
     print("=" * 60)
     print()
 

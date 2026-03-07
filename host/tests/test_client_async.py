@@ -10,20 +10,20 @@ def _import_client():
     # Your file name in the listing is mara_host/core/client.py but you pasted client_async.py
     # We'll support both.
     try:
-        from mara_host.command.client import BaseAsyncRobotClient  # type: ignore
-        return BaseAsyncRobotClient
+        from mara_host.command.client import BaseMaraClient  # type: ignore
+        return BaseMaraClient
     except Exception:
-        from mara_host.command.client_async import BaseAsyncRobotClient  # type: ignore
-        return BaseAsyncRobotClient
+        from mara_host.command.client_async import BaseMaraClient  # type: ignore
+        return BaseMaraClient
 
 
 @pytest.mark.asyncio
 async def test_client_receives_pong_and_heartbeat_events():
-    BaseAsyncRobotClient = _import_client()
+    BaseMaraClient = _import_client()
 
     bus = CapturingBus()
     transport = FakeAsyncTransport(auto_ack=False)  # we're manually injecting inbound frames
-    client = BaseAsyncRobotClient(
+    client = BaseMaraClient(
         transport=transport,
         bus=bus,
         heartbeat_interval_s=10.0,    # avoid background traffic
@@ -46,11 +46,11 @@ async def test_client_receives_pong_and_heartbeat_events():
 
 @pytest.mark.asyncio
 async def test_client_routes_json_hello_and_telemetry():
-    BaseAsyncRobotClient = _import_client()
+    BaseMaraClient = _import_client()
 
     bus = CapturingBus()
     transport = FakeAsyncTransport(auto_ack=False)
-    client = BaseAsyncRobotClient(
+    client = BaseMaraClient(
         transport=transport,
         bus=bus,
         heartbeat_interval_s=10.0,
@@ -77,11 +77,11 @@ async def test_client_routes_json_hello_and_telemetry():
 
 @pytest.mark.asyncio
 async def test_client_reliable_command_completes_with_ack():
-    BaseAsyncRobotClient = _import_client()
+    BaseMaraClient = _import_client()
 
     bus = CapturingBus()
     transport = FakeAsyncTransport(auto_ack=True)  # auto-ACK reliable commands
-    client = BaseAsyncRobotClient(
+    client = BaseMaraClient(
         transport=transport,
         bus=bus,
         heartbeat_interval_s=10.0,
@@ -102,12 +102,12 @@ async def test_client_reliable_command_completes_with_ack():
 
 @pytest.mark.asyncio
 async def test_client_disconnect_clears_pending_and_publishes():
-    BaseAsyncRobotClient = _import_client()
+    BaseMaraClient = _import_client()
 
     bus = CapturingBus()
     transport = FakeAsyncTransport(auto_ack=False)
     # Very short timeouts to force disconnect
-    client = BaseAsyncRobotClient(
+    client = BaseMaraClient(
         transport=transport,
         bus=bus,
         heartbeat_interval_s=10.0,
@@ -142,11 +142,11 @@ async def test_client_disconnect_clears_pending_and_publishes():
 
 @pytest.mark.asyncio
 async def test_client_raw_frame_fallback():
-    BaseAsyncRobotClient = _import_client()
+    BaseMaraClient = _import_client()
 
     bus = CapturingBus()
     transport = FakeAsyncTransport(auto_ack=False)
-    client = BaseAsyncRobotClient(
+    client = BaseMaraClient(
         transport=transport,
         bus=bus,
         heartbeat_interval_s=10.0,

@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mara_host.transport.serial_transport import SerialTransport
 from mara_host.transport.tcp_transport import AsyncTcpTransport
-from mara_host.command.client import AsyncRobotClient
+from mara_host.command.client import MaraClient
 from mara_host.motor.motion import MotionHostModule
 from mara_host.core.event_bus import EventBus
 
@@ -52,7 +52,7 @@ async def main():
 
     transport = create_transport(sys.argv[1])
     bus = EventBus()
-    client = AsyncRobotClient(transport=transport, bus=bus)
+    client = MaraClient(transport=transport, bus=bus)
 
     print("="*60)
     print("Motor Control Example")

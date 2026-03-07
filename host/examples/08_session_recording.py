@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mara_host.transport.serial_transport import SerialTransport
 from mara_host.transport.tcp_transport import AsyncTcpTransport
-from mara_host.command.client import AsyncRobotClient
+from mara_host.command.client import MaraClient
 from mara_host.core.event_bus import EventBus
 from mara_host.logger.logger import MaraLogBundle
 from mara_host.research.recording import RecordingEventBus, RecordingTransport
@@ -80,7 +80,7 @@ async def record_session(transport_arg: str, duration: float = 10.0):
     recording_bus = RecordingEventBus(base_bus, bundle)
 
     # Create client with recording wrappers
-    client = AsyncRobotClient(
+    client = MaraClient(
         transport=recording_transport,
         bus=recording_bus,
     )

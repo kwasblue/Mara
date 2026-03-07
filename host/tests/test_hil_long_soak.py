@@ -7,7 +7,7 @@
 # from collections import deque
 # import pytest
 
-# from mara_host.command.client import BaseAsyncRobotClient
+# from mara_host.command.client import BaseMaraClient
 # from mara_host.transport.serial_transport import SerialTransport
 
 
@@ -225,7 +225,7 @@
 
 #     transport = SerialTransport(port=port, baudrate=115200)
 
-#     client = BaseAsyncRobotClient(
+#     client = BaseMaraClient(
 #         transport=transport,
 #         heartbeat_interval_s=0.2,
 #         connection_timeout_s=5.0,

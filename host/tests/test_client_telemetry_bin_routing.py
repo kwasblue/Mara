@@ -3,7 +3,7 @@ import asyncio
 import pytest
 import struct
 
-from mara_host.command.client import BaseAsyncRobotClient
+from mara_host.command.client import BaseMaraClient
 from mara_host.core import protocol
 from tests.helpers import CapturingBus
 from tests.fakes.fake_async_transport import FakeAsyncTransport
@@ -55,7 +55,7 @@ def _build_sectioned_payload(ts_ms: int = 1234, seq: int = 7) -> bytes:
 async def test_client_routes_telemetry_bin_to_packet_topic():
     bus = CapturingBus()
     transport = FakeAsyncTransport()
-    client = BaseAsyncRobotClient(
+    client = BaseMaraClient(
         transport=transport,
         bus=bus,
         require_version_match=False,

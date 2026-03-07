@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate binary command artifacts from platform_schema.BINARY_COMMANDS.
+Generate binary command artifacts from schema.BINARY_COMMANDS.
 
 Generates:
 - C++ header: BinaryCommands.h (opcodes, structs, decode/encode functions)
@@ -9,7 +9,7 @@ Generates:
 """
 
 from pathlib import Path
-from platform_schema import BINARY_COMMANDS, CPP_COMMAND_DIR, PY_COMMAND_DIR
+from mara_host.tools.schema import BINARY_COMMANDS, CPP_COMMAND_DIR, PY_COMMAND_DIR
 
 # Output paths
 CPP_OUT = CPP_COMMAND_DIR / "BinaryCommands.h"
@@ -68,7 +68,7 @@ def generate_cpp_header() -> str:
     """Generate BinaryCommands.h content."""
     lines = []
     lines.append("// AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
-    lines.append("// Generated from BINARY_COMMANDS in platform_schema.py")
+    lines.append("// Generated from BINARY_COMMANDS in schema.py")
     lines.append("//")
     lines.append("// Binary command protocol for high-rate streaming (10x smaller than JSON)")
     lines.append("//")
@@ -340,7 +340,7 @@ def generate_py_binary_commands() -> str:
     """Generate binary_commands.py content."""
     lines = []
     lines.append("# AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
-    lines.append("# Generated from BINARY_COMMANDS in platform_schema.py")
+    lines.append("# Generated from BINARY_COMMANDS in schema.py")
     lines.append('"""')
     lines.append("Binary command encoder for high-rate streaming.")
     lines.append("")
@@ -446,7 +446,7 @@ def generate_py_json_to_binary() -> str:
     """Generate json_to_binary.py content."""
     lines = []
     lines.append("# AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
-    lines.append("# Generated from BINARY_COMMANDS in platform_schema.py")
+    lines.append("# Generated from BINARY_COMMANDS in schema.py")
     lines.append('"""')
     lines.append("JSON-to-Binary command encoder.")
     lines.append("")

@@ -2,19 +2,12 @@
 """
 Command handling: client, binary commands, command streamer, reliable commander.
 
-Use explicit imports to avoid circular dependencies:
+Use explicit imports:
     from mara_host.command.client import MaraClient
     from mara_host.command.binary_commands import BinaryStreamer
     from mara_host.command.factory import MaraClientFactory, create_client_from_args, ClientConfig
     from mara_host.command.interfaces import IMaraClient, ITransport
-    etc.
-
-Backward compatibility:
-    AsyncRobotClient is deprecated, use MaraClient instead.
-    RobotClientFactory is deprecated, use MaraClientFactory instead.
-    IRobotClient is deprecated, use IMaraClient instead.
 """
-import warnings as _warnings
 from typing import TYPE_CHECKING
 
 # These imports are for runtime type checking and IDE support
@@ -25,29 +18,9 @@ if TYPE_CHECKING:
 
 
 def __getattr__(name: str):
-    """Provide backward compatibility with deprecation warnings."""
+    """Lazy import for public API."""
+    import importlib
 
-    # Map deprecated names to new names
-    _DEPRECATIONS = {
-        "AsyncRobotClient": ("MaraClient", "mara_host.command.client"),
-        "BaseAsyncRobotClient": ("BaseMaraClient", "mara_host.command.client"),
-        "RobotClientFactory": ("MaraClientFactory", "mara_host.command.factory"),
-        "IRobotClient": ("IMaraClient", "mara_host.command.interfaces"),
-    }
-
-    if name in _DEPRECATIONS:
-        new_name, module_path = _DEPRECATIONS[name]
-        _warnings.warn(
-            f"{name} is deprecated, use {new_name} instead. "
-            f"Import from {module_path}.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        import importlib
-        module = importlib.import_module(module_path)
-        return getattr(module, new_name)
-
-    # Direct exports (no deprecation warning)
     _EXPORTS = {
         "MaraClient": "mara_host.command.client",
         "BaseMaraClient": "mara_host.command.client",
@@ -59,14 +32,12 @@ def __getattr__(name: str):
     }
 
     if name in _EXPORTS:
-        import importlib
         module = importlib.import_module(_EXPORTS[name])
         return getattr(module, name)
 
     raise AttributeError(f"module 'mara_host.command' has no attribute '{name}'")
 
 
-# Explicit public API declaration
 __all__ = [
     # Main client classes
     "MaraClient",
@@ -78,8 +49,4 @@ __all__ = [
     # Interfaces
     "IMaraClient",
     "ITransport",
-    # Deprecated (for discovery, actual access triggers warning)
-    "AsyncRobotClient",
-    "RobotClientFactory",
-    "IRobotClient",
 ]

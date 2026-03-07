@@ -35,7 +35,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mara_host.transport.serial_transport import SerialTransport
 from mara_host.transport.tcp_transport import AsyncTcpTransport
-from mara_host.command.client import AsyncRobotClient
+from mara_host.command.client import MaraClient
 from mara_host.motor.motion import MotionHostModule
 from mara_host.sensor.encoder import EncoderHostModule, EncoderDefaults
 from mara_host.telemetry.host_module import TelemetryHostModule
@@ -150,7 +150,7 @@ class RobotController:
             self._bus = EventBus()
 
         # Create client
-        self._client = AsyncRobotClient(
+        self._client = MaraClient(
             transport=self._transport,
             bus=self._bus,
         )

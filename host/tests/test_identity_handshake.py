@@ -9,18 +9,18 @@ from mara_host.config.version import PROTOCOL_VERSION
 
 
 def _import_client():
-    from mara_host.command.client import BaseAsyncRobotClient
-    return BaseAsyncRobotClient
+    from mara_host.command.client import BaseMaraClient
+    return BaseMaraClient
 
 
 @pytest.mark.asyncio
 async def test_identity_handshake_completes_on_identity_kind():
-    BaseAsyncRobotClient = _import_client()
+    BaseMaraClient = _import_client()
 
     bus = CapturingBus()
     transport = FakeAsyncTransport(auto_ack=False)
 
-    client = BaseAsyncRobotClient(
+    client = BaseMaraClient(
         transport=transport,
         bus=bus,
         heartbeat_interval_s=10.0,

@@ -6,13 +6,13 @@ This module provides the business logic layer for GPIO pin management.
 Use PinService for validation, conflict detection, and recommendations.
 """
 
-from mara_host.services.pins.pin_service import (
-    PinService,
+from .models import (
     PinConflict,
     PinRecommendation,
     GroupRecommendation,
-    PIN_GROUPS,
 )
+from .groups import PIN_GROUPS
+from .service import PinService
 
 __all__ = [
     "PinService",

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Generate command schema artifacts from platform_schema.COMMANDS.
+Generate command schema artifacts from schema.COMMANDS.
 """
 from typing import Any
 from pathlib import Path
 import json
-from platform_schema import (
+from mara_host.tools.schema import (
     ROOT, COMMANDS, VERSION, CAPABILITIES, CAPABILITIES_MASK,
     PY_CONFIG_DIR, CPP_CONFIG_DIR
 )
@@ -59,7 +59,7 @@ def generate_cpp_header(commands: dict) -> str:
 
     lines: list[str] = []
     lines.append("// AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
-    lines.append("// Generated from COMMANDS in platform_schema.py\n")
+    lines.append("// Generated from COMMANDS in schema.py\n")
     lines.append("#pragma once")
     lines.append("#include <string>\n")
     lines.append("enum class CmdType {")
@@ -90,7 +90,7 @@ def generate_py_module(commands: dict) -> str:
 
     lines: list[str] = []
     lines.append("# AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
-    lines.append("# Generated from COMMANDS in platform_schema.py\n")
+    lines.append("# Generated from COMMANDS in schema.py\n")
 
     for name in names:
         lines.append(f'{name} = "{name}"')
@@ -203,7 +203,7 @@ def generate_cpp_version(version: dict) -> str:
     caps_block = "\n".join(caps_lines)
 
     return f'''// AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-// Generated from VERSION in platform_schema.py
+// Generated from VERSION in schema.py
 
 #pragma once
 #include <cstdint>
@@ -229,7 +229,7 @@ namespace Version {{
 def generate_py_version(version: dict) -> str:
     """Generate Python version.py content."""
     return f'''# AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-# Generated from VERSION in platform_schema.py
+# Generated from VERSION in schema.py
 
 PROTOCOL_VERSION = {version["protocol"]}
 SCHEMA_VERSION = {version["schema_version"]}

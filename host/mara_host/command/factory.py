@@ -274,7 +274,3 @@ def create_client_from_args(
         Configured MaraClient
     """
     return MaraClientFactory(bus).from_args(args, config)
-
-
-# Backward compatibility alias (deprecated)
-RobotClientFactory = MaraClientFactory

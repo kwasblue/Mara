@@ -3,7 +3,7 @@ import os
 import pytest
 import contextlib
 
-from mara_host.command.client import BaseAsyncRobotClient
+from mara_host.command.client import BaseMaraClient
 from mara_host.transport.serial_transport import SerialTransport
 
 
@@ -64,7 +64,7 @@ async def test_hil_churn_connect_disconnect(request):
     for i in range(cycles):
         transport = SerialTransport(port=port, baudrate=115200)
 
-        client = BaseAsyncRobotClient(
+        client = BaseMaraClient(
             transport=transport,
             heartbeat_interval_s=0.2,
             connection_timeout_s=5.0,

@@ -21,11 +21,10 @@
 
 **MARA** (Modular Asynchronous Robotics Architecture) is a complete robotics control framework consisting of:
 
-| Component | Location | Description |
-|-----------|----------|-------------|
-| **Firmware** | `firmware/mcu/` (this directory) | Real-time motor control, sensor fusion, communication |
-| **Host** | `host/mara_host/` | Python async client, telemetry, research tools |
-| **CAM Firmware** | `firmware/cam/` | ESP32-CAM streaming and vision |
+| Component | Repository | Description |
+|-----------|------------|-------------|
+| **Firmware** | `ESP32 MCU Host` (this repo) | Real-time motor control, sensor fusion, communication |
+| **Host** | [`mara_host`](../../../Host) | Python async client, telemetry, research tools |
 
 This repository contains the **ESP32 firmware** - a modular, configurable firmware for ESP32-based robot control systems. Supports differential drive robots, sensors (IMU, encoders, LIDAR, ultrasonic), and multiple communication transports (USB Serial, WiFi, Bluetooth, MQTT).
 
@@ -74,31 +73,6 @@ pio device monitor -b 115200
 | `esp32_usb` | Full + USB upload (default) | ~870KB |
 | `esp32_ota` | Full + OTA upload | ~870KB |
 
-### WiFi & MQTT Configuration
-
-For WiFi-enabled builds, configure your network credentials:
-
-```bash
-# Edit the secrets file (gitignored)
-nano include/config/WifiSecrets.h
-```
-
-```cpp
-// WiFi credentials
-#define WIFI_STA_SSID        "YourNetworkName"
-#define WIFI_STA_PASSWORD    "YourPassword"
-
-// MQTT broker (for fleet control)
-#define MQTT_BROKER_HOST     "10.0.0.59"  // Your host machine IP
-#define MQTT_BROKER_PORT     1883
-#define MQTT_ROBOT_ID        "mara_bot"
-```
-
-Start the MQTT broker on your host:
-```bash
-mara mqtt start
-```
-
 ## Architecture
 
 ```
@@ -130,7 +104,7 @@ mara mqtt start
 ## Directory Structure
 
 ```
-firmware/mcu/
+ESP32 MCU Host/
 ├── include/
 │   ├── config/          # Build configuration
 │   │   ├── FeatureFlags.h   # Feature flag definitions
@@ -378,7 +352,7 @@ pio test -e native -v
 
 ## MARA Host Integration
 
-This firmware is designed to work with the MARA Host Python package (`host/mara_host/`):
+This firmware is designed to work with the [MARA Host](../../../Host) Python package:
 
 ```python
 from mara_host import Robot
@@ -402,11 +376,10 @@ Several headers are auto-generated from `mara_host/tools/platform_schema.py`:
 | `include/config/PinConfig.h` | `pins.json` |
 | `include/config/GpioChannelDefs.h` | `GPIO_CHANNELS` dict |
 
-To regenerate from the repository root:
+To regenerate, run from the Host repository:
 ```bash
-make generate
-# or
-mara generate all
+cd mara_host/tools
+python generate_all.py
 ```
 
 ## Performance

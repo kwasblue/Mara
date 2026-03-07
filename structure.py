@@ -187,6 +187,72 @@ CPP_EXTENSIONS = {'.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.hxx'}
 ALL_EXTENSIONS = PYTHON_EXTENSIONS | CPP_EXTENSIONS
 
 
+def count_lines_of_code(filepath: Path, file_type: str) -> Dict[str, int]:
+    """
+    Count lines of code in a file.
+
+    Returns dict with:
+        - total: Total lines in file
+        - code: Non-blank, non-comment lines
+        - blank: Blank lines
+        - comment: Comment lines
+    """
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
+    except Exception:
+        return {"total": 0, "code": 0, "blank": 0, "comment": 0}
+
+    total = len(lines)
+    blank = 0
+    comment = 0
+    code = 0
+
+    in_multiline_comment = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Blank line
+        if not stripped:
+            blank += 1
+            continue
+
+        if file_type == "python":
+            # Python comments
+            if stripped.startswith('#'):
+                comment += 1
+            elif stripped.startswith('"""') or stripped.startswith("'''"):
+                # Docstring - count as comment
+                if stripped.count('"""') == 2 or stripped.count("'''") == 2:
+                    comment += 1
+                else:
+                    in_multiline_comment = not in_multiline_comment
+                    comment += 1
+            elif in_multiline_comment:
+                comment += 1
+                if '"""' in stripped or "'''" in stripped:
+                    in_multiline_comment = False
+            else:
+                code += 1
+        else:
+            # C/C++ comments
+            if in_multiline_comment:
+                comment += 1
+                if '*/' in stripped:
+                    in_multiline_comment = False
+            elif stripped.startswith('//'):
+                comment += 1
+            elif stripped.startswith('/*'):
+                comment += 1
+                if '*/' not in stripped:
+                    in_multiline_comment = True
+            else:
+                code += 1
+
+    return {"total": total, "code": code, "blank": blank, "comment": comment}
+
+
 def should_ignore_path(rel_path: str) -> bool:
     """Check if path should be ignored (common patterns)"""
     ignore_patterns = [
@@ -228,17 +294,18 @@ def scan_directory(
     base_path: Path,
     respect_gitignore: bool = True,
     file_types: Optional[set] = None
-) -> Tuple[Dict[str, List[Dict]], Dict[str, str]]:
+) -> Tuple[Dict[str, List[Dict]], Dict[str, str], Dict[str, Dict[str, int]]]:
     """
     Scan directory for source files and extract structure.
 
     Returns:
-        Tuple of (structure dict, file_types dict)
+        Tuple of (structure dict, file_types dict, line_counts dict)
     """
     base_path = Path(base_path).resolve()
     gitignore = load_gitignore(base_path) if respect_gitignore else None
     code_structure = {}
     file_type_map = {}
+    line_counts = {}
 
     if file_types is None:
         file_types = {"python", "cpp"}
@@ -275,15 +342,19 @@ def scan_directory(
                 else:
                     defs = []
 
-                if defs:
+                # Count lines of code
+                loc = count_lines_of_code(full_path, ftype)
+
+                if defs or loc["code"] > 0:
                     code_structure[str(rel_path)] = defs
                     file_type_map[str(rel_path)] = ftype
+                    line_counts[str(rel_path)] = loc
                     file_count += 1
             except Exception as e:
                 pass
 
     print(f"Scanned {file_count} files ({skipped_count} skipped)")
-    return code_structure, file_type_map
+    return code_structure, file_type_map, line_counts
 
 
 # ============================================================================
@@ -316,17 +387,22 @@ def get_icon(item_type: str, file_type: str = "python") -> str:
 def print_structure(
     structure: Dict[str, List[Dict]],
     file_type_map: Dict[str, str],
+    line_counts: Dict[str, Dict[str, int]],
     output_file: Optional[Path] = None,
     show_line_numbers: bool = False,
-    group_by_component: bool = True
+    group_by_component: bool = True,
+    show_loc: bool = True
 ) -> None:
     """Print structure to console and/or file."""
     lines = []
+
+    total_code_lines = sum(lc.get("code", 0) for lc in line_counts.values())
 
     lines.append("=" * 80)
     lines.append("MARA MONOREPO STRUCTURE")
     lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append(f"Total Files: {len(structure)}")
+    lines.append(f"Total Lines of Code: {total_code_lines:,}")
     lines.append("=" * 80)
     lines.append("")
 
@@ -372,8 +448,10 @@ def print_structure(
                 defs = structure[file_path]
                 ftype = file_type_map.get(file_path, "python")
                 is_python = ftype == "python"
+                loc = line_counts.get(file_path, {})
+                loc_str = f" ({loc.get('code', 0)} lines)" if show_loc and loc else ""
 
-                lines.append(f"  {file_path}")
+                lines.append(f"  {file_path}{loc_str}")
 
                 for item in defs:
                     lineno = f":{item['lineno']}" if show_line_numbers else ""
@@ -399,8 +477,10 @@ def print_structure(
         for file_path, defs in sorted(structure.items()):
             ftype = file_type_map.get(file_path, "python")
             is_python = ftype == "python"
+            loc = line_counts.get(file_path, {})
+            loc_str = f" ({loc.get('code', 0)} lines)" if show_loc and loc else ""
 
-            lines.append(f"  {file_path}")
+            lines.append(f"  {file_path}{loc_str}")
 
             for item in defs:
                 lineno = f":{item['lineno']}" if show_line_numbers else ""
@@ -427,16 +507,38 @@ def print_structure(
         if d["type"] in ("class", "struct")
     )
 
+    # Line count statistics
+    py_loc = sum(lc.get("code", 0) for f, lc in line_counts.items() if file_type_map.get(f) == "python")
+    cpp_loc = sum(lc.get("code", 0) for f, lc in line_counts.items() if file_type_map.get(f) == "cpp")
+    total_loc = sum(lc.get("code", 0) for lc in line_counts.values())
+    total_blank = sum(lc.get("blank", 0) for lc in line_counts.values())
+    total_comment = sum(lc.get("comment", 0) for lc in line_counts.values())
+    total_all = sum(lc.get("total", 0) for lc in line_counts.values())
+
     lines.append("")
     lines.append("=" * 80)
     lines.append("STATISTICS")
     lines.append("=" * 80)
-    lines.append(f"Python Files:     {py_files}")
-    lines.append(f"C++ Files:        {cpp_files}")
-    lines.append(f"Total Classes:    {total_classes}")
-    lines.append(f"Total Structs:    {total_structs}")
-    lines.append(f"Total Functions:  {total_functions}")
-    lines.append(f"Total Methods:    {total_methods}")
+    lines.append("")
+    lines.append("FILES")
+    lines.append(f"  Python Files:     {py_files}")
+    lines.append(f"  C++ Files:        {cpp_files}")
+    lines.append(f"  Total Files:      {py_files + cpp_files}")
+    lines.append("")
+    lines.append("DEFINITIONS")
+    lines.append(f"  Classes:          {total_classes}")
+    lines.append(f"  Structs:          {total_structs}")
+    lines.append(f"  Functions:        {total_functions}")
+    lines.append(f"  Methods:          {total_methods}")
+    lines.append("")
+    lines.append("LINES OF CODE")
+    lines.append(f"  Python:           {py_loc:,}")
+    lines.append(f"  C++:              {cpp_loc:,}")
+    lines.append(f"  Total Code:       {total_loc:,}")
+    lines.append(f"  Blank Lines:      {total_blank:,}")
+    lines.append(f"  Comment Lines:    {total_comment:,}")
+    lines.append(f"  Total Lines:      {total_all:,}")
+    lines.append("")
     lines.append("=" * 80)
 
     output = "\n".join(lines)
@@ -452,23 +554,34 @@ def print_structure(
             print(f"\nFailed to write to {output_file}: {e}")
 
 
-def generate_tree_view(structure: Dict[str, List[Dict]], file_type_map: Dict[str, str]) -> str:
+def generate_tree_view(
+    structure: Dict[str, List[Dict]],
+    file_type_map: Dict[str, str],
+    line_counts: Dict[str, Dict[str, int]],
+    show_loc: bool = True
+) -> str:
     """Generate a simple tree view of files"""
-    lines = ["MARA Monorepo Tree", ""]
+    total_loc = sum(lc.get("code", 0) for lc in line_counts.values())
+    lines = ["MARA Monorepo Tree", f"Total: {total_loc:,} lines of code", ""]
 
     files_by_dir = {}
     for file_path in sorted(structure.keys()):
         dir_path = str(Path(file_path).parent)
         if dir_path == ".":
             dir_path = "(root)"
-        files_by_dir.setdefault(dir_path, []).append(Path(file_path).name)
+        files_by_dir.setdefault(dir_path, []).append(file_path)
 
-    for dir_path, files in sorted(files_by_dir.items()):
-        lines.append(f"  {dir_path}/")
-        for file in sorted(files):
+    for dir_path, file_paths in sorted(files_by_dir.items()):
+        dir_loc = sum(line_counts.get(fp, {}).get("code", 0) for fp in file_paths)
+        loc_str = f" ({dir_loc:,} lines)" if show_loc else ""
+        lines.append(f"  {dir_path}/{loc_str}")
+        for file_path in sorted(file_paths):
+            file = Path(file_path).name
             ext = Path(file).suffix
             marker = "[py]" if ext == ".py" else "[cpp]" if ext in (".cpp", ".cc", ".c") else "[h]" if ext in (".h", ".hpp") else ""
-            lines.append(f"    {marker} {file}")
+            loc = line_counts.get(file_path, {}).get("code", 0)
+            loc_str = f" ({loc} lines)" if show_loc else ""
+            lines.append(f"    {marker} {file}{loc_str}")
         lines.append("")
 
     return "\n".join(lines)
@@ -550,6 +663,11 @@ Examples:
         action="store_true",
         help="Don't group by component (flat alphabetical list)"
     )
+    parser.add_argument(
+        "--no-loc",
+        action="store_true",
+        help="Don't show lines of code counts"
+    )
 
     args = parser.parse_args()
 
@@ -567,7 +685,7 @@ Examples:
         print(f"Error: Directory does not exist: {project_path}")
         return 1
 
-    structure, file_type_map = scan_directory(
+    structure, file_type_map, line_counts = scan_directory(
         project_path,
         respect_gitignore=not args.no_gitignore,
         file_types=file_types
@@ -577,8 +695,10 @@ Examples:
         print("No source files with definitions found.")
         return 0
 
+    show_loc = not args.no_loc
+
     if args.tree:
-        tree_output = generate_tree_view(structure, file_type_map)
+        tree_output = generate_tree_view(structure, file_type_map, line_counts, show_loc=show_loc)
         print("\n" + tree_output)
         if args.output:
             with open(args.output, "w", encoding="utf-8") as f:
@@ -588,9 +708,11 @@ Examples:
         print_structure(
             structure,
             file_type_map,
+            line_counts,
             output_file=args.output,
             show_line_numbers=args.line_numbers,
-            group_by_component=not args.flat
+            group_by_component=not args.flat,
+            show_loc=show_loc
         )
 
     return 0

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate telemetry section artifacts from platform_schema.TELEMETRY_SECTIONS.
+Generate telemetry section artifacts from schema.TELEMETRY_SECTIONS.
 
 Generates:
 - C++ header: TelemetrySections.h (section IDs, format documentation)
@@ -8,7 +8,7 @@ Generates:
 """
 
 from pathlib import Path
-from platform_schema import TELEMETRY_SECTIONS, CPP_TELEMETRY_DIR, PY_TELEMETRY_DIR
+from mara_host.tools.schema import TELEMETRY_SECTIONS, CPP_TELEMETRY_DIR, PY_TELEMETRY_DIR
 
 # Output paths
 CPP_OUT = CPP_TELEMETRY_DIR / "TelemetrySections.h"
@@ -23,7 +23,7 @@ def generate_cpp_header() -> str:
     """Generate TelemetrySections.h content."""
     lines = []
     lines.append("// AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
-    lines.append("// Generated from TELEMETRY_SECTIONS in platform_schema.py")
+    lines.append("// Generated from TELEMETRY_SECTIONS in schema.py")
     lines.append("//")
     lines.append("// Binary telemetry section IDs for structured sensor data.")
     lines.append("// Use with registerBinProvider(section_id, ...) in TelemetryManager.")
@@ -81,7 +81,7 @@ def generate_py_module() -> str:
     """Generate telemetry_sections.py content."""
     lines = []
     lines.append("# AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
-    lines.append("# Generated from TELEMETRY_SECTIONS in platform_schema.py")
+    lines.append("# Generated from TELEMETRY_SECTIONS in schema.py")
     lines.append('"""')
     lines.append("Binary telemetry section IDs.")
     lines.append("")

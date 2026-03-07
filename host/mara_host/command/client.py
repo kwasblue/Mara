@@ -16,7 +16,7 @@ from mara_host.config.client_commands import RobotCommandsMixin
 from mara_host.telemetry.binary_parser import parse_telemetry_bin
 from mara_host.config.version import PROTOCOL_VERSION, SCHEMA_VERSION, CLIENT_VERSION, CAPABILITIES_MASK
 from mara_host.logger.logger import MaraLogBundle
-from .json_to_binary import JsonToBinaryEncoder
+from .binary_mixin import BinaryCommandsMixin
 
 class HasSendBytes(Protocol):
     """Minimal transport interface used by the async robot client."""
@@ -42,7 +42,7 @@ MSG_TELEMETRY_BIN    = protocol.MSG_TELEMETRY_BIN
 _JSON_SEPARATORS = (",", ":")
 
 
-class BaseMaraClient:
+class BaseMaraClient(BinaryCommandsMixin):
     """
     Core async host-side MARA client with connection monitoring, reliable commands,
     and version handshake.
@@ -110,8 +110,7 @@ class BaseMaraClient:
         self.transport.set_frame_handler(self._on_frame)
 
         # JSON-to-Binary encoder for efficient wire transmission
-        self._binary_encoder = JsonToBinaryEncoder()
-        self._prefer_binary = True  # Use binary when available
+        self._init_binary_encoder()
 
     # ---------- Lifecycle ----------
 
@@ -507,90 +506,6 @@ class BaseMaraClient:
         await self.commander.send_fire_and_forget(cmd_type, payload)
         return True, None
 
-    # ---------- Binary command methods ----------
-
-    async def send_binary(self, cmd: Dict[str, Any]) -> bool:
-        """
-        Send a command as binary (if supported).
-
-        Args:
-            cmd: JSON command dict, e.g. {"type": "CMD_SET_VEL", "vx": 0.5, "omega": 0.1}
-
-        Returns:
-            True if sent as binary, False if not supported (caller should use JSON).
-
-        Example:
-            sent = await client.send_binary({"type": "CMD_SET_VEL", "vx": 0.5, "omega": 0.1})
-            if not sent:
-                await client.send_json_cmd("CMD_SET_VEL", {"vx": 0.5, "omega": 0.1})
-        """
-        binary_payload = self._binary_encoder.encode(cmd)
-        if binary_payload is None:
-            return False
-
-        await self._send_frame(MSG_CMD_BIN, binary_payload)
-        return True
-
-    async def send_auto(
-        self,
-        type_str: str,
-        payload: Optional[Dict[str, Any]] = None,
-        prefer_binary: bool = True,
-    ) -> None:
-        """
-        Send a command using binary if supported, otherwise JSON.
-
-        This is the recommended method for streaming commands - it automatically
-        uses the most efficient encoding:
-        - SET_VEL, SIGNAL_SET, HEARTBEAT, STOP -> Binary (5-10x smaller)
-        - All other commands -> JSON
-
-        Args:
-            type_str: Command type (e.g. "CMD_SET_VEL")
-            payload: Command payload dict
-            prefer_binary: If True, use binary when available
-
-        Example:
-            # These use binary automatically (9 bytes vs ~50 bytes)
-            await client.send_auto("CMD_SET_VEL", {"vx": 0.5, "omega": 0.1})
-            await client.send_auto("CMD_HEARTBEAT")
-            await client.send_auto("CMD_STOP")
-
-            # These fall back to JSON (no binary encoding)
-            await client.send_auto("CMD_ARM")
-            await client.send_auto("CMD_SERVO_SET_ANGLE", {"servo_id": 0, "angle_deg": 45})
-        """
-        cmd = {"type": type_str, **(payload or {})}
-
-        if prefer_binary and self._prefer_binary:
-            binary_payload = self._binary_encoder.encode(cmd)
-            if binary_payload is not None:
-                await self._send_frame(MSG_CMD_BIN, binary_payload)
-                return
-
-        # Fall back to JSON
-        await self._send_json_cmd_internal(type_str, payload or {})
-
-    async def send_vel_binary(self, vx: float, omega: float) -> None:
-        """
-        Send SET_VEL as binary (9 bytes instead of ~50 bytes JSON).
-
-        Use this for high-rate velocity streaming (50+ Hz).
-        """
-        await self.send_binary({"type": "CMD_SET_VEL", "vx": vx, "omega": omega})
-
-    async def send_signal_binary(self, signal_id: int, value: float) -> None:
-        """
-        Send SIGNAL_SET as binary (7 bytes instead of ~40 bytes JSON).
-
-        Use this for high-rate signal streaming.
-        """
-        await self.send_binary({"type": "CMD_CTRL_SIGNAL_SET", "id": signal_id, "value": value})
-
-    def set_prefer_binary(self, prefer: bool) -> None:
-        """Enable/disable automatic binary encoding for send_auto()."""
-        self._prefer_binary = prefer
-
     # ---------- Convenience methods ----------
 
     async def arm(self) -> tuple[bool, Optional[str]]:
@@ -681,8 +596,3 @@ class MaraClient(BaseMaraClient, RobotCommandsMixin):
     should live in their respective HostModule classes, not here.
     """
     pass
-
-
-# Backward compatibility aliases (deprecated)
-AsyncRobotClient = MaraClient
-BaseAsyncRobotClient = BaseMaraClient

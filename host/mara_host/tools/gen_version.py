@@ -13,13 +13,13 @@ ROOT = Path(__file__).resolve().parents[2]  # .../Host
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from pathlib import Path
-from mara_host.tools.platform_schema import VERSION
+from mara_host.tools.schema import VERSION
 
 
 def generate_cpp_version(version: dict) -> str:
     """Generate C++ Version.h content."""
     return f'''// AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-// Generated from VERSION in platform_schema.py
+// Generated from VERSION in schema.py
 
 #pragma once
 #include <cstdint>
@@ -36,7 +36,7 @@ namespace Version {{
 def generate_py_version(version: dict) -> str:
     """Generate Python version.py content."""
     return f'''# AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-# Generated from VERSION in platform_schema.py
+# Generated from VERSION in schema.py
 
 PROTOCOL_VERSION = {version["protocol"]}
 CLIENT_VERSION = "{version["firmware"]}"
@@ -59,7 +59,7 @@ def write_version_files(version: dict, cpp_path: Path, py_path: Path) -> None:
 
 
 def main() -> None:
-    from platform_schema import CPP_CONFIG_DIR, PY_CONFIG_DIR
+    from mara_host.tools.schema import CPP_CONFIG_DIR, PY_CONFIG_DIR
 
     cpp_path = CPP_CONFIG_DIR / "Version.h"
     py_path = PY_CONFIG_DIR / "version.py"

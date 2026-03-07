@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Generate GPIO channel mapping artifacts from platform_schema.GPIO_CHANNELS.
+Generate GPIO channel mapping artifacts from schema.GPIO_CHANNELS.
 """
 
 from pathlib import Path
 import json
-from platform_schema import ROOT, GPIO_CHANNELS, PINS, PY_CONFIG_DIR, CPP_CONFIG_DIR
+from mara_host.tools.schema import ROOT, GPIO_CHANNELS, PINS, PY_CONFIG_DIR, CPP_CONFIG_DIR
 
 JSON_OUT = PY_CONFIG_DIR / "gpio_channels.json"
 CPP_OUT = CPP_CONFIG_DIR / "GpioChannelDefs.h"
@@ -23,7 +23,7 @@ def generate_json(channels: list[dict]) -> str:
 def generate_cpp_header(channels: list[dict]) -> str:
     lines: list[str] = []
     lines.append("// AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
-    lines.append("// Generated from GPIO_CHANNELS in platform_schema.py\n")
+    lines.append("// Generated from GPIO_CHANNELS in schema.py\n")
     lines.append("#pragma once")
     lines.append("#include <Arduino.h>")
     lines.append("#include \"config/PinConfig.h\"\n")
@@ -62,7 +62,7 @@ def generate_cpp_header(channels: list[dict]) -> str:
 def generate_py_module(channels: list[dict]) -> str:
     lines: list[str] = []
     lines.append("# AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
-    lines.append("# Generated from GPIO_CHANNELS in platform_schema.py\n")
+    lines.append("# Generated from GPIO_CHANNELS in schema.py\n")
 
     lines.append("GPIO_CHANNELS = [")
     for entry in channels:
@@ -82,7 +82,7 @@ def generate_py_module(channels: list[dict]) -> str:
 
 
 def main():
-    print("[gen_gpio_channels] Using GPIO_CHANNELS from platform_schema.py")
+    print("[gen_gpio_channels] Using GPIO_CHANNELS from schema.py")
     channels = GPIO_CHANNELS
 
     json_text = generate_json(channels)

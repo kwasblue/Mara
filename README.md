@@ -153,6 +153,11 @@ The Python host package provides:
   - `mara pins` - GPIO pin management and wizards
   - `mara generate` - Code generation
   - `mara record` / `mara replay` - Session recording
+  - `mara mqtt` - MQTT broker management
+  - `mara build` / `mara flash` - Firmware build and flash
+  - `mara monitor` - Live telemetry dashboard
+  - `mara logs` - View recorded sessions
+  - `mara sim` - Launch simulation mode
 
 - **API**: High-level Python APIs
   - `GPIO`, `PWM` - Hardware control
@@ -318,6 +323,42 @@ make test-mcu
 # Run specific test file
 cd host && pytest tests/test_protocol.py -v
 ```
+
+### Hardware-in-the-Loop (HIL) Testing
+
+Run tests against real hardware:
+
+```bash
+# Run all HIL tests (TCP + serial)
+# Defaults: MCU_PORT=/dev/cu.usbserial-0001, ROBOT_HOST=10.0.0.60
+make test-hil
+
+# Override defaults
+MCU_PORT=/dev/ttyUSB0 ROBOT_HOST=192.168.1.100 make test-hil
+
+# Serial-only tests
+make test-hil-serial
+```
+
+### MQTT Broker
+
+For WiFi-connected robots, start a local MQTT broker:
+
+```bash
+# Start broker (runs in background)
+mara mqtt start
+
+# Check status
+mara mqtt status
+
+# Stop broker
+mara mqtt stop
+
+# Run in foreground (for debugging)
+mara mqtt start -f
+```
+
+The broker listens on all interfaces, allowing ESP32 devices to connect via WiFi.
 
 ## Architecture Philosophy
 

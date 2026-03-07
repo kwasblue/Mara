@@ -74,6 +74,31 @@ pio device monitor -b 115200
 | `esp32_usb` | Full + USB upload (default) | ~870KB |
 | `esp32_ota` | Full + OTA upload | ~870KB |
 
+### WiFi & MQTT Configuration
+
+For WiFi-enabled builds, configure your network credentials:
+
+```bash
+# Edit the secrets file (gitignored)
+nano include/config/WifiSecrets.h
+```
+
+```cpp
+// WiFi credentials
+#define WIFI_STA_SSID        "YourNetworkName"
+#define WIFI_STA_PASSWORD    "YourPassword"
+
+// MQTT broker (for fleet control)
+#define MQTT_BROKER_HOST     "10.0.0.59"  // Your host machine IP
+#define MQTT_BROKER_PORT     1883
+#define MQTT_ROBOT_ID        "mara_bot"
+```
+
+Start the MQTT broker on your host:
+```bash
+mara mqtt start
+```
+
 ## Architecture
 
 ```

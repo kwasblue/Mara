@@ -61,6 +61,21 @@ MARA supports controlling multiple ESP32 nodes over MQTT, enabling fleet-wide ro
 
 ### 1. Start MQTT Broker
 
+The easiest way is using the MARA CLI:
+
+```bash
+# Start broker (runs in background, listens on all interfaces)
+mara mqtt start
+
+# Check status
+mara mqtt status
+
+# Stop broker
+mara mqtt stop
+```
+
+Or manually with mosquitto:
+
 ```bash
 # Install mosquitto (if not installed)
 brew install mosquitto  # macOS
@@ -306,22 +321,41 @@ When the primary broker becomes unreachable, NodeManager automatically reconnect
 
 ## ESP32 Firmware Setup
 
-Ensure your ESP32 firmware has MQTT enabled:
+### 1. Enable MQTT in Build
 
-```cpp
-// In FeatureFlags.h or platformio.ini
-#define HAS_MQTT_TRANSPORT 1
-#define HAS_WIFI 1
+Use a WiFi-enabled build profile:
+
+```bash
+# Build with full features (WiFi + MQTT)
+cd firmware/mcu && pio run -e esp32_usb
 ```
 
-Configure the broker in your firmware:
+Or enable in `platformio.ini`:
+```ini
+build_flags =
+    -DHAS_WIFI=1
+    -DHAS_MQTT_TRANSPORT=1
+```
+
+### 2. Configure WiFi and Broker
+
+Edit `firmware/mcu/include/config/WifiSecrets.h`:
+
 ```cpp
-// In your setup
-MqttTransport* mqtt = new MqttTransport(
-    "10.0.0.59",  // Broker IP
-    1883,          // Port
-    "node0"        // Node ID
-);
+// WiFi credentials
+#define WIFI_STA_SSID        "YourNetworkName"
+#define WIFI_STA_PASSWORD    "YourPassword"
+
+// MQTT broker (your host machine's IP)
+#define MQTT_BROKER_HOST     "10.0.0.59"
+#define MQTT_BROKER_PORT     1883
+#define MQTT_ROBOT_ID        "mara_bot"
+```
+
+### 3. Flash Firmware
+
+```bash
+cd firmware/mcu && pio run -e esp32_usb -t upload
 ```
 
 ## Troubleshooting

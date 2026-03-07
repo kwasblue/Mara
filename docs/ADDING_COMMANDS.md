@@ -172,8 +172,11 @@ make test-host
 # 4. Flash firmware for HIL tests
 make flash-mcu
 
-# 5. HIL Tests (full system over TCP)
-cd host && pytest tests/test_hil_send_commands.py -v --run-hil
+# 5. HIL Tests (TCP + serial, with defaults)
+make test-hil
+
+# Override defaults if needed
+MCU_PORT=/dev/ttyUSB0 ROBOT_HOST=192.168.1.100 make test-hil
 ```
 
 ### Test Coverage

@@ -41,8 +41,13 @@ class TestRates:
 
 
 class TestControlSignals:
+    @pytest.fixture(autouse=True)
+    async def cleanup(self, hil):
+        """Clear signals before and after each test."""
+        await hil.clear_signals()
+        yield
+        await hil.clear_signals()
 
-    
     async def test_define_signal(self, hil):
         await hil.assert_ok("CMD_CTRL_SIGNAL_DEFINE", {
             "id": 100, "name": "test_ref", "signal_kind": "REF", "initial": 0.0

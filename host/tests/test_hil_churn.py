@@ -8,11 +8,15 @@ from mara_host.transport.serial_transport import SerialTransport
 
 
 def _get_mcu_port(request) -> str | None:
+    """Return serial port if configured and exists, else None."""
     try:
         port = request.config.getoption("--mcu-port")
     except Exception:
         port = None
-    return port or os.getenv("MCU_PORT") or "/dev/cu.usbserial-0001"
+    port = port or os.getenv("MCU_PORT")
+    if not port or not os.path.exists(port):
+        return None
+    return port
 
 
 def _get_churn_cycles(request) -> int:

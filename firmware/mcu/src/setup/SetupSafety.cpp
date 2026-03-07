@@ -2,6 +2,7 @@
 #include "core/ServiceContext.h"
 
 #include <Arduino.h>
+#include "core/Debug.h"
 #include "command/ModeManager.h"
 #include "motor/MotionController.h"
 #include "motor/DcMotorManager.h"
@@ -34,7 +35,7 @@ public:
 
         // Set up stop callback (normal deactivation, timeout, etc.)
         ctx.mode->onStop([ctx]() {
-            Serial.println("[SAFETY] Stop triggered!");
+            DBG_PRINTLN("[SAFETY] Stop triggered!");
             if (ctx.motion) {
                 ctx.motion->stop();
             }
@@ -64,7 +65,7 @@ public:
             // E-stop sets mode to ESTOPPED, so canMove() returns false, cutting relay
         });
 
-        Serial.println("[SAFETY] ModeManager configured and started");
+        DBG_PRINTLN("[SAFETY] ModeManager configured and started");
 
         return mara::Result<void>::ok();
     }

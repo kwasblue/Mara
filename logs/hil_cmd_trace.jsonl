@@ -37850,3 +37850,7 @@
 {"ts": "2026-01-31 10:30:25", "dir": "rx", "cmd": "deactivate", "ok": true, "err": null, "dt_s": 0.05176100000971928}
 {"ts": "2026-01-31 10:30:25", "dir": "tx", "cmd": "disarm", "payload": null}
 {"ts": "2026-01-31 10:30:26", "dir": "rx", "cmd": "disarm", "ok": true, "err": null, "dt_s": 0.08610054198652506}
+{"ts": "2026-03-07 16:43:58", "dir": "tx", "cmd": "client.start", "payload": null}
+{"ts": "2026-03-07 16:44:04", "dir": "rx", "cmd": "client.start", "ok": false, "err": "RuntimeError('Handshake timed out after 5.0s. Is the firmware running?')"}
+{"ts": "2026-03-07 16:46:55", "dir": "tx", "cmd": "client.start", "payload": null}
+{"ts": "2026-03-07 16:47:01", "dir": "rx", "cmd": "client.start", "ok": false, "err": "RuntimeError('Handshake timed out after 5.0s. Is the firmware running?')"}

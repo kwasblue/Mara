@@ -10,6 +10,7 @@
 #include <vector>
 #include "core/ITransport.h"
 #include "core/Protocol.h"
+#include "core/Debug.h"
 
 class WifiTransport : public ITransport {
 public:
@@ -53,7 +54,7 @@ void loop() override {
         WiFiClient newClient = server_.available();
         if (newClient) {
             client_ = newClient;
-            Serial.printf(
+            DBG_PRINTF(
                 "[WifiTransport] client connected from %s:%u\n",
                 client_.remoteIP().toString().c_str(),
                 client_.remotePort()

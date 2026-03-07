@@ -9,8 +9,8 @@ from mara_host.transport.serial_transport import SerialTransport
 
 def _get_mcu_port(request) -> str | None:
     """
-    Prefer: CLI option --mcu-port, then env var MCU_PORT, then a default.
-    Return None if nothing is available.
+    Prefer: CLI option --mcu-port, then env var MCU_PORT.
+    Return None if no port is configured or if the port doesn't exist.
     """
     port = None
     try:
@@ -18,7 +18,17 @@ def _get_mcu_port(request) -> str | None:
     except Exception:
         port = None
 
-    return port or os.getenv("MCU_PORT") or "/dev/cu.usbserial-0001"
+    port = port or os.getenv("MCU_PORT")
+
+    # Don't return a default - require explicit configuration for serial tests
+    if not port:
+        return None
+
+    # Verify port exists
+    if not os.path.exists(port):
+        return None
+
+    return port
 
 
 async def _wait_until(predicate, timeout_s: float, interval_s: float = 0.02) -> bool:

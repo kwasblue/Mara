@@ -1,7 +1,7 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-07 16:06:54
-Total Files: 419
+Generated: 2026-03-07 16:28:10
+Total Files: 422
 ================================================================================
 
 
@@ -224,6 +224,10 @@ HOST (Python)
 
   host/mara_host/benchmarks/latency/run_benchmarks.py
     [Fn] main()
+
+  host/mara_host/camera/__init__.py
+    [Fn] _check_vision_deps()
+    [Fn] __getattr__(name)
 
   host/mara_host/camera/async_client.py
     [Class] AsyncFrame
@@ -1168,6 +1172,10 @@ HOST (Python)
     [Class] StepperHostModule
       `-- __init__(self, bus, client)
 
+  host/mara_host/research/__init__.py
+    [Fn] _check_research_deps()
+    [Fn] __getattr__(name)
+
   host/mara_host/research/analysis.py
     [Fn] load_session_df(jsonl_path)
     [Fn] extract_telemetry_df(df, event_filter, flatten)
@@ -1929,7 +1937,7 @@ HOST (Python)
 
   host/mara_host/transport/mqtt/transport.py
     [Class] MQTTTransport
-      |-- __init__(self, broker_host, broker_port, node_id, username, password, client_id, bus, use_versioned_topics)
+      |-- __init__(self, broker_host, broker_port, node_id, username, password, client_id, bus, use_versioned_topics, connection_timeout_s)
       |-- is_connected(self)
       |-- node_id(self)
       |-- _publish_event(self, event, data)
@@ -1960,6 +1968,10 @@ HOST (Python)
     [Class] AsyncTcpTransport
       |-- __init__(self, host, port, reconnect_delay)
       `-- is_connected(self)
+
+  host/mara_host/vision/__init__.py
+    [Fn] _check_vision_deps()
+    [Fn] __getattr__(name)
 
   host/mara_host/vision/ml_preprocess.py
     [Class] NormalizationStats
@@ -4293,10 +4305,10 @@ ROOT
 ================================================================================
 STATISTICS
 ================================================================================
-Python Files:     237
+Python Files:     240
 C++ Files:        182
 Total Classes:    542
 Total Structs:    136
-Total Functions:  1757
+Total Functions:  1763
 Total Methods:    966
 ================================================================================

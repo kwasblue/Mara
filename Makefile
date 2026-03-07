@@ -3,13 +3,17 @@
 
 .PHONY: help install install-dev test test-host test-mcu test-hil test-hil-serial \
         build build-mcu build-cam flash flash-mcu flash-cam monitor-mcu monitor-cam \
-        clean generate lint
+        clean generate lint check-layers check-arch
 
 # Python from virtual environment (create with: python3 -m venv .venv)
 VENV := .venv
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
+
+# HIL test defaults (override with: MCU_PORT=/dev/ttyUSB0 make test-hil)
+MCU_PORT ?= /dev/cu.usbserial-0001
+ROBOT_HOST ?= 10.0.0.60
 
 # Default target
 help:
@@ -25,8 +29,8 @@ help:
 	@echo "  test           Run all tests (host + firmware)"
 	@echo "  test-host      Run Python host tests"
 	@echo "  test-mcu       Run MCU firmware tests (native)"
-	@echo "  test-hil       Run HIL tests via TCP (set ROBOT_HOST, default 10.0.0.60)"
-	@echo "  test-hil-serial Run HIL tests via serial (set MCU_PORT)"
+	@echo "  test-hil       Run all HIL tests (TCP + serial, defaults: MCU_PORT=/dev/cu.usbserial-0001, ROBOT_HOST=10.0.0.60)"
+	@echo "  test-hil-serial Run HIL tests via serial only"
 	@echo ""
 	@echo "Building:"
 	@echo "  build          Build all firmware"
@@ -44,6 +48,10 @@ help:
 	@echo ""
 	@echo "Code Generation:"
 	@echo "  generate       Run all code generators"
+	@echo ""
+	@echo "Architecture:"
+	@echo "  check-arch     Run all architecture checks (host + firmware)"
+	@echo "  check-layers   Check firmware layer dependencies"
 	@echo ""
 	@echo "Other:"
 	@echo "  clean          Clean all build artifacts"
@@ -75,7 +83,7 @@ test-mcu:
 # TCP: set ROBOT_HOST (default 10.0.0.60) and ROBOT_PORT (default 3333)
 # Serial: set MCU_PORT (e.g., /dev/cu.usbserial-0001)
 test-hil:
-	cd host && ../$(PYTEST) tests/ -v --run-hil
+	cd host && MCU_PORT=$(MCU_PORT) ../$(PYTEST) tests/ -v --run-hil --mcu-port=$(MCU_PORT) --robot-host=$(ROBOT_HOST)
 
 test-hil-serial:
 	cd host && ../$(PYTEST) tests/ -v --run-hil --mcu-port=$(MCU_PORT)
@@ -147,6 +155,19 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+
+# =============================================================================
+# Architecture Checks
+# =============================================================================
+
+check-arch: check-layers check-host-arch
+	@echo "All architecture checks passed"
+
+check-layers:
+	cd firmware/mcu && python3 tools/check_layers.py
+
+check-host-arch:
+	cd host && ../$(PYTEST) tests/test_architecture.py -v
 
 # =============================================================================
 # Linting

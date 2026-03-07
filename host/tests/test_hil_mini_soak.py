@@ -32,11 +32,15 @@ def pytest_addoption(parser):
 
 
 def _get_mcu_port(request) -> str | None:
+    """Return serial port if configured and exists, else None."""
     try:
         port = request.config.getoption("--mcu-port")
     except Exception:
         port = None
-    return port or os.getenv("MCU_PORT") or "/dev/cu.usbserial-0001"
+    port = port or os.getenv("MCU_PORT")
+    if not port or not os.path.exists(port):
+        return None
+    return port
 
 
 def _get_float_opt(request, cli_name: str, env_name: str, default: float) -> float:

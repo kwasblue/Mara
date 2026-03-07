@@ -105,20 +105,26 @@ private:
         float value = payload["value"] | 0.0f;
         const uint32_t now_ms = ctx.now_ms();
 
+        // Validate signal exists before setting
+        if (!controlModule_->signals().exists(id)) {
+            JsonDocument resp;
+            resp["id"] = id;
+            resp["error"] = "signal_not_found";
+            ctx.sendAck(ACK, false, resp);
+            return;
+        }
+
         bool ok = true;
         // Queue signal intent (control task will consume and apply)
         if (ctx.intents) {
             ctx.intents->queueSignalIntent(id, value, now_ms);
         } else {
-            ok = controlModule_->signals().set(id, value, now_ms);  // Fallback
+            ok = controlModule_->signals().set(id, value, now_ms);
         }
 
         JsonDocument resp;
         resp["id"] = id;
         resp["value"] = value;
-        if (!ok) {
-            resp["error"] = "signal_not_found";
-        }
         ctx.sendAck(ACK, ok, resp);
     }
 

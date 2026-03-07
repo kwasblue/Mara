@@ -1,0 +1,92 @@
+[
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/audio/AudioGraphManager.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/audio/AudioGraphManager.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/audio/AudioGraphManager.cpp",
+        "output": ".pio/build/native/src/audio/AudioGraphManager.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/audio/BiquadDesign.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/audio/BiquadDesign.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/audio/BiquadDesign.cpp",
+        "output": ".pio/build/native/src/audio/BiquadDesign.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/CommandHandler.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/CommandHandler.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/CommandHandler.cpp",
+        "output": ".pio/build/native/src/core/CommandHandler.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/EncoderManager.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/EncoderManager.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/EncoderManager.cpp",
+        "output": ".pio/build/native/src/core/EncoderManager.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/IdentityModule.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/IdentityModule.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/IdentityModule.cpp",
+        "output": ".pio/build/native/src/core/IdentityModule.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/ImuManager.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/ImuManager.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/ImuManager.cpp",
+        "output": ".pio/build/native/src/core/ImuManager.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/LidarManager.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/LidarManager.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/LidarManager.cpp",
+        "output": ".pio/build/native/src/core/LidarManager.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/LoggingModule.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/LoggingModule.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/LoggingModule.cpp",
+        "output": ".pio/build/native/src/core/LoggingModule.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/McuHost.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/McuHost.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/McuHost.cpp",
+        "output": ".pio/build/native/src/core/McuHost.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/MessageRouter.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/MessageRouter.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/MessageRouter.cpp",
+        "output": ".pio/build/native/src/core/MessageRouter.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/MicManager.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/MicManager.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/MicManager.cpp",
+        "output": ".pio/build/native/src/core/MicManager.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/ModeManager.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/ModeManager.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/ModeManager.cpp",
+        "output": ".pio/build/native/src/core/ModeManager.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/MotionController.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/MotionController.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/MotionController.cpp",
+        "output": ".pio/build/native/src/core/MotionController.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/core/TelemetryModule.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/core/TelemetryModule.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/core/TelemetryModule.cpp",
+        "output": ".pio/build/native/src/core/TelemetryModule.o"
+    },
+    {
+        "command": "/usr/bin/g++ -o .pio/build/native/src/main.o -c -std=gnu++17 -include test/fakes/Arduino.h -include test/fakes/DebugMacros.h -DPLATFORMIO=60118 -DUNIT_TEST=1 -Iinclude -Isrc -I.pio/libdeps/native/ArduinoJson/src -Itest/fakes src/main.cpp",
+        "directory": "/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host",
+        "file": "src/main.cpp",
+        "output": ".pio/build/native/src/main.o"
+    }
+]

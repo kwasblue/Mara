@@ -1,0 +1,2297 @@
+================================================================================
+📂 C++ PROJECT STRUCTURE
+Generated: 2026-02-15 03:12:03
+Total Files: 170
+================================================================================
+
+🧩 📄 include/audio/AudioGraphManager.h
+   🧱 class AudioGraphManager
+      └── activeChain()
+   ⚙️  activeChain()
+
+🧩 📄 include/audio/Biquad.h
+   📦 namespace audio
+   🧱 class Biquad
+      └── process(float x, int c)
+   ⚙️  process(float x, int c)
+
+🧩 📄 include/audio/BiquadDesign.h
+   📦 namespace audio
+   🧱 struct BiquadCoeffs
+      (no in-class method bodies detected)
+   🧾 enum BiquadType
+
+🧩 📄 include/audio/DspChain.h
+   📦 namespace audio
+   🧱 class DspChain
+      ├── add(std::unique_ptr<DspNode> node)
+      ├── process(float* interleaved, size_t frames)
+      ├── sr()
+      └── ch()
+   ⚙️  add(std::unique_ptr<DspNode> node)
+   ⚙️  process(float* interleaved, size_t frames)
+   ⚙️  sr()
+   ⚙️  ch()
+
+🧩 📄 include/audio/DspFactory.h
+   📦 namespace audio
+   ⚙️  str_eq(const char* a, const char* b)
+   ⚙️  make_node(const JsonObjectConst& obj, int sr, int ch)
+   ⚙️  build_chain_from_json(const JsonObjectConst& root)
+
+🧩 📄 include/audio/DspNodes.h
+   📦 namespace audio
+   🧱 class DspNode
+      (no in-class method bodies detected)
+   ⚙️  GainNode(float db)
+   ⚙️  biquad_(c.b0, c.b1, c.b2, c.a1, c.a2, ch)
+   ⚙️  ch_(ch)
+
+🧩 📄 include/command/BinaryCommands.h
+   📦 namespace BinaryCommands
+   🧱 struct SetVelCmd
+      (no in-class method bodies detected)
+   🧱 struct SetSignalCmd
+      (no in-class method bodies detected)
+   🧱 struct SetSignalsCmd
+      (no in-class method bodies detected)
+   🧱 struct DecodeResult
+      (no in-class method bodies detected)
+   ⚙️  read_u16_le(const uint8_t* buf)
+   ⚙️  read_f32_le(const uint8_t* buf)
+   ⚙️  decode(const uint8_t* data, size_t len, uint8_t opcode)
+   ⚙️  parseSignal(const uint8_t* data, uint8_t index, uint16_t& id_out, float& value_out)
+   ⚙️  encodeSetVel(float vx, float omega, uint8_t* buf)
+   ⚙️  encodeSetSignal(uint16_t id, float value, uint8_t* buf)
+   ⚙️  encodeHeartbeat(uint8_t* buf)
+   ⚙️  encodeStop(uint8_t* buf)
+
+🧩 📄 include/command/CommandContext.h
+   🧱 struct CommandContext
+      ├── now_ms()
+      ├── sendAck(const char* cmd, bool ok, JsonDocument& resp)
+      ├── sendError(const char* cmd, const char* error)
+      ├── requireIdle(const char* cmdName)
+      ├── requireArmed(const char* cmdName)
+      ├── requireField(JsonVariantConst payload, const char* key, const char* cmdName)
+      ├── requireFloat(JsonVariantConst payload, const char* key, float& out, const char* cmdName)
+      ├── requireInt(JsonVariantConst payload, const char* key, int& out, const char* cmdName)
+      ├── requireUint8(JsonVariantConst payload, const char* key, uint8_t& out, const char* cmdName)
+      ├── requireSlot(JsonVariantConst payload, uint8_t& slot, uint8_t maxSlots, const char* cmdName)
+      ├── requireInRange(float val, float minVal, float maxVal, const char* field, const char* cmdName)
+      ├── requireIntInRange(int val, int minVal, int maxVal, const char* field, const char* cmdName)
+      ├── tryReplayAck(CmdType cmd, uint32_t cmdSeq)
+      ├── storeAck(CmdType cmd, uint32_t cmdSeq, const std::string& ackJson)
+      ├── publishJson(std::string&& out)
+      └── publishJsonCopy(const std::string& out)
+   🧱 struct AckCacheEntry
+      (no in-class method bodies detected)
+   ⚙️  now_ms()
+   ⚙️  sendAck(const char* cmd, bool ok, JsonDocument& resp)
+   ⚙️  sendError(const char* cmd, const char* error)
+   ⚙️  requireIdle(const char* cmdName)
+   ⚙️  requireArmed(const char* cmdName)
+   ⚙️  requireField(JsonVariantConst payload, const char* key, const char* cmdName)
+   ⚙️  requireFloat(JsonVariantConst payload, const char* key, float& out, const char* cmdName)
+   ⚙️  requireInt(JsonVariantConst payload, const char* key, int& out, const char* cmdName)
+   ⚙️  requireUint8(JsonVariantConst payload, const char* key, uint8_t& out, const char* cmdName)
+   ⚙️  requireSlot(JsonVariantConst payload, uint8_t& slot, uint8_t maxSlots, const char* cmdName)
+   ⚙️  requireInRange(float val, float minVal, float maxVal, const char* field, const char* cmdName)
+   ⚙️  requireIntInRange(int val, int minVal, int maxVal, const char* field, const char* cmdName)
+   ⚙️  tryReplayAck(CmdType cmd, uint32_t cmdSeq)
+   ⚙️  storeAck(CmdType cmd, uint32_t cmdSeq, const std::string& ackJson)
+   ⚙️  publishJson(std::string&& out)
+   ⚙️  publishJsonCopy(const std::string& out)
+
+🧩 📄 include/command/CommandDecoders.h
+   📦 namespace mcu
+   📦 namespace cmd
+   ⚙️  decodeSetVelocity(JsonVariantConst payload)
+   ⚙️  decodeSetSignal(JsonVariantConst payload)
+   ⚙️  decodeSetRate(JsonVariantConst payload,
+    uint16_t min_hz,
+    uint16_t max_hz)
+   ⚙️  decodeGpioWrite(JsonVariantConst payload)
+   ⚙️  decodeGpioRead(JsonVariantConst payload)
+   ⚙️  decodeSlotEnable(JsonVariantConst payload)
+   ⚙️  decodeSlotReset(JsonVariantConst payload)
+   ⚙️  decodeSlotSetParam(JsonVariantConst payload)
+   ⚙️  extractUint16Array(JsonArrayConst arr, uint16_t* out, size_t maxLen)
+   ⚙️  extractFloatArray(JsonArrayConst arr, float* out, size_t maxLen)
+   ⚙️  validateArraySize(size_t actual, size_t expected, const char* name, const char** error)
+
+🧩 📄 include/command/CommandRegistry.h
+   🧱 class CommandRegistry
+      ├── setControlModule(ControlModule* cm)
+      ├── setMotionController(MotionController* mc)
+      ├── setClock(mara::IClock* clk)
+      ├── setIntentBuffer(mara::IntentBuffer* ib)
+      ├── setHandlerRegistry(HandlerRegistry* hr)
+      └── context()
+   ⚙️  setControlModule(ControlModule* cm)
+   ⚙️  setMotionController(MotionController* mc)
+   ⚙️  setClock(mara::IClock* clk)
+   ⚙️  setIntentBuffer(mara::IntentBuffer* ib)
+   ⚙️  setHandlerRegistry(HandlerRegistry* hr)
+   ⚙️  context()
+
+🧩 📄 include/command/HandlerRegistry.h
+   🧱 class HandlerRegistry
+      ├── handlerCount()
+      ├── isFinalized()
+      ├── setAvailableCaps(uint32_t caps)
+      ├── availableCaps()
+      └── capsAvailable(const IStringHandler* handler)
+   ⚙️  handlerCount()
+   ⚙️  isFinalized()
+   ⚙️  setAvailableCaps(uint32_t caps)
+   ⚙️  availableCaps()
+   ⚙️  capsAvailable(const IStringHandler* handler)
+
+🧩 📄 include/command/ICommandHandler.h
+   🧱 class ICommandHandler
+      └── name()
+   ⚙️  name()
+
+🧩 📄 include/command/IStringHandler.h
+   📦 namespace HandlerCap
+   🧱 class IStringHandler
+      ├── priority()
+      └── requiredCaps()
+   ⚙️  priority()
+   ⚙️  requiredCaps()
+
+🧩 📄 include/command/MessageRouter.h
+   🧱 class MessageRouter
+      (no in-class method bodies detected)
+
+🧩 📄 include/command/ModeManager.h
+   🧱 struct SafetyConfig
+      (no in-class method bodies detected)
+   🧱 class ModeManager
+      ├── ModeManager()
+      ├── configure(const SafetyConfig& cfg)
+      ├── mode()
+      ├── canMove()
+      ├── isEstopped()
+      ├── isConnected()
+      ├── isBypassed()
+      ├── hostAgeMs(uint32_t now_ms)
+      ├── motionAgeMs(uint32_t now_ms)
+      ├── onStop(StopCallback cb)
+      ├── onEmergencyStop(StopCallback cb)
+      ├── setClock(mara::IClock* clk)
+      └── now_ms()
+   ⚙️  ModeManager()
+   ⚙️  configure(const SafetyConfig& cfg)
+   ⚙️  mode()
+   ⚙️  canMove()
+   ⚙️  isEstopped()
+   ⚙️  isConnected()
+   ⚙️  isBypassed()
+   ⚙️  hostAgeMs(uint32_t now_ms)
+   ⚙️  motionAgeMs(uint32_t now_ms)
+   ⚙️  onStop(StopCallback cb)
+   ⚙️  onEmergencyStop(StopCallback cb)
+   ⚙️  setClock(mara::IClock* clk)
+   ⚙️  now_ms()
+
+🧩 📄 include/command/TypedCommands.h
+   📦 namespace mcu
+   📦 namespace cmd
+   🧱 struct SetVelocityCmd
+      └── isValid()
+   ⚙️  isValid()
+   🧱 struct StopCmd
+      (no in-class method bodies detected)
+   🧱 struct SetSignalCmd
+      └── isValid()
+   ⚙️  isValid()
+   🧱 struct ArmCmd
+      (no in-class method bodies detected)
+   🧱 struct DisarmCmd
+      (no in-class method bodies detected)
+   🧱 struct EstopCmd
+      (no in-class method bodies detected)
+   🧱 struct ClearEstopCmd
+      (no in-class method bodies detected)
+   🧱 struct GpioWriteCmd
+      (no in-class method bodies detected)
+   🧱 struct GpioReadCmd
+      (no in-class method bodies detected)
+   🧱 struct SetRateCmd
+      ├── isValid()
+      └── clamp()
+   ⚙️  isValid()
+   ⚙️  clamp()
+   🧱 struct SlotConfigCmd
+      └── isValid()
+   ⚙️  isValid()
+   🧱 struct SlotEnableCmd
+      (no in-class method bodies detected)
+   🧱 struct SlotResetCmd
+      (no in-class method bodies detected)
+   🧱 struct SlotSetParamCmd
+      └── isValid()
+   ⚙️  isValid()
+   🧱 struct DecodeResult
+      ├── ok(const T& c)
+      └── fail(const char* err)
+   ⚙️  ok(const T& c)
+   ⚙️  fail(const char* err)
+
+🧩 📄 include/command/decoders/ControlDecoders.h
+   📦 namespace mcu
+   📦 namespace cmd
+   🧱 struct SlotConfigResult
+      (no in-class method bodies detected)
+   🧱 struct SignalDefResult
+      (no in-class method bodies detected)
+
+🧩 📄 include/command/decoders/ObserverDecoders.h
+   📦 namespace mcu
+   📦 namespace cmd
+   🧱 struct ObserverConfigResult
+      (no in-class method bodies detected)
+
+🧩 📄 include/command/handlers/ControlHandler.h
+   ⚙️  setControlModule(ControlModule* cm)
+   ⚙️  handleSignalDefine(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSignalSet(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSignalGet(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSignalsList(CommandContext& ctx)
+   ⚙️  handleSignalDelete(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSignalsClear(CommandContext& ctx)
+   ⚙️  handleSlotConfig(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSlotEnable(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSlotReset(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSlotSetParam(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSlotSetParamArray(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSlotGetParam(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSlotStatus(JsonVariantConst payload, CommandContext& ctx)
+
+🧩 📄 include/command/handlers/DcMotorHandler.h
+   ⚙️  handleSetSpeed(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleStop(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleVelPidEnable(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSetVelTarget(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSetVelGains(JsonVariantConst payload, CommandContext& ctx)
+
+🧩 📄 include/command/handlers/GpioHandler.h
+   ⚙️  handleGpioWrite(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleGpioRead(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleGpioToggle(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleGpioRegister(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handlePwmSet(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleLedOn(CommandContext& ctx)
+   ⚙️  handleLedOff(CommandContext& ctx)
+
+🧩 📄 include/command/handlers/MotionHandler.h
+   ⚙️  executeSetVelocity(const mara::cmd::SetVelocityCmd& cmd, CommandContext& ctx)
+
+🧩 📄 include/command/handlers/ObserverHandler.h
+   ⚙️  setControlModule(ControlModule* cm)
+   ⚙️  handleConfig(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleEnable(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleReset(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSetParam(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSetParamArray(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleStatus(JsonVariantConst payload, CommandContext& ctx)
+
+🧩 📄 include/command/handlers/SafetyHandler.h
+   ⚙️  handleHeartbeat(CommandContext& ctx)
+   ⚙️  handleArm(CommandContext& ctx)
+   ⚙️  handleDisarm(CommandContext& ctx)
+   ⚙️  handleActivate(CommandContext& ctx)
+   ⚙️  handleDeactivate(CommandContext& ctx)
+   ⚙️  handleEstop(CommandContext& ctx)
+   ⚙️  handleClearEstop(CommandContext& ctx)
+   ⚙️  handleStop(CommandContext& ctx)
+   ⚙️  handleSetMode(JsonVariantConst payload, CommandContext& ctx)
+
+🧩 📄 include/command/handlers/SensorHandler.h
+   ⚙️  handleUltrasonicAttach(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleUltrasonicRead(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleEncoderAttach(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleEncoderRead(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleEncoderReset(JsonVariantConst payload, CommandContext& ctx)
+
+🧩 📄 include/command/handlers/ServoHandler.h
+   ⚙️  handleAttach(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleDetach(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSetAngle(JsonVariantConst payload, CommandContext& ctx)
+
+🧩 📄 include/command/handlers/StepperHandler.h
+   ⚙️  handleEnable(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleMoveRel(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleStop(JsonVariantConst payload, CommandContext& ctx)
+
+🧩 📄 include/command/handlers/TelemetryHandler.h
+   ⚙️  clampHz(uint16_t& hz, uint16_t min_hz, uint16_t max_hz)
+   ⚙️  telemetry_(telemetry)
+   ⚙️  handleSetInterval(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleGetRates(CommandContext& ctx)
+   ⚙️  handleCtrlSetRate(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSafetySetRate(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleTelemSetRate(JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  handleSetLogLevel(JsonVariantConst payload, CommandContext& ctx)
+
+🧩 📄 include/config/CommandDefs.h
+   🧾 enum CmdType
+   ⚙️  cmdTypeFromString(const std::string& s)
+   ⚙️  cmdTypeToString(CmdType c)
+
+🧩 📄 include/config/DeviceManifest.h
+   📦 namespace mcu
+   📦 namespace DeviceCap
+   🧱 struct DeviceManifest
+      (no in-class method bodies detected)
+   ⚙️  buildDeviceCaps()
+
+🧩 📄 include/config/FeatureFlags.h
+   ⚙️  buildCapabilityMask()
+
+🧩 📄 include/config/GpioChannelDefs.h
+   🧱 struct GpioChannelDef
+      (no in-class method bodies detected)
+
+🧩 📄 include/config/PinConfig.h
+   📦 namespace Pins
+
+🧩 📄 include/config/RobotConfig.h
+   📦 namespace config
+   🧱 struct Safety
+      (no in-class method bodies detected)
+   🧱 struct LoopRates
+      ├── control_period_ms()
+      ├── safety_period_ms()
+      └── telemetry_period_ms()
+   ⚙️  control_period_ms()
+   ⚙️  safety_period_ms()
+   ⚙️  telemetry_period_ms()
+   🧱 struct ControlTask
+      (no in-class method bodies detected)
+   🧱 struct Network
+      (no in-class method bodies detected)
+   🧱 struct Motion
+      (no in-class method bodies detected)
+   🧱 struct RobotConfig
+      └── defaults()
+   ⚙️  defaults()
+
+🧩 📄 include/config/Version.h
+   📦 namespace Version
+   📦 namespace Caps
+
+🧩 📄 include/control/ControlKernel.h
+   🧱 class ControlWatchdog
+      ├── setTimeout(uint32_t timeout_ms)
+      ├── getTimeout()
+      └── onTimeout(TimeoutCallback cb)
+   ⚙️  setTimeout(uint32_t timeout_ms)
+   ⚙️  getTimeout()
+   ⚙️  onTimeout(TimeoutCallback cb)
+   🧱 struct SlotTiming
+      (no in-class method bodies detected)
+   🧱 struct StateSpaceIO
+      (no in-class method bodies detected)
+   🧱 struct SlotIO
+      (no in-class method bodies detected)
+   🧱 struct SlotConfig
+      (no in-class method bodies detected)
+   🧱 struct SlotStatus
+      (no in-class method bodies detected)
+   🧱 class IController
+      ├── computeMulti(const float* states, const float* refs, uint8_t num_states,
+        float* outputs, uint8_t num_outputs,
+        float dt_s, SignalBus& signals, const StateSpaceIO& io)
+      ├── setParamArray(const char* key, const float* values, size_t len)
+      └── isMultiState()
+   ⚙️  computeMulti(const float* states, const float* refs, uint8_t num_states,
+        float* outputs, uint8_t num_outputs,
+        float dt_s, SignalBus& signals, const StateSpaceIO& io)
+   ⚙️  setParamArray(const char* key, const float* values, size_t len)
+   ⚙️  isMultiState()
+   ⚙️  clamp(float val, float min_val, float max_val)
+   🧱 class ControlKernel
+      ├── watchdog()
+      └── watchdog()
+   ⚙️  watchdog()
+   ⚙️  watchdog()
+   🧱 struct Slot
+      (no in-class method bodies detected)
+
+🧩 📄 include/control/ControlTelemetry.h
+   📦 namespace ControlTelemetry
+   ⚙️  provideSignalsJson(JsonObject& out, const SignalBus& bus)
+   ⚙️  provideObserversJson(JsonObject& out, const ObserverManager& mgr)
+   ⚙️  provideSlotsJson(JsonObject& out, const ControlKernel& kernel)
+   ⚙️  provideControlJson(JsonObject& out, const SignalBus& bus,
+                               const ControlKernel& kernel, const ObserverManager& observers)
+   ⚙️  provideSignalsBin(uint8_t* buf, size_t max_len, const SignalBus& bus)
+   ⚙️  provideObserversBin(uint8_t* buf, size_t max_len, const ObserverManager& mgr)
+   ⚙️  provideSlotsBin(uint8_t* buf, size_t max_len, const ControlKernel& kernel)
+
+🧩 📄 include/control/Observer.h
+   🧱 struct ObserverConfig
+      (no in-class method bodies detected)
+   🧱 class LuenbergerObserver
+      ├── LuenbergerObserver()
+      ├── getStates()
+      ├── isInitialized()
+      ├── numStates()
+      ├── numInputs()
+      ├── numOutputs()
+      └── clamp(float v, float lo, float hi)
+   ⚙️  LuenbergerObserver()
+   ⚙️  getStates()
+   ⚙️  isInitialized()
+   ⚙️  numStates()
+   ⚙️  numInputs()
+   ⚙️  numOutputs()
+   ⚙️  clamp(float v, float lo, float hi)
+   🧱 class ObserverManager
+      (no in-class method bodies detected)
+   🧱 struct Slot
+      (no in-class method bodies detected)
+   🧱 struct ObserverConfig
+      (no in-class method bodies detected)
+   🧱 class LuenbergerObserver
+      ├── LuenbergerObserver()
+      ├── configure(uint8_t, uint8_t, uint8_t)
+      ├── update(const float*, const float*, float, float*)
+      ├── reset()
+      ├── initState(const float*)
+      ├── setState(uint8_t, float)
+      ├── getState(uint8_t)
+      ├── getStates()
+      ├── isInitialized()
+      ├── setA(const float*, size_t)
+      ├── setB(const float*, size_t)
+      ├── setC(const float*, size_t)
+      ├── setL(const float*, size_t)
+      ├── setParam(const char*, float)
+      ├── setParamArray(const char*, const float*, size_t)
+      ├── numStates()
+      ├── numInputs()
+      └── numOutputs()
+   ⚙️  LuenbergerObserver()
+   ⚙️  configure(uint8_t, uint8_t, uint8_t)
+   ⚙️  update(const float*, const float*, float, float*)
+   ⚙️  reset()
+   ⚙️  initState(const float*)
+   ⚙️  setState(uint8_t, float)
+   ⚙️  getState(uint8_t)
+   ⚙️  getStates()
+   ⚙️  isInitialized()
+   ⚙️  setA(const float*, size_t)
+   ⚙️  setB(const float*, size_t)
+   ⚙️  setC(const float*, size_t)
+   ⚙️  setL(const float*, size_t)
+   ⚙️  setParam(const char*, float)
+   ⚙️  setParamArray(const char*, const float*, size_t)
+   ⚙️  numStates()
+   ⚙️  numInputs()
+   ⚙️  numOutputs()
+   🧱 class ObserverManager
+      ├── configure(uint8_t, const ObserverConfig&, uint16_t = 200)
+      ├── enable(uint8_t, bool)
+      ├── reset(uint8_t)
+      ├── setParam(uint8_t, const char*, float)
+      ├── setParamArray(uint8_t, const char*, const float*, size_t)
+      ├── step(uint32_t, float, SignalBus&)
+      ├── getObserver(uint8_t)
+      ├── getSlot(uint8_t slot)
+      ├── resetAll()
+      └── disableAll()
+   🧱 struct Slot
+      (no in-class method bodies detected)
+   ⚙️  configure(uint8_t, const ObserverConfig&, uint16_t = 200)
+   ⚙️  enable(uint8_t, bool)
+   ⚙️  reset(uint8_t)
+   ⚙️  setParam(uint8_t, const char*, float)
+   ⚙️  setParamArray(uint8_t, const char*, const float*, size_t)
+   ⚙️  step(uint32_t, float, SignalBus&)
+   ⚙️  getObserver(uint8_t)
+   ⚙️  getSlot(uint8_t slot)
+   ⚙️  resetAll()
+   ⚙️  disableAll()
+
+🧩 📄 include/control/SignalBus.h
+   🧱 class SignalBus
+      ├── SignalBus()
+      ├── getMinInterval()
+      ├── getMaxUpdatesPerSec()
+      ├── all()
+      ├── count()
+      └── clear()
+   ⚙️  SignalBus()
+   🧱 struct SignalDef
+      (no in-class method bodies detected)
+   ⚙️  getMinInterval()
+   ⚙️  getMaxUpdatesPerSec()
+   ⚙️  all()
+   ⚙️  count()
+   ⚙️  clear()
+   🧱 struct SignalSnapshot
+      (no in-class method bodies detected)
+   🧱 struct Alias
+      (no in-class method bodies detected)
+   🧱 class SignalRef
+      ├── resolve()
+      ├── isResolved()
+      ├── get(float& out)
+      ├── set(float v, uint32_t now_ms = 0)
+      └── id()
+   ⚙️  resolve()
+   ⚙️  isResolved()
+   ⚙️  get(float& out)
+   ⚙️  set(float v, uint32_t now_ms = 0)
+   ⚙️  id()
+   ⚙️  signalKindToString(SignalBus::Kind k)
+   ⚙️  signalKindFromString(const char* s)
+   🧱 class SignalBus
+      ├── define(uint16_t, const char*, Kind, float = 0.0f)
+      ├── exists(uint16_t)
+      ├── set(uint16_t, float, uint32_t = 0)
+      ├── setWithRateLimit(uint16_t, float, uint32_t)
+      ├── setGlobalRateLimit(uint32_t, uint16_t)
+      ├── getMinInterval()
+      ├── getMaxUpdatesPerSec()
+      ├── get(uint16_t, float&)
+      ├── getWithTs(uint16_t, float&, uint32_t&)
+      ├── getTimestamp(uint16_t, uint32_t&)
+      ├── find(uint16_t)
+      ├── all()
+      ├── count()
+      ├── snapshot(SignalSnapshot*, size_t)
+      ├── getByIndex(size_t)
+      ├── remove(uint16_t)
+      ├── deleteSignal(uint16_t)
+      ├── clear()
+      ├── createAlias(uint16_t, const char*)
+      ├── removeAlias(const char*)
+      ├── getByName(const char*, float&)
+      ├── setByName(const char*, float, uint32_t = 0)
+      └── resolveId(const char*)
+   🧱 struct SignalDef
+      (no in-class method bodies detected)
+   🧱 struct SignalSnapshot
+      (no in-class method bodies detected)
+   ⚙️  define(uint16_t, const char*, Kind, float = 0.0f)
+   ⚙️  exists(uint16_t)
+   ⚙️  set(uint16_t, float, uint32_t = 0)
+   ⚙️  setWithRateLimit(uint16_t, float, uint32_t)
+   ⚙️  setGlobalRateLimit(uint32_t, uint16_t)
+   ⚙️  getMinInterval()
+   ⚙️  getMaxUpdatesPerSec()
+   ⚙️  get(uint16_t, float&)
+   ⚙️  getWithTs(uint16_t, float&, uint32_t&)
+   ⚙️  getTimestamp(uint16_t, uint32_t&)
+   ⚙️  find(uint16_t)
+   ⚙️  all()
+   ⚙️  count()
+   ⚙️  snapshot(SignalSnapshot*, size_t)
+   ⚙️  getByIndex(size_t)
+   ⚙️  remove(uint16_t)
+   ⚙️  deleteSignal(uint16_t)
+   ⚙️  clear()
+   ⚙️  createAlias(uint16_t, const char*)
+   ⚙️  removeAlias(const char*)
+   ⚙️  getByName(const char*, float&)
+   ⚙️  setByName(const char*, float, uint32_t = 0)
+   ⚙️  resolveId(const char*)
+   🧱 class SignalRef
+      ├── SignalRef(SignalBus&, const char*)
+      ├── resolve()
+      ├── isResolved()
+      ├── get(float&)
+      ├── set(float, uint32_t = 0)
+      └── id()
+   ⚙️  SignalRef(SignalBus&, const char*)
+   ⚙️  resolve()
+   ⚙️  isResolved()
+   ⚙️  get(float&)
+   ⚙️  set(float, uint32_t = 0)
+   ⚙️  id()
+   ⚙️  signalKindToString(SignalBus::Kind)
+   ⚙️  signalKindFromString(const char*)
+
+🧩 📄 include/core/Clock.h
+   📦 namespace mcu
+   🧱 class IClock
+      (no in-class method bodies detected)
+   ⚙️  setMillis(uint32_t ms)
+   ⚙️  setMicros(uint32_t us)
+   ⚙️  advanceMillis(uint32_t delta)
+   ⚙️  advanceMicros(uint32_t delta)
+
+🧩 📄 include/core/CriticalSection.h
+   📦 namespace mcu
+   🧱 struct SpinlockStub
+      (no in-class method bodies detected)
+   🧱 class CriticalSection
+      ├── ~CriticalSection()
+      ├── enter()
+      └── exit()
+   ⚙️  enter()
+   ⚙️  exit()
+   ⚙️  initSpinlock([[maybe_unused]] SpinlockType& lock)
+   🧱 class CriticalSectionISR
+      └── ~CriticalSectionISR()
+
+🧩 📄 include/core/Event.h
+   🧱 struct TelemetrySystemPayload
+      (no in-class method bodies detected)
+   🧱 struct TelemetryMotionPayload
+      (no in-class method bodies detected)
+   🧱 struct TelemetryServosPayload
+      (no in-class method bodies detected)
+   🧱 struct EventPayload
+      (no in-class method bodies detected)
+   🧱 struct Event
+      (no in-class method bodies detected)
+
+🧩 📄 include/core/EventBus.h
+   🧱 class EventBus
+      ├── subscribe(Handler h)
+      ├── subscribe(Handler h, EventType type)
+      ├── subscribe(Handler h, EventMask mask)
+      ├── publish(const Event& evt)
+      ├── publishQueued(const Event& evt)
+      ├── drain()
+      ├── queueDepth()
+      ├── queueEmpty()
+      ├── stats()
+      ├── resetStats()
+      ├── handlerCount()
+      ├── eventMask(EventType type)
+      └── dispatchEvent(const Event& evt)
+   🧱 struct Subscription
+      (no in-class method bodies detected)
+   🧱 struct Stats
+      (no in-class method bodies detected)
+   ⚙️  subscribe(Handler h)
+   ⚙️  subscribe(Handler h, EventType type)
+   ⚙️  subscribe(Handler h, EventMask mask)
+   ⚙️  publish(const Event& evt)
+   ⚙️  publishQueued(const Event& evt)
+   ⚙️  drain()
+   ⚙️  queueDepth()
+   ⚙️  queueEmpty()
+   ⚙️  stats()
+   ⚙️  resetStats()
+   ⚙️  handlerCount()
+   ⚙️  eventMask(EventType type)
+   ⚙️  dispatchEvent(const Event& evt)
+
+🧩 📄 include/core/Fwd.h
+   📦 namespace mcu
+
+🧩 📄 include/core/IModule.h
+   📦 namespace mcu
+   🧱 class IModule
+      ├── init(mara::ServiceContext& ctx)
+      ├── setup()
+      ├── loop(uint32_t now_ms)
+      ├── handleEvent(const Event& evt)
+      ├── priority()
+      └── domain()
+   ⚙️  init(mara::ServiceContext& ctx)
+   ⚙️  setup()
+   ⚙️  loop(uint32_t now_ms)
+   ⚙️  handleEvent(const Event& evt)
+   ⚙️  priority()
+   ⚙️  domain()
+
+🧩 📄 include/core/ITransport.h
+   🧱 class ITransport
+      └── setFrameHandler(FrameHandler handler)
+   ⚙️  setFrameHandler(FrameHandler handler)
+
+🧩 📄 include/core/IntentBuffer.h
+   📦 namespace mcu
+   🧱 struct VelocityIntent
+      (no in-class method bodies detected)
+   🧱 struct ServoIntent
+      (no in-class method bodies detected)
+   🧱 struct DcMotorIntent
+      (no in-class method bodies detected)
+   🧱 struct StepperIntent
+      (no in-class method bodies detected)
+   🧱 struct SignalIntent
+      (no in-class method bodies detected)
+   🧱 class IntentBuffer
+      └── IntentBuffer()
+   ⚙️  IntentBuffer()
+
+🧩 📄 include/core/LoopRates.h
+   🧱 struct LoopRates
+      ├── ctrl_period_ms()
+      ├── safety_period_ms()
+      └── telem_period_ms()
+   ⚙️  ctrl_period_ms()
+   ⚙️  safety_period_ms()
+   ⚙️  telem_period_ms()
+
+🧩 📄 include/core/LoopScheduler.h
+   🧱 class LoopScheduler
+      ├── setPeriodMs(uint32_t p)
+      └── tick(uint32_t now_ms)
+   ⚙️  setPeriodMs(uint32_t p)
+   ⚙️  tick(uint32_t now_ms)
+
+🧩 📄 include/core/LoopTiming.h
+   📦 namespace mcu
+   🧱 struct LoopTiming
+      ├── updatePeaks()
+      └── reset()
+   ⚙️  updatePeaks()
+   ⚙️  reset()
+
+🧩 📄 include/core/MCUHost.h
+   📦 namespace mcu
+   🧱 class MCUHost
+      └── bus()
+   ⚙️  bus()
+
+🧩 📄 include/core/Messages.h
+   🧾 enum MsgKind
+   ⚙️  msgKindFromString(const std::string& s)
+   🧱 struct JsonMessage
+      └── payload()
+   ⚙️  payload()
+   ⚙️  parseJsonToMessage(const std::string& jsonStr, JsonMessage& outMsg)
+
+🧩 📄 include/core/ModuleManager.h
+   📦 namespace mcu
+   🧱 class ModuleManager
+      ├── moduleCount()
+      ├── isFinalized()
+      ├── isInitialized()
+      └── modules()
+   ⚙️  moduleCount()
+   ⚙️  isFinalized()
+   ⚙️  isInitialized()
+   ⚙️  modules()
+
+🧩 📄 include/core/Protocol.h
+   📦 namespace Protocol
+   ⚙️  crc16_ccitt(const uint8_t* data, size_t len, uint16_t crc = 0xFFFF)
+   ⚙️  crc16_ccitt_byte(uint8_t byte, uint16_t crc = 0xFFFF)
+   ⚙️  encode(uint8_t msgType,
+                   const uint8_t* payload,
+                   size_t payloadLen,
+                   std::vector<uint8_t>& outFrame)
+
+🧩 📄 include/core/RealTimeContract.h
+   📦 namespace mcu
+   🧱 struct RtTimingStats
+      ├── recordPeriod(uint32_t period_us)
+      ├── jitter_us()
+      └── reset()
+   ⚙️  recordPeriod(uint32_t period_us)
+   ⚙️  jitter_us()
+   ⚙️  reset()
+
+🧩 📄 include/core/Result.h
+   📦 namespace mcu
+   ⚙️  errorCodeToString(ErrorCode code)
+   🧱 class Result
+      ├── ok(const T& value)
+      ├── ok(T&& value)
+      ├── err(ErrorCode code)
+      ├── isOk()
+      ├── isError()
+      ├── bool()
+      ├── error()
+      ├── errorCode()
+      └── valueOr(const T& defaultValue)
+   ⚙️  ok(const T& value)
+   ⚙️  ok(T&& value)
+   ⚙️  err(ErrorCode code)
+   ⚙️  isOk()
+   ⚙️  isError()
+   ⚙️  bool()
+   ⚙️  error()
+   ⚙️  errorCode()
+   ⚙️  valueOr(const T& defaultValue)
+   ⚙️  ok()
+   ⚙️  err(ErrorCode code)
+   ⚙️  isOk()
+   ⚙️  isError()
+   ⚙️  bool()
+   ⚙️  error()
+   ⚙️  errorCode()
+
+🧩 📄 include/core/Runtime.h
+   📦 namespace mcu
+   🧱 struct RuntimeConfig
+      (no in-class method bodies detected)
+   🧱 class Runtime
+      ├── hasCriticalFailure()
+      ├── context()
+      ├── context()
+      └── storage()
+   ⚙️  hasCriticalFailure()
+   ⚙️  context()
+   ⚙️  context()
+   ⚙️  storage()
+
+🧩 📄 include/core/ServiceContext.h
+   📦 namespace mcu
+   📦 namespace mcu
+   📦 namespace mcu
+   🧱 struct ServiceContext
+      ├── hasMotorControl()
+      ├── hasSensors()
+      ├── hasTransport()
+      └── isValid()
+   ⚙️  hasMotorControl()
+   ⚙️  hasSensors()
+   ⚙️  hasTransport()
+   ⚙️  isValid()
+
+🧩 📄 include/core/ServiceStorage.h
+   📦 namespace mcu
+   🧱 struct ServiceStorage
+      (no in-class method bodies detected)
+
+🧩 📄 include/hw/GpioManager.h
+   🧱 class GpioManager
+      ├── GpioManager()
+      ├── registerChannel(int ch, int pin, int mode = OUTPUT)
+      ├── hasChannel(int ch)
+      ├── write(int ch, int value)
+      ├── read(int ch)
+      ├── toggle(int ch)
+      └── configureLimitSwitch(uint8_t pin)
+   ⚙️  GpioManager()
+   ⚙️  registerChannel(int ch, int pin, int mode = OUTPUT)
+   ⚙️  hasChannel(int ch)
+   ⚙️  write(int ch, int value)
+   ⚙️  read(int ch)
+   ⚙️  toggle(int ch)
+   ⚙️  configureLimitSwitch(uint8_t pin)
+
+🧩 📄 include/hw/PwmManager.h
+   🧱 class PwmManager
+      ├── registerChannel(int ch, int pin, int ledcChannel, float defaultFreq = 50.0f)
+      ├── set(int ch, float duty, float freq=0.0f)
+      └── exists(int ch)
+   ⚙️  registerChannel(int ch, int pin, int ledcChannel, float defaultFreq = 50.0f)
+   ⚙️  set(int ch, float duty, float freq=0.0f)
+   ⚙️  exists(int ch)
+
+🧩 📄 include/hw/SafetyManager.h
+   🧱 class SafetyManager
+      ├── estop()
+      ├── clearEstop()
+      └── isEstopActive()
+   ⚙️  estop()
+   ⚙️  clearEstop()
+   ⚙️  isEstopActive()
+
+🧩 📄 include/loop/LoopFunctions.h
+   📦 namespace mcu
+
+🧩 📄 include/module/ControlModule.h
+   ⚙️  signals()
+   ⚙️  kernel()
+   ⚙️  observers()
+   ⚙️  signals()
+   ⚙️  kernel()
+   ⚙️  observers()
+
+🧩 📄 include/module/HeartbeatModule.h
+   ⚙️  bus_(bus)
+
+🧩 📄 include/module/LoggingModule.h
+   ⚙️  instance()
+   ⚙️  currentLevel()
+
+🧩 📄 include/module/TelemetryModule.h
+   🧱 struct JsonProvider
+      (no in-class method bodies detected)
+   🧱 struct BinProvider
+      (no in-class method bodies detected)
+
+🧩 📄 include/motor/ActuatorConfig.h
+   📦 namespace mcu
+   ⚙️  autoConfigureDcMotors(DcMotorManagerT& dcMotor)
+   ⚙️  autoConfigureServos(ServoManagerT& servo)
+   ⚙️  autoConfigureSteppers(StepperManagerT& stepper)
+   ⚙️  autoConfigureEncoders(EncoderManagerT& encoder)
+   🧱 struct ActuatorAutoConfig
+      └── configureAll(DcT& dc, ServoT& servo, StepperT& stepper, EncT& encoder)
+   ⚙️  configureAll(DcT& dc, ServoT& servo, StepperT& stepper, EncT& encoder)
+
+🧩 📄 include/motor/ActuatorRegistry.h
+   📦 namespace mcu
+   🧱 class ActuatorRegistry
+      ├── setAvailableCaps(uint32_t caps)
+      ├── availableCaps()
+      ├── get()
+      ├── get()
+      ├── count()
+      ├── begin()
+      └── end()
+   ⚙️  setAvailableCaps(uint32_t caps)
+   ⚙️  availableCaps()
+   ⚙️  get()
+   ⚙️  get()
+   ⚙️  count()
+   ⚙️  begin()
+   ⚙️  end()
+
+🧩 📄 include/motor/DcMotorActuator.h
+   📦 namespace mcu
+   🧱 struct Motor
+      (no in-class method bodies detected)
+   ⚙️  attach(uint8_t id, int in1Pin, int in2Pin, int pwmPin,
+                int ledcChannel, int freq = 15000, int resolutionBits = 12)
+   ⚙️  isAttached(uint8_t id)
+   ⚙️  setSpeed(uint8_t id, float speed)
+   ⚙️  stop(uint8_t id)
+   ⚙️  enableVelocityPid(uint8_t id, bool enable)
+   ⚙️  setVelocityTarget(uint8_t id, float omegaRadPerSec)
+   ⚙️  setVelocityGains(uint8_t id, float kp, float ki, float kd)
+   ⚙️  updateVelocityPid(uint8_t id, float measuredOmegaRadS, float dt)
+   ⚙️  getLastSpeed(uint8_t id)
+   📦 namespace mcu
+   🧱 class DcMotorActuator
+      ├── attach(uint8_t, int, int, int, int, int = 15000, int = 12)
+      ├── isAttached(uint8_t)
+      ├── setSpeed(uint8_t, float)
+      ├── stop(uint8_t)
+      └── stopAll()
+   ⚙️  attach(uint8_t, int, int, int, int, int = 15000, int = 12)
+   ⚙️  isAttached(uint8_t)
+   ⚙️  setSpeed(uint8_t, float)
+   ⚙️  stop(uint8_t)
+   ⚙️  stopAll()
+
+🧩 📄 include/motor/DcMotorManager.h
+   🧱 class DcMotorManager
+      ├── isAttached(uint8_t id)
+      └── isVelocityPidEnabled(uint8_t id)
+   🧱 struct Motor
+      (no in-class method bodies detected)
+   🧱 struct MotorDebugInfo
+      (no in-class method bodies detected)
+   ⚙️  isAttached(uint8_t id)
+   ⚙️  isVelocityPidEnabled(uint8_t id)
+   🧱 class DcMotorManager
+      ├── DcMotorManager(GpioManager&, PwmManager&)
+      ├── attach(uint8_t, int, int, int, int, int = 15000, int = 12)
+      ├── isAttached(uint8_t)
+      ├── setSpeed(uint8_t, float)
+      ├── stop(uint8_t)
+      ├── stopAll()
+      ├── getMotorDebugInfo(uint8_t, MotorDebugInfo&)
+      ├── dumpAllMotorMappings()
+      ├── enableVelocityPid(uint8_t, bool)
+      ├── isVelocityPidEnabled(uint8_t)
+      ├── setVelocityTarget(uint8_t, float)
+      ├── setVelocityGains(uint8_t, float, float, float)
+      └── updateVelocityPid(uint8_t, float, float)
+   🧱 struct Motor
+      (no in-class method bodies detected)
+   🧱 struct MotorDebugInfo
+      (no in-class method bodies detected)
+   ⚙️  DcMotorManager(GpioManager&, PwmManager&)
+   ⚙️  attach(uint8_t, int, int, int, int, int = 15000, int = 12)
+   ⚙️  isAttached(uint8_t)
+   ⚙️  setSpeed(uint8_t, float)
+   ⚙️  stop(uint8_t)
+   ⚙️  stopAll()
+   ⚙️  getMotorDebugInfo(uint8_t, MotorDebugInfo&)
+   ⚙️  dumpAllMotorMappings()
+   ⚙️  enableVelocityPid(uint8_t, bool)
+   ⚙️  isVelocityPidEnabled(uint8_t)
+   ⚙️  setVelocityTarget(uint8_t, float)
+   ⚙️  setVelocityGains(uint8_t, float, float, float)
+   ⚙️  updateVelocityPid(uint8_t, float, float)
+
+🧩 📄 include/motor/IActuator.h
+   📦 namespace mcu
+   📦 namespace ActuatorCap
+   🧱 class IActuator
+      ├── requiredCaps()
+      ├── priority()
+      └── isOnline()
+   ⚙️  requiredCaps()
+   ⚙️  priority()
+   ⚙️  isOnline()
+
+🧩 📄 include/motor/MotionController.h
+   🧱 class MotionController
+      ├── baseEnabled()
+      ├── setClock(mara::IClock* clk)
+      └── now_ms()
+   ⚙️  baseEnabled()
+   ⚙️  setClock(mara::IClock* clk)
+   ⚙️  now_ms()
+
+🧩 📄 include/motor/PID.h
+   🧱 class PID
+      ├── prevDeriv_(0.0f)
+      ├── setGains(float kp, float ki, float kd)
+      ├── setOutputLimits(float minVal, float maxVal)
+      ├── setIntegratorLimits(float minVal, float maxVal)
+      ├── setDerivativeFilter(float alpha)
+      ├── reset()
+      ├── compute(float target, float measurement, float dt)
+      └── clamp(float v, float lo, float hi)
+   ⚙️  prevDeriv_(0.0f)
+   ⚙️  setGains(float kp, float ki, float kd)
+   ⚙️  setOutputLimits(float minVal, float maxVal)
+   ⚙️  setIntegratorLimits(float minVal, float maxVal)
+   ⚙️  setDerivativeFilter(float alpha)
+   ⚙️  reset()
+   ⚙️  compute(float target, float measurement, float dt)
+   ⚙️  clamp(float v, float lo, float hi)
+
+🧩 📄 include/motor/ServoManager.h
+   🧱 class ServoManager
+      ├── attach(int servoId, int pin, int minUs = 500, int maxUs = 2500)
+      ├── detach(int servoId)
+      ├── setAngle(int servoId, float angleDeg)
+      ├── setOffset(float offsetDeg)
+      └── setScale(float scale)
+   ⚙️  attach(int servoId, int pin, int minUs = 500, int maxUs = 2500)
+   ⚙️  detach(int servoId)
+   ⚙️  setAngle(int servoId, float angleDeg)
+   ⚙️  setOffset(float offsetDeg)
+   ⚙️  setScale(float scale)
+   🧱 class ServoManager
+      ├── attach(int, int, int = 500, int = 2500)
+      ├── detach(int)
+      ├── setAngle(int, float)
+      ├── setOffset(float)
+      └── setScale(float)
+   ⚙️  attach(int, int, int = 500, int = 2500)
+   ⚙️  detach(int)
+   ⚙️  setAngle(int, float)
+   ⚙️  setOffset(float)
+   ⚙️  setScale(float)
+
+🧩 📄 include/motor/StepperManager.h
+   🧱 struct StepperConfig
+      (no in-class method bodies detected)
+   🧱 struct StepperState
+      (no in-class method bodies detected)
+   🧱 class StepperManager
+      └── gpio_(gpio)
+   🧱 struct StepperDebugInfo
+      (no in-class method bodies detected)
+   ⚙️  gpio_(gpio)
+   🧱 class StepperManager
+      ├── StepperManager(GpioManager&)
+      ├── registerStepper(int, int, int, int = -1, bool = false)
+      ├── setEnabled(int, bool)
+      ├── moveRelative(int, int, float = 1000.0f)
+      ├── stop(int)
+      ├── getStepperDebugInfo(int, StepperDebugInfo&)
+      └── dumpAllStepperMappings()
+   🧱 struct StepperDebugInfo
+      (no in-class method bodies detected)
+   ⚙️  StepperManager(GpioManager&)
+   ⚙️  registerStepper(int, int, int, int = -1, bool = false)
+   ⚙️  setEnabled(int, bool)
+   ⚙️  moveRelative(int, int, float = 1000.0f)
+   ⚙️  stop(int)
+   ⚙️  getStepperDebugInfo(int, StepperDebugInfo&)
+   ⚙️  dumpAllStepperMappings()
+
+🧩 📄 include/sensor/EncoderManager.h
+   🧱 class EncoderManager
+      └── isAttached(uint8_t id)
+   🧱 struct Encoder
+      (no in-class method bodies detected)
+   ⚙️  isAttached(uint8_t id)
+   🧱 class EncoderManager
+      ├── attach(uint8_t, uint8_t, uint8_t)
+      ├── getCount(uint8_t)
+      ├── reset(uint8_t)
+      ├── handleA(uint8_t)
+      ├── handleB(uint8_t)
+      └── isAttached(uint8_t)
+   🧱 struct Encoder
+      (no in-class method bodies detected)
+   ⚙️  attach(uint8_t, uint8_t, uint8_t)
+   ⚙️  getCount(uint8_t)
+   ⚙️  reset(uint8_t)
+   ⚙️  handleA(uint8_t)
+   ⚙️  handleB(uint8_t)
+   ⚙️  isAttached(uint8_t)
+   ⚙️  getGlobalEncoderManager()
+
+🧩 📄 include/sensor/I2CBusManager.h
+   🧱 class I2CBusManager
+      ├── begin(int sda_pin, int scl_pin, uint32_t freq_hz = 400000)
+      ├── registerDevice(const std::string& name, uint8_t address)
+      ├── addr(const std::string& name)
+      └── bus()
+   ⚙️  begin(int sda_pin, int scl_pin, uint32_t freq_hz = 400000)
+   ⚙️  registerDevice(const std::string& name, uint8_t address)
+   ⚙️  addr(const std::string& name)
+   ⚙️  bus()
+
+🧩 📄 include/sensor/ISensor.h
+   📦 namespace mcu
+   🧱 class ISensor
+      ├── requiredCaps()
+      ├── priority()
+      └── isOnline()
+   ⚙️  requiredCaps()
+   ⚙️  priority()
+   ⚙️  isOnline()
+   📦 namespace SensorCap
+
+🧩 📄 include/sensor/ImuManager.h
+   🧱 class ImuManager
+      └── isOnline()
+   🧱 struct Sample
+      (no in-class method bodies detected)
+   ⚙️  isOnline()
+   🧱 class ImuManager
+      ├── begin(int, int, uint8_t = 0x68)
+      ├── isOnline()
+      └── readSample(Sample&)
+   🧱 struct Sample
+      (no in-class method bodies detected)
+   ⚙️  begin(int, int, uint8_t = 0x68)
+   ⚙️  isOnline()
+   ⚙️  readSample(Sample&)
+
+🧩 📄 include/sensor/LidarManager.h
+   🧱 class LidarManager
+      └── isOnline()
+   🧱 struct Sample
+      (no in-class method bodies detected)
+   ⚙️  isOnline()
+   🧱 class LidarManager
+      ├── begin(uint8_t, uint8_t, uint8_t = DEFAULT_ADDR)
+      ├── isOnline()
+      └── readSample(Sample&)
+   🧱 struct Sample
+      (no in-class method bodies detected)
+   ⚙️  begin(uint8_t, uint8_t, uint8_t = DEFAULT_ADDR)
+   ⚙️  isOnline()
+   ⚙️  readSample(Sample&)
+
+🧩 📄 include/sensor/LimitSwitchManager.h
+   🧱 struct LimitSwitchConfig
+      (no in-class method bodies detected)
+   🧱 class LimitSwitchManager
+      ├── addSwitch(const LimitSwitchConfig& cfg)
+      └── poll()
+   ⚙️  addSwitch(const LimitSwitchConfig& cfg)
+   ⚙️  poll()
+   🧱 struct SwitchState
+      (no in-class method bodies detected)
+
+🧩 📄 include/sensor/MicManager.h
+   🧱 class MicManager
+      └── isOnline()
+   🧱 struct Level
+      (no in-class method bodies detected)
+   ⚙️  isOnline()
+
+🧩 📄 include/sensor/SensorRegistry.h
+   📦 namespace mcu
+   🧱 class SensorRegistry
+      ├── setAvailableCaps(uint32_t caps)
+      ├── availableCaps()
+      ├── get()
+      ├── get()
+      ├── count()
+      ├── hasCaps(uint32_t caps)
+      ├── begin()
+      ├── end()
+      ├── begin()
+      └── end()
+   ⚙️  setAvailableCaps(uint32_t caps)
+   ⚙️  availableCaps()
+   ⚙️  get()
+   ⚙️  get()
+   ⚙️  count()
+   ⚙️  hasCaps(uint32_t caps)
+   ⚙️  begin()
+   ⚙️  end()
+   ⚙️  begin()
+   ⚙️  end()
+
+🧩 📄 include/sensor/UltrasonicManager.h
+   🧱 class UltrasonicManager
+      ├── setSampleInterval(uint32_t ms)
+      ├── getSampleInterval()
+      ├── attach(uint8_t id, int trigPin, int echoPin)
+      ├── isAttached(uint8_t id)
+      ├── loop(uint32_t now_ms)
+      ├── readDistanceCm(uint8_t id)
+      ├── sampleNow(uint8_t id)
+      ├── getReadingAgeMs(uint8_t id, uint32_t now_ms)
+      └── sampleSensor(uint8_t id, uint32_t now_ms)
+   🧱 struct Sensor
+      (no in-class method bodies detected)
+   ⚙️  setSampleInterval(uint32_t ms)
+   ⚙️  getSampleInterval()
+   ⚙️  attach(uint8_t id, int trigPin, int echoPin)
+   ⚙️  isAttached(uint8_t id)
+   ⚙️  loop(uint32_t now_ms)
+   ⚙️  readDistanceCm(uint8_t id)
+   ⚙️  sampleNow(uint8_t id)
+   ⚙️  getReadingAgeMs(uint8_t id, uint32_t now_ms)
+   ⚙️  sampleSensor(uint8_t id, uint32_t now_ms)
+   🧱 class UltrasonicManager
+      ├── setSampleInterval(uint32_t)
+      ├── getSampleInterval()
+      ├── attach(uint8_t, int, int)
+      ├── isAttached(uint8_t)
+      ├── loop(uint32_t)
+      ├── readDistanceCm(uint8_t)
+      ├── sampleNow(uint8_t)
+      └── getReadingAgeMs(uint8_t, uint32_t)
+   ⚙️  setSampleInterval(uint32_t)
+   ⚙️  getSampleInterval()
+   ⚙️  attach(uint8_t, int, int)
+   ⚙️  isAttached(uint8_t)
+   ⚙️  loop(uint32_t)
+   ⚙️  readDistanceCm(uint8_t)
+   ⚙️  sampleNow(uint8_t)
+   ⚙️  getReadingAgeMs(uint8_t, uint32_t)
+
+🧩 📄 include/sensor/UltrasonicSensor.h
+   📦 namespace mcu
+   🧱 struct Reading
+      (no in-class method bodies detected)
+   ⚙️  attach(uint8_t id, int trigPin, int echoPin)
+   ⚙️  isAttached(uint8_t id)
+   ⚙️  readDistanceCm(uint8_t id)
+   ⚙️  sampleNow(uint8_t id)
+   ⚙️  setSampleInterval(uint32_t ms)
+   ⚙️  getSampleInterval()
+   ⚙️  hasAnyAttached()
+   ⚙️  sampleSensor(uint8_t id, uint32_t now_ms)
+   📦 namespace mcu
+   🧱 class UltrasonicSensor
+      ├── attach(uint8_t, int, int)
+      ├── isAttached(uint8_t)
+      ├── readDistanceCm(uint8_t)
+      ├── sampleNow(uint8_t)
+      ├── setSampleInterval(uint32_t)
+      └── getSampleInterval()
+   ⚙️  attach(uint8_t, int, int)
+   ⚙️  isAttached(uint8_t)
+   ⚙️  readDistanceCm(uint8_t)
+   ⚙️  sampleNow(uint8_t)
+   ⚙️  setSampleInterval(uint32_t)
+   ⚙️  getSampleInterval()
+
+🧩 📄 include/setup/ISetupModule.h
+   📦 namespace mcu
+   🧱 class ISetupModule
+      └── isCritical()
+   ⚙️  isCritical()
+
+🧩 📄 include/setup/SetupControlTask.h
+   📦 namespace mcu
+   🧱 struct ControlTaskConfig
+      (no in-class method bodies detected)
+   🧱 struct ControlTaskStats
+      (no in-class method bodies detected)
+
+🧩 📄 include/setup/SetupModules.h
+   📦 namespace mcu
+
+🧩 📄 include/telemetry/TelemetrySections.h
+   📦 namespace TelemetrySections
+   ⚙️  id(SectionId s)
+
+🧩 📄 include/transport/BleTransport.h
+   ⚙️  name_(deviceName)
+   ⚙️  Protocol::extractFrames(rxBuffer_,
+                [this](const uint8_t* frame, size_t len)
+   ⚙️  BleTransport(const char*)
+
+🧩 📄 include/transport/MqttTransport.h
+   ⚙️  setFrameHandler(FrameCallback cb)
+   ⚙️  setFrameHandlerV2(FrameCallbackV2 cb)
+   ⚙️  isConnected()
+   ⚙️  MqttTransport(const char*, uint16_t, const char*, const char* = nullptr, const char* = nullptr)
+   ⚙️  setFrameHandler(FrameCallback)
+   ⚙️  setFrameHandlerV2(FrameCallbackV2)
+   ⚙️  isConnected()
+
+🧩 📄 include/transport/MultiTransport.h
+   ⚙️  addTransport(ITransport* t)
+   ⚙️  sendBytesToAll(const uint8_t* data, size_t len)
+   ⚙️  transportCount()
+   ⚙️  getTransport(size_t idx)
+   ⚙️  lastReceiveTransportIndex()
+
+🧩 📄 include/transport/TransportRegistry.h
+   📦 namespace mcu
+   📦 namespace TransportCap
+   ⚙️  requiredCaps()
+   ⚙️  priority()
+   ⚙️  configure()
+   ⚙️  isEnabled()
+   ⚙️  setEnabled(bool e)
+   🧱 class TransportRegistry
+      ├── setAvailableCaps(uint32_t caps)
+      ├── availableCaps()
+      ├── count()
+      ├── begin()
+      └── end()
+   ⚙️  setAvailableCaps(uint32_t caps)
+   ⚙️  availableCaps()
+   ⚙️  count()
+   ⚙️  begin()
+   ⚙️  end()
+
+🧩 📄 include/transport/UartTransport.h
+   ⚙️  Protocol::extractFrames(rxBuffer_, [this](const uint8_t* frame, size_t len)
+   ⚙️  UartTransport(HardwareSerial&, uint32_t)
+
+🧩 📄 include/transport/WifiTransport.h
+   ⚙️  port_(port)
+   ⚙️  Protocol::extractFrames(rxBuffer_,
+            [this](const uint8_t* frame, size_t len)
+   ⚙️  WifiTransport(uint16_t)
+
+🧩 📄 src/audio/AudioGraphManager.cpp
+   ⚙️  AudioGraphManager::attach(EventBus* bus, CommandRegistry* cmd)
+   ⚙️  AudioGraphManager::begin()
+   ⚙️  AudioGraphManager::validateChainMessage(const JsonObjectConst& msg)
+   ⚙️  AudioGraphManager::swapChain(std::unique_ptr<audio::DspChain> new_chain)
+   ⚙️  AudioGraphManager::handleChainSet(const JsonObjectConst& msg)
+   ⚙️  AudioGraphManager::handleChainGet(const JsonObjectConst& msg)
+
+🧩 📄 src/audio/BiquadDesign.cpp
+   📦 namespace audio
+   ⚙️  normalize(float b0, float b1, float b2,
+                                     float a0, float a1, float a2)
+   ⚙️  designHighPass(float sr, float freq, float Q)
+   ⚙️  designPeaking(float sr, float freq, float Q, float db)
+   ⚙️  designLowShelf(float sr, float freq, float Q, float db)
+   ⚙️  designHighShelf(float sr, float freq, float Q, float db)
+
+🧩 📄 src/command/CommandRegistry.cpp
+   ⚙️  CommandRegistry::registerStringHandler(IStringHandler* handler)
+   ⚙️  CommandRegistry::registerHandler(ICommandHandler* handler)
+   ⚙️  CommandRegistry::setup()
+   ⚙️  CommandRegistry::handleEventStatic(const Event& evt)
+   ⚙️  CommandRegistry::handleEvent(const Event& evt)
+   ⚙️  CommandRegistry::findHandler(CmdType cmd)
+   ⚙️  CommandRegistry::onJsonCommand(const std::string& jsonStr)
+   ⚙️  CommandRegistry::onBinaryCommand(const std::vector<uint8_t>& binData)
+
+🧩 📄 src/command/HandlerRegistry.cpp
+   ⚙️  HandlerRegistry::instance()
+   ⚙️  HandlerRegistry::registerHandler(IStringHandler* handler)
+   ⚙️  HandlerRegistry::finalize()
+   ⚙️  HandlerRegistry::findHandler(const char* cmd)
+   ⚙️  HandlerRegistry::dispatch(const char* cmd, JsonVariantConst payload, CommandContext& ctx)
+   ⚙️  HandlerRegistry::capName(uint32_t capBit)
+
+🧩 📄 src/command/MessageRouter.cpp
+   ⚙️  MessageRouter::setup()
+   ⚙️  MessageRouter::loop()
+   ⚙️  MessageRouter::onEventStatic(const Event& evt)
+   ⚙️  MessageRouter::onFrame(const uint8_t* frame, size_t len)
+   ⚙️  MessageRouter::onEvent(const Event& evt)
+   ⚙️  MessageRouter::sendSimple(uint8_t msgType)
+   ⚙️  MessageRouter::sendVersionResponse()
+
+🧩 📄 src/command/ModeManager.cpp
+   ⚙️  robotModeToString(RobotMode m)
+   ⚙️  ModeManager::begin()
+   ⚙️  ModeManager::update(uint32_t now_ms)
+   ⚙️  ModeManager::readHardwareInputs()
+   ⚙️  ModeManager::onHostHeartbeat(uint32_t now_ms)
+   ⚙️  ModeManager::onMotionCommand(uint32_t now_ms, float vx, float omega)
+   ⚙️  ModeManager::canTransition(RobotMode from, RobotMode to)
+   ⚙️  ModeManager::arm()
+   ⚙️  ModeManager::activate()
+   ⚙️  ModeManager::deactivate()
+   ⚙️  ModeManager::disarm()
+   ⚙️  ModeManager::estop()
+   ⚙️  ModeManager::clearEstop()
+   ⚙️  ModeManager::validateVelocity(float vx, float omega, float& out_vx, float& out_omega)
+   ⚙️  ModeManager::triggerStop()
+   ⚙️  ModeManager::triggerEmergencyStop()
+
+🧩 📄 src/command/decoders/ControlDecoders.cpp
+   📦 namespace mcu
+   📦 namespace cmd
+   ⚙️  extractUint16Array(JsonArrayConst arr, uint16_t* out, size_t maxLen)
+   ⚙️  extractFloatArray(JsonArrayConst arr, float* out, size_t maxLen)
+   ⚙️  decodeSlotConfig(JsonVariantConst payload)
+   ⚙️  decodeSignalDef(JsonVariantConst payload)
+
+🧩 📄 src/command/decoders/ObserverDecoders.cpp
+   📦 namespace mcu
+   📦 namespace cmd
+   ⚙️  decodeObserverConfig(JsonVariantConst payload)
+
+🧩 📄 src/config/DeviceManifest.cpp
+   📦 namespace mcu
+   ⚙️  buildManifest(const ServiceContext& ctx)
+   ⚙️  capBitToName(uint32_t bit)
+
+🧩 📄 src/config/RobotConfig.cpp
+   📦 namespace config
+   ⚙️  getRobotConfig()
+   ⚙️  resetRobotConfig()
+   ⚙️  RobotConfig::applyOverrides(const char* json)
+   ⚙️  RobotConfig::toJson(char* buffer, size_t bufferSize)
+
+🧩 📄 src/control/ControlKernel.cpp
+   ⚙️  ControlKernel::getSlot_(uint8_t slot)
+   ⚙️  ControlKernel::getSlot_(uint8_t slot)
+   ⚙️  ControlKernel::ensureSlot_(uint8_t slot)
+   ⚙️  ControlKernel::configureSlot(const SlotConfig& cfg, const char* type)
+   ⚙️  ControlKernel::enableSlot(uint8_t slot, bool enable)
+   ⚙️  ControlKernel::resetSlot(uint8_t slot)
+   ⚙️  ControlKernel::setParam(uint8_t slot, const char* key, float value)
+   ⚙️  ControlKernel::setParamArray(uint8_t slot, const char* key, const float* values, size_t len)
+   ⚙️  ControlKernel::getConfig(uint8_t slot)
+   ⚙️  ControlKernel::getStatus(uint8_t slot)
+   ⚙️  ControlKernel::step(uint32_t now_ms, float dt_s, SignalBus& signals, bool is_armed, bool is_active)
+   ⚙️  ControlKernel::resetAll()
+   ⚙️  ControlKernel::disableAll()
+   ⚙️  PidController::compute(float ref, float meas, float dt_s)
+   ⚙️  PidController::reset()
+   ⚙️  PidController::setParam(const char* key, float value)
+   ⚙️  PidController::getParam(const char* key, float& value)
+   ⚙️  PidController::setGains(float kp, float ki, float kd)
+   ⚙️  PidController::setOutputLimits(float min_out, float max_out)
+   ⚙️  PidController::setIntegralLimits(float min_i, float max_i)
+   ⚙️  StateSpaceController::StateSpaceController()
+   ⚙️  StateSpaceController::setDimensions(uint8_t num_states, uint8_t num_inputs)
+   ⚙️  StateSpaceController::computeMulti(const float* states, const float* refs, uint8_t num_states,
+    float* outputs, uint8_t num_outputs,
+    float dt_s, SignalBus& signals, const StateSpaceIO& io)
+   ⚙️  StateSpaceController::reset()
+   ⚙️  StateSpaceController::setParam(const char* key, float value)
+   ⚙️  StateSpaceController::getParam(const char* key, float& value)
+   ⚙️  StateSpaceController::setParamArray(const char* key, const float* values, size_t len)
+   ⚙️  StateSpaceController::setGainK(const float* K, size_t len)
+   ⚙️  StateSpaceController::setGainKr(const float* Kr, size_t len)
+   ⚙️  StateSpaceController::setGainKi(const float* Ki, size_t len)
+   ⚙️  StateSpaceController::setOutputLimits(uint8_t idx, float min_val, float max_val)
+   ⚙️  StateSpaceController::setIntegralLimits(uint8_t idx, float min_val, float max_val)
+   ⚙️  StateSpaceController::setFeedbackMode(bool error_based)
+   ⚙️  ControlKernel::getParam(uint8_t slot, const char* key, float& value)
+   ⚙️  ControlWatchdog::beginSlot(uint8_t slot, uint32_t now_ms)
+   ⚙️  ControlWatchdog::endSlot(uint8_t slot, uint32_t now_ms)
+   ⚙️  ControlWatchdog::check(uint32_t now_ms)
+   ⚙️  ControlWatchdog::getMaxExecTime(uint8_t slot)
+   ⚙️  ControlWatchdog::resetStats()
+
+🧩 📄 src/control/Observer.cpp
+   ⚙️  LuenbergerObserver::configure(uint8_t num_states, uint8_t num_inputs, uint8_t num_outputs)
+   ⚙️  LuenbergerObserver::update(const float* u, const float* y, float dt, float* x_hat_out)
+   ⚙️  LuenbergerObserver::reset()
+   ⚙️  LuenbergerObserver::initState(const float* x0)
+   ⚙️  LuenbergerObserver::setState(uint8_t idx, float value)
+   ⚙️  LuenbergerObserver::getState(uint8_t idx)
+   ⚙️  LuenbergerObserver::setA(const float* A, size_t len)
+   ⚙️  LuenbergerObserver::setB(const float* B, size_t len)
+   ⚙️  LuenbergerObserver::setC(const float* C, size_t len)
+   ⚙️  LuenbergerObserver::setL(const float* L, size_t len)
+   ⚙️  LuenbergerObserver::setParam(const char* key, float value)
+   ⚙️  LuenbergerObserver::setParamArray(const char* key, const float* values, size_t len)
+   ⚙️  ObserverManager::configure(uint8_t slot, const ObserverConfig& config, uint16_t rate_hz)
+   ⚙️  ObserverManager::enable(uint8_t slot, bool en)
+   ⚙️  ObserverManager::reset(uint8_t slot)
+   ⚙️  ObserverManager::setParam(uint8_t slot, const char* key, float value)
+   ⚙️  ObserverManager::setParamArray(uint8_t slot, const char* key, const float* values, size_t len)
+   ⚙️  ObserverManager::step(uint32_t now_ms, float dt_s, SignalBus& signals)
+   ⚙️  ObserverManager::getObserver(uint8_t slot)
+   ⚙️  ObserverManager::getSlot(uint8_t slot)
+   ⚙️  ObserverManager::resetAll()
+   ⚙️  ObserverManager::disableAll()
+
+🧩 📄 src/control/SignalBus.cpp
+   ⚙️  SignalBus::indexOf_(uint16_t id)
+   ⚙️  SignalBus::define(uint16_t id, const char* name, Kind kind, float initial)
+   ⚙️  SignalBus::exists(uint16_t id)
+   ⚙️  SignalBus::set(uint16_t id, float v, uint32_t now_ms)
+   ⚙️  SignalBus::setWithRateLimit(uint16_t id, float v, uint32_t now_ms)
+   ⚙️  SignalBus::setGlobalRateLimit(uint32_t min_interval_ms, uint16_t max_updates_per_sec)
+   ⚙️  SignalBus::get(uint16_t id, float& out)
+   ⚙️  SignalBus::getTimestamp(uint16_t id, uint32_t& out)
+   ⚙️  SignalBus::remove(uint16_t id)
+   ⚙️  SignalBus::find(uint16_t id)
+   ⚙️  SignalBus::createAlias(uint16_t id, const char* alias)
+   ⚙️  SignalBus::removeAlias(const char* alias)
+   ⚙️  SignalBus::resolveId(const char* name)
+   ⚙️  SignalBus::getByName(const char* name, float& out)
+   ⚙️  SignalBus::setByName(const char* name, float v, uint32_t now_ms)
+   ⚙️  SignalBus::snapshot(SignalSnapshot* out, size_t max_count)
+
+🧩 📄 src/core/Clock.cpp
+   📦 namespace mcu
+   ⚙️  SystemClock::millis()
+   ⚙️  SystemClock::micros()
+   ⚙️  getSystemClock()
+
+🧩 📄 src/core/IntentBuffer.cpp
+   📦 namespace mcu
+   ⚙️  IntentBuffer::setVelocityIntent(float vx, float omega, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeVelocityIntent(VelocityIntent& out)
+   ⚙️  IntentBuffer::setServoIntent(uint8_t id, float angle, uint32_t dur_ms, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeServoIntent(uint8_t id, ServoIntent& out)
+   ⚙️  IntentBuffer::setDcMotorIntent(uint8_t id, float speed, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeDcMotorIntent(uint8_t id, DcMotorIntent& out)
+   ⚙️  IntentBuffer::setStepperIntent(int id, int steps, float speed, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeStepperIntent(int id, StepperIntent& out)
+   ⚙️  IntentBuffer::queueSignalIntent(uint16_t id, float value, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeSignalIntent(SignalIntent& out)
+   ⚙️  IntentBuffer::pendingSignalCount()
+   ⚙️  IntentBuffer::clearAll()
+
+🧩 📄 src/core/LoopRates.cpp
+   ⚙️  getLoopRates()
+   ⚙️  clampHz(uint16_t& hz, uint16_t lo, uint16_t hi)
+
+🧩 📄 src/core/LoopTiming.cpp
+   📦 namespace mcu
+   ⚙️  getLoopTiming()
+
+🧩 📄 src/core/McuHost.cpp
+   ⚙️  MCUHost::addModule(IModule* module)
+   ⚙️  MCUHost::setup(mara::ServiceContext* ctx)
+   ⚙️  MCUHost::loop(uint32_t now_ms)
+   ⚙️  MCUHost::onEventStatic(const Event& evt)
+   ⚙️  MCUHost::onEvent(const Event& evt)
+   ⚙️  MCUHost::runSafety(uint32_t now_ms)
+
+🧩 📄 src/core/ModuleManager.cpp
+   ⚙️  domainToString(LoopDomain d)
+   ⚙️  ModuleManager::instance()
+   ⚙️  ModuleManager::registerModule(IModule* module)
+   ⚙️  ModuleManager::finalize()
+   ⚙️  ModuleManager::initAll(mara::ServiceContext& ctx)
+   ⚙️  ModuleManager::setupAll()
+   ⚙️  ModuleManager::loopAll(uint32_t now_ms)
+   ⚙️  ModuleManager::loopDomain(uint32_t now_ms, LoopDomain domain)
+
+🧩 📄 src/core/Runtime.cpp
+   📦 namespace mcu
+   ⚙️  Runtime::setup(const RuntimeConfig& config)
+   ⚙️  Runtime::loop()
+   ⚙️  Runtime::initializeStorage()
+   ⚙️  Runtime::runSetupModules()
+   ⚙️  Runtime::startControlTask()
+   ⚙️  Runtime::updateLoopSchedulers()
+   ⚙️  Runtime::runMainLoop(uint32_t now_ms)
+
+🧩 📄 src/core/ServiceStorage.cpp
+   📦 namespace mcu
+   ⚙️  ServiceStorage::initTransports(HardwareSerial& serial, uint32_t baud, uint16_t tcpPort,
+                                    const char* mqttBroker, uint16_t mqttPort,
+                                    const char* robotId)
+   ⚙️  ServiceStorage::initRouter()
+   ⚙️  ServiceStorage::initCommands()
+   ⚙️  ServiceStorage::initControl()
+   ⚙️  ServiceStorage::initHost(const char* deviceName)
+   ⚙️  ServiceStorage::buildContext()
+
+🧩 📄 src/loop/LoopControl.cpp
+   📦 namespace mcu
+   ⚙️  runControlLoop(ServiceContext& ctx, uint32_t now_ms, float dt)
+
+🧩 📄 src/loop/LoopSafety.cpp
+   📦 namespace mcu
+   ⚙️  runSafetyLoop(ServiceContext& ctx, uint32_t now_ms)
+
+🧩 📄 src/main.cpp
+   ⚙️  updateLoopSchedulers()
+   ⚙️  setup()
+   ⚙️  loop()
+
+🧩 📄 src/module/ControlModule.cpp
+   ⚙️  ControlModule::setup()
+   ⚙️  ControlModule::loop(uint32_t now_ms)
+   ⚙️  ControlModule::handleEvent(const Event& evt)
+
+🧩 📄 src/module/IdentityModule.cpp
+   ⚙️  IdentityModule::setup()
+   ⚙️  IdentityModule::loop(uint32_t)
+   ⚙️  IdentityModule::onEventStatic(const Event& evt)
+   ⚙️  publishIdentity(EventBus& bus)
+   ⚙️  IdentityModule::handleEvent(const Event& evt)
+
+🧩 📄 src/module/LoggingModule.cpp
+   ⚙️  LoggingModule::setup()
+   ⚙️  LoggingModule::loop(uint32_t)
+   ⚙️  LoggingModule::onEventStatic(const Event& evt)
+   ⚙️  LoggingModule::handleEvent(const Event& evt)
+   ⚙️  LoggingModule::setLogLevel(const char* levelStr)
+   ⚙️  LoggingModule::parseLevel(const char* s)
+   ⚙️  LoggingModule::sendLog(const char* level,
+                            const char* tag,
+                            const char* msg,
+                            uint32_t ts_ms)
+   ⚙️  LoggingModule::sendLogJson(const char* level,
+                                const char* tag,
+                                const std::string& json,
+                                uint32_t ts_ms)
+
+🧩 📄 src/module/TelemetryModule.cpp
+   ⚙️  bus_(bus)
+   ⚙️  TelemetryModule::setup()
+   ⚙️  TelemetryModule::loop(uint32_t now_ms)
+   ⚙️  TelemetryModule::setInterval(uint32_t intervalMs)
+   ⚙️  TelemetryModule::registerProvider(const char* name, JsonProviderFn fn)
+   ⚙️  TelemetryModule::registerBinProvider(uint8_t section_id, BinProviderFn fn)
+   ⚙️  TelemetryModule::setBinaryEnabled(bool en)
+   ⚙️  TelemetryModule::setJsonEnabled(bool en)
+   ⚙️  TelemetryModule::put_u8(std::vector<uint8_t>& b, uint8_t v)
+   ⚙️  TelemetryModule::put_u16(std::vector<uint8_t>& b, uint16_t v)
+   ⚙️  TelemetryModule::put_u32(std::vector<uint8_t>& b, uint32_t v)
+   ⚙️  TelemetryModule::sendTelemetry(uint32_t now_ms)
+
+🧩 📄 src/motor/ActuatorRegistry.cpp
+   📦 namespace mcu
+   ⚙️  ActuatorRegistry::instance()
+   ⚙️  ActuatorRegistry::registerActuator(IActuator* actuator)
+   ⚙️  ActuatorRegistry::initAll(ServiceContext& ctx)
+   ⚙️  std::sort(actuators_, actuators_ + count_,
+        [](IActuator* a, IActuator* b)
+   ⚙️  ActuatorRegistry::setupAll()
+   ⚙️  ActuatorRegistry::stopAll()
+   ⚙️  ActuatorRegistry::find(const char* name)
+   ⚙️  ActuatorRegistry::find(const char* name)
+
+🧩 📄 src/motor/DcMotorManager.cpp
+   ⚙️  DcMotorManager::attach(uint8_t id,
+                            int in1Pin,
+                            int in2Pin,
+                            int pwmPin,
+                            int ledcChannel,
+                            int freq,
+                            int resolutionBits)
+   ⚙️  DcMotorManager::setSpeed(uint8_t id, float speed)
+   ⚙️  DcMotorManager::stop(uint8_t id)
+   ⚙️  DcMotorManager::stopAll()
+   ⚙️  DcMotorManager::getMotorDebugInfo(uint8_t id, MotorDebugInfo& out)
+   ⚙️  DcMotorManager::dumpAllMotorMappings()
+   ⚙️  DcMotorManager::enableVelocityPid(uint8_t id, bool enable)
+   ⚙️  DcMotorManager::setVelocityTarget(uint8_t id, float omegaRadPerSec)
+   ⚙️  DcMotorManager::setVelocityGains(uint8_t id, float kp, float ki, float kd)
+   ⚙️  DcMotorManager::updateVelocityPid(uint8_t id, float measuredOmegaRadS, float dt)
+
+🧩 📄 src/motor/MotionController.cpp
+   ⚙️  baseEnabled_(false)
+   ⚙️  MotionController::setVelocity(float vx, float omega)
+   ⚙️  MotionController::stop()
+   ⚙️  MotionController::vx()
+   ⚙️  MotionController::omega()
+   ⚙️  MotionController::setAccelLimits(float maxLinAccel, float maxAngAccel)
+   ⚙️  MotionController::setBaseEnabled(bool enabled)
+   ⚙️  MotionController::setServoTarget(uint8_t servoId,
+                                      float angleDeg,
+                                      uint32_t durationMs)
+   ⚙️  MotionController::setServoImmediate(uint8_t servoId, float angleDeg)
+   ⚙️  MotionController::moveStepperRelative(int motorId,
+                                           int steps,
+                                           float speedStepsPerSec)
+   ⚙️  MotionController::enableStepper(int motorId, bool enabled)
+   ⚙️  MotionController::update(float dt)
+
+🧩 📄 src/motor/StepperManager.cpp
+   ⚙️  StepperManager::registerStepper(int motorId,
+                                      int pinStep,
+                                      int pinDir,
+                                      int pinEnable,
+                                      bool invertDir)
+   ⚙️  StepperManager::setEnabled(int motorId, bool enabled)
+   ⚙️  StepperManager::moveRelative(int motorId, int steps, float speedStepsPerSec)
+   ⚙️  StepperManager::stop(int motorId)
+   ⚙️  StepperManager::getStepperDebugInfo(int motorId, StepperDebugInfo& out)
+   ⚙️  StepperManager::dumpAllStepperMappings()
+   ⚙️  StepperManager::getState(int motorId)
+   ⚙️  StepperManager::getState(int motorId)
+
+🧩 📄 src/sensor/EncoderManager.cpp
+   ⚙️  getGlobalEncoderManager()
+   ⚙️  EncoderManager::attach(uint8_t id, uint8_t pinA, uint8_t pinB)
+   ⚙️  EncoderManager::getCount(uint8_t id)
+   ⚙️  EncoderManager::reset(uint8_t id)
+   ⚙️  EncoderManager::handleA(uint8_t id)
+   ⚙️  EncoderManager::handleB(uint8_t id)
+
+🧩 📄 src/sensor/ImuManager.cpp
+   ⚙️  ImuManager::begin(int sdaPin, int sclPin, uint8_t addr)
+   ⚙️  ImuManager::writeByte(uint8_t reg, uint8_t value)
+   ⚙️  ImuManager::readByte(uint8_t reg)
+   ⚙️  ImuManager::readBytes(uint8_t startReg, uint8_t* buffer, size_t length)
+   ⚙️  ImuManager::readSample(Sample& out)
+
+🧩 📄 src/sensor/LidarManager.cpp
+   ⚙️  LidarManager::begin(uint8_t sdaPin, uint8_t sclPin, uint8_t addr)
+   ⚙️  LidarManager::readSample(Sample& out)
+
+🧩 📄 src/sensor/MicManager.cpp
+   ⚙️  MicManager::begin(gpio_num_t wsPin,
+                       gpio_num_t sckPin,
+                       gpio_num_t sdPin,
+                       i2s_port_t port)
+   ⚙️  MicManager::readLevel(Level& outLevel, size_t sampleCount)
+
+🧩 📄 src/sensor/SensorRegistry.cpp
+   📦 namespace mcu
+   ⚙️  SensorRegistry::instance()
+   ⚙️  SensorRegistry::registerSensor(ISensor* sensor)
+   ⚙️  SensorRegistry::initAll()
+   ⚙️  std::sort(sensors_, sensors_ + count_,
+        [](ISensor* a, ISensor* b)
+   ⚙️  SensorRegistry::loopAll(uint32_t now_ms)
+   ⚙️  SensorRegistry::toJsonAll(JsonObject& out)
+   ⚙️  SensorRegistry::find(const char* name)
+   ⚙️  SensorRegistry::find(const char* name)
+
+🧩 📄 src/setup/SetupControlTask.cpp
+   📦 namespace mcu
+   ⚙️  controlTaskFunc(void* param)
+   ⚙️  startControlTask(ServiceContext& ctx, const ControlTaskConfig& config)
+   ⚙️  stopControlTask()
+   ⚙️  isControlTaskRunning()
+   ⚙️  getControlTaskStats()
+   ⚙️  resetControlTaskStats()
+
+🧩 📄 src/setup/SetupManifest.cpp
+   ⚙️  populateManifest()
+   ⚙️  getSetupManifest()
+   ⚙️  getSetupManifestSize()
+
+🧩 📄 src/setup/SetupMotors.cpp
+   ⚙️  getSetupMotorsModule()
+
+🧩 📄 src/setup/SetupOta.cpp
+   ⚙️  getSetupOtaModule()
+
+🧩 📄 src/setup/SetupSafety.cpp
+   ⚙️  getSetupSafetyModule()
+
+🧩 📄 src/setup/SetupSensors.cpp
+   ⚙️  buildSensorCaps()
+   ⚙️  getSetupSensorsModule()
+
+🧩 📄 src/setup/SetupTelemetry.cpp
+   ⚙️  getSetupTelemetryModule()
+
+🧩 📄 src/setup/SetupTransport.cpp
+   ⚙️  getSetupTransportModule()
+
+🧩 📄 src/setup/SetupWifi.cpp
+   ⚙️  getSetupWifiModule()
+
+🧩 📄 src/transport/MqttTransport.cpp
+   ⚙️  dumpHexPrefix(const uint8_t* data, unsigned len, unsigned maxBytes = 16)
+   ⚙️  password_(password ? password : "")
+   ⚙️  MqttTransport::begin()
+   ⚙️  MqttTransport::loop()
+   ⚙️  MqttTransport::reconnect()
+   ⚙️  MqttTransport::onMessage(char* topic, uint8_t* payload, unsigned int length)
+   ⚙️  Protocol::extractFrames(rxBuffer, [this](const uint8_t* frame, size_t len)
+   ⚙️  MqttTransport::sendBytes(const uint8_t* data, size_t len)
+   ⚙️  MqttTransport::publishDiscoveryResponse()
+
+🧩 📄 src/transport/TransportRegistry.cpp
+   📦 namespace mcu
+   ⚙️  TransportRegistry::instance()
+   ⚙️  TransportRegistry::registerTransport(IRegisteredTransport* transport)
+   ⚙️  TransportRegistry::beginAll()
+   ⚙️  std::sort(transports_, transports_ + count_,
+        [](IRegisteredTransport* a, IRegisteredTransport* b)
+   ⚙️  TransportRegistry::loopAll()
+   ⚙️  TransportRegistry::wireToMultiTransport(MultiTransport* multi)
+   ⚙️  TransportRegistry::find(const char* name)
+
+🧩 📄 test/common/NativeStubs.cpp
+   📦 namespace mcu
+   ⚙️  SystemClock::millis()
+   ⚙️  SystemClock::micros()
+   ⚙️  getSystemClock()
+   ⚙️  robotModeToString(RobotMode mode)
+   ⚙️  ModeManager::begin()
+   ⚙️  ModeManager::arm()
+   ⚙️  ModeManager::disarm()
+   ⚙️  ModeManager::activate()
+   ⚙️  ModeManager::deactivate()
+   ⚙️  ModeManager::estop()
+   ⚙️  ModeManager::clearEstop()
+   ⚙️  ModeManager::update(uint32_t)
+   ⚙️  ModeManager::onHostHeartbeat(uint32_t)
+   ⚙️  ModeManager::onMotionCommand(uint32_t , float , float)
+   ⚙️  ModeManager::validateVelocity(float vx, float omega, float& outVx, float& outOmega)
+   ⚙️  LoggingModule::setLogLevel(const char*)
+   ⚙️  EncoderManager::EncoderManager()
+   ⚙️  EncoderManager::attach(uint8_t , uint8_t , uint8_t)
+   ⚙️  EncoderManager::reset(uint8_t)
+   ⚙️  EncoderManager::getCount(uint8_t)
+   ⚙️  TelemetryModule::TelemetryModule(EventBus&)
+   ⚙️  TelemetryModule::setInterval(uint32_t)
+   ⚙️  TelemetryModule::handleEvent(const Event&)
+   ⚙️  MotionController::MotionController(DcMotorManager& ,
+    uint8_t ,
+    uint8_t ,
+    float ,
+    float ,
+    float ,
+    ServoManager* ,
+    StepperManager*)
+   ⚙️  MotionController::setVelocity(float , float)
+   ⚙️  MotionController::stop()
+   ⚙️  MotionController::setServoTarget(uint8_t , float , uint32_t)
+   ⚙️  MotionController::moveStepperRelative(int , int , float)
+   ⚙️  SignalBus::set(uint16_t , float , uint32_t)
+   ⚙️  SignalBus::get(uint16_t , float&)
+
+🧩 📄 test/fakes/Arduino.h
+   ⚙️  pinMode(int pin, int mode)
+   ⚙️  digitalWrite(int pin, int val)
+   ⚙️  digitalRead(int pin)
+   ⚙️  digitalPinToInterrupt(int pin)
+   ⚙️  attachInterrupt(int intr, voidFuncPtr fn, int mode)
+   ⚙️  noInterrupts(void)
+   ⚙️  interrupts(void)
+   ⚙️  delayMicroseconds(unsigned int us)
+   ⚙️  pulseIn(uint8_t pin, uint8_t state, unsigned long timeout)
+   ⚙️  millis(void)
+   ⚙️  millis(void)
+   ⚙️  ledcSetup(int ch, double freq, int res)
+   ⚙️  ledcAttachPin(int pin, int ch)
+   ⚙️  ledcWrite(int ch, int duty)
+
+🧩 📄 test/fakes/ESP32Servo.h
+   🧱 class Servo
+      ├── attach(int pin, int minUs = 500, int maxUs = 2500)
+      ├── detach()
+      ├── write(float angle)
+      └── writeMicroseconds(int us)
+   ⚙️  attach(int pin, int minUs = 500, int maxUs = 2500)
+   ⚙️  detach()
+   ⚙️  write(float angle)
+   ⚙️  writeMicroseconds(int us)
+
+🧩 📄 test/fakes/fakeTransport.h
+   ⚙️  injectRx(const uint8_t* data, size_t len)
+
+🧩 📄 test/support/arduino_stubs.h
+   ⚙️  millis()
+   ⚙️  micros()
+   ⚙️  test_set_millis(uint32_t v)
+   ⚙️  test_set_micros(uint32_t v)
+   ⚙️  test_advance_millis(uint32_t d)
+   ⚙️  test_advance_micros(uint32_t d)
+
+🧩 📄 test/support/arduino_test_main.cpp
+   ⚙️  setup()
+   ⚙️  loop()
+
+🧩 📄 test/telemetry_module_scheduling/telemetry_module_scheduling.cpp
+   ⚙️  capture(const Event& evt)
+   ⚙️  test_telemetry_interval_gating(void)
+   ⚙️  test_telemetry_interval_zero_disables(void)
+   ⚙️  setUp(void)
+   ⚙️  tearDown(void)
+   ⚙️  main(int argc, char** argv)
+
+🧩 📄 test/test_command_handler_ack/native_stubs.cpp
+   📦 namespace mcu
+   ⚙️  SystemClock::millis()
+   ⚙️  SystemClock::micros()
+   ⚙️  getSystemClock()
+   ⚙️  getLoopRates()
+   ⚙️  robotModeToString(RobotMode mode)
+   ⚙️  ModeManager::onHostHeartbeat(uint32_t)
+   ⚙️  ModeManager::onMotionCommand(uint32_t, float, float)
+   ⚙️  ModeManager::validateVelocity(float vx, float omega, float& outVx, float& outOmega)
+   ⚙️  ModeManager::arm()
+   ⚙️  ModeManager::activate()
+   ⚙️  ModeManager::deactivate()
+   ⚙️  ModeManager::disarm()
+   ⚙️  ModeManager::estop()
+   ⚙️  ModeManager::clearEstop()
+   ⚙️  SignalBus::indexOf_(uint16_t id)
+   ⚙️  SignalBus::define(uint16_t id, const char* name, Kind kind, float initial)
+   ⚙️  SignalBus::exists(uint16_t id)
+   ⚙️  SignalBus::set(uint16_t id, float v, uint32_t now_ms)
+   ⚙️  SignalBus::get(uint16_t id, float& out)
+   ⚙️  SignalBus::getTimestamp(uint16_t id, uint32_t& out)
+   ⚙️  SignalBus::remove(uint16_t id)
+   ⚙️  SignalBus::find(uint16_t id)
+   ⚙️  ControlKernel::configureSlot(const SlotConfig& cfg, const char* type)
+   ⚙️  ControlKernel::enableSlot(uint8_t slot, bool enable)
+   ⚙️  ControlKernel::resetSlot(uint8_t slot)
+   ⚙️  ControlKernel::setParam(uint8_t slot, const char* key, float value)
+   ⚙️  ControlKernel::getParam(uint8_t slot, const char* key, float& value)
+   ⚙️  ControlKernel::setParamArray(uint8_t slot, const char* key, const float* values, size_t len)
+   ⚙️  ControlKernel::getConfig(uint8_t slot)
+   ⚙️  ControlKernel::getStatus(uint8_t slot)
+   ⚙️  ControlKernel::step(uint32_t now_ms, float dt_s, SignalBus& signals, bool is_armed, bool is_active)
+   ⚙️  ControlKernel::resetAll()
+   ⚙️  ControlKernel::disableAll()
+   ⚙️  LuenbergerObserver::configure(uint8_t num_states, uint8_t num_inputs, uint8_t num_outputs)
+   ⚙️  LuenbergerObserver::update(const float* u, const float* y, float dt, float* x_hat_out)
+   ⚙️  LuenbergerObserver::reset()
+   ⚙️  LuenbergerObserver::initState(const float* x0)
+   ⚙️  LuenbergerObserver::setState(uint8_t idx, float value)
+   ⚙️  LuenbergerObserver::getState(uint8_t idx)
+   ⚙️  LuenbergerObserver::setA(const float* A, size_t len)
+   ⚙️  LuenbergerObserver::setB(const float* B, size_t len)
+   ⚙️  LuenbergerObserver::setC(const float* C, size_t len)
+   ⚙️  LuenbergerObserver::setL(const float* L, size_t len)
+   ⚙️  LuenbergerObserver::setParam(const char* key, float value)
+   ⚙️  LuenbergerObserver::setParamArray(const char* key, const float* values, size_t len)
+   ⚙️  ObserverManager::configure(uint8_t slot, const ObserverConfig& config, uint16_t rate_hz)
+   ⚙️  ObserverManager::enable(uint8_t slot, bool en)
+   ⚙️  ObserverManager::reset(uint8_t slot)
+   ⚙️  ObserverManager::setParam(uint8_t slot, const char* key, float value)
+   ⚙️  ObserverManager::setParamArray(uint8_t slot, const char* key, const float* values, size_t len)
+   ⚙️  ObserverManager::step(uint32_t now_ms, float dt_s, SignalBus& signals)
+   ⚙️  ObserverManager::getObserver(uint8_t slot)
+   ⚙️  ObserverManager::getSlot(uint8_t slot)
+   ⚙️  ObserverManager::resetAll()
+   ⚙️  ObserverManager::disableAll()
+   ⚙️  LoggingModule::setLogLevel(const char* level)
+   ⚙️  TelemetryModule::setup()
+   ⚙️  TelemetryModule::loop(uint32_t now_ms)
+   ⚙️  TelemetryModule::registerProvider(const char* name, JsonProviderFn fn)
+   ⚙️  TelemetryModule::registerBinProvider(uint8_t section_id, BinProviderFn fn)
+   ⚙️  TelemetryModule::setInterval(uint32_t intervalMs)
+   ⚙️  TelemetryModule::setBinaryEnabled(bool en)
+   ⚙️  TelemetryModule::setJsonEnabled(bool en)
+   ⚙️  MotionController::setVelocity(float vx, float omega)
+   ⚙️  MotionController::stop()
+   ⚙️  MotionController::vx()
+   ⚙️  MotionController::omega()
+   ⚙️  MotionController::setAccelLimits(float maxLinAccel, float maxAngAccel)
+   ⚙️  MotionController::setBaseEnabled(bool enabled)
+   ⚙️  MotionController::setServoTarget(uint8_t servoId, float angleDeg, uint32_t durationMs)
+   ⚙️  MotionController::setServoImmediate(uint8_t servoId, float angleDeg)
+   ⚙️  MotionController::moveStepperRelative(int motorId, int steps, float speedStepsPerSec)
+   ⚙️  MotionController::enableStepper(int motorId, bool enabled)
+   ⚙️  MotionController::update(float dt)
+   📦 namespace mcu
+   ⚙️  IntentBuffer::setVelocityIntent(float vx, float omega, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeVelocityIntent(VelocityIntent& out)
+   ⚙️  IntentBuffer::setServoIntent(uint8_t id, float angle, uint32_t dur_ms, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeServoIntent(uint8_t id, ServoIntent& out)
+   ⚙️  IntentBuffer::setDcMotorIntent(uint8_t id, float speed, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeDcMotorIntent(uint8_t id, DcMotorIntent& out)
+   ⚙️  IntentBuffer::setStepperIntent(int id, int steps, float speed, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeStepperIntent(int id, StepperIntent& out)
+   ⚙️  IntentBuffer::queueSignalIntent(uint16_t id, float value, uint32_t now_ms)
+   ⚙️  IntentBuffer::consumeSignalIntent(SignalIntent& out)
+   ⚙️  IntentBuffer::pendingSignalCount()
+   ⚙️  IntentBuffer::clearAll()
+   📦 namespace mcu
+   📦 namespace cmd
+   ⚙️  extractUint16Array(JsonArrayConst arr, uint16_t* out, size_t maxLen)
+   ⚙️  extractFloatArray(JsonArrayConst arr, float* out, size_t maxLen)
+   ⚙️  decodeSlotConfig(JsonVariantConst payload)
+   ⚙️  decodeSignalDef(JsonVariantConst payload)
+   ⚙️  decodeObserverConfig(JsonVariantConst payload)
+
+🧩 📄 test/test_command_handler_ack/test_command_handler_ack.cpp
+   ⚙️  MotionController(motors, 0, 1,
+                         0.2f, 1.0f, 1.0f,
+                         nullptr, nullptr)
+   ⚙️  captureTx(const Event& evt)
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  injectJson(const std::string& json)
+   ⚙️  test_ack_is_cached_and_replayed_on_duplicate_seq()
+   ⚙️  test_motion_set_vel_calls_motion_controller_once()
+   ⚙️  test_safety_handler_processes_arm_command()
+   ⚙️  test_registry_finds_correct_handler()
+   ⚙️  test_unknown_command_returns_error()
+   ⚙️  main(int argc, char** argv)
+   ⚙️  loop()
+
+🧩 📄 test/test_event_bus/test_event_bus.cpp
+   ⚙️  handlerA(const Event&)
+   ⚙️  handlerB(const Event&)
+   ⚙️  handlerCapture(const Event& evt)
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_eventbus_calls_handlers_in_order()
+   ⚙️  test_eventbus_ignores_null_handler()
+   ⚙️  test_eventbus_type_filter_receives_matching_events()
+   ⚙️  test_eventbus_type_filter_ignores_non_matching_events()
+   ⚙️  test_eventbus_all_events_receives_everything()
+   ⚙️  test_eventbus_queued_events_not_delivered_until_drain()
+   ⚙️  test_eventbus_drain_processes_multiple_events()
+   ⚙️  test_eventbus_queue_full_returns_false()
+   ⚙️  test_eventbus_queue_depth_tracking()
+   ⚙️  test_eventbus_stats_published_count()
+   ⚙️  test_eventbus_stats_delivered_count()
+   ⚙️  test_eventbus_stats_dropped_count()
+   ⚙️  test_eventbus_stats_queue_peak()
+   ⚙️  test_eventbus_stats_reset()
+   ⚙️  run_tests()
+
+🧩 📄 test/test_event_payloads/test_event_payloads.cpp
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_telemetry_struct_sanity()
+   ⚙️  setup()
+   ⚙️  loop()
+   ⚙️  main(int, char**)
+
+🧩 📄 test/test_golden_path/test_golden_path.cpp
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_velocity_intent_set_and_consume()
+   ⚙️  test_velocity_intent_latest_wins()
+   ⚙️  test_servo_intent_set_and_consume()
+   ⚙️  test_dc_motor_intent_set_and_consume()
+   ⚙️  test_stepper_intent_set_and_consume()
+   ⚙️  test_signal_intent_queue()
+   ⚙️  test_clear_all_intents()
+   ⚙️  test_independent_motor_ids()
+   ⚙️  main(int argc, char** argv)
+
+🧩 📄 test/test_identity_version_handshake/test_identity_version_handshake.cpp
+   ⚙️  captureTx(const Event& evt)
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_identity_emits_handshake_on_whoami_request()
+   ⚙️  run_tests()
+
+🧩 📄 test/test_message_router_bin_tx/test_message_router_bin_tx.cpp
+   ⚙️  checksum_for(uint16_t length, uint8_t msgType, const std::vector<uint8_t>& payload)
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_router_forwards_bin_message_tx_as_telem_bin_frame()
+   ⚙️  main(int argc, char** argv)
+   ⚙️  setup()
+   ⚙️  loop()
+
+🧩 📄 test/test_message_router_rx/test_message_router_rx.cpp
+   ⚙️  captureEvent(const Event& evt)
+   ⚙️  decode_one_body_or_fail(const std::vector<uint8_t>& tx)
+   ⚙️  Protocol::extractFrames(buf, [&](const uint8_t* frame, size_t len)
+   ⚙️  find_event(EventType t, Event* out = nullptr)
+   ⚙️  test_router_RX_version_request_sends_version_response(void)
+   ⚙️  test_router_RX_whoami_publishes_WHOAMI_REQUEST_event(void)
+   ⚙️  test_router_RX_cmd_json_publishes_JSON_MESSAGE_RX_exact_payload(void)
+   ⚙️  setUp(void)
+   ⚙️  tearDown(void)
+   ⚙️  main(int argc, char** argv)
+
+🧩 📄 test/test_messages/test_messages.cpp
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_msgKindFromString()
+   ⚙️  test_parse_json_cmd_extracts_seq_type_payload()
+   ⚙️  test_parse_json_invalid_fails()
+   ⚙️  setup()
+   ⚙️  loop()
+   ⚙️  main(int, char**)
+
+🧩 📄 test/test_messages_json/test_messages_json.cpp
+   ⚙️  test_messages_json_smoke_parse()
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  run_tests()
+
+🧩 📄 test/test_observer/test_observer.cpp
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_initial_state_is_zero()
+   ⚙️  test_init_state_sets_values()
+   ⚙️  test_reset_clears_state()
+   ⚙️  test_set_matrices()
+   ⚙️  test_set_param_individual()
+   ⚙️  test_dimensions()
+   ⚙️  test_update_runs()
+   ⚙️  test_observer_converges()
+   ⚙️  main(int argc, char** argv)
+
+🧩 📄 test/test_pid_controller/test_pid_controller.cpp
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_proportional_only()
+   ⚙️  test_proportional_negative_error()
+   ⚙️  test_integral_accumulates()
+   ⚙️  test_output_clamping()
+   ⚙️  test_output_clamping_negative()
+   ⚙️  test_reset_clears_integrator()
+   ⚙️  test_derivative_opposes_change()
+   ⚙️  test_zero_dt_safe()
+   ⚙️  main(int argc, char** argv)
+
+🧩 📄 test/test_protocol/test_protocol.cpp
+   ⚙️  crc16_for(uint16_t length, uint8_t msgType, const uint8_t* payload, size_t payloadLen)
+   🧱 struct CapturedFrame
+      (no in-class method bodies detected)
+   ⚙️  push_bytes(std::vector<uint8_t>& buf, const std::vector<uint8_t>& more)
+   ⚙️  push_bytes(std::vector<uint8_t>& buf, const uint8_t* data, size_t n)
+   ⚙️  test_encode_builds_expected_frame()
+   ⚙️  test_extract_single_frame()
+   ⚙️  Protocol::extractFrames(buffer, [&](const uint8_t* body, size_t len)
+   ⚙️  test_extract_ignores_noise_before_header()
+   ⚙️  Protocol::extractFrames(buffer, [&](const uint8_t* body, size_t len)
+   ⚙️  test_extract_partial_frame_buffering()
+   ⚙️  Protocol::extractFrames(buffer, [&](const uint8_t* body, size_t len)
+   ⚙️  Protocol::extractFrames(buffer, [&](const uint8_t* body, size_t len)
+   ⚙️  test_extract_back_to_back_frames()
+   ⚙️  Protocol::extractFrames(buffer, [&](const uint8_t* body, size_t len)
+   ⚙️  test_extract_bad_checksum_resyncs_to_next_frame()
+   ⚙️  Protocol::extractFrames(buffer, [&](const uint8_t* body, size_t len)
+   ⚙️  test_extract_false_header_invalid_length_does_not_consume_valid_frame()
+   ⚙️  Protocol::extractFrames(buffer, [&](const uint8_t* body, size_t len)
+   ⚙️  test_extract_leaves_unconsumed_trailing_bytes()
+   ⚙️  Protocol::extractFrames(buffer, [&](const uint8_t* body, size_t len)
+   ⚙️  test_crc16_ccitt_known_test_vector()
+   ⚙️  test_crc16_empty_input()
+   ⚙️  test_frame_interop_with_python()
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  run_tests()
+
+🧩 📄 test/test_result/test_result.cpp
+   ⚙️  test_result_ok_construction()
+   ⚙️  test_result_error_construction()
+   ⚙️  test_result_value_or()
+   ⚙️  test_result_move_value()
+   ⚙️  test_void_result_ok()
+   ⚙️  test_void_result_error()
+   ⚙️  test_error_code_to_string()
+   ⚙️  helper_ok()
+   ⚙️  helper_err()
+   ⚙️  test_try_propagates_ok()
+   ⚙️  test_try_propagates_error()
+   ⚙️  test_try_macro_ok_path()
+   ⚙️  test_try_macro_error_path()
+   ⚙️  test_result_with_float()
+   ⚙️  test_result_with_pointer()
+   ⚙️  test_result_with_struct()
+   🧱 struct Point
+      (no in-class method bodies detected)
+   ⚙️  run_tests()
+
+🧩 📄 test/test_runner.h
+   ⚙️  setup()
+   ⚙️  loop()
+   ⚙️  main(int argc, char** argv)
+
+🧩 📄 test/test_safety/test_safety.cpp
+   🧱 struct SafetyConfig
+      (no in-class method bodies detected)
+   🧱 class TestModeManager
+      ├── configure(const SafetyConfig& cfg)
+      ├── update(uint32_t now_ms)
+      ├── onHostHeartbeat(uint32_t now_ms)
+      ├── onMotionCommand(uint32_t now_ms)
+      ├── arm()
+      ├── activate()
+      ├── deactivate()
+      ├── disarm()
+      ├── estop()
+      ├── clearEstop()
+      ├── validateVelocity(float vx, float omega, float& out_vx, float& out_omega)
+      ├── mode()
+      ├── canMove()
+      ├── isEstopped()
+      ├── isConnected()
+      ├── onStop(StopCallback cb)
+      ├── stopCount()
+      └── triggerStop()
+   ⚙️  configure(const SafetyConfig& cfg)
+   ⚙️  update(uint32_t now_ms)
+   ⚙️  onHostHeartbeat(uint32_t now_ms)
+   ⚙️  onMotionCommand(uint32_t now_ms)
+   ⚙️  arm()
+   ⚙️  activate()
+   ⚙️  deactivate()
+   ⚙️  disarm()
+   ⚙️  estop()
+   ⚙️  clearEstop()
+   ⚙️  validateVelocity(float vx, float omega, float& out_vx, float& out_omega)
+   ⚙️  mode()
+   ⚙️  canMove()
+   ⚙️  isEstopped()
+   ⚙️  isConnected()
+   ⚙️  onStop(StopCallback cb)
+   ⚙️  stopCount()
+   ⚙️  triggerStop()
+   ⚙️  stopCallback()
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_host_timeout_triggers_stop()
+   ⚙️  test_heartbeat_prevents_timeout()
+   ⚙️  test_no_timeout_before_first_heartbeat()
+   ⚙️  test_motion_timeout_triggers_stop()
+   ⚙️  test_motion_commands_prevent_timeout()
+   ⚙️  test_motion_timeout_only_in_active()
+   ⚙️  test_arm_from_idle()
+   ⚙️  test_arm_from_disconnected_fails()
+   ⚙️  test_activate_from_armed()
+   ⚙️  test_activate_from_idle_fails()
+   ⚙️  test_deactivate_triggers_stop()
+   ⚙️  test_disarm_from_active_triggers_stop()
+   ⚙️  test_estop_from_active()
+   ⚙️  test_estop_blocks_arm()
+   ⚙️  test_clear_estop_returns_to_idle()
+   ⚙️  test_can_move_states()
+   ⚙️  test_nan_velocity_rejected()
+   ⚙️  test_inf_velocity_rejected()
+   ⚙️  test_velocity_clamping()
+   ⚙️  test_valid_velocity_passes()
+   ⚙️  run_tests()
+
+🧩 📄 test/test_signal_bus/test_signal_bus.cpp
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_define_and_get()
+   ⚙️  test_set_updates_value()
+   ⚙️  test_get_nonexistent_returns_false()
+   ⚙️  test_exists()
+   ⚙️  test_count()
+   ⚙️  test_clear()
+   ⚙️  main(int argc, char** argv)
+
+🧩 📄 test/test_state_space/test_state_space.cpp
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_configure_pid_slot()
+   ⚙️  test_enable_disable_slot()
+   ⚙️  test_set_pid_gains()
+   ⚙️  test_reset_slot()
+   ⚙️  test_configure_state_space_slot()
+   ⚙️  test_set_state_space_gains()
+   ⚙️  test_disable_all()
+   ⚙️  test_step_with_signals()
+   ⚙️  main(int argc, char** argv)
+
+🧩 📄 test/test_telemetry_module_bin/test_telemetry_module_bin.cpp
+   ⚙️  capture_evt(const Event& evt)
+   ⚙️  le_u16(const std::vector<uint8_t>& b, size_t off)
+   ⚙️  le_u32(const std::vector<uint8_t>& b, size_t off)
+   ⚙️  setUp()
+   ⚙️  tearDown()
+   ⚙️  test_telemetry_module_emits_bin_payload_layout()
+   ⚙️  main(int argc, char** argv)
+   ⚙️  setup()
+   ⚙️  loop()
+
+================================================================================
+📊 STATISTICS
+================================================================================
+Namespaces:       79
+Classes/Structs:  162
+Enums:            3
+Free Functions:   1198
+In-class Methods: 361
+================================================================================

@@ -71,8 +71,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/kwasiaddo/Host"
-Repository = "https://github.com/kwasiaddo/Host"
+Homepage = "https://github.com/kwasblue/mara"
+Repository = "https://github.com/kwasblue/mara"
+Documentation = "https://github.com/kwasblue/mara/tree/main/docs"
 
 [tool.setuptools.packages.find]
 where = ["."]

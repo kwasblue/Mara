@@ -1,0 +1,189 @@
+# mara_host/cli/cli_config.py
+"""CLI configuration file support for MARA.
+
+Reads defaults from ~/.mara.yaml or ~/.config/mara/config.yaml
+"""
+
+import os
+from pathlib import Path
+from typing import Any, Optional
+
+import yaml
+
+
+# Config file locations (in order of precedence)
+CONFIG_LOCATIONS = [
+    Path.home() / ".mara.yaml",
+    Path.home() / ".config" / "mara" / "config.yaml",
+    Path.home() / ".config" / "mara.yaml",
+]
+
+
+_config_cache: Optional[dict] = None
+
+
+def find_config_file() -> Optional[Path]:
+    """Find the CLI config file."""
+    for loc in CONFIG_LOCATIONS:
+        if loc.exists():
+            return loc
+    return None
+
+
+def load_config() -> dict:
+    """Load CLI configuration from file.
+
+    Returns empty dict if no config file exists.
+    """
+    global _config_cache
+
+    if _config_cache is not None:
+        return _config_cache
+
+    config_file = find_config_file()
+    if config_file is None:
+        _config_cache = {}
+        return _config_cache
+
+    try:
+        with open(config_file) as f:
+            _config_cache = yaml.safe_load(f) or {}
+    except Exception:
+        _config_cache = {}
+
+    return _config_cache
+
+
+def get(key: str, default: Any = None) -> Any:
+    """Get a config value by dotted key path.
+
+    Example:
+        get("serial.port")  # Returns config["serial"]["port"]
+        get("build.env", "esp32_usb")  # With default
+    """
+    config = load_config()
+
+    # Navigate dotted path
+    keys = key.split(".")
+    value = config
+
+    for k in keys:
+        if isinstance(value, dict):
+            value = value.get(k)
+        else:
+            return default
+
+        if value is None:
+            return default
+
+    return value
+
+
+def get_serial_port() -> str:
+    """Get default serial port."""
+    return get("serial.port", "/dev/cu.usbserial-0001")
+
+
+def get_baudrate() -> int:
+    """Get default baud rate."""
+    return int(get("serial.baudrate", 115200))
+
+
+def get_tcp_host() -> str:
+    """Get default TCP host."""
+    return get("tcp.host", "192.168.4.1")
+
+
+def get_tcp_port() -> int:
+    """Get default TCP port."""
+    return int(get("tcp.port", 3333))
+
+
+def get_build_env() -> str:
+    """Get default PlatformIO environment."""
+    return get("build.env", "esp32_usb")
+
+
+def get_build_preset() -> Optional[str]:
+    """Get default build preset."""
+    return get("build.preset")
+
+
+def create_default_config() -> str:
+    """Generate default config file content."""
+    return """# MARA CLI Configuration
+# Save to ~/.mara.yaml
+
+# Serial connection defaults
+serial:
+  port: /dev/cu.usbserial-0001
+  baudrate: 115200
+
+# TCP/WiFi connection defaults
+tcp:
+  host: 192.168.4.1
+  port: 3333
+
+# Build defaults
+build:
+  env: esp32_usb
+  # preset: motors  # Uncomment to set default preset
+
+# CAN bus defaults
+can:
+  channel: can0
+  bustype: socketcan
+  node_id: 0
+
+# Log directory
+logs:
+  directory: logs
+
+# Editor for config files (optional)
+# editor: code
+
+# Theme (optional)
+# theme: dark  # or 'light'
+"""
+
+
+def init_config(path: Optional[Path] = None) -> Path:
+    """Create a default config file."""
+    if path is None:
+        path = CONFIG_LOCATIONS[0]
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(create_default_config())
+
+    return path
+
+
+# Apply config defaults to argparse
+def apply_defaults(parser_defaults: dict) -> dict:
+    """Apply config file defaults to parser defaults.
+
+    This is used to override argparse defaults with values from config file.
+    """
+    config = load_config()
+
+    # Map config keys to argparse dest names
+    mappings = {
+        "serial.port": "port",
+        "serial.baudrate": "baudrate",
+        "tcp.host": "host",
+        "tcp.port": "tcp_port",
+        "build.env": "env",
+        "build.preset": "preset",
+        "can.channel": "channel",
+        "can.bustype": "bustype",
+        "can.node_id": "node_id",
+    }
+
+    result = dict(parser_defaults)
+
+    for config_key, arg_name in mappings.items():
+        value = get(config_key)
+        if value is not None:
+            result[arg_name] = value
+
+    return result

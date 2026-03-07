@@ -1,0 +1,63 @@
+# Medium-sized differential drive robot
+# Suitable for indoor/outdoor use, research platforms
+
+name: medium_robot
+description: Medium research platform with high-quality sensors
+type: diff_drive
+
+drive:
+  wheel_radius: 0.075      # 150mm diameter wheels
+  wheel_base: 0.35         # 350mm wheelbase
+  robot_mass: 5.0          # 5 kg
+  wheel_inertia: 0.005
+  max_linear_vel: 1.5      # 1.5 m/s max
+  max_angular_vel: 3.0     # 3 rad/s max
+  max_linear_accel: 2.0
+  max_angular_accel: 6.0
+
+  motor:
+    # Medium DC motor with gearbox (e.g., JGA25-370)
+    R: 2.5
+    L: 0.001
+    Kv: 0.015
+    Kt: 0.015
+    J: 0.002
+    b: 0.0005
+    Kf: 0.005
+    max_voltage: 12.0
+    max_current: 5.0
+    max_velocity: 80.0
+
+noise:
+  imu:
+    accel_std: 0.005       # Better quality IMU
+    gyro_std: 0.0005
+    gyro_drift_rate: 0.000005
+
+  encoder:
+    counts_per_rev: 2048   # High resolution encoder
+    missed_count_prob: 0.0
+
+  ultrasonic:
+    noise_std: 0.01
+    min_range: 0.02
+    max_range: 4.0
+
+delay:
+  mean_delay_ms: 5.0
+  std_delay_ms: 2.0
+  jitter_ms: 1.0
+  packet_loss_prob: 0.001
+
+simulation:
+  dt: 0.01
+
+metadata:
+  author: robot_host
+  version: "1.0"
+  use_case: research_platform
+  sensors:
+    - wheel_encoders
+    - imu
+    - ultrasonic
+    - lidar_optional

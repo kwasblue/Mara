@@ -1,0 +1,62 @@
+# Small indoor differential drive robot
+# Suitable for tabletop experiments and indoor navigation
+
+name: small_robot
+description: Small indoor differential drive robot with encoders
+type: diff_drive
+
+drive:
+  wheel_radius: 0.032      # 32mm wheels (common for small robots)
+  wheel_base: 0.12         # 120mm wheelbase
+  robot_mass: 0.5          # 500g
+  wheel_inertia: 0.0001
+  max_linear_vel: 0.5      # 0.5 m/s max
+  max_angular_vel: 2.0     # 2 rad/s max
+  max_linear_accel: 1.0
+  max_angular_accel: 4.0
+
+  motor:
+    # Small DC gear motor (e.g., N20 with encoder)
+    R: 5.0                 # Higher resistance for small motor
+    L: 0.0005
+    Kv: 0.005
+    Kt: 0.005
+    J: 0.00005
+    b: 0.00005
+    Kf: 0.001
+    max_voltage: 6.0       # 6V motor
+    max_current: 1.0
+    max_velocity: 50.0
+
+noise:
+  imu:
+    accel_std: 0.02        # Typical MEMS accelerometer
+    gyro_std: 0.002        # Typical MEMS gyroscope
+    gyro_drift_rate: 0.00001
+
+  encoder:
+    counts_per_rev: 360    # Common for small encoders
+    missed_count_prob: 0.0
+
+  ultrasonic:
+    noise_std: 0.015
+    min_range: 0.02
+    max_range: 2.0         # HC-SR04 style
+
+delay:
+  mean_delay_ms: 3.0       # Low latency for small robot
+  std_delay_ms: 1.0
+  jitter_ms: 0.5
+  packet_loss_prob: 0.0
+
+simulation:
+  dt: 0.01                 # 100 Hz simulation
+
+metadata:
+  author: robot_host
+  version: "1.0"
+  use_case: indoor_navigation
+  sensors:
+    - wheel_encoders
+    - imu
+    - ultrasonic

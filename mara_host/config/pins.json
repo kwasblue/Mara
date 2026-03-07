@@ -1,0 +1,18 @@
+{
+  "LED_STATUS": 2,
+  "UART1_TX": 17,
+  "UART1_RX": 16,
+  "SERVO1_SIG": 18,
+  "ULTRA0_TRIG": 25,
+  "ULTRA0_ECHO": 26,
+  "MOTOR_LEFT_IN1": 12,
+  "MOTOR_LEFT_IN2": 13,
+  "MOTOR_LEFT_PWM": 14,
+  "I2C_SDA": 21,
+  "I2C_SCL": 22,
+  "ENC0_A" : 32,
+  "ENC0_B" : 33,
+  "STEPPER0_STEP": 19,
+  "STEPPER0_DIR": 23,
+  "STEPPER0_EN": 27
+}

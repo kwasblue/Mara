@@ -1,0 +1,50 @@
+# Ideal robot for algorithm development
+# No noise, no friction, perfect sensors
+
+name: ideal_robot
+description: Idealized robot for testing control algorithms
+type: diff_drive
+
+drive:
+  wheel_radius: 0.05
+  wheel_base: 0.2
+  robot_mass: 1.0
+  wheel_inertia: 0.001
+  max_linear_vel: 2.0
+  max_angular_vel: 5.0
+  max_linear_accel: 10.0
+  max_angular_accel: 20.0
+
+  motor:
+    R: 1.0
+    L: 0.0001
+    Kv: 0.01
+    Kt: 0.01
+    J: 0.0005
+    b: 0.0                 # No viscous friction
+    Kf: 0.0                # No Coulomb friction
+    max_voltage: 12.0
+    max_current: 20.0
+    max_velocity: 200.0
+
+noise:
+  imu:
+    accel_std: 0.0         # Perfect accelerometer
+    gyro_std: 0.0          # Perfect gyroscope
+    gyro_drift_rate: 0.0
+
+  encoder:
+    counts_per_rev: 10000  # Very high resolution
+    missed_count_prob: 0.0
+
+# No communication delay
+delay: null
+
+simulation:
+  dt: 0.001                # High precision simulation
+
+metadata:
+  author: robot_host
+  version: "1.0"
+  use_case: algorithm_development
+  notes: Use this for testing control algorithms without noise

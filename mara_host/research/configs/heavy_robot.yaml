@@ -1,0 +1,63 @@
+# Heavy-duty differential drive robot
+# Suitable for outdoor use, cargo transport
+
+name: heavy_robot
+description: Heavy-duty outdoor robot with powerful motors
+type: diff_drive
+
+drive:
+  wheel_radius: 0.15       # 300mm diameter wheels
+  wheel_base: 0.6          # 600mm wheelbase
+  robot_mass: 25.0         # 25 kg
+  wheel_inertia: 0.05
+  max_linear_vel: 2.0      # 2 m/s max
+  max_angular_vel: 2.0     # 2 rad/s max
+  max_linear_accel: 1.5
+  max_angular_accel: 3.0
+
+  motor:
+    # Large brushed DC motor
+    R: 0.5                 # Low resistance, high current
+    L: 0.002
+    Kv: 0.05
+    Kt: 0.05
+    J: 0.02
+    b: 0.002
+    Kf: 0.05               # Higher friction
+    max_voltage: 24.0
+    max_current: 30.0
+    max_velocity: 60.0
+
+noise:
+  imu:
+    accel_std: 0.01        # More vibration in heavy robot
+    gyro_std: 0.001
+    gyro_drift_rate: 0.00002
+
+  encoder:
+    counts_per_rev: 4096   # High resolution for large wheels
+    missed_count_prob: 0.0001
+
+  ultrasonic:
+    noise_std: 0.03        # Outdoor noise
+    min_range: 0.05
+    max_range: 6.0
+
+delay:
+  mean_delay_ms: 10.0      # Wireless communication
+  std_delay_ms: 5.0
+  jitter_ms: 3.0
+  packet_loss_prob: 0.01
+
+simulation:
+  dt: 0.005                # Higher rate for heavy dynamics
+
+metadata:
+  author: robot_host
+  version: "1.0"
+  use_case: outdoor_cargo
+  sensors:
+    - wheel_encoders
+    - imu
+    - ultrasonic
+    - gps_optional

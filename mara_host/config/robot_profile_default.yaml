@@ -1,0 +1,17 @@
+# Default robot host profile
+transport:
+  type: tcp
+  host: 10.0.0.61
+  port: 3333
+
+features:
+  telemetry: true
+  encoder: true
+  motion: false
+  modes: true
+  camera: false
+
+encoder_defaults:
+  encoder_id: 0
+  pin_a: 32
+  pin_b: 33

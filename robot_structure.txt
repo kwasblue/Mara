@@ -1,7 +1,7 @@
 ================================================================================
 📂 PROJECT STRUCTURE
-Generated: 2026-02-15 15:23:57
-Total Files: 170
+Generated: 2026-03-07 10:50:46
+Total Files: 190
 ================================================================================
 
 📄 examples/01_serial_connection.py
@@ -483,6 +483,218 @@ Total Files: 170
       ├── def _connect_and_stream(self)
       ├── def _process_stream(self, response)
       └── def _process_frame(self, jpeg_data)
+
+📄 robot_host/cli/cli_config.py
+   ⚙️  def find_config_file()
+   ⚙️  def load_config()
+   ⚙️  def get(self, key, default)
+   ⚙️  def get_serial_port()
+   ⚙️  def get_baudrate()
+   ⚙️  def get_tcp_host()
+   ⚙️  def get_tcp_port()
+   ⚙️  def get_build_env()
+   ⚙️  def get_build_preset()
+   ⚙️  def create_default_config()
+   ⚙️  def init_config(self, path)
+   ⚙️  def apply_defaults(self, parser_defaults)
+
+📄 robot_host/cli/commands/build.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def add_common_args(self, parser)
+   ⚙️  def add_feature_args(self, parser)
+   ⚙️  def _get_features(self, args)
+   ⚙️  def cmd_compile(self, args)
+   ⚙️  def _build_with_progress(self, env, features)
+   ⚙️  def cmd_upload(self, args)
+   ⚙️  def cmd_clean(self, args)
+   ⚙️  def cmd_test(self, args)
+   ⚙️  def cmd_features(self, args)
+   ⚙️  def _show_size_summary(self, env)
+   ⚙️  def _make_bar(self, percentage, width)
+   ⚙️  def _get_firmware_size(self, env)
+   ⚙️  def cmd_size(self, args)
+   ⚙️  def cmd_watch(self, args)
+   ⚙️  def _get_latest_mtime(self, dirs)
+
+📄 robot_host/cli/commands/calibrate.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def add_transport_args(self, p)
+   ⚙️  def show_calibrations()
+   ⚙️  def cmd_motor(self, args)
+   ⚙️  def cmd_encoder(self, args)
+   ⚙️  def on_telemetry(self, data)
+   ⚙️  def cmd_imu(self, args)
+   ⚙️  def on_telemetry(self, data)
+   ⚙️  def cmd_servo(self, args)
+   ⚙️  def cmd_wheels(self, args)
+
+📄 robot_host/cli/commands/config.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def _find_config_files()
+   ⚙️  def cmd_show(self, args)
+   ⚙️  def cmd_validate(self, args)
+   ⚙️  def cmd_init(self, args)
+   ⚙️  def _template_minimal(self, name)
+   ⚙️  def _template_differential(self, name)
+   ⚙️  def _template_full(self, name)
+   ⚙️  def cmd_cli(self, args)
+
+📄 robot_host/cli/commands/dashboard.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_dashboard(self, args)
+
+📄 robot_host/cli/commands/flash.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def _find_esp32_ports()
+   ⚙️  def cmd_ports(self, args)
+   ⚙️  def cmd_auto(self, args)
+   ⚙️  def cmd_erase(self, args)
+   ⚙️  def cmd_info(self, args)
+   ⚙️  def _run_esptool(self, esptool_args, port)
+
+📄 robot_host/cli/commands/generate.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def _run_generator(self, name, module_name)
+   ⚙️  def cmd_all(self, args)
+   ⚙️  def cmd_commands(self, args)
+   ⚙️  def cmd_pins(self, args)
+   ⚙️  def cmd_can(self, args)
+   ⚙️  def cmd_telemetry(self, args)
+   ⚙️  def cmd_binary(self, args)
+   ⚙️  def cmd_gpio(self, args)
+
+📄 robot_host/cli/commands/logs.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def _find_sessions(self, log_dir)
+   ⚙️  def cmd_list(self, args)
+   ⚙️  def _format_size(self, size_bytes)
+   ⚙️  def cmd_show(self, args)
+   ⚙️  def cmd_tail(self, args)
+   ⚙️  def _print_event(self, event)
+   ⚙️  def cmd_search(self, args)
+   ⚙️  def cmd_stats(self, args)
+   ⚙️  def cmd_delete(self, args)
+   ⚙️  def cmd_export(self, args)
+
+📄 robot_host/cli/commands/monitor.py
+   🧱 class MonitorState
+      (no methods)
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_monitor(self, args)
+   ⚙️  def on_heartbeat(self, data)
+   ⚙️  def on_telemetry(self, data)
+   ⚙️  def on_error(self, data)
+   ⚙️  def _generate_display(self, state, args)
+
+📄 robot_host/cli/commands/pins.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_pinout(self, args)
+   ⚙️  def cmd_list(self, args)
+   ⚙️  def cmd_free(self, args)
+   ⚙️  def print_pin_section(self, title, gpios, style)
+   ⚙️  def cmd_info(self, args)
+   ⚙️  def cmd_assign(self, args)
+   ⚙️  def cmd_remove(self, args)
+   ⚙️  def cmd_suggest(self, args)
+   ⚙️  def cmd_validate(self, args)
+   ⚙️  def cmd_interactive(self, args)
+   ⚙️  def _interactive_help()
+   ⚙️  def _do_assign(self, name, gpio, force)
+   ⚙️  def _do_remove(self, name)
+   ⚙️  def cmd_conflicts(self, args)
+   ⚙️  def cmd_wizard(self, args)
+   ⚙️  def _get_available_pins(self, required_caps)
+   ⚙️  def _wizard_motor()
+   ⚙️  def _wizard_encoder()
+   ⚙️  def _wizard_stepper()
+   ⚙️  def _wizard_servo()
+   ⚙️  def _wizard_i2c()
+   ⚙️  def _wizard_spi()
+   ⚙️  def _wizard_uart()
+   ⚙️  def cmd_clear(self, args)
+
+📄 robot_host/cli/commands/record.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_record(self, args)
+   ⚙️  def _run_recording(self, session, port, tcp_host, duration, show_console)
+   ⚙️  def cmd_replay(self, args)
+   ⚙️  def _replay_session(self, log_dir, speed)
+   ⚙️  def _replay_to_metrics(self, log_dir, output)
+
+📄 robot_host/cli/commands/run.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def show_transports()
+   ⚙️  def cmd_serial(self, args)
+   ⚙️  def _run_serial_client(self, port, baudrate)
+   ⚙️  def _run_serial_shell(self, port, baudrate)
+   ⚙️  def cmd_tcp(self, args)
+   ⚙️  def _run_tcp_client(self, host, port)
+   ⚙️  def cmd_can(self, args)
+   ⚙️  def _run_can_client(self, channel, bustype, node_id, virtual)
+   ⚙️  def cmd_mqtt(self, args)
+   ⚙️  def cmd_shell(self, args)
+   ⚙️  def log_event(self, topic, data)
+   ⚙️  def handle_event(self, topic, data, style)
+   🧱 class InteractiveShell
+      └── def __init__(self, client, event_log)
+   ⚙️  def on_identity_response(self, data)
+
+📄 robot_host/cli/commands/sim.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_virtual(self, args)
+   ⚙️  def cmd_replay(self, args)
+   🧱 class ReplayArgs
+      (no methods)
+   ⚙️  def cmd_loopback(self, args)
+   🧱 class LoopbackTransport
+      ├── def __init__(self)
+      └── def set_frame_handler(self, handler)
+   ⚙️  def on_event(self, topic)
+   ⚙️  def handler(self, data)
+
+📄 robot_host/cli/commands/test.py
+   🧱 class TestResult
+      (no methods)
+   ⚙️  def register(self, subparsers)
+   ⚙️  def add_transport_args(self, p)
+   ⚙️  def cmd_all(self, args)
+   ⚙️  def on_pong(self, data)
+   ⚙️  def on_heartbeat(self, data)
+   ⚙️  def _print_results(self, results)
+   ⚙️  def cmd_connection(self, args)
+   ⚙️  def cmd_motors(self, args)
+   ⚙️  def cmd_encoders(self, args)
+   ⚙️  def on_telemetry(self, data)
+   ⚙️  def cmd_servos(self, args)
+   ⚙️  def cmd_sensors(self, args)
+   ⚙️  def on_telemetry(self, data)
+   ⚙️  def cmd_gpio(self, args)
+
+📄 robot_host/cli/completions.py
+   ⚙️  def register(self, subparsers)
+   ⚙️  def cmd_completions(self, args)
+   ⚙️  def _generate_bash()
+   ⚙️  def _generate_zsh()
+   ⚙️  def _generate_fish()
+   ⚙️  def _install_completions(self, shell, script)
+
+📄 robot_host/cli/console.py
+   ⚙️  def print_header(self, title, subtitle)
+   ⚙️  def print_success(self, message)
+   ⚙️  def print_error(self, message)
+   ⚙️  def print_warning(self, message)
+   ⚙️  def print_info(self, message)
+   ⚙️  def print_table(self, title, columns, rows, show_header)
+   ⚙️  def create_pin_table(self, title)
+   ⚙️  def spinner(self, message)
+   ⚙️  def print_pinout_panel(self, pinout_text, title)
+   ⚙️  def format_pin_status(self, gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
+   ⚙️  def confirm(self, message, default)
+
+📄 robot_host/cli/main.py
+   ⚙️  def create_parser()
+   ⚙️  def cmd_version(self, args)
+   ⚙️  def main(self, argv)
 
 📄 robot_host/command/binary_commands.py
    🧱 class Opcode
@@ -1278,6 +1490,18 @@ Total Files: 170
    ⚙️  def _int_or_none(self, v)
    ⚙️  def parse_telemetry(self, msg)
 
+📄 robot_host/tools/build_firmware.py
+   ⚙️  def parse_features(self, features_str, no_features_str)
+   ⚙️  def features_to_flags(self, features)
+   ⚙️  def run_pio(self, args, verbose, extra_flags)
+   ⚙️  def generate()
+   ⚙️  def build(self, env, verbose, features)
+   ⚙️  def upload(self, env, verbose, features)
+   ⚙️  def test(self, native, device, filter_pattern, verbose)
+   ⚙️  def clean(self, env)
+   ⚙️  def list_features()
+   ⚙️  def main()
+
 📄 robot_host/tools/build_world.py
    ⚙️  def main()
 
@@ -1345,6 +1569,30 @@ Total Files: 170
       ├── def __init__(self, node_id, broker_host, broker_port, firmware, board)
       └── def stop(self)
    ⚙️  def parse_args()
+
+📄 robot_host/tools/pins.py
+   🧱 class Capability
+      (no methods)
+   🧱 class PinInfo
+      (no methods)
+   ⚙️  def load_pins()
+   ⚙️  def save_pins(self, pins)
+   ⚙️  def get_assignments()
+   ⚙️  def cap_str(self, cap)
+   ⚙️  def print_pin_table(self, pins, assignments, show_all)
+   ⚙️  def cmd_list(self, args)
+   ⚙️  def cmd_free(self, args)
+   ⚙️  def cmd_info(self, args)
+   ⚙️  def cmd_assign(self, args)
+   ⚙️  def cmd_remove(self, args)
+   ⚙️  def cmd_suggest(self, args)
+   ⚙️  def cmd_validate(self, args)
+   ⚙️  def generate_pinout()
+   ⚙️  def fmt_label(self, gpio, max_len)
+   ⚙️  def pin_marker(self, gpio)
+   ⚙️  def cmd_pinout(self, args)
+   ⚙️  def cmd_help(self, args)
+   ⚙️  def main()
 
 📄 robot_host/tools/platform_schema.py
    ⚙️  def _load_pins(self, path)
@@ -1424,6 +1672,33 @@ Total Files: 170
    ⚙️  def encode_set_signal(self, signal_id, value)
    ⚙️  def encode_heartbeat(self, uptime_ms, state, load_pct, errors)
    ⚙️  def encode_encoder(self, counts, velocity, timestamp)
+
+📄 robot_host/transport/can_defs_generated.py
+   🧱 class MsgId
+      (no methods)
+   🧱 class NodeState
+      (no methods)
+   🧱 class SetVelMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class SetSignalMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class HeartbeatMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class EncoderMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class ImuAccelMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class ImuGyroMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
+   🧱 class StatusMsg
+      ├── def pack(self)
+      └── def unpack(self, cls, data)
 
 📄 robot_host/transport/can_transport.py
    🧱 class CANStats
@@ -1896,7 +2171,7 @@ Total Files: 170
 ================================================================================
 📊 STATISTICS
 ================================================================================
-Total Classes:    250
-Total Functions:  384
-Total Methods:    824
+Total Classes:    266
+Total Functions:  579
+Total Methods:    841
 ================================================================================

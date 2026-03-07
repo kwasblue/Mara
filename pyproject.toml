@@ -57,7 +57,12 @@ dependencies = [
     "urllib3>=2.5.0",
     "aiohttp>=3.9.0",
     "aiomqtt>=2.0.0",
+    "rich>=13.0.0",
+    "PyYAML>=6.0.0",
 ]
+
+[project.scripts]
+mara = "robot_host.cli.main:main"
 
 [project.optional-dependencies]
 dev = [

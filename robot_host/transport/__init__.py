@@ -4,7 +4,7 @@ Transport layer for robot communication.
 
 Available transports:
     - SerialTransport: USB/UART serial communication
-    - BluetoothTransport: Bluetooth Classic SPP
+    - BluetoothSerialTransport: Bluetooth Classic SPP
     - AsyncTcpTransport: Async WiFi/TCP
     - MQTTTransport: MQTT pub/sub for multi-node
     - CANTransport: CAN bus with hybrid native/protocol support
@@ -14,7 +14,7 @@ from robot_host.transport.base_transport import BaseTransport
 from robot_host.transport.async_base_transport import AsyncBaseTransport
 from robot_host.transport.stream_transport import StreamTransport
 from robot_host.transport.serial_transport import SerialTransport
-from robot_host.transport.bluetooth_transport import BluetoothTransport
+from robot_host.transport.bluetooth_transport import BluetoothSerialTransport
 from robot_host.transport.tcp_transport import AsyncTcpTransport
 
 # CAN transport (optional, requires python-can)
@@ -44,7 +44,7 @@ __all__ = [
     "StreamTransport",
     # Transports
     "SerialTransport",
-    "BluetoothTransport",
+    "BluetoothSerialTransport",
     "AsyncTcpTransport",
     # CAN (optional)
     "CANTransport",

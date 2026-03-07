@@ -66,6 +66,16 @@ COMMANDS: dict[str, dict] = {
     # ----------------------------------------------------------------------
     # Safety / State Machine
     # ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    # Identity / Device Info
+    # ----------------------------------------------------------------------
+    "CMD_GET_IDENTITY": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "Get device identity and capabilities (firmware version, build config, features).",
+        "payload": {},
+    },
+
     "CMD_HEARTBEAT": {
         "kind": "cmd",
         "direction": "host->mcu",

@@ -10,6 +10,11 @@ class RobotCommandsMixin:
     Requires that the inheriting client defines:
         async def send_json_cmd(self, type_str: str, payload: dict | None = None) -> None
     """
+    async def cmd_get_identity(self) -> None:
+        """Get device identity and capabilities (firmware version, build config, features). (CMD_GET_IDENTITY)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_GET_IDENTITY', payload)
+
     async def cmd_heartbeat(self) -> None:
         """Host heartbeat to maintain connection. Resets host timeout watchdog. (CMD_HEARTBEAT)"""
         payload: dict[str, Any] = {}

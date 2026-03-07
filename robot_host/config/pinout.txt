@@ -1,0 +1,50 @@
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         ESP32 DevKit V1 - Pin Assignment                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+                              ┌───────────────────┐
+                              │    ╔═════════╗    │
+                              │    ║  ESP32  ║    │
+                              │    ║ WROOM32 ║    │
+                              │    ╚═════════╝    │
+                              │                   │
+                              │    ┌───────┐      │
+                              │    │ micro │      │
+                              │    │  USB  │      │
+                        ┌─────┴────┴───────┴──────┴─────┐
+              3.3V =│ 3V3 ○───────────○ VIN │= 5V              
+               RST =│  EN ○───────────○ GND │= GND             
+                   >│  VP ○───────────○ 23  │# STEPPER0_DIR    
+                   >│  VN ○───────────○ 22  │# I2C_SCL         
+                   >│  34 ○───────────○ TX  │o                 
+                   >│  35 ○───────────○ RX  │o                 
+            ENC0_A #│  32 ○───────────○ 21  │# I2C_SDA         
+            ENC0_B #│  33 ○───────────○ 19  │# STEPPER0_STEP   
+       ULTRA0_TRIG #│  25 ○───────────○ 18  │# SERVO1_SIG      
+       ULTRA0_ECHO #│  26 ○───────────○ 5   │!                 
+       STEPPER0_EN #│  27 ○───────────○ 17  │# UART1_TX        
+    MOTOR_LEFT_PWM #│  14 ○───────────○ 16  │# UART1_RX        
+    MOTOR_LEFT_IN1 #│  12 ○───────────○ 4   │o                 
+               GND =│ GND ○───────────○ 0   │!                 
+    MOTOR_LEFT_IN2 #│  13 ○───────────○ 2   │# LED_STATUS      
+                        └─────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │  LEGEND                                                                    │
+  │    # = assigned        o = available       ! = boot strapping pin          │
+  │    > = input only      x = flash (unusable)    = = power/ground            │
+  └─────────────────────────────────────────────────────────────────────────────┘
+
+  SUMMARY: 16 assigned │ 1 safe available │ 6 input-only │ 3 boot pins
+
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │  ACTIVE ASSIGNMENTS                                                        │
+  ├─────────────────────────────────────────────────────────────────────────────┤
+  │  GPIO 2=LED_STATUS     GPIO12=MOTOR_LEFT_IN1 GPIO13=MOTOR_LEFT_IN2         │
+  │  GPIO14=MOTOR_LEFT_PWM GPIO16=UART1_RX       GPIO17=UART1_TX               │
+  │  GPIO18=SERVO1_SIG     GPIO19=STEPPER0_STEP  GPIO21=I2C_SDA                │
+  │  GPIO22=I2C_SCL        GPIO23=STEPPER0_DIR   GPIO25=ULTRA0_TRIG            │
+  │  GPIO26=ULTRA0_ECHO    GPIO27=STEPPER0_EN    GPIO32=ENC0_A                 │
+  │  GPIO33=ENC0_B                                                             │
+  └─────────────────────────────────────────────────────────────────────────────┘

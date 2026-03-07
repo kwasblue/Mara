@@ -413,9 +413,12 @@ mara generate telemetry  # Telemetry sections
 
 ## Documentation
 
+- **[Getting Started Guide](docs/GETTING_STARTED.md)** - Build your first robot
 - [Architecture Overview](docs/architecture/ARCHITECTURE.md)
 - [Host API Reference](host/mara_host/api/README.md)
 - [MCU Firmware Guide](firmware/mcu/README.md)
+- [MQTT Multi-Robot Guide](docs/MQTT.md)
+- [Code Generation](docs/CODEGEN.md)
 - [Camera Module](host/mara_host/camera/README.md)
 - [Research Tools](host/mara_host/research/README.md)
 

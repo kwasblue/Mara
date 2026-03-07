@@ -8,11 +8,11 @@ Generates:
 """
 
 from pathlib import Path
-from platform_schema import TELEMETRY_SECTIONS
+from platform_schema import TELEMETRY_SECTIONS, CPP_TELEMETRY_DIR, PY_TELEMETRY_DIR
 
 # Output paths
-CPP_OUT = Path("/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host/include/telemetry/TelemetrySections.h")
-PY_OUT = Path("/Users/kwasiaddo/projects/Host/mara_host/telemetry/telemetry_sections.py")
+CPP_OUT = CPP_TELEMETRY_DIR / "TelemetrySections.h"
+PY_OUT = PY_TELEMETRY_DIR / "telemetry_sections.py"
 
 
 # -----------------------------------------------------------------------------

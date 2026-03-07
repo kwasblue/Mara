@@ -35,7 +35,7 @@
 │  │                           ROBOT + RUNTIME                               │ │
 │  │  ┌─────────────────────────────────┐  ┌─────────────────────────────┐  │ │
 │  │  │            Robot                │  │          Runtime            │  │ │
-│  │  │  • .client (AsyncRobotClient)   │  │  • tick loop (50Hz)         │  │ │
+│  │  │  • .client (MaraClient)   │  │  • tick loop (50Hz)         │  │ │
 │  │  │  • .bus (EventBus)              │  │  • module lifecycle         │  │ │
 │  │  │  • .gpio, .pwm, .motion props   │  │  • on_tick callbacks        │  │ │
 │  │  │  • .on(topic, handler)          │  │  • BaseModule composition   │  │ │
@@ -54,7 +54,7 @@
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
 │  │                    COMMAND & TELEMETRY LAYER                            │ │
 │  │  ┌─────────────────────────┐     ┌─────────────────────────────────┐   │ │
-│  │  │    AsyncRobotClient     │     │         EventBus                │   │ │
+│  │  │    MaraClient     │     │         EventBus                │   │ │
 │  │  │  • send_json(cmd, {})   │     │  • publish(topic, data)         │   │ │
 │  │  │  • send_binary(opcode)  │     │  • subscribe(topic, handler)    │   │ │
 │  │  │  • send_reliable()      │     │                                 │   │ │
@@ -113,7 +113,7 @@
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                              MCU (ESP32)                                      │
-│                         ESP32 MCU Host Firmware                               │
+│                         MARA ESP32 Firmware (firmware/mcu/)                               │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                               │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
@@ -261,7 +261,7 @@
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    platform_schema.py (Single Source of Truth)               │
-│                      Host/mara_host/tools/platform_schema.py                │
+│                      host/mara_host/tools/platform_schema.py                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  COMMANDS = {                    BINARY_COMMANDS = {                        │
@@ -328,7 +328,7 @@ COMMAND FLOW (Host → MCU):
      │               MotionHostModule                          │
      │               send_vel_binary(vx, omega)                │
      │                          │                              │
-     │               AsyncRobotClient                          │
+     │               MaraClient                          │
      │               encode binary: [0x10][vx_f32][omega_f32]  │
      │                          │                              │
      │               Protocol Layer                            │

@@ -21,10 +21,11 @@
 
 **MARA** (Modular Asynchronous Robotics Architecture) is a complete robotics control framework consisting of:
 
-| Component | Repository | Description |
-|-----------|------------|-------------|
-| **Firmware** | `ESP32 MCU Host` (this repo) | Real-time motor control, sensor fusion, communication |
-| **Host** | [`mara_host`](../../../Host) | Python async client, telemetry, research tools |
+| Component | Location | Description |
+|-----------|----------|-------------|
+| **Firmware** | `firmware/mcu/` (this directory) | Real-time motor control, sensor fusion, communication |
+| **Host** | `host/mara_host/` | Python async client, telemetry, research tools |
+| **CAM Firmware** | `firmware/cam/` | ESP32-CAM streaming and vision |
 
 This repository contains the **ESP32 firmware** - a modular, configurable firmware for ESP32-based robot control systems. Supports differential drive robots, sensors (IMU, encoders, LIDAR, ultrasonic), and multiple communication transports (USB Serial, WiFi, Bluetooth, MQTT).
 
@@ -104,7 +105,7 @@ pio device monitor -b 115200
 ## Directory Structure
 
 ```
-ESP32 MCU Host/
+firmware/mcu/
 ├── include/
 │   ├── config/          # Build configuration
 │   │   ├── FeatureFlags.h   # Feature flag definitions
@@ -352,7 +353,7 @@ pio test -e native -v
 
 ## MARA Host Integration
 
-This firmware is designed to work with the [MARA Host](../../../Host) Python package:
+This firmware is designed to work with the MARA Host Python package (`host/mara_host/`):
 
 ```python
 from mara_host import Robot
@@ -376,10 +377,11 @@ Several headers are auto-generated from `mara_host/tools/platform_schema.py`:
 | `include/config/PinConfig.h` | `pins.json` |
 | `include/config/GpioChannelDefs.h` | `GPIO_CHANNELS` dict |
 
-To regenerate, run from the Host repository:
+To regenerate from the repository root:
 ```bash
-cd mara_host/tools
-python generate_all.py
+make generate
+# or
+mara generate all
 ```
 
 ## Performance

@@ -1,6 +1,6 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-07 15:10:13
+Generated: 2026-03-07 15:48:55
 Total Files: 418
 ================================================================================
 
@@ -2176,8 +2176,7 @@ HOST (Python)
     [Fn] test_jsonl_logger_writes_valid_json_lines(tmp_path)
 
   host/tests/test_metrics_and_benchmarks_artifacts.py
-    [Fn] _import_metrics_and_bench()
-    [Fn] test_basic_metrics_and_benchmark_outputs(tmp_path)
+    [Fn] test_basic_metrics_outputs(tmp_path)
 
   host/tests/test_pin_service.py
     [Class] TestPinClassification
@@ -4279,6 +4278,6 @@ Python Files:     236
 C++ Files:        182
 Total Classes:    537
 Total Structs:    136
-Total Functions:  1756
+Total Functions:  1755
 Total Methods:    956
 ================================================================================

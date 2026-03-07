@@ -25,17 +25,10 @@ venv/
 pip-wheel-metadata/
 logs/
 
-# ---- Host auto-generated files ----
-robot_host/config/command_defs.py
-robot_host/config/pin_config.py
-robot_host/config/gpio_channels.py
-robot_host/config/commands.json
-robot_host/config/pins.json
-robot_host/config/version.py
-robot_host/config/gpio_channels.json
-robot_host/config/client_commands.py
-
-robot_host/scratch
+# ---- Stale generation artifacts (prevent root-level duplicates) ----
+# If generators run from wrong directory, these could appear at repo root
+/mara_host/
+/robot_host/
 
 # ---- macOS ----
 .DS_Store

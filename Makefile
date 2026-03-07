@@ -4,6 +4,12 @@
 .PHONY: help install install-dev test test-host test-mcu build build-mcu build-cam \
         flash flash-mcu flash-cam monitor-mcu monitor-cam clean generate lint
 
+# Python from virtual environment (create with: python3 -m venv .venv)
+VENV := .venv
+PYTHON := $(VENV)/bin/python
+PIP := $(VENV)/bin/pip
+PYTEST := $(VENV)/bin/pytest
+
 # Default target
 help:
 	@echo "MARA - Modular Asynchronous Robotics Architecture"
@@ -45,10 +51,10 @@ help:
 # =============================================================================
 
 install:
-	cd host && pip install -e .
+	$(PIP) install -e host/
 
 install-dev:
-	cd host && pip install -e ".[dev]"
+	$(PIP) install -e "host/[dev]"
 
 # =============================================================================
 # Testing
@@ -57,7 +63,7 @@ install-dev:
 test: test-host test-mcu
 
 test-host:
-	cd host && pytest tests/ -v
+	cd host && ../$(PYTEST) tests/ -v
 
 test-mcu:
 	cd firmware/mcu && pio test -e native
@@ -111,7 +117,7 @@ monitor-cam:
 # =============================================================================
 
 generate:
-	cd host && python -m mara_host.tools.generate_all
+	cd host && ../$(PYTHON) -m mara_host.tools.generate_all
 
 # =============================================================================
 # Cleanup

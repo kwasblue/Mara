@@ -5,14 +5,17 @@ Generate command schema artifacts from platform_schema.COMMANDS.
 from typing import Any
 from pathlib import Path
 import json
-from platform_schema import ROOT, COMMANDS, VERSION, CAPABILITIES_MASK
+from platform_schema import (
+    ROOT, COMMANDS, VERSION, CAPABILITIES, CAPABILITIES_MASK,
+    PY_CONFIG_DIR, CPP_CONFIG_DIR
+)
 
-JSON_OUT = Path("/Users/kwasiaddo/projects/Host/mara_host/config/commands.json")
-CPP_OUT = Path("/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host/include/config/CommandDefs.h")
-CPP_VERSION_OUT = Path("/Users/kwasiaddo/projects/ESP32 MCU Host/include/config/Version.h")   
-PY_VERSION_OUT = Path("/Users/kwasiaddo/projects/Host/mara_host/config/version.py")   
-PY_OUT = Path("/Users/kwasiaddo/projects/Host/mara_host/config/command_defs.py")
-PY_CLIENT_MIXIN_OUT = Path("/Users/kwasiaddo/projects/Host/mara_host/config/client_commands.py")
+JSON_OUT = PY_CONFIG_DIR / "commands.json"
+CPP_OUT = CPP_CONFIG_DIR / "CommandDefs.h"
+CPP_VERSION_OUT = CPP_CONFIG_DIR / "Version.h"
+PY_VERSION_OUT = PY_CONFIG_DIR / "version.py"
+PY_OUT = PY_CONFIG_DIR / "command_defs.py"
+PY_CLIENT_MIXIN_OUT = PY_CONFIG_DIR / "client_commands.py"
 SCHEMA_VERSION = 1
 
 
@@ -193,16 +196,32 @@ def write_python_client_mixin(commands: dict[str, dict]) -> str:
 
 def generate_cpp_version(version: dict) -> str:
     """Generate C++ Version.h content."""
+    # Generate capability constants
+    caps_lines = []
+    for name, value in CAPABILITIES.items():
+        caps_lines.append(f"        constexpr uint32_t {name} = 0x{value:04X};")
+    caps_block = "\n".join(caps_lines)
+
     return f'''// AUTO-GENERATED FILE — DO NOT EDIT BY HAND
 // Generated from VERSION in platform_schema.py
 
 #pragma once
+#include <cstdint>
 
 namespace Version {{
     constexpr const char* FIRMWARE = "{version["firmware"]}";
     constexpr uint8_t PROTOCOL = {version["protocol"]};
+    constexpr uint8_t SCHEMA_VERSION = {version["schema_version"]};
     constexpr const char* BOARD = "{version["board"]}";
     constexpr const char* NAME = "{version["name"]}";
+
+    // Device capabilities bitfield
+    constexpr uint32_t CAPABILITIES = 0x{CAPABILITIES_MASK:04X};
+
+    // Individual capability flags
+    namespace Caps {{
+{caps_block}
+    }}
 }}
 '''
 

@@ -24,11 +24,13 @@ from mara_host.tools.platform_schema import (
     CAN_MESSAGE_IDS,
     CAN_MESSAGES,
     CAN_NODE_STATES,
+    CPP_CONFIG_DIR,
+    PY_TRANSPORT_DIR,
 )
 
 # Output paths
-CPP_OUT = Path("/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host/include/config/CanDefs.h")
-PY_OUT = Path("/Users/kwasiaddo/projects/Host/mara_host/transport/can_defs_generated.py")
+CPP_OUT = CPP_CONFIG_DIR / "CanDefs.h"
+PY_OUT = PY_TRANSPORT_DIR / "can_defs_generated.py"
 
 
 # =============================================================================

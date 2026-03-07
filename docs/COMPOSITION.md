@@ -164,7 +164,7 @@ These are the standard ways to implement common patterns.
 |-------|------|
 | `tools/pins.py` | Data (ESP32_PINS), I/O (load/save), utilities (cap_str) |
 | `services/pins/PinService` | Validation, conflict detection, recommendations |
-| `cli/commands/pins.py` | Rich formatting, interactive wizards, argparse |
+| `cli/commands/pins/` | Rich formatting, interactive wizards, argparse |
 
 ### tools/
 

@@ -5,13 +5,13 @@ from PINS in platform_schema (which itself loads pins.json).
 """
 
 from pathlib import Path
-from platform_schema import ROOT, PINS, PINS_JSON
+from platform_schema import ROOT, PINS, PINS_JSON, CPP_CONFIG_DIR, PY_CONFIG_DIR
 
 # Where to write the C++ header (ESP32 firmware project)
-CPP_OUT = Path("/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host/include/config/PinConfig.h")
+CPP_OUT = CPP_CONFIG_DIR / "PinConfig.h"
 
 # Where to write the python header (Host project)
-PY_OUT  = Path("/Users/kwasiaddo/projects/Host/mara_host/config/pin_config.py")
+PY_OUT = PY_CONFIG_DIR / "pin_config.py"
 
 
 def generate_cpp(pins: dict) -> str:

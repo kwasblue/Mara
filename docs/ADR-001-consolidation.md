@@ -82,7 +82,7 @@ Three-layer architecture with clear separation:
 |-------|----------|----------------|
 | Data + I/O | `tools/pins.py` | ESP32_PINS, load/save, generate_pinout |
 | Business Logic | `services/pins/PinService` | Validation, conflicts, recommendations |
-| Presentation | `cli/commands/pins.py` | Rich formatting, interactive UX |
+| Presentation | `cli/commands/pins/` | Rich formatting, interactive UX |
 
 ### Data Layer (tools/pins.py)
 
@@ -109,7 +109,7 @@ Owns:
 
 Key principle: Methods return **data structures**, not formatted output.
 
-### CLI Layer (cli/commands/pins.py)
+### CLI Layer (cli/commands/pins/)
 
 Owns:
 - Argparse registration

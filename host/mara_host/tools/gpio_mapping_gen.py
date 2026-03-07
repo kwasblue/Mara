@@ -5,11 +5,11 @@ Generate GPIO channel mapping artifacts from platform_schema.GPIO_CHANNELS.
 
 from pathlib import Path
 import json
-from platform_schema import ROOT, GPIO_CHANNELS, PINS
+from platform_schema import ROOT, GPIO_CHANNELS, PINS, PY_CONFIG_DIR, CPP_CONFIG_DIR
 
-JSON_OUT = Path("/Users/kwasiaddo/projects/Host/mara_host/config/gpio_channels.json")
-CPP_OUT = Path("/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host/include/config/GpioChannelDefs.h")
-PY_OUT  = Path("/Users/kwasiaddo/projects/Host/mara_host/config/gpio_channels.py")
+JSON_OUT = PY_CONFIG_DIR / "gpio_channels.json"
+CPP_OUT = CPP_CONFIG_DIR / "GpioChannelDefs.h"
+PY_OUT = PY_CONFIG_DIR / "gpio_channels.py"
 
 
 def generate_json(channels: list[dict]) -> str:

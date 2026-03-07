@@ -9,12 +9,12 @@ Generates:
 """
 
 from pathlib import Path
-from platform_schema import BINARY_COMMANDS
+from platform_schema import BINARY_COMMANDS, CPP_COMMAND_DIR, PY_COMMAND_DIR
 
 # Output paths
-CPP_OUT = Path("/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host/include/command/BinaryCommands.h")
-PY_BINARY_OUT = Path("/Users/kwasiaddo/projects/Host/mara_host/command/binary_commands.py")
-PY_JSON_TO_BIN_OUT = Path("/Users/kwasiaddo/projects/Host/mara_host/command/json_to_binary.py")
+CPP_OUT = CPP_COMMAND_DIR / "BinaryCommands.h"
+PY_BINARY_OUT = PY_COMMAND_DIR / "binary_commands.py"
+PY_JSON_TO_BIN_OUT = PY_COMMAND_DIR / "json_to_binary.py"
 
 # Type mappings
 TYPE_MAP = {

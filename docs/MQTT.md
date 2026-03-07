@@ -123,7 +123,7 @@ asyncio.run(main())
 ### 3. Run the Example Script
 
 ```bash
-python -m mara_host.runners.run_mqtt_nodes --broker 10.0.0.59
+python -m mara_host.examples.applications.mqtt_nodes --broker 10.0.0.59
 ```
 
 ## NodeManager API
@@ -229,7 +229,7 @@ python -m mara_host.tools.mock_node --node-id node1 --broker 10.0.0.59
 python -m mara_host.tools.mock_node --node-id node2 --broker 10.0.0.59
 
 # Terminal 3: Run discovery
-python -m mara_host.runners.run_mqtt_nodes --broker 10.0.0.59
+python -m mara_host.examples.applications.mqtt_nodes --broker 10.0.0.59
 ```
 
 Mock node options:

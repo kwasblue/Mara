@@ -17,8 +17,9 @@ import os
 import subprocess
 import sys
 
-# Absolute path to MCU project (matches other generators)
-MCU_PROJECT = Path("/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host")
+# Path to MCU project (relative to monorepo structure)
+_TOOLS_DIR = Path(__file__).resolve().parent
+MCU_PROJECT = _TOOLS_DIR.parent.parent.parent / "firmware" / "mcu"
 
 # Available environments from platformio.ini
 ENVIRONMENTS = {

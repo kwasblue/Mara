@@ -20,7 +20,7 @@ This document describes the architecture of the mara_host Python package and its
 │  Robot + HostModules (hw/, motor/, sensor/)             │
 │  └─ CommandHostModule, EventHostModule                  │
 ├─────────────────────────────────────────────────────────┤
-│  AsyncRobotClient (command/)                            │
+│  MaraClient (command/)                            │
 │  ├─ ReliableCommander (retries/acking)                  │
 │  ├─ ConnectionMonitor (health)                          │
 │  └─ RobotCommandsMixin (generated cmd_* methods)        │
@@ -49,7 +49,7 @@ This document describes the architecture of the mara_host Python package and its
 |---------|----------------|
 | `robot.py` | Main entry point; lazy transport/client setup |
 | `core/` | EventBus, protocol encoding, module interfaces |
-| `command/` | AsyncRobotClient, reliable delivery, connection monitoring |
+| `command/` | MaraClient, reliable delivery, connection monitoring |
 | `transport/` | Physical layer implementations (serial, TCP, CAN, BLE) |
 | `telemetry/` | Binary parsing and telemetry models |
 | `api/` | Public user-facing classes (Stepper, Servo, IMU, etc.) |
@@ -94,7 +94,7 @@ await robot.connect()
 # Creates:
 #   1. SerialTransport (or AsyncTcpTransport)
 #   2. EventBus
-#   3. AsyncRobotClient(transport, bus)
+#   3. MaraClient(transport, bus)
 #   4. Performs version handshake
 
 # HostModules created lazily on first access:
@@ -102,7 +102,7 @@ robot.gpio   # → GpioHostModule
 robot.motion # → MotionHostModule
 ```
 
-**Key principle**: `Robot` is the facade. `AsyncRobotClient` is the protocol engine. `Runtime` is the execution loop.
+**Key principle**: `Robot` is the facade. `MaraClient` is the protocol engine. `Runtime` is the execution loop.
 
 ## Event Flow
 
@@ -111,7 +111,7 @@ robot.motion # → MotionHostModule
 ```
 Transport receives frame
     ↓
-AsyncRobotClient._on_frame(body)
+MaraClient._on_frame(body)
     ├─ MSG_TELEMETRY_BIN → parse_telemetry_bin() → TelemetryPacket
     ├─ MSG_CMD_JSON → parse JSON → extract topic
     └─ MSG_HEARTBEAT/PONG → connection.on_message_received()
@@ -131,7 +131,7 @@ User: await robot.motion.set_velocity(0.5, 0.0)
     ↓
 MotionHostModule.set_velocity()
     ↓
-AsyncRobotClient.cmd_set_vel(vx, omega)  # generated method
+MaraClient.cmd_set_vel(vx, omega)  # generated method
     ↓
 ReliableCommander.send_reliable()
     ├─ Track sequence number
@@ -301,7 +301,7 @@ python -m mara_host.tools.generate_all
 
 ```python
 # Hand-written base class
-class AsyncRobotClient(RobotCommandsMixin):
+class MaraClient(RobotCommandsMixin):
     async def send_reliable(self, cmd, payload, wait_for_ack=True): ...
 
 # Generated mixin (don't edit!)
@@ -378,7 +378,7 @@ mara_host/
 │   ├── base_module.py    # Module interface
 │   └── protocol.py       # Frame encoding
 ├── command/
-│   ├── client.py         # AsyncRobotClient
+│   ├── client.py         # MaraClient
 │   └── coms/
 │       ├── connection_monitor.py
 │       └── reliable_commander.py

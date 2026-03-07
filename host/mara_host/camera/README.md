@@ -308,7 +308,7 @@ asyncio.run(main())
 ## Running the Demo
 
 ```bash
-python -m mara_host.runners.run_camera_host http://10.0.0.66
+python -m mara_host.examples.applications.camera_host http://10.0.0.66
 ```
 
 Controls:

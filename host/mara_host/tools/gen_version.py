@@ -59,10 +59,10 @@ def write_version_files(version: dict, cpp_path: Path, py_path: Path) -> None:
 
 
 def main() -> None:
-    # Prefer paths relative to repo roots if possible.
-    # If you want to keep absolute paths, you can—this is just safer/portable.
-    cpp_path = Path("/Users/kwasiaddo/projects/PlatformIO/Projects/ESP32 MCU Host/include/config/Version.h")
-    py_path  = Path("/Users/kwasiaddo/projects/Host/mara_host/config/version.py")
+    from platform_schema import CPP_CONFIG_DIR, PY_CONFIG_DIR
+
+    cpp_path = CPP_CONFIG_DIR / "Version.h"
+    py_path = PY_CONFIG_DIR / "version.py"
 
     write_version_files(VERSION, cpp_path, py_path)
 

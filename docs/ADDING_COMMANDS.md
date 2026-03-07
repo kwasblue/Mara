@@ -157,23 +157,23 @@ void handle(const JsonDocument& doc, CommandContext& ctx) override {
 ### Run All Tests
 
 ```bash
-# 1. MCU Native Tests (runs on Mac, fast)
-cd "/path/to/ESP32 MCU Host"
-pio test -e native
+# From the repository root
+cd /path/to/mara
 
-# 2. ESP32 On-Device Tests (runs on actual ESP32 chip)
-pio test -e esp32_test
+# 1. Run all tests (MCU + Host)
+make test
 
-# 3. Flash main firmware for HIL tests
-pio run -e esp32_usb -t upload
+# 2. MCU Native Tests only
+make test-mcu
 
-# 4. Python Host Tests
-cd /path/to/Host
-source .venv/bin/activate
-python -m pytest tests/ -q --ignore=tests/test_hil_send_commands.py
+# 3. Python Host Tests only
+make test-host
+
+# 4. Flash firmware for HIL tests
+make flash-mcu
 
 # 5. HIL Tests (full system over TCP)
-python -m pytest tests/test_hil_send_commands.py -v --run-hil
+cd host && pytest tests/test_hil_send_commands.py -v --run-hil
 ```
 
 ### Test Coverage
@@ -308,14 +308,14 @@ Telemetry sections define the binary format for sensor data sent from MCU to Hos
 
 | File | Purpose |
 |------|---------|
-| `Host/mara_host/tools/platform_schema.py` | Single source of truth |
-| `Host/mara_host/tools/generate_all.py` | Run all generators |
-| `Host/mara_host/control/` | Control design tools (LQR, pole placement) |
-| `Host/mara_host/telemetry/telemetry_sections.py` | Generated telemetry section IDs |
-| `ESP32 MCU Host/include/telemetry/TelemetrySections.h` | Generated C++ section IDs |
-| `ESP32 MCU Host/include/command/handlers/` | Command handlers |
-| `ESP32 MCU Host/test/test_runner.h` | Cross-platform test macro |
-| `Host/tests/test_hil_send_commands.py` | HIL tests |
+| `host/mara_host/tools/platform_schema.py` | Single source of truth |
+| `host/mara_host/tools/generate_all.py` | Run all generators |
+| `host/mara_host/control/` | Control design tools (LQR, pole placement) |
+| `host/mara_host/telemetry/telemetry_sections.py` | Generated telemetry section IDs |
+| `firmware/mcu/include/telemetry/TelemetrySections.h` | Generated C++ section IDs |
+| `firmware/mcu/include/command/handlers/` | Command handlers |
+| `firmware/mcu/test/test_runner.h` | Cross-platform test macro |
+| `host/tests/test_hil_send_commands.py` | HIL tests |
 
 ---
 

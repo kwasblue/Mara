@@ -100,7 +100,7 @@ async def nav_loop(client, path_planner):
 │  └───────────────────────────────────────────────────────┘      │
 │                              │                                   │
 │  ┌───────────────────────────┴───────────────────────────┐      │
-│  │              AsyncRobotClient + EventBus               │      │
+│  │              MaraClient + EventBus               │      │
 │  │         (command handling, pub/sub messaging)          │      │
 │  └─────────────────────────┬─────────────────────────────┘      │
 │                            │                                     │
@@ -165,7 +165,7 @@ await gpio.write(channel=0, value=1)
 
 ### CameraHostModule
 
-Standalone module for ESP32-CAM integration (doesn't require AsyncRobotClient):
+Standalone module for ESP32-CAM integration (doesn't require MaraClient):
 
 ```python
 from mara_host.core.event_bus import EventBus
@@ -195,12 +195,12 @@ Features:
 
 See `mara_host/module/camera/README.md` for full documentation.
 
-### AsyncRobotClient
+### MaraClient
 
 Low-level interface for robot communication:
 
 ```python
-class AsyncRobotClient:
+class MaraClient:
     def __init__(self, transport, bus=None, ...):
         self.transport = transport
         self.bus = bus or EventBus()
@@ -341,7 +341,7 @@ See [MQTT.md](MQTT.md) for detailed multi-node documentation.
 ### Command with ACK
 
 ```
-AsyncRobotClient                ReliableCommander              Transport
+MaraClient                ReliableCommander              Transport
       │                                │                            │
       │ send_reliable("CMD_ARM", {})   │                            │
       ├───────────────────────────────►│                            │
@@ -577,11 +577,11 @@ async def _update(self):
 
 ```python
 # mara_host/my_module/manager.py
-from mara_host.command.client import AsyncRobotClient
+from mara_host.command.client import MaraClient
 from mara_host.core.event_bus import EventBus
 
 class MyModuleHostModule:
-    def __init__(self, bus: EventBus, client: AsyncRobotClient):
+    def __init__(self, bus: EventBus, client: MaraClient):
         self._bus = bus
         self._client = client
         bus.subscribe("telemetry.my_sensor", self._on_data)
@@ -639,7 +639,7 @@ Test structure:
 tests/
 ├── test_protocol.py      # Frame encoding/decoding
 ├── test_event_bus.py     # Pub/sub system
-├── test_client.py        # AsyncRobotClient
+├── test_client.py        # MaraClient
 ├── test_commander.py     # ReliableCommander
 └── test_hil/             # Hardware-in-loop tests
 ```

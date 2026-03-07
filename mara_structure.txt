@@ -1,7 +1,7 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-07 16:28:10
-Total Files: 422
+Generated: 2026-03-07 17:29:37
+Total Files: 424
 ================================================================================
 
 
@@ -619,6 +619,16 @@ HOST (Python)
     [Fn] on_telemetry(data)
     [Fn] on_error(data)
     [Fn] _generate_display(state, args)
+
+  host/mara_host/cli/commands/mqtt.py
+    [Fn] _get_local_ip()
+    [Fn] _is_port_in_use(port)
+    [Fn] _find_mosquitto()
+    [Fn] _get_running_pid()
+    [Fn] cmd_start(args)
+    [Fn] cmd_stop(args)
+    [Fn] cmd_status(args)
+    [Fn] register(subparsers)
 
   host/mara_host/cli/commands/pins/_common.py
     [Fn] do_assign(name, gpio, force)
@@ -4062,6 +4072,19 @@ FIRMWARE/MCU (C++)
     [Fn] setup()
     [Fn] loop()
 
+  firmware/mcu/tools/check_layers.py
+    [Class] Violation
+    [Class] CheckResult
+      `-- passed(self)
+    [Fn] get_layer(file_path)
+    [Fn] extract_includes(file_path)
+    [Fn] get_included_layer(include_path)
+    [Fn] is_composition_root(rel_path)
+    [Fn] check_file(file_path, base_dir)
+    [Fn] check_directory(base_dir)
+    [Fn] print_report(result)
+    [Fn] main()
+
 
 --------------------------------------------------------------------------------
 FIRMWARE/CAM (C++)
@@ -4305,10 +4328,10 @@ ROOT
 ================================================================================
 STATISTICS
 ================================================================================
-Python Files:     240
+Python Files:     242
 C++ Files:        182
-Total Classes:    542
+Total Classes:    544
 Total Structs:    136
-Total Functions:  1763
-Total Methods:    966
+Total Functions:  1779
+Total Methods:    967
 ================================================================================

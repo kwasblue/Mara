@@ -1,19 +1,19 @@
 # Robot Host Examples
 
-Comprehensive examples demonstrating the robot_host platform for controlling ESP32-based robots.
+Comprehensive examples demonstrating the mara_host platform for controlling ESP32-based robots.
 
 ## Prerequisites
 
-1. **Hardware**: ESP32 with robot_host firmware flashed
+1. **Hardware**: ESP32 with mara_host firmware flashed
 2. **Connection**: USB cable (serial) or WiFi (TCP)
 3. **Python packages**: Install with `pip install pyserial`
 
 ## Quick Start
 
-The recommended way to use robot_host - direct HostModule access:
+The recommended way to use mara_host - direct HostModule access:
 
 ```python
-from robot_host import Robot
+from mara_host import Robot
 
 async def main():
     async with Robot("/dev/ttyUSB0") as robot:
@@ -72,8 +72,8 @@ python examples/00_getting_started.py
 Build YOUR robot as a Python class using HostModules:
 
 ```python
-from robot_host import Robot
-from robot_host.motor.stepper import StepperHostModule
+from mara_host import Robot
+from mara_host.motor.stepper import StepperHostModule
 
 class PillDispenser:
     def __init__(self, robot: Robot):
@@ -90,7 +90,7 @@ class PillDispenser:
 Reading encoders, IMU, and ultrasonic sensors:
 
 ```python
-from robot_host import Robot, Encoder
+from mara_host import Robot, Encoder
 
 async with Robot("/dev/ttyUSB0") as robot:
     encoder = Encoder(robot, pin_a=32, pin_b=33)
@@ -104,7 +104,7 @@ async with Robot("/dev/ttyUSB0") as robot:
 High-rate velocity streaming using MotionHostModule:
 
 ```python
-from robot_host import Robot
+from mara_host import Robot
 
 async with Robot("/dev/ttyUSB0") as robot:
     # Direct access via Robot property
@@ -292,5 +292,5 @@ Some examples create output files:
 
 ## See Also
 
-- `robot_host/research/examples/` - Research and analysis examples
-- `robot_host/runners/` - Additional utility scripts
+- `mara_host/research/examples/` - Research and analysis examples
+- `mara_host/runners/` - Additional utility scripts

@@ -5,9 +5,9 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from robot_host.core import protocol
-from robot_host.transport.mqtt.transport import MQTTTransport
-from robot_host.transport.mqtt.models import get_cmd_topic, get_ack_topic, get_telemetry_topic
+from mara_host.core import protocol
+from mara_host.transport.mqtt.transport import MQTTTransport
+from mara_host.transport.mqtt.models import get_cmd_topic, get_ack_topic, get_telemetry_topic
 
 
 class TestMQTTTransport:

@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "robot-host"
-version = "0.4.0"
-description = "Python platform for controlling robots with ESP32 MCU Host firmware"
+name = "mara-host"
+version = "0.5.0"
+description = "MARA (Modular Asynchronous Robotics Architecture) - Python platform for ESP32 robotics"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -62,7 +62,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mara = "robot_host.cli.main:main"
+mara = "mara_host.cli.main:main"
 
 [project.optional-dependencies]
 dev = [
@@ -76,7 +76,7 @@ Repository = "https://github.com/kwasiaddo/Host"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["robot_host*"]
+include = ["mara_host*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

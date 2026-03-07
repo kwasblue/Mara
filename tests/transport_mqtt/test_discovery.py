@@ -6,9 +6,9 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from robot_host.core.event_bus import EventBus
-from robot_host.transport.mqtt.discovery import NodeDiscovery
-from robot_host.transport.mqtt.models import NodeInfo, NodeState
+from mara_host.core.event_bus import EventBus
+from mara_host.transport.mqtt.discovery import NodeDiscovery
+from mara_host.transport.mqtt.models import NodeInfo, NodeState
 
 
 class MockMessage:

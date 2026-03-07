@@ -5,13 +5,13 @@ import pytest
 
 
 def _import_metrics_and_bench():
-    from robot_host.research.metrics import basic_metrics  # type: ignore
+    from mara_host.research.metrics import basic_metrics  # type: ignore
 
-    # Your tree shows robot_host/research/bechmarks.py (typo), so support both
+    # Your tree shows mara_host/research/bechmarks.py (typo), so support both
     try:
-        from robot_host.research.bechmarks import run_benchmark  # type: ignore
+        from mara_host.research.bechmarks import run_benchmark  # type: ignore
     except Exception:
-        from robot_host.research.benchmarks import run_benchmark  # type: ignore
+        from mara_host.research.benchmarks import run_benchmark  # type: ignore
 
     return basic_metrics, run_benchmark
 

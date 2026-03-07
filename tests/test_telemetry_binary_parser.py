@@ -1,6 +1,6 @@
 import struct
 
-from robot_host.telemetry.binary_parser import (
+from mara_host.telemetry.binary_parser import (
     parse_telemetry_bin,
     TELEM_IMU,
     TELEM_ULTRASONIC,

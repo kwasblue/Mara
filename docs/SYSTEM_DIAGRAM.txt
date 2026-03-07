@@ -6,13 +6,13 @@
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              HOST (Python)                                   │
-│                         robot_host package                                   │
+│                         mara_host package                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
 │  │                         USER APPLICATION                                │ │
 │  │                                                                         │ │
-│  │   from robot_host import Robot, Runtime, GPIO, DifferentialDrive       │ │
+│  │   from mara_host import Robot, Runtime, GPIO, DifferentialDrive       │ │
 │  │                                                                         │ │
 │  │   async with Robot("/dev/ttyUSB0") as robot:                           │ │
 │  │       runtime = Runtime(robot, tick_hz=50)                             │ │
@@ -261,7 +261,7 @@
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    platform_schema.py (Single Source of Truth)               │
-│                      Host/robot_host/tools/platform_schema.py                │
+│                      Host/mara_host/tools/platform_schema.py                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  COMMANDS = {                    BINARY_COMMANDS = {                        │
@@ -296,18 +296,18 @@
 │     PYTHON (Host) OUTPUT     │             │      C++ (MCU) OUTPUT        │
 ├──────────────────────────────┤             ├──────────────────────────────┤
 │                              │             │                              │
-│  robot_host/config/          │             │  include/config/             │
+│  mara_host/config/          │             │  include/config/             │
 │   ├── command_defs.py        │             │   ├── CommandDefs.h          │
 │   ├── version.py             │             │   ├── Version.h              │
 │   ├── pin_config.py          │             │   ├── PinConfig.h            │
 │   └── gpio_channels.py       │             │   └── GpioChannelDefs.h      │
 │                              │             │                              │
-│  robot_host/command/         │             │  include/command/            │
+│  mara_host/command/         │             │  include/command/            │
 │   ├── client_commands.py     │             │   └── BinaryCommands.h       │
 │   ├── binary_commands.py     │             │                              │
 │   └── json_to_binary.py      │             │  include/telemetry/          │
 │                              │             │   └── TelemetrySections.h    │
-│  robot_host/telemetry/       │             │                              │
+│  mara_host/telemetry/       │             │                              │
 │   └── telemetry_sections.py  │             │                              │
 │                              │             │                              │
 └──────────────────────────────┘             └──────────────────────────────┘

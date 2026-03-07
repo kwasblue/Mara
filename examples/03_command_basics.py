@@ -18,7 +18,7 @@ Usage:
 import asyncio
 import sys
 
-from robot_host import Robot
+from mara_host import Robot
 
 
 def parse_args():

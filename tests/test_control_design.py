@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from robot_host.control import (
+from mara_host.control import (
     StateSpaceModel,
     discretize,
     lqr,
@@ -12,7 +12,7 @@ from robot_host.control import (
     observer_gains,
     acker,
 )
-from robot_host.control.design import (
+from mara_host.control.design import (
     check_stability,
     reference_gain,
     integral_gain,

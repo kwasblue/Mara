@@ -3,7 +3,7 @@
 Working with Sensors and Telemetry
 
 This example demonstrates how to read sensors and
-subscribe to telemetry updates using the robot_host library.
+subscribe to telemetry updates using the mara_host library.
 
 The library provides two patterns for accessing sensor data:
 1. Property access - synchronous, returns cached data
@@ -14,7 +14,7 @@ Run:
 """
 
 import asyncio
-from robot_host import Robot, Encoder, IMU, Ultrasonic, EncoderReading, IMUReading
+from mara_host import Robot, Encoder, IMU, Ultrasonic, EncoderReading, IMUReading
 
 
 async def encoder_example():

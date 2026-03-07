@@ -5,10 +5,10 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from robot_host.core.event_bus import EventBus
-from robot_host.transport.mqtt.node_manager import NodeManager
-from robot_host.transport.mqtt.node_proxy import NodeProxy
-from robot_host.transport.mqtt.models import NodeInfo, NodeState
+from mara_host.core.event_bus import EventBus
+from mara_host.transport.mqtt.node_manager import NodeManager
+from mara_host.transport.mqtt.node_proxy import NodeProxy
+from mara_host.transport.mqtt.models import NodeInfo, NodeState
 
 
 class TestNodeManager:

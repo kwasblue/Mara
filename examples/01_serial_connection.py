@@ -9,7 +9,7 @@ Demonstrates:
 - Basic lifecycle (start/stop)
 
 Prerequisites:
-- ESP32 with robot_host firmware connected via USB
+- ESP32 with mara_host firmware connected via USB
 - pyserial installed: pip install pyserial
 
 Usage:
@@ -19,7 +19,7 @@ Usage:
 import asyncio
 import sys
 
-from robot_host import Robot
+from mara_host import Robot
 
 
 def find_serial_ports():

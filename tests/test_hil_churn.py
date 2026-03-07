@@ -3,8 +3,8 @@ import os
 import pytest
 import contextlib
 
-from robot_host.command.client import BaseAsyncRobotClient
-from robot_host.transport.serial_transport import SerialTransport
+from mara_host.command.client import BaseAsyncRobotClient
+from mara_host.transport.serial_transport import SerialTransport
 
 
 def _get_mcu_port(request) -> str | None:

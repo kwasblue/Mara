@@ -17,7 +17,7 @@ Run:
 import asyncio
 import math
 import time
-from robot_host import Robot, VelocityController
+from mara_host import Robot, VelocityController
 
 
 async def basic_velocity_control():

@@ -1,5 +1,5 @@
 import pytest
-from robot_host.core import protocol
+from mara_host.core import protocol
 
 
 def test_encode_decode_roundtrip_single_frame():

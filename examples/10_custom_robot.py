@@ -3,10 +3,10 @@
 Building a Custom Robot Class
 
 This example shows how to build your own robot abstraction
-on top of the robot_host library. This is the recommended
+on top of the mara_host library. This is the recommended
 pattern for organizing your robot code.
 
-The key idea: robot_host provides building blocks (Robot, Stepper, Servo, etc.)
+The key idea: mara_host provides building blocks (Robot, Stepper, Servo, etc.)
 and YOU create the high-level abstraction for YOUR specific robot.
 
 Run:
@@ -14,7 +14,7 @@ Run:
 """
 
 import asyncio
-from robot_host import Robot, Stepper, Servo, Encoder
+from mara_host import Robot, Stepper, Servo, Encoder
 
 
 class PillDispenser:

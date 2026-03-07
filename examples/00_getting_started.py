@@ -3,7 +3,7 @@
 Getting Started with Robot Host
 
 This example demonstrates the basics of connecting to a robot
-and controlling actuators using the robot_host library.
+and controlling actuators using the mara_host library.
 
 Prerequisites:
     - ESP32 running the MCU Host firmware
@@ -14,7 +14,7 @@ Run:
 """
 
 import asyncio
-from robot_host import Robot, Stepper
+from mara_host import Robot, Stepper
 
 
 async def main():

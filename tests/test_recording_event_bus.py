@@ -5,16 +5,16 @@ import pytest
 
 
 def _import_bus_and_recording():
-    from robot_host.core.event_bus import EventBus  # type: ignore
+    from mara_host.core.event_bus import EventBus  # type: ignore
 
-    # recording wrapper lives in robot_host/research/recording.py per your tree
-    from robot_host.research.recording import RecordingEventBus  # type: ignore
+    # recording wrapper lives in mara_host/research/recording.py per your tree
+    from mara_host.research.recording import RecordingEventBus  # type: ignore
 
-    # MaraLogBundle lives in robot_host/logger/logger.py per your tree
+    # MaraLogBundle lives in mara_host/logger/logger.py per your tree
     try:
-        from robot_host.logger.logger import MaraLogBundle  # type: ignore
+        from mara_host.logger.logger import MaraLogBundle  # type: ignore
     except Exception:
-        from robot_host.logging.logger import MaraLogBundle  # type: ignore
+        from mara_host.logging.logger import MaraLogBundle  # type: ignore
 
     return EventBus, RecordingEventBus, MaraLogBundle
 

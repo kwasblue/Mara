@@ -5,7 +5,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from robot_host.transport.mqtt.broker_failover import (
+from mara_host.transport.mqtt.broker_failover import (
     BrokerFailover,
     BrokerConfig,
     BrokerState,
@@ -178,7 +178,7 @@ class TestBrokerFailover:
         failover._current_broker = fallback
 
         # Mock the connection check
-        with patch("robot_host.transport.mqtt.broker_failover.aiomqtt.Client") as mock_client:
+        with patch("mara_host.transport.mqtt.broker_failover.aiomqtt.Client") as mock_client:
             # Successful connection
             mock_client.return_value.__aenter__ = AsyncMock()
             mock_client.return_value.__aexit__ = AsyncMock()

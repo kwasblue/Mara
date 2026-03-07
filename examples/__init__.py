@@ -1,6 +1,6 @@
-# robot_host/examples/__init__.py
+# mara_host/examples/__init__.py
 """
-Examples demonstrating the full robot_host system.
+Examples demonstrating the full mara_host system.
 
 Examples:
     01_serial_connection.py     - Connect to ESP32 via USB serial
@@ -14,11 +14,11 @@ Examples:
     09_full_robot_control.py    - Complete control loop example
 
 Run examples:
-    cd robot_host/examples
+    cd mara_host/examples
     python 01_serial_connection.py
 
 Prerequisites:
-    - ESP32 with robot_host firmware connected
+    - ESP32 with mara_host firmware connected
     - For serial: USB cable connected
     - For TCP: ESP32 and host on same network
 """

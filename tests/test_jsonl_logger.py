@@ -5,13 +5,13 @@ import pytest
 
 
 def _import_jsonl_logger():
-    # Current structure shows robot_host/logger/logger.py
+    # Current structure shows mara_host/logger/logger.py
     try:
-        from robot_host.logger.logger import JsonlLogger  # type: ignore
+        from mara_host.logger.logger import JsonlLogger  # type: ignore
         return JsonlLogger
     except Exception:
-        # Older path you showed earlier: robot_host/logging/logger.py
-        from robot_host.logging.logger import JsonlLogger  # type: ignore
+        # Older path you showed earlier: mara_host/logging/logger.py
+        from mara_host.logging.logger import JsonlLogger  # type: ignore
         return JsonlLogger
 
 

@@ -21,7 +21,7 @@ This document describes how to add new commands to the robot platform. The build
 
 ## Step 1: Define Command in Schema
 
-Edit `robot_host/tools/platform_schema.py`
+Edit `mara_host/tools/platform_schema.py`
 
 ### For JSON Commands (setup/config)
 
@@ -93,7 +93,7 @@ Add to both `COMMANDS` (for documentation) and `BINARY_COMMANDS` (for encoding):
 ```bash
 cd /path/to/Host
 source .venv/bin/activate
-python robot_host/tools/generate_all.py
+python mara_host/tools/generate_all.py
 ```
 
 This generates:
@@ -308,10 +308,10 @@ Telemetry sections define the binary format for sensor data sent from MCU to Hos
 
 | File | Purpose |
 |------|---------|
-| `Host/robot_host/tools/platform_schema.py` | Single source of truth |
-| `Host/robot_host/tools/generate_all.py` | Run all generators |
-| `Host/robot_host/control/` | Control design tools (LQR, pole placement) |
-| `Host/robot_host/telemetry/telemetry_sections.py` | Generated telemetry section IDs |
+| `Host/mara_host/tools/platform_schema.py` | Single source of truth |
+| `Host/mara_host/tools/generate_all.py` | Run all generators |
+| `Host/mara_host/control/` | Control design tools (LQR, pole placement) |
+| `Host/mara_host/telemetry/telemetry_sections.py` | Generated telemetry section IDs |
 | `ESP32 MCU Host/include/telemetry/TelemetrySections.h` | Generated C++ section IDs |
 | `ESP32 MCU Host/include/command/handlers/` | Command handlers |
 | `ESP32 MCU Host/test/test_runner.h` | Cross-platform test macro |
@@ -321,13 +321,13 @@ Telemetry sections define the binary format for sensor data sent from MCU to Hos
 
 ## Control System Design Tools
 
-The `robot_host.control` module provides scipy-based tools for designing state-space controllers and observers, with helpers to upload configurations to the MCU.
+The `mara_host.control` module provides scipy-based tools for designing state-space controllers and observers, with helpers to upload configurations to the MCU.
 
 ### Quick Example
 
 ```python
 import numpy as np
-from robot_host.control import (
+from mara_host.control import (
     StateSpaceModel, lqr, observer_gains, configure_state_feedback
 )
 
@@ -388,5 +388,5 @@ result = await configure_state_feedback(
 ### Run Examples
 
 ```bash
-python -m robot_host.control.examples
+python -m mara_host.control.examples
 ```

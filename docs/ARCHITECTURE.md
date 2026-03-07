@@ -6,7 +6,7 @@
 
 ## Overview
 
-The MARA Host library (`robot_host`) is a **platform** providing composable building blocks for controlling ESP32-based robots. The design prioritizes flexibility and extensibility over opinionated abstractions.
+The MARA Host library (`mara_host`) is a **platform** providing composable building blocks for controlling ESP32-based robots. The design prioritizes flexibility and extensibility over opinionated abstractions.
 
 ## Host vs MCU Control Model
 
@@ -135,7 +135,7 @@ The library is a **platform**, not a product:
 Main entry point exposing HostModules as lazy properties:
 
 ```python
-from robot_host import Robot
+from mara_host import Robot
 
 async with Robot("/dev/ttyUSB0") as robot:
     # HostModules via properties
@@ -155,8 +155,8 @@ async with Robot("/dev/ttyUSB0") as robot:
 Building blocks that wrap client commands. Each takes `(bus, client)`:
 
 ```python
-from robot_host.hw.gpio import GpioHostModule
-from robot_host.motor.motion import MotionHostModule
+from mara_host.hw.gpio import GpioHostModule
+from mara_host.motor.motion import MotionHostModule
 
 # Use directly with your own infrastructure
 gpio = GpioHostModule(my_bus, my_client)
@@ -168,8 +168,8 @@ await gpio.write(channel=0, value=1)
 Standalone module for ESP32-CAM integration (doesn't require AsyncRobotClient):
 
 ```python
-from robot_host.core.event_bus import EventBus
-from robot_host.camera import CameraHostModule
+from mara_host.core.event_bus import EventBus
+from mara_host.camera import CameraHostModule
 
 bus = EventBus()
 camera = CameraHostModule(bus, cameras={0: "http://10.0.0.66"})
@@ -193,7 +193,7 @@ Features:
 - Multi-camera support
 - Recording to video/images
 
-See `robot_host/module/camera/README.md` for full documentation.
+See `mara_host/module/camera/README.md` for full documentation.
 
 ### AsyncRobotClient
 
@@ -419,7 +419,7 @@ Scipy-based tools for designing state-space controllers and observers.
 ### Components
 
 ```
-robot_host/control/
+mara_host/control/
 ├── state_space.py   # StateSpaceModel class, discretization
 ├── design.py        # LQR, pole placement, observer gains
 ├── upload.py        # MCU upload helpers
@@ -462,7 +462,7 @@ robot_host/control/
 ### Example Usage
 
 ```python
-from robot_host.control import (
+from mara_host.control import (
     StateSpaceModel, lqr, observer_gains, configure_state_feedback
 )
 import numpy as np
@@ -576,9 +576,9 @@ async def _update(self):
 ### Adding a New Module
 
 ```python
-# robot_host/my_module/manager.py
-from robot_host.command.client import AsyncRobotClient
-from robot_host.core.event_bus import EventBus
+# mara_host/my_module/manager.py
+from mara_host.command.client import AsyncRobotClient
+from mara_host.core.event_bus import EventBus
 
 class MyModuleHostModule:
     def __init__(self, bus: EventBus, client: AsyncRobotClient):
@@ -628,7 +628,7 @@ class MyTransport:
 pytest tests/ -v
 
 # Run with coverage
-pytest tests/ --cov=robot_host
+pytest tests/ --cov=mara_host
 
 # Run specific test
 pytest tests/test_protocol.py -v

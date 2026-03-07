@@ -5,7 +5,7 @@ import pytest
 
 
 def _import_replay():
-    from robot_host.research.replay import SessionReplay  # type: ignore
+    from mara_host.research.replay import SessionReplay  # type: ignore
     return SessionReplay
 
 

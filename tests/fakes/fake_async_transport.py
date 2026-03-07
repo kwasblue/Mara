@@ -1,7 +1,7 @@
 # tests/fakes/fake_async_transport.py
 
 import json
-from robot_host.core import protocol
+from mara_host.core import protocol
 
 
 class FakeAsyncTransport:

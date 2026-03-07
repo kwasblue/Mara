@@ -1,4 +1,4 @@
-from robot_host.core.event_bus import EventBus
+from mara_host.core.event_bus import EventBus
 
 
 def test_event_bus_subscribe_publish():

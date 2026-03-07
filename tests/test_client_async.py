@@ -1,19 +1,19 @@
 import asyncio
 import pytest
 
-from robot_host.core import protocol
+from mara_host.core import protocol
 from tests.fakes.fake_async_transport import FakeAsyncTransport
 from tests.helpers import CapturingBus
 
 
 def _import_client():
-    # Your file name in the listing is robot_host/core/client.py but you pasted client_async.py
+    # Your file name in the listing is mara_host/core/client.py but you pasted client_async.py
     # We'll support both.
     try:
-        from robot_host.command.client import BaseAsyncRobotClient  # type: ignore
+        from mara_host.command.client import BaseAsyncRobotClient  # type: ignore
         return BaseAsyncRobotClient
     except Exception:
-        from robot_host.command.client_async import BaseAsyncRobotClient  # type: ignore
+        from mara_host.command.client_async import BaseAsyncRobotClient  # type: ignore
         return BaseAsyncRobotClient
 
 

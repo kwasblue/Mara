@@ -5,11 +5,11 @@ import asyncio
 
 from tests.helpers import CapturingBus
 from tests.fakes.fake_async_transport import FakeAsyncTransport
-from robot_host.config.version import PROTOCOL_VERSION
+from mara_host.config.version import PROTOCOL_VERSION
 
 
 def _import_client():
-    from robot_host.command.client import BaseAsyncRobotClient
+    from mara_host.command.client import BaseAsyncRobotClient
     return BaseAsyncRobotClient
 
 

@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass
 from typing import Callable, Optional, Any
 
-from robot_host.core import protocol
+from mara_host.core import protocol
 
 
 def _decode_frames_from_bytes(blob: bytes) -> list[bytes]:

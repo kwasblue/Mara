@@ -24,7 +24,7 @@
 | Component | Repository | Description |
 |-----------|------------|-------------|
 | **Firmware** | [`ESP32 MCU Host`](../PlatformIO/Projects/ESP32%20MCU%20Host) | Real-time motor control, sensor fusion, communication |
-| **Host** | `robot_host` (this repo) | Python async client, telemetry, research tools |
+| **Host** | `mara_host` (this repo) | Python async client, telemetry, research tools |
 
 This repository contains the **Python host library** - a comprehensive async framework for controlling ESP32-based robots. Provides transport abstraction, command handling, telemetry processing, and research tools for robotics development.
 
@@ -73,7 +73,7 @@ pip install -e .
 
 ```python
 import asyncio
-from robot_host import Robot, GPIO, DifferentialDrive
+from mara_host import Robot, GPIO, DifferentialDrive
 
 async def main():
     async with Robot("/dev/ttyUSB0") as robot:
@@ -96,7 +96,7 @@ asyncio.run(main())
 ### With Configuration
 
 ```python
-from robot_host.config import RobotConfig
+from mara_host.config import RobotConfig
 
 config = RobotConfig.load("robots/my_robot.yaml", profile="bench")
 errors = config.validate()
@@ -110,8 +110,8 @@ else:
 ### With Runtime Loop
 
 ```python
-from robot_host import Robot
-from robot_host.runtime import Runtime
+from mara_host import Robot
+from mara_host.runtime import Runtime
 
 async with Robot("/dev/ttyUSB0") as robot:
     runtime = Runtime(robot, tick_hz=50.0)
@@ -179,7 +179,7 @@ The library provides a clear layered architecture:
 ## Directory Structure
 
 ```
-robot_host/
+mara_host/
 ├── config/          # Configuration
 │   ├── feature_flags.py   # Feature flag definitions
 │   ├── command_defs.py    # Command definitions
@@ -260,17 +260,17 @@ See the `examples/` directory for comprehensive examples:
 
 ```bash
 # Run camera demo with ESP32-CAM
-python -m robot_host.runners.run_camera_host http://10.0.0.66
+python -m mara_host.runners.run_camera_host http://10.0.0.66
 ```
 
 ### MQTT Multi-Node
 
 ```bash
 # Discover and control multiple ESP32 nodes over MQTT
-python -m robot_host.runners.run_mqtt_nodes --broker 10.0.0.59
+python -m mara_host.runners.run_mqtt_nodes --broker 10.0.0.59
 
 # Test with mock nodes (no hardware required)
-python -m robot_host.tools.mock_node --node-id node1 --broker 10.0.0.59
+python -m mara_host.tools.mock_node --node-id node1 --broker 10.0.0.59
 ```
 
 ### Robot Examples
@@ -287,10 +287,10 @@ The research module provides tools for robotics analysis:
 ### Simulation
 
 ```python
-from robot_host.research.config_loader import load_robot
+from mara_host.research.config_loader import load_robot
 
 # Load robot from YAML config
-robot = load_robot("robot_host/research/configs/medium_robot.yaml")
+robot = load_robot("mara_host/research/configs/medium_robot.yaml")
 
 # Run simulation
 for _ in range(1000):
@@ -302,7 +302,7 @@ for _ in range(1000):
 ### System Identification
 
 ```python
-from robot_host.research.sysid import identify_first_order_step
+from mara_host.research.sysid import identify_first_order_step
 
 # Estimate system parameters from step response
 params = identify_first_order_step(times, response, input_amplitude=1.0)
@@ -312,7 +312,7 @@ print(f"Time constant: {params.tau} s, DC gain: {params.K}")
 ### Metrics Analysis
 
 ```python
-from robot_host.research.metrics import analyze_session
+from mara_host.research.metrics import analyze_session
 
 # Analyze recorded session
 metrics = analyze_session("session.jsonl")
@@ -320,7 +320,7 @@ print(f"Latency p95: {metrics.latency.p95_ms:.1f} ms")
 print(f"Jitter: {metrics.jitter.jitter_ms:.2f} ms")
 ```
 
-See `robot_host/research/README.md` for detailed research module documentation.
+See `mara_host/research/README.md` for detailed research module documentation.
 
 ## Camera Module
 
@@ -329,8 +329,8 @@ Integrates ESP32-CAM into the robot host architecture for vision-based robotics.
 ### Basic Usage
 
 ```python
-from robot_host.core.event_bus import EventBus
-from robot_host.camera import CameraHostModule
+from mara_host.core.event_bus import EventBus
+from mara_host.camera import CameraHostModule
 
 bus = EventBus()
 camera = CameraHostModule(bus, cameras={0: "http://10.0.0.66"})
@@ -374,7 +374,7 @@ bus.publish("cmd.camera", {
 | `camera.ml_frame.<id>` | ML-ready preprocessed frames |
 | `camera.status.<id>` | Device status |
 
-See `robot_host/module/camera/README.md` for detailed camera module documentation.
+See `mara_host/module/camera/README.md` for detailed camera module documentation.
 
 ## MQTT Multi-Node Module
 
@@ -384,8 +384,8 @@ Control multiple ESP32 robots over MQTT for fleet coordination.
 
 ```python
 import asyncio
-from robot_host.core.event_bus import EventBus
-from robot_host.transport.mqtt import NodeManager
+from mara_host.core.event_bus import EventBus
+from mara_host.transport.mqtt import NodeManager
 
 async def main():
     bus = EventBus()
@@ -435,7 +435,7 @@ Design state-space controllers and observers using scipy, then upload to the MCU
 
 ```python
 import numpy as np
-from robot_host.control import (
+from mara_host.control import (
     StateSpaceModel, lqr, observer_gains, configure_state_feedback
 )
 
@@ -474,7 +474,7 @@ result = await configure_state_feedback(
 )
 ```
 
-Run examples: `python -m robot_host.control.examples`
+Run examples: `python -m mara_host.control.examples`
 
 See `docs/ADDING_COMMANDS.md` for full documentation.
 
@@ -524,7 +524,7 @@ client.firmware_version
 Pub/sub messaging for telemetry and events.
 
 ```python
-from robot_host.core.event_bus import EventBus
+from mara_host.core.event_bus import EventBus
 
 bus = EventBus()
 
@@ -568,7 +568,7 @@ pytest tests/ -v
 pytest tests/test_protocol.py -v
 
 # Run with coverage
-pytest tests/ --cov=robot_host
+pytest tests/ --cov=mara_host
 ```
 
 ## Configuration
@@ -576,7 +576,7 @@ pytest tests/ --cov=robot_host
 ### Feature Flags
 
 ```python
-from robot_host.config.feature_flags import FeatureFlags
+from mara_host.config.feature_flags import FeatureFlags
 
 # Get preset configurations
 flags = FeatureFlags.minimal()   # UART only
@@ -619,12 +619,12 @@ simulation:
 
 ## Code Generation (Host-MCU Interface)
 
-MARA uses a single source of truth in `robot_host/tools/platform_schema.py` to generate matching code for both Python (Host) and C++ (MCU). This ensures the interface contract stays synchronized.
+MARA uses a single source of truth in `mara_host/tools/platform_schema.py` to generate matching code for both Python (Host) and C++ (MCU). This ensures the interface contract stays synchronized.
 
 ### Running Generators
 
 ```bash
-cd robot_host/tools
+cd mara_host/tools
 python generate_all.py
 ```
 

@@ -1,7 +1,7 @@
 ================================================================================
 📂 PROJECT STRUCTURE
-Generated: 2026-03-07 10:50:46
-Total Files: 190
+Generated: 2026-03-07 12:26:10
+Total Files: 196
 ================================================================================
 
 📄 examples/01_serial_connection.py
@@ -65,7 +65,7 @@ Total Files: 190
    ⚙️  def on_imu_update(self, reading)
    ⚙️  def on_telemetry(self, data)
 
-📄 robot_host/api/dc_motor.py
+📄 mara_host/api/dc_motor.py
    🧱 class DCMotor
       ├── def __init__(self, robot, motor_id)
       ├── def client(self)
@@ -73,7 +73,7 @@ Total Files: 190
       ├── def is_moving(self)
       └── def __repr__(self)
 
-📄 robot_host/api/differential_drive.py
+📄 mara_host/api/differential_drive.py
    🧱 class DriveConfig
       (no methods)
    🧱 class DifferentialDrive
@@ -84,7 +84,7 @@ Total Files: 190
       ├── def _clamp_velocity(self, vx, omega)
       └── def __repr__(self)
 
-📄 robot_host/api/encoder.py
+📄 mara_host/api/encoder.py
    🧱 class EncoderReading
       (no methods)
    🧱 class Encoder
@@ -98,7 +98,7 @@ Total Files: 190
       ├── def on_update(self, callback)
       └── def __repr__(self)
 
-📄 robot_host/api/gpio.py
+📄 mara_host/api/gpio.py
    🧱 class GPIO
       ├── def __init__(self, robot)
       ├── def registered_channels(self)
@@ -107,7 +107,7 @@ Total Files: 190
       ├── def get_pin(self, channel)
       └── def __repr__(self)
 
-📄 robot_host/api/imu.py
+📄 mara_host/api/imu.py
    🧱 class IMUReading
       (no methods)
    🧱 class IMU
@@ -126,7 +126,7 @@ Total Files: 190
       ├── def on_update(self, callback)
       └── def __repr__(self)
 
-📄 robot_host/api/pid_controller.py
+📄 mara_host/api/pid_controller.py
    🧱 class PIDGains
       (no methods)
    🧱 class PIDController
@@ -136,7 +136,7 @@ Total Files: 190
       ├── def gains(self)
       └── def __repr__(self)
 
-📄 robot_host/api/pwm.py
+📄 mara_host/api/pwm.py
    🧱 class PWM
       ├── def __init__(self, robot, default_freq_hz)
       ├── def active_channels(self)
@@ -144,7 +144,7 @@ Total Files: 190
       ├── def get_frequency(self, channel)
       └── def __repr__(self)
 
-📄 robot_host/api/servo.py
+📄 mara_host/api/servo.py
    🧱 class Servo
       ├── def __init__(self, robot, servo_id, channel, min_us, max_us, min_angle, max_angle)
       ├── def client(self)
@@ -154,7 +154,7 @@ Total Files: 190
       ├── def pulse_to_angle(self, pulse_us)
       └── def __repr__(self)
 
-📄 robot_host/api/stepper.py
+📄 mara_host/api/stepper.py
    🧱 class Stepper
       ├── def __init__(self, robot, motor_id, steps_per_rev)
       ├── def client(self)
@@ -165,7 +165,7 @@ Total Files: 190
       ├── def reset_position(self, position)
       └── def __repr__(self)
 
-📄 robot_host/api/ultrasonic.py
+📄 mara_host/api/ultrasonic.py
    🧱 class UltrasonicReading
       (no methods)
    🧱 class Ultrasonic
@@ -181,7 +181,7 @@ Total Files: 190
       ├── def on_update(self, callback)
       └── def __repr__(self)
 
-📄 robot_host/api/velocity.py
+📄 mara_host/api/velocity.py
    🧱 class VelocityController
       ├── def __init__(self, robot, use_binary)
       ├── def client(self)
@@ -189,7 +189,7 @@ Total Files: 190
       ├── def is_moving(self)
       └── def __repr__(self)
 
-📄 robot_host/camera/async_client.py
+📄 mara_host/camera/async_client.py
    🧱 class AsyncFrame
       (no methods)
    🧱 class AsyncCameraClient
@@ -197,7 +197,7 @@ Total Files: 190
    🧱 class AsyncMjpegClient
       └── def __init__(self, base_url, timeout)
 
-📄 robot_host/camera/client.py
+📄 mara_host/camera/client.py
    🧱 class FrameResult
       (no methods)
    🧱 class Esp32CamClient
@@ -230,23 +230,7 @@ Total Files: 190
       ├── def __enter__(self)
       └── def __exit__(self, exc_type, exc_val, exc_tb)
 
-📄 robot_host/camera/control.py
-   🧱 class FrameSize
-      (no methods)
-   🧱 class StreamPreset
-      (no methods)
-   🧱 class CameraConfig
-      ├── def from_dict(self, cls, d)
-      └── def to_dict(self)
-   🧱 class MotionConfig
-      ├── def from_dict(self, cls, d)
-      └── def to_dict(self)
-   🧱 class DeviceStatus
-      └── def from_dict(self, cls, d)
-   🧱 class StreamStats
-      ├── def from_dict(self, cls, d)
-      ├── def drop_rate(self)
-      └── def total_mb(self)
+📄 mara_host/camera/control.py
    🧱 class CameraControlClient
       ├── def __init__(self, base_url, timeout, auth)
       ├── def _get(self, path)
@@ -283,7 +267,7 @@ Total Files: 190
       ├── def set_stream_config(self, target_fps, quality_scaling, reset_stats)
       └── def set_low_bandwidth_mode(self, enabled)
 
-📄 robot_host/camera/host_module.py
+📄 mara_host/camera/host_module.py
    🧱 class CameraHostModule
       ├── def __init__(self, bus, cameras, ml_size, stream_port)
       ├── def subscriptions(self)
@@ -320,7 +304,7 @@ Total Files: 190
       └── def shutdown(self)
    ⚙️  def on_frame(self, stream_frame)
 
-📄 robot_host/camera/manager.py
+📄 mara_host/camera/manager.py
    🧱 class CameraState
       (no methods)
    🧱 class CameraInfo
@@ -361,27 +345,37 @@ Total Files: 190
       ├── def _notify_state_change(self, name)
       └── def _health_loop(self)
 
-📄 robot_host/camera/models.py
+📄 mara_host/camera/models.py
    🧱 class FrameSize
       (no methods)
    🧱 class CaptureMode
       (no methods)
-   🧱 class CameraConfig
+   🧱 class StreamPreset
       (no methods)
+   🧱 class CameraConfig
+      ├── def from_dict(self, cls, d)
+      └── def to_dict(self)
+   🧱 class MotionConfig
+      ├── def from_dict(self, cls, d)
+      └── def to_dict(self)
+   🧱 class DeviceStatus
+      └── def from_dict(self, cls, d)
    🧱 class CameraStatus
+      (no methods)
+   🧱 class StreamStats
+      ├── def from_dict(self, cls, d)
+      ├── def drop_rate(self)
+      └── def total_mb(self)
+   🧱 class CameraStats
       (no methods)
    🧱 class CameraFrame
       (no methods)
    🧱 class MLFrame
       (no methods)
-   🧱 class CameraStats
-      (no methods)
    🧱 class MotionEvent
       (no methods)
 
-📄 robot_host/camera/module.py
-   🧱 class CaptureMode
-      (no methods)
+📄 mara_host/camera/module.py
    🧱 class CameraModule
       ├── def __init__(self, base_url, name, mode, display_size, ml_size, blur_ksize, fps, show_preview, show_stats, frame_callback, raw_frame_callback, auth, stream_port)
       ├── def is_running(self)
@@ -416,11 +410,11 @@ Total Files: 190
       ├── def _show_frame(self, display_frame)
       └── def _throttle(self, start_time)
 
-📄 robot_host/camera/presets.py
+📄 mara_host/camera/presets.py
    ⚙️  def get_preset(self, name)
    ⚙️  def list_presets()
 
-📄 robot_host/camera/recorder.py
+📄 mara_host/camera/recorder.py
    🧱 class RecordingMetadata
       (no methods)
    🧱 class FrameRecorder
@@ -440,7 +434,7 @@ Total Files: 190
       ├── def buffer_frame(self, frame)
       └── def trigger(self, source)
 
-📄 robot_host/camera/stats.py
+📄 mara_host/camera/stats.py
    🧱 class FrameStats
       (no methods)
    🧱 class CameraStatistics
@@ -459,7 +453,7 @@ Total Files: 190
       ├── def reset(self)
       └── def __str__(self)
 
-📄 robot_host/camera/stream.py
+📄 mara_host/camera/stream.py
    🧱 class StreamFrame
       (no methods)
    🧱 class MjpegStreamClient
@@ -484,7 +478,7 @@ Total Files: 190
       ├── def _process_stream(self, response)
       └── def _process_frame(self, jpeg_data)
 
-📄 robot_host/cli/cli_config.py
+📄 mara_host/cli/cli_config.py
    ⚙️  def find_config_file()
    ⚙️  def load_config()
    ⚙️  def get(self, key, default)
@@ -498,7 +492,7 @@ Total Files: 190
    ⚙️  def init_config(self, path)
    ⚙️  def apply_defaults(self, parser_defaults)
 
-📄 robot_host/cli/commands/build.py
+📄 mara_host/cli/commands/build.py
    ⚙️  def register(self, subparsers)
    ⚙️  def add_common_args(self, parser)
    ⚙️  def add_feature_args(self, parser)
@@ -516,7 +510,7 @@ Total Files: 190
    ⚙️  def cmd_watch(self, args)
    ⚙️  def _get_latest_mtime(self, dirs)
 
-📄 robot_host/cli/commands/calibrate.py
+📄 mara_host/cli/commands/calibrate.py
    ⚙️  def register(self, subparsers)
    ⚙️  def add_transport_args(self, p)
    ⚙️  def show_calibrations()
@@ -528,7 +522,7 @@ Total Files: 190
    ⚙️  def cmd_servo(self, args)
    ⚙️  def cmd_wheels(self, args)
 
-📄 robot_host/cli/commands/config.py
+📄 mara_host/cli/commands/config.py
    ⚙️  def register(self, subparsers)
    ⚙️  def _find_config_files()
    ⚙️  def cmd_show(self, args)
@@ -539,11 +533,11 @@ Total Files: 190
    ⚙️  def _template_full(self, name)
    ⚙️  def cmd_cli(self, args)
 
-📄 robot_host/cli/commands/dashboard.py
+📄 mara_host/cli/commands/dashboard.py
    ⚙️  def register(self, subparsers)
    ⚙️  def cmd_dashboard(self, args)
 
-📄 robot_host/cli/commands/flash.py
+📄 mara_host/cli/commands/flash.py
    ⚙️  def register(self, subparsers)
    ⚙️  def _find_esp32_ports()
    ⚙️  def cmd_ports(self, args)
@@ -552,7 +546,7 @@ Total Files: 190
    ⚙️  def cmd_info(self, args)
    ⚙️  def _run_esptool(self, esptool_args, port)
 
-📄 robot_host/cli/commands/generate.py
+📄 mara_host/cli/commands/generate.py
    ⚙️  def register(self, subparsers)
    ⚙️  def _run_generator(self, name, module_name)
    ⚙️  def cmd_all(self, args)
@@ -563,7 +557,7 @@ Total Files: 190
    ⚙️  def cmd_binary(self, args)
    ⚙️  def cmd_gpio(self, args)
 
-📄 robot_host/cli/commands/logs.py
+📄 mara_host/cli/commands/logs.py
    ⚙️  def register(self, subparsers)
    ⚙️  def _find_sessions(self, log_dir)
    ⚙️  def cmd_list(self, args)
@@ -576,7 +570,7 @@ Total Files: 190
    ⚙️  def cmd_delete(self, args)
    ⚙️  def cmd_export(self, args)
 
-📄 robot_host/cli/commands/monitor.py
+📄 mara_host/cli/commands/monitor.py
    🧱 class MonitorState
       (no methods)
    ⚙️  def register(self, subparsers)
@@ -586,7 +580,7 @@ Total Files: 190
    ⚙️  def on_error(self, data)
    ⚙️  def _generate_display(self, state, args)
 
-📄 robot_host/cli/commands/pins.py
+📄 mara_host/cli/commands/pins.py
    ⚙️  def register(self, subparsers)
    ⚙️  def cmd_pinout(self, args)
    ⚙️  def cmd_list(self, args)
@@ -597,13 +591,12 @@ Total Files: 190
    ⚙️  def cmd_remove(self, args)
    ⚙️  def cmd_suggest(self, args)
    ⚙️  def cmd_validate(self, args)
+   ⚙️  def cmd_conflicts(self, args)
    ⚙️  def cmd_interactive(self, args)
    ⚙️  def _interactive_help()
    ⚙️  def _do_assign(self, name, gpio, force)
    ⚙️  def _do_remove(self, name)
-   ⚙️  def cmd_conflicts(self, args)
    ⚙️  def cmd_wizard(self, args)
-   ⚙️  def _get_available_pins(self, required_caps)
    ⚙️  def _wizard_motor()
    ⚙️  def _wizard_encoder()
    ⚙️  def _wizard_stepper()
@@ -613,7 +606,7 @@ Total Files: 190
    ⚙️  def _wizard_uart()
    ⚙️  def cmd_clear(self, args)
 
-📄 robot_host/cli/commands/record.py
+📄 mara_host/cli/commands/record.py
    ⚙️  def register(self, subparsers)
    ⚙️  def cmd_record(self, args)
    ⚙️  def _run_recording(self, session, port, tcp_host, duration, show_console)
@@ -621,16 +614,18 @@ Total Files: 190
    ⚙️  def _replay_session(self, log_dir, speed)
    ⚙️  def _replay_to_metrics(self, log_dir, output)
 
-📄 robot_host/cli/commands/run.py
+📄 mara_host/cli/commands/run.py
+   ⚙️  def _add_logging_args(self, parser)
+   ⚙️  def _get_log_params(self, args)
    ⚙️  def register(self, subparsers)
    ⚙️  def show_transports()
    ⚙️  def cmd_serial(self, args)
-   ⚙️  def _run_serial_client(self, port, baudrate)
-   ⚙️  def _run_serial_shell(self, port, baudrate)
+   ⚙️  def _run_serial_client(self, port, baudrate, log_level, log_dir)
+   ⚙️  def _run_serial_shell(self, port, baudrate, log_level, log_dir)
    ⚙️  def cmd_tcp(self, args)
-   ⚙️  def _run_tcp_client(self, host, port)
+   ⚙️  def _run_tcp_client(self, host, port, log_level, log_dir)
    ⚙️  def cmd_can(self, args)
-   ⚙️  def _run_can_client(self, channel, bustype, node_id, virtual)
+   ⚙️  def _run_can_client(self, channel, bustype, node_id, virtual, log_level, log_dir)
    ⚙️  def cmd_mqtt(self, args)
    ⚙️  def cmd_shell(self, args)
    ⚙️  def log_event(self, topic, data)
@@ -639,7 +634,7 @@ Total Files: 190
       └── def __init__(self, client, event_log)
    ⚙️  def on_identity_response(self, data)
 
-📄 robot_host/cli/commands/sim.py
+📄 mara_host/cli/commands/sim.py
    ⚙️  def register(self, subparsers)
    ⚙️  def cmd_virtual(self, args)
    ⚙️  def cmd_replay(self, args)
@@ -652,7 +647,7 @@ Total Files: 190
    ⚙️  def on_event(self, topic)
    ⚙️  def handler(self, data)
 
-📄 robot_host/cli/commands/test.py
+📄 mara_host/cli/commands/test.py
    🧱 class TestResult
       (no methods)
    ⚙️  def register(self, subparsers)
@@ -670,7 +665,7 @@ Total Files: 190
    ⚙️  def on_telemetry(self, data)
    ⚙️  def cmd_gpio(self, args)
 
-📄 robot_host/cli/completions.py
+📄 mara_host/cli/completions.py
    ⚙️  def register(self, subparsers)
    ⚙️  def cmd_completions(self, args)
    ⚙️  def _generate_bash()
@@ -678,7 +673,7 @@ Total Files: 190
    ⚙️  def _generate_fish()
    ⚙️  def _install_completions(self, shell, script)
 
-📄 robot_host/cli/console.py
+📄 mara_host/cli/console.py
    ⚙️  def print_header(self, title, subtitle)
    ⚙️  def print_success(self, message)
    ⚙️  def print_error(self, message)
@@ -691,12 +686,12 @@ Total Files: 190
    ⚙️  def format_pin_status(self, gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
    ⚙️  def confirm(self, message, default)
 
-📄 robot_host/cli/main.py
+📄 mara_host/cli/main.py
    ⚙️  def create_parser()
    ⚙️  def cmd_version(self, args)
    ⚙️  def main(self, argv)
 
-📄 robot_host/command/binary_commands.py
+📄 mara_host/command/binary_commands.py
    🧱 class Opcode
       (no methods)
    🧱 class BinaryStreamer
@@ -706,13 +701,13 @@ Total Files: 190
       ├── def encode_heartbeat(self)
       └── def encode_stop(self)
 
-📄 robot_host/command/client.py
+📄 mara_host/command/client.py
    🧱 class HasSendBytes
       ├── def set_frame_handler(self, handler)
       ├── def start(self)
       └── def stop(self)
    🧱 class BaseAsyncRobotClient
-      ├── def __init__(self, transport, bus, heartbeat_interval_s, connection_timeout_s, command_timeout_s, max_retries, require_version_match, handshake_timeout_s)
+      ├── def __init__(self, transport, bus, heartbeat_interval_s, connection_timeout_s, command_timeout_s, max_retries, require_version_match, handshake_timeout_s, log_level, log_dir)
       ├── def _handle_version_response(self, payload)
       ├── def _on_disconnect(self)
       ├── def _on_reconnect(self)
@@ -733,7 +728,7 @@ Total Files: 190
    🧱 class AsyncRobotClient
       (no methods)
 
-📄 robot_host/command/command_streamer.py
+📄 mara_host/command/command_streamer.py
    🧱 class StreamSpec
       (no methods)
    🧱 class CommandStreamer
@@ -744,7 +739,7 @@ Total Files: 190
       ├── def _pending_count(self, commander)
       └── def _ttl_expired(self, spec)
 
-📄 robot_host/command/coms/connection_monitor.py
+📄 mara_host/command/coms/connection_monitor.py
    🧱 class ConnectionMonitor
       ├── def __init__(self, timeout_s, on_disconnect, on_reconnect)
       ├── def on_message_received(self)
@@ -753,7 +748,7 @@ Total Files: 190
       ├── def time_since_last_message(self)
       └── def reset(self)
 
-📄 robot_host/command/coms/reliable_commander.py
+📄 mara_host/command/coms/reliable_commander.py
    🧱 class CommandStatus
       (no methods)
    🧱 class PendingCommand
@@ -766,7 +761,7 @@ Total Files: 190
       ├── def clear_pending(self)
       └── def stats(self)
 
-📄 robot_host/command/json_to_binary.py
+📄 mara_host/command/json_to_binary.py
    🧱 class JsonToBinaryEncoder
       ├── def encode(self, cmd)
       ├── def supports_binary(self, cmd_type)
@@ -778,7 +773,7 @@ Total Files: 190
       ├── def encode_signals(self, signals)
       └── def encode_signal_cmds(self, cmds)
 
-📄 robot_host/config/feature_flags.py
+📄 mara_host/config/feature_flags.py
    ⚙️  def _env_bool(self, key, default)
    🧱 class FeatureFlags
       ├── def __post_init__(self)
@@ -796,7 +791,7 @@ Total Files: 190
    ⚙️  def get_flags()
    ⚙️  def set_flags(self, flags)
 
-📄 robot_host/config/robot_config.py
+📄 mara_host/config/robot_config.py
    🧱 class TransportConfig
       └── def from_dict(self, cls, data)
    🧱 class DriveConfig
@@ -816,7 +811,7 @@ Total Files: 190
       ├── def create_robot(self)
       └── def __repr__(self)
 
-📄 robot_host/control/design.py
+📄 mara_host/control/design.py
    ⚙️  def lqr(self, A, B, Q, R, N)
    ⚙️  def lqr_discrete(self, A, B, Q, R, N)
    ⚙️  def pole_placement(self, A, B, poles)
@@ -827,12 +822,12 @@ Total Files: 190
    ⚙️  def reference_gain(self, A, B, C, K)
    ⚙️  def integral_gain(self, n_states, n_outputs, ki_diag)
 
-📄 robot_host/control/examples.py
+📄 mara_host/control/examples.py
    ⚙️  def example_mass_spring_damper()
    ⚙️  def example_dc_motor_velocity()
    ⚙️  def example_discretization_comparison()
 
-📄 robot_host/control/state_space.py
+📄 mara_host/control/state_space.py
    🧱 class StateSpaceModel
       ├── def __post_init__(self)
       ├── def _validate(self)
@@ -851,7 +846,7 @@ Total Files: 190
       └── def __repr__(self)
    ⚙️  def discretize(self, sys, dt, method)
 
-📄 robot_host/control/upload.py
+📄 mara_host/control/upload.py
    🧱 class SignalDefinition
       (no methods)
    🧱 class ControllerConfig
@@ -860,7 +855,7 @@ Total Files: 190
       (no methods)
    ⚙️  def _matrix_to_row_major(self, matrix)
 
-📄 robot_host/core/base_module.py
+📄 mara_host/core/base_module.py
    🧱 class BaseModule
       ├── def __init__(self)
       ├── def robot(self)
@@ -870,13 +865,13 @@ Total Files: 190
       ├── def topics(self)
       └── def __repr__(self)
 
-📄 robot_host/core/event_bus.py
+📄 mara_host/core/event_bus.py
    🧱 class EventBus
       ├── def __init__(self)
       ├── def subscribe(self, topic, handler)
       └── def publish(self, topic, data)
 
-📄 robot_host/core/host_module.py
+📄 mara_host/core/host_module.py
    🧱 class CommandHostModule
       ├── def __init__(self, bus, client)
       ├── def bus(self)
@@ -890,21 +885,21 @@ Total Files: 190
       ├── def _get_handler(self, topic)
       └── def __repr__(self)
 
-📄 robot_host/core/messages.py
+📄 mara_host/core/messages.py
    🧱 class MsgType
       (no methods)
 
-📄 robot_host/core/protocol.py
+📄 mara_host/core/protocol.py
    ⚙️  def _make_crc16_table()
    ⚙️  def crc16_ccitt(self, data, crc)
    ⚙️  def encode(self, msg_type, payload)
    ⚙️  def extract_frames(self, buffer, on_frame)
 
-📄 robot_host/core/robot_runtime.py
+📄 mara_host/core/robot_runtime.py
    🧱 class BaseRobotRuntime
       (no methods)
 
-📄 robot_host/core/settings.py
+📄 mara_host/core/settings.py
    🧱 class TransportSettings
       (no methods)
    🧱 class MQTTSettings
@@ -916,15 +911,15 @@ Total Files: 190
    🧱 class HostSettings
       └── def load(self, cls, profile)
 
-📄 robot_host/hw/gpio.py
+📄 mara_host/hw/gpio.py
    🧱 class GpioHostModule
       └── def __init__(self, bus, client)
 
-📄 robot_host/hw/pwm.py
+📄 mara_host/hw/pwm.py
    🧱 class PwmHostModule
       └── def __init__(self, bus, client)
 
-📄 robot_host/logger/logger.py
+📄 mara_host/logger/logger.py
    🧱 class DedupFilter
       ├── def __init__(self, cooldown_s)
       └── def filter(self, record)
@@ -947,19 +942,19 @@ Total Files: 190
       ├── def __init__(self, name, log_dir, level, console, max_bytes, backup_count, dedup_cooldown_s, jsonl_file, text_file)
       └── def close(self)
 
-📄 robot_host/motor/motion.py
+📄 mara_host/motor/motion.py
    🧱 class MotionHostModule
       └── def __init__(self, bus, client)
 
-📄 robot_host/motor/servo.py
+📄 mara_host/motor/servo.py
    🧱 class ServoHostModule
       └── def __init__(self, bus, client)
 
-📄 robot_host/motor/stepper.py
+📄 mara_host/motor/stepper.py
    🧱 class StepperHostModule
       └── def __init__(self, bus, client)
 
-📄 robot_host/research/analysis.py
+📄 mara_host/research/analysis.py
    ⚙️  def load_session_df(self, jsonl_path)
    ⚙️  def extract_telemetry_df(self, df, event_filter, flatten)
    ⚙️  def lowpass_filter(self, data, cutoff_hz, sample_rate_hz, order)
@@ -989,10 +984,10 @@ Total Files: 190
    ⚙️  def compute_psd(self, data, sample_rate_hz, nperseg)
    ⚙️  def find_dominant_frequency(self, data, sample_rate_hz, min_freq_hz, max_freq_hz)
 
-📄 robot_host/research/benchmarks.py
+📄 mara_host/research/benchmarks.py
    ⚙️  def run_benchmark(self, session_jsonl, out_json)
 
-📄 robot_host/research/config_loader.py
+📄 mara_host/research/config_loader.py
    ⚙️  def load_yaml(self, path)
    ⚙️  def load_json(self, path)
    ⚙️  def load_config(self, path)
@@ -1017,10 +1012,10 @@ Total Files: 190
    ⚙️  def find_configs(self, directory, recursive)
    ⚙️  def list_available_robots(self, config_dir)
 
-📄 robot_host/research/examples/01_basic_simulation.py
+📄 mara_host/research/examples/01_basic_simulation.py
    ⚙️  def main()
 
-📄 robot_host/research/examples/02_control_loop_analysis.py
+📄 mara_host/research/examples/02_control_loop_analysis.py
    🧱 class PIDController
       ├── def __post_init__(self)
       ├── def reset(self)
@@ -1028,24 +1023,24 @@ Total Files: 190
    ⚙️  def run_step_response_test(self, robot, pid, setpoint, duration, dt)
    ⚙️  def main()
 
-📄 robot_host/research/examples/03_system_identification.py
+📄 mara_host/research/examples/03_system_identification.py
    ⚙️  def collect_motor_step_response(self, motor, voltage, duration, dt)
    ⚙️  def main()
 
-📄 robot_host/research/examples/04_signal_analysis.py
+📄 mara_host/research/examples/04_signal_analysis.py
    ⚙️  def generate_noisy_signal(self, duration, sample_rate)
    ⚙️  def main()
 
-📄 robot_host/research/examples/05_metrics_and_recording.py
+📄 mara_host/research/examples/05_metrics_and_recording.py
    ⚙️  def record_session(self, robot, session_name, duration, dt)
    ⚙️  def main()
 
-📄 robot_host/research/examples/06_noise_comparison.py
+📄 mara_host/research/examples/06_noise_comparison.py
    ⚙️  def run_trajectory(self, robot, duration, dt)
    ⚙️  def monte_carlo_trajectories(self, config, n_runs, duration, dt)
    ⚙️  def main()
 
-📄 robot_host/research/examples/07_full_pipeline.py
+📄 mara_host/research/examples/07_full_pipeline.py
    🧱 class VelocityPID
       ├── def __post_init__(self)
       ├── def set_target(self, vx, omega)
@@ -1054,7 +1049,7 @@ Total Files: 190
    ⚙️  def generate_test_trajectory(self, t)
    ⚙️  def main()
 
-📄 robot_host/research/experiments.py
+📄 mara_host/research/experiments.py
    ⚙️  def _maybe_await(self, x)
    🧱 class ExperimentConfig
       (no methods)
@@ -1063,7 +1058,7 @@ Total Files: 190
    🧱 class ExperimentRunner
       └── def __init__(self)
 
-📄 robot_host/research/metrics.py
+📄 mara_host/research/metrics.py
    ⚙️  def load_jsonl(self, path)
    ⚙️  def filter_events(self, rows, event_prefix)
    ⚙️  def basic_metrics(self, jsonl_path)
@@ -1092,7 +1087,7 @@ Total Files: 190
    ⚙️  def analyze_session(self, jsonl_path)
    ⚙️  def compare_sessions(self, paths)
 
-📄 robot_host/research/plotting.py
+📄 mara_host/research/plotting.py
    ⚙️  def apply_style()
    ⚙️  def create_figure(self, rows, cols, figsize, sharex, sharey)
    ⚙️  def plot_time_series(self, times, values, label, ax, title, xlabel, ylabel, color, alpha, linestyle)
@@ -1113,7 +1108,7 @@ Total Files: 190
    ⚙️  def save_figure(self, fig, path, dpi, tight)
    ⚙️  def show()
 
-📄 robot_host/research/recording.py
+📄 mara_host/research/recording.py
    🧱 class RecordingConfig
       (no methods)
    🧱 class RecordingEventBus
@@ -1129,13 +1124,13 @@ Total Files: 190
       └── def _send_bytes(self, data)
    ⚙️  def wrapped(self, body)
 
-📄 robot_host/research/replay.py
+📄 mara_host/research/replay.py
    🧱 class SessionReplay
       ├── def __init__(self, jsonl_path)
       ├── def _load(self, path)
       └── def to_dataframe(self)
 
-📄 robot_host/research/simulation.py
+📄 mara_host/research/simulation.py
    🧱 class GaussianNoise
       ├── def sample(self)
       └── def add_to(self, value)
@@ -1183,7 +1178,7 @@ Total Files: 190
       ├── def encoders(self)
       └── def get_state(self)
 
-📄 robot_host/research/sysid.py
+📄 mara_host/research/sysid.py
    🧱 class FirstOrderParams
       ├── def transfer_function(self)
       └── def to_dict(self)
@@ -1220,7 +1215,7 @@ Total Files: 190
    ⚙️  def model(self, params, v)
    ⚙️  def cost(self, params)
 
-📄 robot_host/robot.py
+📄 mara_host/robot.py
    🧱 class Session
       ├── def __init__(self, robot, name, log_dir)
       ├── def start(self)
@@ -1246,42 +1241,42 @@ Total Files: 190
    ⚙️  def robot_from_config(self, config)
    ⚙️  def _robot_from_dict(self, config)
 
-📄 robot_host/runners/bluetooth_shell.py
+📄 mara_host/runners/bluetooth_shell.py
    ⚙️  def _print_event(self, tag)
    ⚙️  def _handler(self, data)
    ⚙️  def _print_ultra(self, ultra)
    ⚙️  def _print_imu(self, imu)
 
-📄 robot_host/runners/dc_latency_tst.py
+📄 mara_host/runners/dc_latency_tst.py
    🧱 class DcAckWaiter
       ├── def __init__(self, bus)
       └── def _on_ack(self, msg)
 
-📄 robot_host/runners/interactive_shell.py
+📄 mara_host/runners/interactive_shell.py
    ⚙️  def _print_event(self, tag)
    ⚙️  def _handler(self, data)
    ⚙️  def _print_ultra(self, ultra)
    ⚙️  def _print_imu(self, imu)
 
-📄 robot_host/runners/latency_tst.py
+📄 mara_host/runners/latency_tst.py
    🧱 class PingLatencyMeasurer
       ├── def __init__(self, bus, client)
       └── def _on_pong(self, msg)
 
-📄 robot_host/runners/led_latency_tst.py
+📄 mara_host/runners/led_latency_tst.py
    ⚙️  def on_led_ack(self, msg)
 
-📄 robot_host/runners/pid_sweep_tst.py
+📄 mara_host/runners/pid_sweep_tst.py
    ⚙️  def make_ack_waiter(self, topic)
    ⚙️  def _cb(self, msg)
 
-📄 robot_host/runners/pid_tst.py
+📄 mara_host/runners/pid_tst.py
    ⚙️  def on_dc_ack(self, msg)
 
-📄 robot_host/runners/pill_carousel.py
+📄 mara_host/runners/pill_carousel.py
    ⚙️  def main()
 
-📄 robot_host/runners/pill_gui.py
+📄 mara_host/runners/pill_gui.py
    🧱 class RobotController
       ├── def __init__(self, log_fn)
       └── def _log(self, msg)
@@ -1309,22 +1304,22 @@ Total Files: 190
    ⚙️  def done_callback(self, f)
    ⚙️  def main()
 
-📄 robot_host/runners/replay_to_metrics.py
+📄 mara_host/runners/replay_to_metrics.py
    ⚙️  def main()
 
-📄 robot_host/runners/run_camera.py
+📄 mara_host/runners/run_camera.py
    🧱 class DummyModel
       └── def __call__(self, x)
    ⚙️  def frame_callback(self, display_frame, ml_frame, ts)
    ⚙️  def main()
 
-📄 robot_host/runners/run_camera_boxes.py
+📄 mara_host/runners/run_camera_boxes.py
    🧱 class DummyModel
       └── def __call__(self, x)
    ⚙️  def simple_decode_fn(self, raw, display_shape, ml_size)
    ⚙️  def main()
 
-📄 robot_host/runners/run_camera_host.py
+📄 mara_host/runners/run_camera_host.py
    ⚙️  def main()
    ⚙️  def on_frame(self, frame)
    ⚙️  def on_ml_frame(self, ml_frame)
@@ -1332,19 +1327,19 @@ Total Files: 190
    ⚙️  def on_config(self, config)
    ⚙️  def on_error(self, error)
 
-📄 robot_host/runners/run_can_client.py
+📄 mara_host/runners/run_can_client.py
    ⚙️  def parse_args()
 
-📄 robot_host/runners/run_detection.py
+📄 mara_host/runners/run_detection.py
    ⚙️  def main()
 
-📄 robot_host/runners/run_latency_benchmarks.py
+📄 mara_host/runners/run_latency_benchmarks.py
    ⚙️  def main()
 
-📄 robot_host/runners/run_mqtt_nodes.py
+📄 mara_host/runners/run_mqtt_nodes.py
    ⚙️  def parse_args()
 
-📄 robot_host/runners/send_all_commands.py
+📄 mara_host/runners/send_all_commands.py
    🧱 class CmdResult
       (no methods)
    🧱 class RunContext
@@ -1371,19 +1366,19 @@ Total Files: 190
    ⚙️  def _extra_delay_ms(self, args, cmd)
    ⚙️  def main()
 
-📄 robot_host/runners/serial_interactive_shell.py
+📄 mara_host/runners/serial_interactive_shell.py
    ⚙️  def _print_event(self, tag)
    ⚙️  def _handler(self, data)
 
-📄 robot_host/runners/stepper_tst.py
+📄 mara_host/runners/stepper_tst.py
    ⚙️  def main()
 
-📄 robot_host/runners/stream_runner.py
+📄 mara_host/runners/stream_runner.py
    ⚙️  def _parse_json_payload(self, s)
    ⚙️  def provider()
    ⚙️  def provider()
 
-📄 robot_host/runners/telemetry_shell.py
+📄 mara_host/runners/telemetry_shell.py
    ⚙️  def attach_telemetry_prints(self, bus)
    ⚙️  def _get(self, obj, attr, default)
    ⚙️  def on_imu(self, imu)
@@ -1392,10 +1387,10 @@ Total Files: 190
    ⚙️  def on_stepper(self, step)
    ⚙️  def on_dc(self, dc)
 
-📄 robot_host/runners/test_tcp.py
+📄 mara_host/runners/test_tcp.py
    ⚙️  def main()
 
-📄 robot_host/runtime/runtime.py
+📄 mara_host/runtime/runtime.py
    🧱 class RuntimeConfig
       (no methods)
    🧱 class Runtime
@@ -1415,13 +1410,13 @@ Total Files: 190
       ├── def _on_telemetry_event(self, data)
       └── def __repr__(self)
 
-📄 robot_host/sensor/encoder.py
+📄 mara_host/sensor/encoder.py
    🧱 class EncoderDefaults
       (no methods)
    🧱 class EncoderHostModule
       └── def __init__(self, bus, client, defaults)
 
-📄 robot_host/sensor/imu.py
+📄 mara_host/sensor/imu.py
    🧱 class ImuState
       (no methods)
    🧱 class ImuHostModule
@@ -1430,18 +1425,140 @@ Total Files: 190
       ├── def set_biases(self, accel_bias, gyro_bias)
       └── def _on_imu_raw(self, msg)
 
-📄 robot_host/sensor/ultrasonic.py
+📄 mara_host/sensor/ultrasonic.py
    🧱 class UltrasonicDefaults
       (no methods)
    🧱 class UltrasonicHostModule
       ├── def __init__(self, bus, client, defaults, auto_subscribe)
       └── def _on_telemetry_raw(self, msg)
 
-📄 robot_host/telemetry/binary_parser.py
+📄 mara_host/services/codegen/generator_service.py
+   🧱 class GeneratorType
+      (no methods)
+   🧱 class GeneratorResult
+      (no methods)
+   🧱 class GenerationSummary
+      ├── def all_success(self)
+      └── def failed_count(self)
+   🧱 class CodeGeneratorService
+      ├── def __init__(self)
+      ├── def generate_all(self)
+      ├── def generate(self, generator_type)
+      ├── def list_generated_files(self, generator_type)
+      ├── def get_schema_path(self)
+      ├── def set_progress_callback(self, callback)
+      ├── def _notify_progress(self, gen_type, message)
+      └── def get_available_generators()
+
+📄 mara_host/services/pins/pin_service.py
+   🧱 class PinConflict
+      (no methods)
+   🧱 class PinRecommendation
+      (no methods)
+   🧱 class GroupRecommendation
+      (no methods)
+   🧱 class PinService
+      ├── def __init__(self, pins_json_path)
+      ├── def get_all_pins(self)
+      ├── def get_pin_info(self, gpio)
+      ├── def get_assignments(self)
+      ├── def get_assignments_by_gpio(self)
+      ├── def get_free_pins(self, required_caps)
+      ├── def get_safe_pins(self)
+      ├── def capability_string(self, gpio)
+      ├── def is_flash_pin(self, gpio)
+      ├── def is_boot_pin(self, gpio)
+      ├── def is_input_only(self, gpio)
+      ├── def is_safe_pin(self, gpio)
+      ├── def get_flash_pins(self)
+      ├── def get_boot_pins(self)
+      ├── def get_input_only_pins(self)
+      ├── def get_safe_pin_set(self)
+      ├── def get_free_pins_by_category(self)
+      ├── def get_use_case_notes(self, use_case)
+      ├── def assign(self, name, gpio)
+      ├── def remove(self, name)
+      ├── def clear_all(self)
+      ├── def detect_conflicts(self)
+      ├── def _check_i2c_conflicts(self, assignments)
+      ├── def _check_uart_conflicts(self, assignments)
+      ├── def _check_adc2_conflicts(self, assignments)
+      ├── def suggest_pins(self, use_case, count)
+      ├── def recommend_motor_pins(self, motor_id)
+      ├── def recommend_encoder_pins(self, encoder_id)
+      ├── def recommend_i2c_pins(self)
+      ├── def recommend_spi_pins(self)
+      ├── def recommend_uart_pins(self, uart_num)
+      ├── def recommend_stepper_pins(self, stepper_id)
+      ├── def recommend_servo_pins(self, servo_id)
+      ├── def _recommend_group_pins(self, group_type, prefix)
+      ├── def _cap_to_use_case(self, cap)
+      ├── def generate_pinout_diagram(self)
+      └── def validate(self)
+
+📄 mara_host/services/recording/recording_service.py
+   🧱 class RecordedEvent
+      (no methods)
+   🧱 class SessionInfo
+      (no methods)
+   🧱 class RecordingConfig
+      (no methods)
+   🧱 class RecordingService
+      ├── def __init__(self, config)
+      ├── def client(self)
+      └── def session_path(self)
+   ⚙️  def count_event(self, data)
+   🧱 class ReplayService
+      ├── def __init__(self, session_name, log_dir)
+      ├── def get_session_info(self)
+      ├── def events(self)
+      ├── def filter_events(self, topics, event_types, start_time, end_time)
+      └── def list_sessions(self, log_dir)
+
+📄 mara_host/services/testing/test_service.py
+   🧱 class TestStatus
+      (no methods)
+   🧱 class TestResult
+      (no methods)
+   🧱 class TestService
+      ├── def __init__(self, client)
+      ├── def results(self)
+      ├── def passed_count(self)
+      ├── def failed_count(self)
+      └── def all_passed(self)
+   ⚙️  def on_pong(self, data)
+   ⚙️  def on_heartbeat(self, data)
+   ⚙️  def on_encoder(self, data)
+   ⚙️  def on_imu(self, data)
+   ⚙️  def on_ultrasonic(self, data)
+
+📄 mara_host/services/transport/connection_service.py
+   🧱 class TransportType
+      (no methods)
+   🧱 class ConnectionConfig
+      (no methods)
+   🧱 class ConnectionInfo
+      └── def __post_init__(self)
+   🧱 class ConnectionService
+      ├── def __init__(self, config)
+      ├── def _create_transport(self)
+      ├── def on_event(self, topic, handler)
+      └── def is_connected(self)
+
+📄 mara_host/services/transport/robot_control.py
+   🧱 class ServoConfig
+      (no methods)
+   🧱 class RobotControlService
+      ├── def __init__(self, client)
+      ├── def is_armed(self)
+      ├── def is_active(self)
+      └── def attached_servos(self)
+
+📄 mara_host/telemetry/binary_parser.py
    ⚙️  def _make_empty(self, ts_ms, raw_len, meta)
    ⚙️  def parse_telemetry_bin(self, payload)
 
-📄 robot_host/telemetry/file_logger.py
+📄 mara_host/telemetry/file_logger.py
    🧱 class TelemetryFileLogger
       ├── def __init__(self, bus, log_dir)
       ├── def start(self)
@@ -1449,7 +1566,7 @@ Total Files: 190
       ├── def _on_imu(self, imu)
       └── def _on_ultra(self, ultra)
 
-📄 robot_host/telemetry/host_module.py
+📄 mara_host/telemetry/host_module.py
    🧱 class TelemetryHostModule
       ├── def __init__(self, bus, source_topic)
       ├── def subscriptions(self)
@@ -1457,7 +1574,7 @@ Total Files: 190
       ├── def latest(self)
       └── def _on_raw(self, msg)
 
-📄 robot_host/telemetry/models.py
+📄 mara_host/telemetry/models.py
    🧱 class ImuTelemetry
       (no methods)
    🧱 class UltrasonicTelemetry
@@ -1485,12 +1602,12 @@ Total Files: 190
    🧱 class TelemetryPacket
       (no methods)
 
-📄 robot_host/telemetry/parser.py
+📄 mara_host/telemetry/parser.py
    ⚙️  def _float_or_none(self, v)
    ⚙️  def _int_or_none(self, v)
    ⚙️  def parse_telemetry(self, msg)
 
-📄 robot_host/tools/build_firmware.py
+📄 mara_host/tools/build_firmware.py
    ⚙️  def parse_features(self, features_str, no_features_str)
    ⚙️  def features_to_flags(self, features)
    ⚙️  def run_pio(self, args, verbose, extra_flags)
@@ -1502,10 +1619,10 @@ Total Files: 190
    ⚙️  def list_features()
    ⚙️  def main()
 
-📄 robot_host/tools/build_world.py
+📄 mara_host/tools/build_world.py
    ⚙️  def main()
 
-📄 robot_host/tools/gen_binary_commands.py
+📄 mara_host/tools/gen_binary_commands.py
    ⚙️  def to_pascal_case(self, name)
    ⚙️  def to_snake_case(self, name)
    ⚙️  def get_struct_format(self, payload)
@@ -1515,14 +1632,14 @@ Total Files: 190
    ⚙️  def generate_py_json_to_binary()
    ⚙️  def main()
 
-📄 robot_host/tools/gen_can.py
+📄 mara_host/tools/gen_can.py
    ⚙️  def calc_struct_size(self, fields)
    ⚙️  def build_struct_fmt(self, fields)
    ⚙️  def generate_cpp_header()
    ⚙️  def generate_python_module()
    ⚙️  def main()
 
-📄 robot_host/tools/gen_commands.py
+📄 mara_host/tools/gen_commands.py
    ⚙️  def validate_commands(self, cmds)
    ⚙️  def generate_json(self, commands)
    ⚙️  def generate_cpp_header(self, commands)
@@ -1534,43 +1651,43 @@ Total Files: 190
    ⚙️  def write_version_files(self, version, cpp_path, py_path)
    ⚙️  def main()
 
-📄 robot_host/tools/gen_telemetry.py
+📄 mara_host/tools/gen_telemetry.py
    ⚙️  def generate_cpp_header()
    ⚙️  def generate_py_module()
    ⚙️  def main()
 
-📄 robot_host/tools/gen_version.py
+📄 mara_host/tools/gen_version.py
    ⚙️  def generate_cpp_version(self, version)
    ⚙️  def generate_py_version(self, version)
    ⚙️  def write_version_files(self, version, cpp_path, py_path)
    ⚙️  def main()
 
-📄 robot_host/tools/generate_all.py
+📄 mara_host/tools/generate_all.py
    ⚙️  def main()
 
-📄 robot_host/tools/generate_pins.py
+📄 mara_host/tools/generate_pins.py
    ⚙️  def generate_cpp(self, pins)
    ⚙️  def generate_py(self, pins)
    ⚙️  def main()
 
-📄 robot_host/tools/gpio_mapping_gen.py
+📄 mara_host/tools/gpio_mapping_gen.py
    ⚙️  def generate_json(self, channels)
    ⚙️  def generate_cpp_header(self, channels)
    ⚙️  def generate_py_module(self, channels)
    ⚙️  def main()
 
-📄 robot_host/tools/imu_calibrator.py
+📄 mara_host/tools/imu_calibrator.py
    🧱 class ImuCalibrator
       ├── def __init__(self, client, samples_needed)
       └── def _on_imu(self, imu)
 
-📄 robot_host/tools/mock_node.py
+📄 mara_host/tools/mock_node.py
    🧱 class MockNode
       ├── def __init__(self, node_id, broker_host, broker_port, firmware, board)
       └── def stop(self)
    ⚙️  def parse_args()
 
-📄 robot_host/tools/pins.py
+📄 mara_host/tools/pins.py
    🧱 class Capability
       (no methods)
    🧱 class PinInfo
@@ -1579,33 +1696,22 @@ Total Files: 190
    ⚙️  def save_pins(self, pins)
    ⚙️  def get_assignments()
    ⚙️  def cap_str(self, cap)
-   ⚙️  def print_pin_table(self, pins, assignments, show_all)
-   ⚙️  def cmd_list(self, args)
-   ⚙️  def cmd_free(self, args)
-   ⚙️  def cmd_info(self, args)
-   ⚙️  def cmd_assign(self, args)
-   ⚙️  def cmd_remove(self, args)
-   ⚙️  def cmd_suggest(self, args)
-   ⚙️  def cmd_validate(self, args)
    ⚙️  def generate_pinout()
    ⚙️  def fmt_label(self, gpio, max_len)
    ⚙️  def pin_marker(self, gpio)
-   ⚙️  def cmd_pinout(self, args)
-   ⚙️  def cmd_help(self, args)
-   ⚙️  def main()
 
-📄 robot_host/tools/platform_schema.py
+📄 mara_host/tools/platform_schema.py
    ⚙️  def _load_pins(self, path)
    ⚙️  def validate_schema()
 
-📄 robot_host/transport/async_base_transport.py
+📄 mara_host/transport/async_base_transport.py
    🧱 class AsyncBaseTransport
       ├── def __init__(self)
       ├── def set_frame_handler(self, handler)
       ├── def _handle_frame(self, body)
       └── def is_connected(self)
 
-📄 robot_host/transport/base_transport.py
+📄 mara_host/transport/base_transport.py
    🧱 class BaseTransport
       ├── def __init__(self)
       ├── def set_frame_handler(self, handler)
@@ -1615,12 +1721,12 @@ Total Files: 190
       ├── def stop(self)
       └── def _send_bytes(self, data)
 
-📄 robot_host/transport/bluetooth_transport.py
+📄 mara_host/transport/bluetooth_transport.py
    🧱 class BluetoothSerialTransport
       ├── def __init__(self, port, baudrate)
       └── def auto(self, cls, device_name, baudrate)
 
-📄 robot_host/transport/can_defs.py
+📄 mara_host/transport/can_defs.py
    🧱 class MsgId
       (no methods)
    ⚙️  def make_id(self, base, node_id)
@@ -1673,7 +1779,7 @@ Total Files: 190
    ⚙️  def encode_heartbeat(self, uptime_ms, state, load_pct, errors)
    ⚙️  def encode_encoder(self, counts, velocity, timestamp)
 
-📄 robot_host/transport/can_defs_generated.py
+📄 mara_host/transport/can_defs_generated.py
    🧱 class MsgId
       (no methods)
    🧱 class NodeState
@@ -1700,7 +1806,7 @@ Total Files: 190
       ├── def pack(self)
       └── def unpack(self, cls, data)
 
-📄 robot_host/transport/can_transport.py
+📄 mara_host/transport/can_transport.py
    🧱 class CANStats
       └── def uptime_s(self)
    🧱 class CANTransport
@@ -1722,7 +1828,7 @@ Total Files: 190
    🧱 class VirtualCANTransport
       └── def __init__(self, channel, node_id)
 
-📄 robot_host/transport/mqtt/broker_failover.py
+📄 mara_host/transport/mqtt/broker_failover.py
    🧱 class BrokerState
       (no methods)
    🧱 class BrokerConfig
@@ -1738,7 +1844,7 @@ Total Files: 190
       ├── def notify_connection_failed(self)
       └── def _set_state(self, state)
 
-📄 robot_host/transport/mqtt/discovery.py
+📄 mara_host/transport/mqtt/discovery.py
    🧱 class NodeDiscovery
       ├── def __init__(self, bus, broker_host, broker_port, username, password)
       ├── def on_node_announce(self, callback)
@@ -1748,7 +1854,7 @@ Total Files: 190
       └── def _on_message(self, message)
    ⚙️  def on_discover(self, info)
 
-📄 robot_host/transport/mqtt/models.py
+📄 mara_host/transport/mqtt/models.py
    🧱 class NodeState
       (no methods)
    🧱 class MQTTConfig
@@ -1767,7 +1873,7 @@ Total Files: 190
    ⚙️  def get_discover_topic(self, versioned)
    ⚙️  def get_discover_response_topic(self, versioned)
 
-📄 robot_host/transport/mqtt/node_manager.py
+📄 mara_host/transport/mqtt/node_manager.py
    🧱 class NodeManager
       ├── def __init__(self, bus, broker_host, broker_port, fallback_broker, fallback_port, username, password, heartbeat_timeout_s, health_check_interval_s, require_version_match)
       ├── def broker_host(self)
@@ -1783,7 +1889,7 @@ Total Files: 190
       ├── def _check_node_health(self)
       └── def _on_broker_change(self, broker)
 
-📄 robot_host/transport/mqtt/node_proxy.py
+📄 mara_host/transport/mqtt/node_proxy.py
    🧱 class NodeProxy
       ├── def __init__(self, node_id, broker_host, broker_port, bus, username, password, heartbeat_timeout_s, require_version_match)
       ├── def node_id(self)
@@ -1799,7 +1905,7 @@ Total Files: 190
       ├── def _on_heartbeat(self, data)
       └── def _on_telemetry(self, data)
 
-📄 robot_host/transport/mqtt/transport.py
+📄 mara_host/transport/mqtt/transport.py
    🧱 class MQTTTransport
       ├── def __init__(self, broker_host, broker_port, node_id, username, password, client_id, bus, use_versioned_topics)
       ├── def is_connected(self)
@@ -1807,7 +1913,7 @@ Total Files: 190
       ├── def _publish_event(self, event, data)
       └── def _on_message(self, message)
 
-📄 robot_host/transport/serial_transport.py
+📄 mara_host/transport/serial_transport.py
    🧱 class SerialTransport
       ├── def __init__(self, port, baudrate)
       ├── def _open(self)
@@ -1815,7 +1921,7 @@ Total Files: 190
       ├── def _read_raw(self, n)
       └── def _send_bytes(self, data)
 
-📄 robot_host/transport/stream_transport.py
+📄 mara_host/transport/stream_transport.py
    🧱 class StreamTransport
       ├── def __init__(self)
       ├── def _open(self)
@@ -1828,12 +1934,12 @@ Total Files: 190
       └── def _reader_loop(self)
    ⚙️  def _locked_send()
 
-📄 robot_host/transport/tcp_transport.py
+📄 mara_host/transport/tcp_transport.py
    🧱 class AsyncTcpTransport
       ├── def __init__(self, host, port, reconnect_delay)
       └── def is_connected(self)
 
-📄 robot_host/vision/ml_preprocess.py
+📄 mara_host/vision/ml_preprocess.py
    🧱 class NormalizationStats
       ├── def imagenet(self, cls)
       └── def none(self, cls)
@@ -1851,17 +1957,17 @@ Total Files: 190
    ⚙️  def get_gpu_backend()
    ⚙️  def clear_cache()
 
-📄 robot_host/vision/object_detection.py
+📄 mara_host/vision/object_detection.py
    🧱 class Detection
       (no methods)
    🧱 class DetectionModule
       ├── def __init__(self, model, decode_fn, ml_size, class_names, score_thresh, use_torch, device, show_window, window_name, publish_fn)
       └── def handle_frame(self, display_frame, ml_frame, ts)
 
-📄 robot_host/vision/yolo_decode.py
+📄 mara_host/vision/yolo_decode.py
    ⚙️  def decode_yolo_output(self, raw, display_shape, ml_size)
 
-📄 robot_host/vision/yolo_detect.py
+📄 mara_host/vision/yolo_detect.py
    🧱 class YoloWrapper
       ├── def __init__(self, weights)
       └── def __call__(self, x)
@@ -1883,7 +1989,7 @@ Total Files: 190
    ⚙️  def pytest_addoption(self, parser)
    ⚙️  def pytest_configure(self, config)
    ⚙️  def pytest_collection_modifyitems(self, config, items)
-   ⚙️  def robot_host(self, request)
+   ⚙️  def mara_host(self, request)
    ⚙️  def robot_port(self, request)
    ⚙️  def hil_timeout(self, request)
    ⚙️  def hil(self, robot)
@@ -2171,7 +2277,7 @@ Total Files: 190
 ================================================================================
 📊 STATISTICS
 ================================================================================
-Total Classes:    266
-Total Functions:  579
-Total Methods:    841
+Total Classes:    285
+Total Functions:  575
+Total Methods:    910
 ================================================================================

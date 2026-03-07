@@ -8,7 +8,7 @@ Demonstrates:
 - Version handshake over network
 
 Prerequisites:
-- ESP32 with robot_host firmware and WiFi enabled
+- ESP32 with mara_host firmware and WiFi enabled
 - ESP32 and host on same network
 - Know the ESP32's IP address (check serial output or router)
 
@@ -19,7 +19,7 @@ Usage:
 import asyncio
 import sys
 
-from robot_host import Robot
+from mara_host import Robot
 
 
 async def main():

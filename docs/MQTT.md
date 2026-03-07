@@ -80,8 +80,8 @@ allow_anonymous true
 
 ```python
 import asyncio
-from robot_host.core.event_bus import EventBus
-from robot_host.transport.mqtt import NodeManager
+from mara_host.core.event_bus import EventBus
+from mara_host.transport.mqtt import NodeManager
 
 async def main():
     bus = EventBus()
@@ -123,7 +123,7 @@ asyncio.run(main())
 ### 3. Run the Example Script
 
 ```bash
-python -m robot_host.runners.run_mqtt_nodes --broker 10.0.0.59
+python -m mara_host.runners.run_mqtt_nodes --broker 10.0.0.59
 ```
 
 ## NodeManager API
@@ -131,7 +131,7 @@ python -m robot_host.runners.run_mqtt_nodes --broker 10.0.0.59
 ### Initialization
 
 ```python
-from robot_host.transport.mqtt import NodeManager
+from mara_host.transport.mqtt import NodeManager
 
 manager = NodeManager(
     bus=EventBus(),
@@ -223,18 +223,18 @@ You can simulate additional nodes without hardware:
 
 ```bash
 # Terminal 1: Start mock node
-python -m robot_host.tools.mock_node --node-id node1 --broker 10.0.0.59
+python -m mara_host.tools.mock_node --node-id node1 --broker 10.0.0.59
 
 # Terminal 2: Start another mock node
-python -m robot_host.tools.mock_node --node-id node2 --broker 10.0.0.59
+python -m mara_host.tools.mock_node --node-id node2 --broker 10.0.0.59
 
 # Terminal 3: Run discovery
-python -m robot_host.runners.run_mqtt_nodes --broker 10.0.0.59
+python -m mara_host.runners.run_mqtt_nodes --broker 10.0.0.59
 ```
 
 Mock node options:
 ```bash
-python -m robot_host.tools.mock_node \
+python -m mara_host.tools.mock_node \
     --node-id node1 \
     --broker 10.0.0.59 \
     --port 1883 \

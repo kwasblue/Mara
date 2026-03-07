@@ -3,8 +3,8 @@
 
 import struct
 import pytest
-from robot_host.command.json_to_binary import JsonToBinaryEncoder, JsonToBinaryBatchEncoder
-from robot_host.command.binary_commands import Opcode
+from mara_host.command.json_to_binary import JsonToBinaryEncoder, JsonToBinaryBatchEncoder
+from mara_host.command.binary_commands import Opcode
 
 
 class TestJsonToBinaryEncoder:

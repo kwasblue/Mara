@@ -2,7 +2,7 @@
 import asyncio
 import pytest
 
-from robot_host.command.coms.reliable_commander import ReliableCommander
+from mara_host.command.coms.reliable_commander import ReliableCommander
 
 
 @pytest.mark.asyncio

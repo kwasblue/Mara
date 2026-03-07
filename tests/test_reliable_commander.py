@@ -4,7 +4,7 @@ import pytest
 
 
 def _import_reliable_commander():
-    from robot_host.command.coms.reliable_commander import ReliableCommander
+    from mara_host.command.coms.reliable_commander import ReliableCommander
     return ReliableCommander
 
 

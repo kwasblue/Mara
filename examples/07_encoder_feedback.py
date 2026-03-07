@@ -28,12 +28,12 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from robot_host.transport.serial_transport import SerialTransport
-from robot_host.transport.tcp_transport import AsyncTcpTransport
-from robot_host.command.client import AsyncRobotClient
-from robot_host.sensor.encoder import EncoderHostModule, EncoderDefaults
-from robot_host.telemetry.host_module import TelemetryHostModule
-from robot_host.core.event_bus import EventBus
+from mara_host.transport.serial_transport import SerialTransport
+from mara_host.transport.tcp_transport import AsyncTcpTransport
+from mara_host.command.client import AsyncRobotClient
+from mara_host.sensor.encoder import EncoderHostModule, EncoderDefaults
+from mara_host.telemetry.host_module import TelemetryHostModule
+from mara_host.core.event_bus import EventBus
 
 
 # Configure these for your hardware

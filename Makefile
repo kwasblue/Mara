@@ -1,8 +1,9 @@
 # MARA Monorepo Makefile
 # Unified build, test, and flash commands for all components
 
-.PHONY: help install install-dev test test-host test-mcu build build-mcu build-cam \
-        flash flash-mcu flash-cam monitor-mcu monitor-cam clean generate lint
+.PHONY: help install install-dev test test-host test-mcu test-hil test-hil-serial \
+        build build-mcu build-cam flash flash-mcu flash-cam monitor-mcu monitor-cam \
+        clean generate lint
 
 # Python from virtual environment (create with: python3 -m venv .venv)
 VENV := .venv
@@ -24,6 +25,8 @@ help:
 	@echo "  test           Run all tests (host + firmware)"
 	@echo "  test-host      Run Python host tests"
 	@echo "  test-mcu       Run MCU firmware tests (native)"
+	@echo "  test-hil       Run HIL tests via TCP (set ROBOT_HOST, default 10.0.0.60)"
+	@echo "  test-hil-serial Run HIL tests via serial (set MCU_PORT)"
 	@echo ""
 	@echo "Building:"
 	@echo "  build          Build all firmware"
@@ -67,6 +70,21 @@ test-host:
 
 test-mcu:
 	cd firmware/mcu && pio test -e native
+
+# HIL tests (requires connected hardware)
+# TCP: set ROBOT_HOST (default 10.0.0.60) and ROBOT_PORT (default 3333)
+# Serial: set MCU_PORT (e.g., /dev/cu.usbserial-0001)
+test-hil:
+	cd host && ../$(PYTEST) tests/ -v --run-hil
+
+test-hil-serial:
+	cd host && ../$(PYTEST) tests/ -v --run-hil --mcu-port=$(MCU_PORT)
+
+test-hil-smoke:
+	cd host && ../$(PYTEST) tests/test_hil_smoke.py -v --run-hil
+
+test-hil-churn:
+	cd host && ../$(PYTEST) tests/test_hil_churn.py -v --run-hil --churn-cycles=10
 
 # =============================================================================
 # Building

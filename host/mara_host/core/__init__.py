@@ -25,7 +25,7 @@ from .settings import (
     EncoderDefaults,
     HostSettings,
 )
-from .result import Result
+from .result import Result, ServiceResult, send_command
 
 __all__ = [
     # Base classes
@@ -46,4 +46,6 @@ __all__ = [
     "HostSettings",
     # Result
     "Result",
+    "ServiceResult",  # Alias for Result (backwards compat)
+    "send_command",
 ]

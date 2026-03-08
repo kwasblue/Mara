@@ -218,7 +218,6 @@ class TestNoCircularImports:
         """Internal modules should be importable on their own."""
         modules = [
             "mara_host.core",
-            "mara_host.hw",
             "mara_host.motor",
             "mara_host.sensor",
             "mara_host.telemetry",

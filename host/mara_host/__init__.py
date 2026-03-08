@@ -51,8 +51,8 @@ Public API:
     Control: VelocityController, PIDController, DifferentialDrive
 
 Internal modules (not stable, for advanced use only):
-    mara_host.hw.* - Hardware HostModules
-    mara_host.motor.* - Motor HostModules
+    mara_host.services.* - Service layer (control, camera, telemetry)
+    mara_host.motor.* - Motion HostModules
     mara_host.sensor.* - Sensor HostModules
     mara_host.command.* - Command/client internals
     mara_host.core.* - Protocol/event internals

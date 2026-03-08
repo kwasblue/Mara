@@ -5,8 +5,9 @@ import contextlib
 import json
 import asyncio
 import inspect
+import struct
 import time
-from typing import Optional, Protocol, Callable, Dict, Any
+from typing import Optional, Protocol, Callable, Dict, Any, Tuple
 
 from mara_host.core.event_bus import EventBus
 from mara_host.core import protocol
@@ -15,8 +16,8 @@ from .coms.reliable_commander import ReliableCommander
 from mara_host.config.client_commands import RobotCommandsMixin
 from mara_host.telemetry.binary_parser import parse_telemetry_bin
 from mara_host.config.version import PROTOCOL_VERSION
-from mara_host.logger.logger import MaraLogBundle
 from .binary_mixin import BinaryCommandsMixin
+from .binary_commands import Opcode
 
 class HasSendBytes(Protocol):
     """Minimal transport interface used by the async robot client."""
@@ -66,7 +67,7 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._running = False
         self._seq = 0
         self._heartbeat_task: Optional[asyncio.Task] = None
-        
+
         # Version handshake
         self._require_version_match = require_version_match
         self._handshake_timeout_s = handshake_timeout_s
@@ -79,38 +80,54 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._board: Optional[str] = None
         self._platform_name: Optional[str] = None
         self._handshake_future: Optional[asyncio.Future] = None
-        
-        # logging
-        self.logs = MaraLogBundle(
-            name="mara_run",
-            log_dir=log_dir,
-            level=log_level,
-            console=True,
-        )
-        
+
+        # Lazy logging (deferred initialization for startup speed)
+        self._logs: Optional["MaraLogBundle"] = None
+        self._log_config: Tuple[str, int] = (log_dir, log_level)
+
         # Connection monitor
         self.connection = ConnectionMonitor(
             timeout_s=connection_timeout_s,
             on_disconnect=self._on_disconnect,
             on_reconnect=self._on_reconnect,
         )
-        
-        # Reliable commander
+
+        # Reliable commander (uses lazy logs via property)
         self.commander = ReliableCommander(
             send_func=self._send_json_cmd_internal,
             timeout_s=command_timeout_s,
             max_retries=max_retries,
-            on_event=lambda event, data: self.logs.events.write(event, **data)
+            on_event=lambda event, data: self._log_event(event, data)
         )
-        
+
         self._heartbeat_interval_s = heartbeat_interval_s
         self._cached_identity: Optional[dict] = None
-        
+
         # Transport will call _on_frame(body)
         self.transport.set_frame_handler(self._on_frame)
 
         # JSON-to-Binary encoder for efficient wire transmission
         self._init_binary_encoder()
+
+    # ---------- Lazy logging ----------
+
+    @property
+    def logs(self) -> "MaraLogBundle":
+        """Lazy-loaded log bundle for startup speed optimization."""
+        if self._logs is None:
+            from mara_host.logger.logger import MaraLogBundle
+            log_dir, log_level = self._log_config
+            self._logs = MaraLogBundle(
+                name="mara_run",
+                log_dir=log_dir,
+                level=log_level,
+                console=True,
+            )
+        return self._logs
+
+    def _log_event(self, event: str, data: Dict[str, Any]) -> None:
+        """Log event to lazy-loaded log bundle."""
+        self.logs.events.write(event, **data)
 
     # ---------- Lifecycle ----------
 
@@ -505,6 +522,36 @@ class BaseMaraClient(BinaryCommandsMixin):
         # fastest path for high-rate streaming
         await self.commander.send_fire_and_forget(cmd_type, payload)
         return True, None
+
+    # ---------- Ultra-fast binary paths ----------
+
+    async def send_vel_fast(self, vx: float, omega: float) -> None:
+        """
+        Ultra-fast velocity send. Bypasses:
+        - ReliableCommander (no tracking, no event emission)
+        - JSON encoding (binary instead: 9 bytes vs ~50 bytes JSON)
+        - Dict creation/copy
+
+        Use for 50+ Hz streaming where latency is critical.
+        For reliable delivery, use set_vel() or send_reliable() instead.
+
+        Wire format: [opcode:1][vx:f32][omega:f32] = 9 bytes payload
+        Total frame: ~15 bytes with header/CRC
+        """
+        # Direct binary encode: [opcode:u8][vx:f32][omega:f32] = 9 bytes
+        payload = struct.pack("<Bff", Opcode.SET_VEL, vx, omega)
+        frame = protocol.encode(MSG_CMD_BIN, payload)
+        await self.transport.send_bytes(frame)
+
+    async def send_stop_fast(self) -> None:
+        """
+        Ultra-fast STOP command. Bypasses all tracking/encoding layers.
+
+        Use for emergency stops or high-rate control loops.
+        """
+        payload = struct.pack("<B", Opcode.STOP)
+        frame = protocol.encode(MSG_CMD_BIN, payload)
+        await self.transport.send_bytes(frame)
 
     # ---------- Convenience methods ----------
 

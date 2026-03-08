@@ -8,7 +8,7 @@ Provides high-level control for DC motors with safety limits.
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from mara_host.services.control.result import ServiceResult
+from mara_host.core.result import ServiceResult
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient

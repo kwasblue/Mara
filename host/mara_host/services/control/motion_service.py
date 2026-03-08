@@ -8,7 +8,7 @@ Provides a high-level interface for robot motion control.
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 
-from mara_host.services.control.result import ServiceResult
+from mara_host.core.result import ServiceResult
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -88,6 +88,7 @@ class MotionService:
         vx: float,
         omega: float,
         clamp: bool = True,
+        fast: bool = False,
     ) -> None:
         """
         Set robot velocity (fire-and-forget for real-time control).
@@ -96,6 +97,8 @@ class MotionService:
             vx: Linear velocity in m/s (positive = forward)
             omega: Angular velocity in rad/s (positive = counter-clockwise)
             clamp: If True, clamp velocities to limits
+            fast: If True, use ultra-fast binary path (bypasses commander/JSON).
+                  Use for 50+ Hz streaming where latency is critical.
         """
         if clamp:
             vx = max(-self._velocity_limit_linear, min(self._velocity_limit_linear, vx))
@@ -103,12 +106,17 @@ class MotionService:
                 -self._velocity_limit_angular, min(self._velocity_limit_angular, omega)
             )
 
-        # Fire-and-forget for real-time control
-        await self.client.send_stream(
-            "CMD_SET_VEL",
-            {"vx": vx, "omega": omega},
-            request_ack=False,
-        )
+        if fast:
+            # Ultra-fast: direct binary encode + send, no tracking/events
+            await self.client.send_vel_fast(vx, omega)
+        else:
+            # Standard path: fire-and-forget with event emission
+            await self.client.send_stream(
+                "CMD_SET_VEL",
+                {"vx": vx, "omega": omega},
+                request_ack=False,
+            )
+
         self._last_velocity = Velocity(vx=vx, omega=omega)
 
     async def set_velocity_reliable(

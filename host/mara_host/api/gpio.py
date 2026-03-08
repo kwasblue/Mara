@@ -2,8 +2,7 @@
 """
 Digital GPIO control - Public API.
 
-This is the public interface for GPIO control. For internal/advanced use,
-see mara_host.hw.gpio.GpioHostModule.
+This is the public interface for GPIO control. Internally uses GpioService.
 
 Example:
     from mara_host import Robot, GPIO
@@ -17,7 +16,7 @@ Example:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Dict
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ..robot import Robot
@@ -27,8 +26,7 @@ class GPIO:
     """
     Digital I/O controller with channel registration.
 
-    Public API for GPIO control. Wraps the internal GpioHostModule
-    and adds channel tracking, validation, and convenience methods.
+    Public API for GPIO control. Wraps GpioService internally.
 
     Args:
         robot: Connected Robot instance
@@ -47,30 +45,29 @@ class GPIO:
     """
 
     def __init__(self, robot: Robot) -> None:
-        from ..hw.gpio import GpioHostModule
+        from ..services.control.gpio_service import GpioService
 
         self._robot = robot
-        self._module = GpioHostModule(robot.bus, robot.client)
-        self._channels: Dict[int, Dict] = {}  # channel -> {pin, mode}
+        self._service = GpioService(robot.client)
 
     @property
     def registered_channels(self) -> list[int]:
         """List of registered channel IDs."""
-        return list(self._channels.keys())
+        return list(self._service.get_all_channels().keys())
 
     def is_registered(self, channel: int) -> bool:
         """Check if a channel is registered."""
-        return channel in self._channels
+        return self._service.get_channel(channel) is not None
 
     def get_mode(self, channel: int) -> Optional[str]:
         """Get the mode of a registered channel ('input' or 'output')."""
-        info = self._channels.get(channel)
-        return info["mode"] if info else None
+        ch = self._service.get_channel(channel)
+        return ch.mode.value if ch else None
 
     def get_pin(self, channel: int) -> Optional[int]:
         """Get the physical pin of a registered channel."""
-        info = self._channels.get(channel)
-        return info["pin"] if info else None
+        ch = self._service.get_channel(channel)
+        return ch.pin if ch else None
 
     async def register(
         self,
@@ -87,17 +84,15 @@ class GPIO:
             mode: Pin mode - "input" or "output" (default: "output")
 
         Raises:
-            ValueError: If mode is not 'input' or 'output'
+            ValueError: If mode is not valid
+            RuntimeError: If registration fails
         """
-        if mode not in ("input", "output"):
-            raise ValueError(f"Mode must be 'input' or 'output', got '{mode}'")
+        if mode not in ("input", "output", "input_pullup", "input_pulldown"):
+            raise ValueError(f"Invalid mode: '{mode}'")
 
-        await self._robot.client.cmd_gpio_register_channel(
-            channel=channel,
-            pin=pin,
-            mode=mode,
-        )
-        self._channels[channel] = {"pin": pin, "mode": mode}
+        result = await self._service.register(channel, pin, mode)
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def write(self, channel: int, value: int) -> None:
         """
@@ -109,10 +104,14 @@ class GPIO:
 
         Raises:
             ValueError: If channel is not registered
+            RuntimeError: If write fails
         """
-        if channel not in self._channels:
+        if not self.is_registered(channel):
             raise ValueError(f"Channel {channel} is not registered")
-        await self._module.write(channel, value)
+
+        result = await self._service.write(channel, value)
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def read(self, channel: int) -> None:
         """
@@ -125,10 +124,14 @@ class GPIO:
 
         Raises:
             ValueError: If channel is not registered
+            RuntimeError: If read fails
         """
-        if channel not in self._channels:
+        if not self.is_registered(channel):
             raise ValueError(f"Channel {channel} is not registered")
-        await self._module.read(channel)
+
+        result = await self._service.read(channel)
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def toggle(self, channel: int) -> None:
         """
@@ -139,10 +142,14 @@ class GPIO:
 
         Raises:
             ValueError: If channel is not registered
+            RuntimeError: If toggle fails
         """
-        if channel not in self._channels:
+        if not self.is_registered(channel):
             raise ValueError(f"Channel {channel} is not registered")
-        await self._module.toggle(channel)
+
+        result = await self._service.toggle(channel)
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def high(self, channel: int) -> None:
         """Set a channel's output high (1)."""
@@ -153,4 +160,4 @@ class GPIO:
         await self.write(channel, 0)
 
     def __repr__(self) -> str:
-        return f"GPIO(channels={len(self._channels)})"
+        return f"GPIO(channels={len(self.registered_channels)})"

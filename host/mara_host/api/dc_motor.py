@@ -27,6 +27,8 @@ class DCMotor:
     Controls DC motors via H-bridge or motor driver. Speed is specified
     as a normalized value from -1.0 (full reverse) to 1.0 (full forward).
 
+    Internally uses MotorService for state tracking and communication.
+
     Args:
         robot: Connected Robot instance
         motor_id: Motor identifier (0-based index)
@@ -49,9 +51,16 @@ class DCMotor:
         robot: Robot,
         motor_id: int = 0,
     ) -> None:
+        from ..services.control.motor_service import MotorService
+
         self._robot = robot
-        self.motor_id = motor_id
-        self._current_speed: float = 0.0
+        self._motor_id = motor_id
+        self._service = MotorService(robot.client)
+
+    @property
+    def motor_id(self) -> int:
+        """Motor identifier."""
+        return self._motor_id
 
     @property
     def client(self):
@@ -61,12 +70,13 @@ class DCMotor:
     @property
     def current_speed(self) -> float:
         """Last commanded speed (-1.0 to 1.0)."""
-        return self._current_speed
+        state = self._service.get_state(self._motor_id)
+        return state.speed
 
     @property
     def is_moving(self) -> bool:
         """Whether motor is currently commanded to move."""
-        return self._current_speed != 0.0
+        return self.current_speed != 0.0
 
     async def set_speed(self, speed: float) -> None:
         """
@@ -77,15 +87,14 @@ class DCMotor:
 
         Raises:
             ValueError: If speed is outside [-1.0, 1.0] range
+            RuntimeError: If command fails
         """
         if speed < -1.0 or speed > 1.0:
             raise ValueError(f"Speed {speed} must be between -1.0 and 1.0")
 
-        await self.client.cmd_dc_set_speed(
-            motor_id=self.motor_id,
-            speed=float(speed),
-        )
-        self._current_speed = speed
+        result = await self._service.set_speed(self._motor_id, speed)
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def stop(self) -> None:
         """
@@ -93,7 +102,9 @@ class DCMotor:
 
         Motor will coast to a stop with no active braking.
         """
-        await self.set_speed(0.0)
+        result = await self._service.stop(self._motor_id)
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def brake(self) -> None:
         """
@@ -101,8 +112,9 @@ class DCMotor:
 
         Uses motor driver's stop command.
         """
-        await self.client.cmd_dc_stop(motor_id=self.motor_id)
-        self._current_speed = 0.0
+        result = await self._service.stop(self._motor_id)
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def set_speed_percent(self, percent: float) -> None:
         """
@@ -116,5 +128,6 @@ class DCMotor:
         await self.set_speed(percent / 100.0)
 
     def __repr__(self) -> str:
-        direction = "fwd" if self._current_speed > 0 else "rev" if self._current_speed < 0 else "stopped"
-        return f"DCMotor(id={self.motor_id}, {direction}, speed={self._current_speed:.2f})"
+        speed = self.current_speed
+        direction = "fwd" if speed > 0 else "rev" if speed < 0 else "stopped"
+        return f"DCMotor(id={self._motor_id}, {direction}, speed={speed:.2f})"

@@ -5,14 +5,15 @@ This directory contains the **public interface** for mara_host.
 ## Architecture
 
 ```
-Public (this layer)          Internal (for advanced use)
+Public (this layer)          Internal (services layer)
 ─────────────────────        ─────────────────────────────
-api/GPIO                  →  hw/GpioHostModule
-api/PWM                   →  hw/PwmHostModule
-api/DifferentialDrive     →  motor/MotionHostModule
+api/GPIO                  →  services/control/GpioService
+api/PWM                   →  services/control/GpioService
+api/Servo                 →  services/control/ServoService
+api/DCMotor               →  services/control/MotorService
+api/DifferentialDrive     →  services/control/MotionService
 api/PIDController         →  (client commands)
-api/Encoder               →  sensor/EncoderHostModule
-...
+api/Encoder               →  (client commands)
 ```
 
 ## Usage
@@ -118,13 +119,13 @@ BaseModule lifecycle:
 
 ## Internal Access
 
-For advanced use cases, internal HostModules can be accessed directly:
+For advanced use cases, internal Services can be accessed directly:
 
 ```python
 # Not recommended for normal use
-from mara_host.hw.gpio import GpioHostModule
-from mara_host.motor.motion import MotionHostModule
+from mara_host.services.control.gpio_service import GpioService
+from mara_host.services.control.motion_service import MotionService
 
-# These take (bus, client) instead of Robot
-module = GpioHostModule(robot.bus, robot.client)
+# Services take client instead of Robot
+service = GpioService(robot.client)
 ```

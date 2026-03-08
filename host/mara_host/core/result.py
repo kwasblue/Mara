@@ -7,7 +7,10 @@ services, workflows, and public API.
 """
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mara_host.command.client import MaraClient
 
 
 @dataclass
@@ -22,12 +25,13 @@ class Result:
         ok: Whether the operation succeeded
         error: Error message if operation failed
         data: Operation-specific result data
+        state: Optional state after operation (for state-changing commands)
 
     Example:
         # Service returning result
         def arm() -> Result:
             if can_arm:
-                return Result.success({"state": "ARMED"})
+                return Result.success({"state": "ARMED"}, state="ARMED")
             else:
                 return Result.failure("Cannot arm: safety check failed")
 
@@ -46,33 +50,36 @@ class Result:
     ok: bool
     error: Optional[str] = None
     data: Optional[Any] = None
+    state: Optional[str] = None
 
     @classmethod
-    def success(cls, data: Any = None) -> "Result":
+    def success(cls, data: Any = None, state: Optional[str] = None) -> "Result":
         """
         Create a successful result.
 
         Args:
             data: Optional result data
+            state: Optional state after operation
 
         Returns:
             Result with ok=True
         """
-        return cls(ok=True, data=data)
+        return cls(ok=True, data=data, state=state)
 
     @classmethod
-    def failure(cls, error: str, data: Any = None) -> "Result":
+    def failure(cls, error: str, data: Any = None, state: Optional[str] = None) -> "Result":
         """
         Create a failure result.
 
         Args:
             error: Error message
             data: Optional context data
+            state: Optional state after operation
 
         Returns:
             Result with ok=False
         """
-        return cls(ok=False, error=error, data=data)
+        return cls(ok=False, error=error, data=data, state=state)
 
     def __bool__(self) -> bool:
         """Allow using result in boolean context."""
@@ -137,3 +144,50 @@ class Result:
         if self.ok:
             return fn(self.data)
         return self
+
+
+# Backwards compatibility alias
+ServiceResult = Result
+
+
+async def send_command(
+    client: "MaraClient",
+    command: str,
+    payload: dict,
+    default_error: str,
+    *,
+    success_data: dict[str, Any] | None = None,
+) -> Result:
+    """
+    Send a command and return a Result.
+
+    Simplifies the common pattern:
+        ok, error = await client.send_reliable(...)
+        if ok:
+            return Result.success(data=...)
+        else:
+            return Result.failure(error=error or "default")
+
+    Args:
+        client: MaraClient instance
+        command: Command name
+        payload: Command payload
+        default_error: Default error message if no error returned
+        success_data: Data dict for successful result
+
+    Returns:
+        Result
+
+    Example:
+        return await send_command(
+            self.client,
+            "CMD_GPIO_WRITE",
+            {"channel": channel, "value": value},
+            f"Failed to write GPIO channel {channel}",
+            success_data={"channel": channel, "value": value},
+        )
+    """
+    ok, error = await client.send_reliable(command, payload)
+    if ok:
+        return Result.success(data=success_data)
+    return Result.failure(error=error or default_error)

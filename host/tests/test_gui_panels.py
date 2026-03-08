@@ -649,10 +649,11 @@ class TestMainWindowPanels:
     """Test MainWindow panel configuration."""
 
     def test_panel_definitions(self):
-        """Test MainWindow PANELS list."""
-        from mara_host.gui.main_window import MainWindow
+        """Test panel auto-discovery."""
+        from mara_host.gui.main_window import _discover_panels
 
-        panel_ids = [p[0] for p in MainWindow.PANELS]
+        panels = _discover_panels()
+        panel_ids = [p["id"] for p in panels]
 
         # Check all expected panels are present
         assert "dashboard" in panel_ids
@@ -662,6 +663,7 @@ class TestMainWindowPanels:
         assert "calibration" in panel_ids
         assert "testing" in panel_ids
         assert "advanced" in panel_ids
+        assert "diagram" in panel_ids
         assert "session" in panel_ids
         assert "pinout" in panel_ids
         assert "firmware" in panel_ids
@@ -669,4 +671,4 @@ class TestMainWindowPanels:
         assert "logs" in panel_ids
 
         # Check count
-        assert len(MainWindow.PANELS) == 12
+        assert len(panels) == 13

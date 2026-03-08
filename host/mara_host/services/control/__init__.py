@@ -41,7 +41,7 @@ from mara_host.services.control.gpio_service import (
     GpioChannel,
     GpioMode,
 )
-from mara_host.services.control.result import (
+from mara_host.core.result import (
     ServiceResult,
     send_command,
 )

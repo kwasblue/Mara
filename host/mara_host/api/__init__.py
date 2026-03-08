@@ -3,14 +3,11 @@
 Public API for robot control.
 
 This is the canonical public interface for mara_host. These classes wrap
-the internal HostModules (hw/, motor/, sensor/) and provide:
+the internal Services layer (services/control/) and provide:
 - State tracking
 - Input validation
 - Convenience methods
 - Clear documentation
-
-For advanced/internal use, HostModules can be accessed directly:
-    from mara_host.hw.gpio import GpioHostModule  # internal
 
 Actuators:
     Stepper - Stepper motor control

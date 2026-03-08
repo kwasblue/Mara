@@ -4,6 +4,7 @@ import asyncio
 import threading
 import time
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from mara_host.core import protocol
@@ -17,9 +18,18 @@ class StreamTransport(BaseTransport, ABC):
         self._stop = False
         self._thread: Optional[threading.Thread] = None
 
-        # NEW: protect close vs writes
+        # Protect close vs writes
         self._io_lock = threading.Lock()
         self._is_open = False
+
+        # Async coordination lock (no thread overhead for async callers)
+        self._async_lock = asyncio.Lock()
+
+        # Dedicated write executor (reuse single thread, don't spawn per call)
+        self._write_executor: Optional[ThreadPoolExecutor] = None
+
+        # Cached event loop reference (avoid get_running_loop() per call)
+        self._cached_loop: Optional[asyncio.AbstractEventLoop] = None
 
     # ---- subclass hooks ----
     @abstractmethod
@@ -50,6 +60,11 @@ class StreamTransport(BaseTransport, ABC):
             self._open()
             self._is_open = True
 
+        # Create dedicated executor for serial writes (single thread, reused)
+        self._write_executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="mara_write"
+        )
+
         self._thread = threading.Thread(target=self._reader_loop, daemon=True)
         self._thread.start()
 
@@ -61,6 +76,14 @@ class StreamTransport(BaseTransport, ABC):
         if t and t.is_alive():
             t.join(timeout=2.0)
         self._thread = None
+
+        # Shutdown write executor
+        if self._write_executor is not None:
+            self._write_executor.shutdown(wait=True)
+            self._write_executor = None
+
+        # Clear cached loop reference
+        self._cached_loop = None
 
         # Ensure nobody is writing while we close
         with self._io_lock:
@@ -89,17 +112,33 @@ class StreamTransport(BaseTransport, ABC):
 
     # ---- async-friendly write API ----
     async def send_bytes(self, data: bytes) -> None:
-        loop = asyncio.get_running_loop()
+        """
+        Send bytes with asyncio coordination.
 
-        def _locked_send() -> None:
-            # If we’re closed, treat as a normal “link is down” condition.
+        Uses asyncio.Lock to serialize async callers (no thread overhead),
+        then delegates actual I/O to a dedicated executor thread.
+        """
+        # Fast path: cache loop reference to avoid get_running_loop() overhead
+        loop = self._cached_loop
+        if loop is None or loop.is_closed():
+            loop = asyncio.get_running_loop()
+            self._cached_loop = loop
+
+        # asyncio.Lock serializes async callers without thread overhead
+        async with self._async_lock:
             if not self._is_open or self._stop:
                 raise RuntimeError("Transport not open")
 
-            # Prevent close() while a write is in progress
-            with self._io_lock:
-                if not self._is_open or self._stop:
-                    raise RuntimeError("Transport not open")
-                self._send_bytes(data)
+            # Use dedicated executor (single thread, reused)
+            executor = self._write_executor
+            if executor is None:
+                raise RuntimeError("Transport not open")
 
-        await loop.run_in_executor(None, _locked_send)
+            await loop.run_in_executor(executor, self._send_bytes_sync, data)
+
+    def _send_bytes_sync(self, data: bytes) -> None:
+        """Synchronous send with I/O lock protection."""
+        with self._io_lock:
+            if not self._is_open or self._stop:
+                raise RuntimeError("Transport not open")
+            self._send_bytes(data)

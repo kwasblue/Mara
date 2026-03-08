@@ -26,6 +26,8 @@ class Servo:
     Controls standard hobby servos via PWM. Supports angle-based positioning
     and optional smooth transitions.
 
+    Internally uses ServoService for state tracking and communication.
+
     Args:
         robot: Connected Robot instance
         servo_id: Servo identifier (0-based index)
@@ -60,15 +62,57 @@ class Servo:
         min_angle: float = 0.0,
         max_angle: float = 180.0,
     ) -> None:
+        from ..services.control.servo_service import ServoService
+
         self._robot = robot
-        self.servo_id = servo_id
-        self.channel = channel
-        self.min_us = min_us
-        self.max_us = max_us
-        self.min_angle = min_angle
-        self.max_angle = max_angle
-        self._attached = False
-        self._current_angle: Optional[float] = None
+        self._servo_id = servo_id
+        self._channel = channel
+        self._min_us = min_us
+        self._max_us = max_us
+        self._min_angle = min_angle
+        self._max_angle = max_angle
+
+        # Create/get service instance
+        self._service = ServoService(robot.client)
+        # Pre-configure this servo
+        self._service.configure(
+            servo_id=servo_id,
+            channel=channel,
+            min_angle=min_angle,
+            max_angle=max_angle,
+            min_us=min_us,
+            max_us=max_us,
+        )
+
+    @property
+    def servo_id(self) -> int:
+        """Servo identifier."""
+        return self._servo_id
+
+    @property
+    def channel(self) -> int:
+        """PWM channel."""
+        return self._channel
+
+    @property
+    def min_us(self) -> int:
+        """Minimum pulse width."""
+        return self._min_us
+
+    @property
+    def max_us(self) -> int:
+        """Maximum pulse width."""
+        return self._max_us
+
+    @property
+    def min_angle(self) -> float:
+        """Minimum angle."""
+        return self._min_angle
+
+    @property
+    def max_angle(self) -> float:
+        """Maximum angle."""
+        return self._max_angle
 
     @property
     def client(self):
@@ -78,35 +122,45 @@ class Servo:
     @property
     def is_attached(self) -> bool:
         """Whether the servo is attached."""
-        return self._attached
+        state = self._service.get_state(self._servo_id)
+        return state.attached
 
     @property
     def current_angle(self) -> Optional[float]:
         """Last commanded angle (None if never set)."""
-        return self._current_angle
+        state = self._service.get_state(self._servo_id)
+        return state.angle if state.attached else None
 
     async def attach(self) -> None:
         """
         Attach the servo to its PWM channel.
 
         Must be called before setting angles.
+
+        Raises:
+            RuntimeError: If attach fails
         """
-        await self.client.cmd_servo_attach(
-            servo_id=self.servo_id,
-            channel=self.channel,
-            min_us=self.min_us,
-            max_us=self.max_us,
+        result = await self._service.attach(
+            servo_id=self._servo_id,
+            channel=self._channel,
+            min_us=self._min_us,
+            max_us=self._max_us,
         )
-        self._attached = True
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def detach(self) -> None:
         """
         Detach the servo from its PWM channel.
 
         The servo will no longer hold its position.
+
+        Raises:
+            RuntimeError: If detach fails
         """
-        await self.client.cmd_servo_detach(servo_id=self.servo_id)
-        self._attached = False
+        result = await self._service.detach(self._servo_id)
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def set_angle(
         self,
@@ -124,22 +178,24 @@ class Servo:
 
         Raises:
             ValueError: If angle is outside configured range
+            RuntimeError: If command fails
         """
-        if angle < self.min_angle or angle > self.max_angle:
+        if angle < self._min_angle or angle > self._max_angle:
             raise ValueError(
-                f"Angle {angle} outside range [{self.min_angle}, {self.max_angle}]"
+                f"Angle {angle} outside range [{self._min_angle}, {self._max_angle}]"
             )
 
-        if auto_attach and not self._attached:
+        if auto_attach and not self.is_attached:
             await self.attach()
 
-        await self.client.cmd_servo_set_angle(
-            servo_id=self.servo_id,
-            angle_deg=float(angle),
-            duration_ms=int(duration_ms),
+        result = await self._service.set_angle(
+            servo_id=self._servo_id,
+            angle=angle,
+            duration_ms=duration_ms,
+            clamp=False,  # We already validated
         )
-
-        self._current_angle = angle
+        if not result.ok:
+            raise RuntimeError(result.error)
 
     async def set_pulse(self, pulse_us: int) -> None:
         """
@@ -156,15 +212,16 @@ class Servo:
 
     def angle_to_pulse(self, angle: float) -> int:
         """Convert angle to pulse width."""
-        ratio = (angle - self.min_angle) / (self.max_angle - self.min_angle)
-        return int(self.min_us + ratio * (self.max_us - self.min_us))
+        ratio = (angle - self._min_angle) / (self._max_angle - self._min_angle)
+        return int(self._min_us + ratio * (self._max_us - self._min_us))
 
     def pulse_to_angle(self, pulse_us: int) -> float:
         """Convert pulse width to angle."""
-        ratio = (pulse_us - self.min_us) / (self.max_us - self.min_us)
-        return self.min_angle + ratio * (self.max_angle - self.min_angle)
+        ratio = (pulse_us - self._min_us) / (self._max_us - self._min_us)
+        return self._min_angle + ratio * (self._max_angle - self._min_angle)
 
     def __repr__(self) -> str:
-        status = "attached" if self._attached else "detached"
-        angle_str = f"{self._current_angle:.1f}°" if self._current_angle else "?"
-        return f"Servo(id={self.servo_id}, {status}, angle={angle_str})"
+        status = "attached" if self.is_attached else "detached"
+        angle = self.current_angle
+        angle_str = f"{angle:.1f}" if angle is not None else "?"
+        return f"Servo(id={self._servo_id}, {status}, angle={angle_str})"

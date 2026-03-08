@@ -2,8 +2,7 @@
 """
 PWM output control - Public API.
 
-This is the public interface for PWM control. For internal/advanced use,
-see mara_host.hw.pwm.PwmHostModule.
+Internally uses GpioService for PWM operations.
 
 Example:
     from mara_host import Robot, PWM
@@ -27,8 +26,7 @@ class PWM:
     """
     PWM output controller.
 
-    Public API for PWM control. Wraps the internal PwmHostModule
-    and adds state tracking, validation, and convenience methods.
+    Public API for PWM control. Wraps GpioService internally.
 
     Args:
         robot: Connected Robot instance
@@ -55,10 +53,10 @@ class PWM:
         robot: Robot,
         default_freq_hz: float = 1000.0,
     ) -> None:
-        from ..hw.pwm import PwmHostModule
+        from ..services.control.gpio_service import GpioService
 
         self._robot = robot
-        self._module = PwmHostModule(robot.bus, robot.client)
+        self._service = GpioService(robot.client)
         self._default_freq_hz = default_freq_hz
         self._channels: Dict[int, Dict] = {}  # channel -> {duty, freq_hz}
 
@@ -93,12 +91,15 @@ class PWM:
 
         Raises:
             ValueError: If duty is not between 0.0 and 1.0
+            RuntimeError: If command fails
         """
         if duty < 0.0 or duty > 1.0:
             raise ValueError(f"Duty {duty} must be between 0.0 and 1.0")
 
         effective_freq = freq_hz if freq_hz is not None else self._default_freq_hz
-        await self._module.set(channel, duty, effective_freq)
+        result = await self._service.set_pwm(channel, duty, effective_freq)
+        if not result.ok:
+            raise RuntimeError(result.error)
         self._channels[channel] = {"duty": duty, "freq_hz": effective_freq}
 
     async def set_duty(self, channel: int, duty: float) -> None:
@@ -111,12 +112,15 @@ class PWM:
 
         Raises:
             ValueError: If duty is not between 0.0 and 1.0
+            RuntimeError: If command fails
         """
         if duty < 0.0 or duty > 1.0:
             raise ValueError(f"Duty {duty} must be between 0.0 and 1.0")
 
         current_freq = self.get_frequency(channel) or self._default_freq_hz
-        await self._module.set(channel, duty, current_freq)
+        result = await self._service.set_pwm(channel, duty, current_freq)
+        if not result.ok:
+            raise RuntimeError(result.error)
         self._channels[channel] = {"duty": duty, "freq_hz": current_freq}
 
     async def set_percent(self, channel: int, percent: float) -> None:

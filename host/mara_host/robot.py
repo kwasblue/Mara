@@ -13,9 +13,12 @@ Example:
         async with Robot("/dev/ttyUSB0") as robot:
             await robot.arm()
 
-            # Direct HostModule access
+            # GPIO control
+            await robot.gpio.register(0, pin=2, mode="output")
             await robot.gpio.write(0, 1)
-            await robot.pwm.set(0, duty=0.5)
+            await robot.gpio.toggle(0)
+
+            # Motion control
             await robot.motion.set_velocity(0.3, 0.0)
 
     asyncio.run(main())
@@ -40,9 +43,8 @@ from typing import TYPE_CHECKING, Optional, Callable, Any, Dict, Union
 if TYPE_CHECKING:
     from .command.client import MaraClient
     from .core.event_bus import EventBus
-    from .hw.gpio import GpioHostModule
-    from .hw.pwm import PwmHostModule
-    from .motor.motion import MotionHostModule
+    from .api.gpio import GPIO
+    from .services.control.motion_service import MotionService
 
 
 class Session:
@@ -156,10 +158,9 @@ class Robot:
         self._client: Optional[MaraClient] = None
         self._connected = False
 
-        # Lazy-initialized HostModules
-        self._gpio: Optional[GpioHostModule] = None
-        self._pwm: Optional[PwmHostModule] = None
-        self._motion: Optional[MotionHostModule] = None
+        # Lazy-initialized API / Services
+        self._gpio: Optional[GPIO] = None
+        self._motion: Optional[MotionService] = None
 
     def _setup(self) -> None:
         """Initialize transport, bus, and client (called by connect)."""
@@ -283,49 +284,38 @@ class Robot:
         return self._client.platform_name
 
     # -------------------------------------------------------------------------
-    # HostModules (lazy-loaded)
+    # Services (lazy-loaded)
     # -------------------------------------------------------------------------
 
     @property
-    def gpio(self) -> "GpioHostModule":
+    def gpio(self) -> "GPIO":
         """
-        GPIO HostModule for digital I/O.
+        GPIO controller for digital I/O.
 
         Example:
+            await robot.gpio.register(channel=0, pin=2, mode="output")
             await robot.gpio.write(channel=0, value=1)
             await robot.gpio.toggle(channel=0)
+            await robot.gpio.high(0)
+            await robot.gpio.low(0)
         """
         if self._gpio is None:
-            from .hw.gpio import GpioHostModule
-            self._gpio = GpioHostModule(self.bus, self.client)
+            from .api.gpio import GPIO
+            self._gpio = GPIO(self)
         return self._gpio
 
     @property
-    def pwm(self) -> "PwmHostModule":
+    def motion(self) -> "MotionService":
         """
-        PWM HostModule for PWM output.
-
-        Example:
-            await robot.pwm.set(channel=0, duty=0.5, freq_hz=1000)
-        """
-        if self._pwm is None:
-            from .hw.pwm import PwmHostModule
-            self._pwm = PwmHostModule(self.bus, self.client)
-        return self._pwm
-
-    @property
-    def motion(self) -> "MotionHostModule":
-        """
-        Motion HostModule for velocity control.
+        Motion service for velocity control.
 
         Example:
             await robot.motion.set_velocity(vx=0.3, omega=0.0)
             await robot.motion.stop()
-            await robot.motion.estop()
         """
         if self._motion is None:
-            from .motor.motion import MotionHostModule
-            self._motion = MotionHostModule(self.bus, self.client)
+            from .services.control.motion_service import MotionService
+            self._motion = MotionService(self.client)
         return self._motion
 
     # -------------------------------------------------------------------------

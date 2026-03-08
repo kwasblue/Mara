@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, TYPE_CHECKING
 
-from mara_host.services.control.result import ServiceResult, send_command
+from mara_host.core.result import ServiceResult, send_command
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient

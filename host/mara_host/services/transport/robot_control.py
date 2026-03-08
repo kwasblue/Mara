@@ -7,19 +7,8 @@ commands with additional conveniences.
 """
 
 import asyncio
-from dataclasses import dataclass
 
 from mara_host.command.client import MaraClient
-
-
-@dataclass
-class ServoConfig:
-    """Servo configuration."""
-    servo_id: int
-    pin: int
-    min_us: int = 500
-    max_us: int = 2500
-    initial_angle: float = 90.0
 
 
 class RobotControlService:

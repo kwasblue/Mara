@@ -10,7 +10,7 @@ Comprehensive examples demonstrating the mara_host platform for controlling ESP3
 
 ## Quick Start
 
-The recommended way to use mara_host - direct HostModule access:
+The recommended way to use mara_host - direct service access:
 
 ```python
 from mara_host import Robot
@@ -19,9 +19,9 @@ async def main():
     async with Robot("/dev/ttyUSB0") as robot:
         await robot.arm()
 
-        # Direct HostModule access via Robot properties
+        # Direct service access via Robot properties
         await robot.gpio.write(channel=0, value=1)
-        await robot.pwm.set(channel=0, duty=0.5, freq_hz=1000)
+        await robot.gpio.set_pwm(channel=0, duty=0.5, freq_hz=1000)
         await robot.motion.set_velocity(vx=0.2, omega=0.0)
 
         await robot.motion.stop()
@@ -40,7 +40,7 @@ python examples/00_getting_started.py
 
 | Example | Description | Focus |
 |---------|-------------|-------|
-| 00 | Getting Started | Basic connection and HostModule usage |
+| 00 | Getting Started | Basic connection and service usage |
 | 10 | Custom Robot Class | Building your own robot abstraction |
 | 11 | Sensors and Telemetry | Encoder, IMU, Ultrasonic |
 | 12 | Velocity Control | High-rate streaming for differential drive |
@@ -62,27 +62,27 @@ python examples/00_getting_started.py
 ## Core Examples
 
 ### 00: Getting Started
-Basic connection and HostModule usage:
+Basic connection and service usage:
 
 ```bash
 python examples/00_getting_started.py
 ```
 
 ### 10: Custom Robot Class
-Build YOUR robot as a Python class using HostModules:
+Build YOUR robot as a Python class using the API layer:
 
 ```python
 from mara_host import Robot
-from mara_host.motor.stepper import StepperHostModule
+from mara_host.api import Stepper
 
 class PillDispenser:
     def __init__(self, robot: Robot):
         self._robot = robot
-        self._stepper = StepperHostModule(robot.bus, robot.client)
+        self._stepper = Stepper(robot, stepper_id=0)
 
     async def dispense(self, count: int):
         for _ in range(count):
-            await self._stepper.move(motor_id=0, steps=40)
+            await self._stepper.move(steps=40)
             await asyncio.sleep(0.5)
 ```
 
@@ -101,7 +101,7 @@ async with Robot("/dev/ttyUSB0") as robot:
 ```
 
 ### 12: Velocity Control
-High-rate velocity streaming using MotionHostModule:
+High-rate velocity streaming using MotionService:
 
 ```python
 from mara_host import Robot

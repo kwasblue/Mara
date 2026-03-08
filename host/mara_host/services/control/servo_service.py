@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 import asyncio
 
-from mara_host.services.control.result import ServiceResult
+from mara_host.core.result import ServiceResult
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient

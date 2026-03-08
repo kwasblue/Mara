@@ -2,179 +2,117 @@
 """
 Services layer for mara_host.
 
-ROLE: Business logic extracted from CLI commands.
-PURPOSE: Reusable from scripts, APIs, notebooks, and tests.
+AUTO-DISCOVERY: Services are lazily imported from subpackages.
+To add a new service, create a package `services/myservice/` with
+exports in `__init__.py`.
 
-KEY PRINCIPLE: Services provide reusable operations for both
-GUI and CLI interfaces.
+Example:
+    # services/myservice/__init__.py
+    from .myservice import MyService, MyConfig
+    __all__ = ["MyService", "MyConfig"]
+
+Then use it:
+    from mara_host.services import MyService
+    # or
+    from mara_host.services.myservice import MyService
 
 Packages:
-    control/    - State and motion services (StateService, MotionService)
+    control/    - State and motion services
     telemetry/  - Telemetry subscription and data access
-    pins/       - GPIO pin management (PinService)
-    transport/  - Connection and robot control services
+    camera/     - Camera streaming and control
+    pins/       - GPIO pin management
+    transport/  - Connection and robot control
     build/      - Firmware build orchestration
     codegen/    - Code generation services
     recording/  - Session recording and replay
     testing/    - Robot test suite
-
-Example:
-    from mara_host.services import StateService, MotionService
-    from mara_host.services import TelemetryService
-
-    # Control services
-    state_svc = StateService(client)
-    await state_svc.arm()
-
-    motion_svc = MotionService(client)
-    await motion_svc.set_velocity(0.5, 0.0)
-
-    # Telemetry
-    telem = TelemetryService(client)
-    await telem.start()
-    imu = telem.get_latest_imu()
-
-Dependency rules (see docs/COMPOSITION.md):
-    - services/ may depend on tools/, config/
-    - services/ must NOT depend on cli/, runtime/
 """
 
-# Control services (state, motion, hardware)
-from mara_host.services.control import (
-    StateService,
-    RobotState,
-    MotionService,
-    Velocity,
-    MotorService,
-    MotorConfig,
-    MotorState,
-    ServoService,
-    ServoConfig,
-    ServoState,
-    GpioService,
-    GpioChannel,
-    GpioMode,
-    ServiceResult,
-)
+import importlib
+from typing import Any
 
-# Telemetry services
-from mara_host.services.telemetry import (
-    TelemetryService,
-    TelemetrySnapshot,
-    ImuData,
-    EncoderData,
-)
-
-# Camera services
-from mara_host.services.camera import (
-    StreamService,
-    CameraFrame,
-    CameraControlService,
-    CameraConfig,
-    Resolution,
-)
-
-# Pin management
-from mara_host.services.pins import (
-    PinService,
-    PinConflict,
-    PinRecommendation,
-    GroupRecommendation,
-)
-
-# Testing
-from mara_host.services.testing import TestService, TestResult
-
-# Transport and connection
-from mara_host.services.transport import (
-    ConnectionService,
-    ConnectionConfig,
-    ConnectionInfo,
-    TransportType,
-    RobotControlService,
-)
-
-# Build
-from mara_host.services.build import (
-    FirmwareBuildService,
-    BuildResult,
-    BuildStage,
-    FirmwareSize,
-)
-
-# Code generation
-from mara_host.services.codegen import (
-    CodeGeneratorService,
-    GeneratorType,
-    GeneratorResult,
-)
-
-# Recording
-from mara_host.services.recording import (
-    RecordingService,
-    ReplayService,
-    RecordingConfig,
-    SessionInfo,
-)
-
-__all__ = [
-    # Control - State
-    "StateService",
-    "RobotState",
-    # Control - Motion
-    "MotionService",
-    "Velocity",
-    # Control - Motors
-    "MotorService",
-    "MotorConfig",
-    "MotorState",
-    # Control - Servos
-    "ServoService",
-    "ServoConfig",
-    "ServoState",
-    # Control - GPIO
-    "GpioService",
-    "GpioChannel",
-    "GpioMode",
-    # Control - Result
-    "ServiceResult",
+# Known exports mapped to their source modules
+# This enables: from mara_host.services import StateService
+_EXPORTS = {
+    # Control
+    "StateService": "control",
+    "RobotState": "control",
+    "MotionService": "control",
+    "Velocity": "control",
+    "MotorService": "control",
+    "MotorConfig": "control",
+    "MotorState": "control",
+    "ServoService": "control",
+    "ServoConfig": "control",
+    "ServoState": "control",
+    "GpioService": "control",
+    "GpioChannel": "control",
+    "GpioMode": "control",
+    "ServiceResult": "control",
     # Telemetry
-    "TelemetryService",
-    "TelemetrySnapshot",
-    "ImuData",
-    "EncoderData",
+    "TelemetryService": "telemetry",
+    "TelemetrySnapshot": "telemetry",
+    "ImuData": "telemetry",
+    "EncoderData": "telemetry",
     # Camera
-    "StreamService",
-    "CameraFrame",
-    "CameraControlService",
-    "CameraConfig",
-    "Resolution",
+    "StreamService": "camera",
+    "CameraFrame": "camera",
+    "CameraControlService": "camera",
+    "CameraConfig": "camera",
+    "Resolution": "camera",
     # Pins
-    "PinService",
-    "PinConflict",
-    "PinRecommendation",
-    "GroupRecommendation",
+    "PinService": "pins",
+    "PinConflict": "pins",
+    "PinRecommendation": "pins",
+    "GroupRecommendation": "pins",
     # Testing
-    "TestService",
-    "TestResult",
+    "TestService": "testing",
+    "TestResult": "testing",
     # Transport
-    "ConnectionService",
-    "ConnectionConfig",
-    "ConnectionInfo",
-    "TransportType",
-    "RobotControlService",
+    "ConnectionService": "transport",
+    "ConnectionConfig": "transport",
+    "ConnectionInfo": "transport",
+    "TransportType": "transport",
+    "RobotControlService": "transport",
     # Build
-    "FirmwareBuildService",
-    "BuildResult",
-    "BuildStage",
-    "FirmwareSize",
+    "FirmwareBuildService": "build",
+    "BuildResult": "build",
+    "BuildStage": "build",
+    "FirmwareSize": "build",
     # Codegen
-    "CodeGeneratorService",
-    "GeneratorType",
-    "GeneratorResult",
+    "CodeGeneratorService": "codegen",
+    "GeneratorType": "codegen",
+    "GeneratorResult": "codegen",
     # Recording
-    "RecordingService",
-    "ReplayService",
-    "RecordingConfig",
-    "SessionInfo",
-]
+    "RecordingService": "recording",
+    "ReplayService": "recording",
+    "RecordingConfig": "recording",
+    "SessionInfo": "recording",
+}
+
+# Cache for imported modules
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy import of service classes."""
+    if name in _EXPORTS:
+        subpackage = _EXPORTS[name]
+
+        # Import from cache or load
+        if subpackage not in _cache:
+            _cache[subpackage] = importlib.import_module(
+                f".{subpackage}", package=__name__
+            )
+
+        return getattr(_cache[subpackage], name)
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """List available exports."""
+    return list(_EXPORTS.keys())
+
+
+__all__ = list(_EXPORTS.keys())

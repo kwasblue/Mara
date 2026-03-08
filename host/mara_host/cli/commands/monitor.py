@@ -4,22 +4,18 @@
 import argparse
 import asyncio
 import time
-from typing import Optional, Any
+from typing import Any
 from dataclasses import dataclass, field
 
 from rich.live import Live
 from rich.table import Table
 from rich.panel import Panel
-from rich.layout import Layout
 from rich.text import Text
 from rich.console import Group
 
 from mara_host.cli.console import (
     console,
-    print_success,
     print_error,
-    print_info,
-    print_warning,
 )
 
 

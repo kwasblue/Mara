@@ -34,7 +34,6 @@ Optional features (opt-in):
 from __future__ import annotations
 
 import os
-from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Callable, Any, Dict, Union
 

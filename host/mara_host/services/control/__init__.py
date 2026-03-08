@@ -43,6 +43,7 @@ from mara_host.services.control.gpio_service import (
 )
 from mara_host.services.control.result import (
     ServiceResult,
+    send_command,
 )
 
 __all__ = [
@@ -66,4 +67,6 @@ __all__ = [
     "GpioMode",
     # Result type
     "ServiceResult",
+    # Helpers
+    "send_command",
 ]

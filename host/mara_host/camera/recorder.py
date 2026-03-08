@@ -1,7 +1,6 @@
 # mara_host/module/camera_recorder.py
 """Camera recording to disk."""
 
-import os
 import time
 import threading
 import json

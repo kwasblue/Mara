@@ -16,8 +16,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from mara_host.research.config_loader import load_robot, SimulationConfig
-from mara_host.research.simulation import SimulationRunner
-from mara_host.research.plotting import plot_trajectory_2d, plot_time_series, create_figure
+from mara_host.research.plotting import plot_trajectory_2d, plot_time_series
 
 
 def main():

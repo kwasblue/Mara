@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from .commands import CMD_HEARTBEAT, CMD_GET_RATES
 from .types import Payload

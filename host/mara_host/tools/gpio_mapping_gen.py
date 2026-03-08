@@ -3,9 +3,8 @@
 Generate GPIO channel mapping artifacts from schema.GPIO_CHANNELS.
 """
 
-from pathlib import Path
 import json
-from mara_host.tools.schema import ROOT, GPIO_CHANNELS, PINS, PY_CONFIG_DIR, CPP_CONFIG_DIR
+from mara_host.tools.schema import GPIO_CHANNELS, PY_CONFIG_DIR, CPP_CONFIG_DIR
 
 JSON_OUT = PY_CONFIG_DIR / "gpio_channels.json"
 CPP_OUT = CPP_CONFIG_DIR / "GpioChannelDefs.h"

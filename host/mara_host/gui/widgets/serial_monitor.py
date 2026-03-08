@@ -20,10 +20,9 @@ from PySide6.QtWidgets import (
     QComboBox,
     QCheckBox,
     QLabel,
-    QFrame,
 )
-from PySide6.QtCore import Qt, QThread, Signal, QTimer
-from PySide6.QtGui import QFont, QTextCursor, QKeyEvent
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont, QTextCursor
 
 
 class SerialReaderThread(QThread):

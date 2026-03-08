@@ -4,7 +4,6 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 #include <memory>
 #include <cstring>
 #include <functional>
@@ -305,12 +304,19 @@ private:
         SlotStatus status;
         std::unique_ptr<IController> ctrl;
         uint32_t last_step_ms = 0;
+        bool configured = false;  // True if slot has been configured
     };
 
-    std::vector<Slot> slots_;
+    // Fixed array for O(1) slot lookup and predictable memory layout
+    Slot slots_[MAX_SLOTS];
     ControlWatchdog watchdog_;
 
-    Slot* getSlot_(uint8_t slot);
-    const Slot* getSlot_(uint8_t slot) const;
+    // O(1) slot access by direct indexing
+    Slot* getSlot_(uint8_t slot) {
+        return (slot < MAX_SLOTS && slots_[slot].configured) ? &slots_[slot] : nullptr;
+    }
+    const Slot* getSlot_(uint8_t slot) const {
+        return (slot < MAX_SLOTS && slots_[slot].configured) ? &slots_[slot] : nullptr;
+    }
     void ensureSlot_(uint8_t slot);
 };

@@ -10,7 +10,7 @@ from typing import Callable, Optional, Tuple
 import cv2
 import numpy as np
 
-from mara_host.camera.client import Esp32CamClient, FrameResult
+from mara_host.camera.client import Esp32CamClient
 from mara_host.camera.stream import MjpegStreamClient, StreamFrame
 from mara_host.camera.control import CameraControlClient
 from mara_host.camera.stats import StatsTracker, CameraStatistics

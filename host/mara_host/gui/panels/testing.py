@@ -6,8 +6,14 @@ Provides UI for running quick tests, hardware tests, and advanced tests
 with results display.
 """
 
+# Panel metadata for auto-discovery
+PANEL_META = {
+    "id": "testing",
+    "label": "Testing",
+    "order": 60,
+}
+
 from typing import Optional
-from dataclasses import dataclass
 
 from PySide6.QtWidgets import (
     QWidget,
@@ -23,8 +29,6 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
-    QFrame,
-    QSplitter,
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject
 from PySide6.QtGui import QColor

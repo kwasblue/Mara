@@ -21,7 +21,6 @@ Rules:
 
 import ast
 import importlib
-import sys
 from pathlib import Path
 from typing import Set
 

@@ -6,7 +6,6 @@ Validates that the schema package is properly organized and all commands
 are correctly merged from domain files.
 """
 
-import pytest
 
 
 class TestSchemaPackageStructure:

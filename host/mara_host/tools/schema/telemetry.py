@@ -1,7 +1,7 @@
 # schema/telemetry.py
 """Telemetry section definitions for binary telemetry packets."""
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 # Section IDs for binary telemetry packets.
 # Must match MCU registerBinProvider(section_id, ...) calls.

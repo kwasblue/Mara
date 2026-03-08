@@ -11,21 +11,19 @@ import threading
 import time
 from typing import List, Optional, Dict, Any
 
-import numpy as np
 
 from mara_host.core.event_bus import EventBus
 from mara_host.core.host_module import EventHostModule
 from mara_host.camera.client import Esp32CamClient
 from mara_host.camera.stream import MjpegStreamClient
-from mara_host.camera.stats import StatsTracker
 from mara_host.camera.recorder import FrameRecorder
 from mara_host.vision.ml_preprocess import preprocess_for_ml
 
 from .models import (
     CameraConfig, CameraStatus, CameraFrame, MLFrame,
-    CameraStats, MotionEvent, CaptureMode, FrameSize,
+    CameraStats, CaptureMode, FrameSize,
 )
-from .presets import get_preset, list_presets
+from .presets import get_preset
 
 
 class CameraHostModule(EventHostModule):

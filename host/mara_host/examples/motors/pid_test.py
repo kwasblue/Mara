@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from mara_host.core.event_bus import EventBus
 from mara_host.command.client import MaraClient

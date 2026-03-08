@@ -7,8 +7,8 @@ and Luenberger observers to the ESP32 control kernel.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike

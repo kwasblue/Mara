@@ -10,7 +10,6 @@ import logging
 from typing import Optional
 
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
 
 from mara_host.gui.core import GuiSignals, RobotController, apply_theme, GuiSettings
 from mara_host.gui.core.dev_mode import set_dev_mode

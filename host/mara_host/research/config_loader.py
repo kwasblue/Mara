@@ -12,7 +12,6 @@ Example:
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import asdict, fields
 from pathlib import Path
 from typing import Any, Dict, Optional, Type, TypeVar, Union
@@ -20,10 +19,8 @@ from typing import Any, Dict, Optional, Type, TypeVar, Union
 import yaml
 
 from .simulation import (
-    DCMotor,
     DCMotorConfig,
     DelayConfig,
-    DelaySimulator,
     DiffDriveConfig,
     DiffDriveRobot,
     EncoderNoiseModel,
@@ -32,7 +29,6 @@ from .simulation import (
     SimulationRunner,
     UltrasonicNoiseModel,
 )
-from .sysid import DCMotorParams, DifferentialDriveParams
 
 
 T = TypeVar("T")

@@ -4,8 +4,6 @@
 import argparse
 import subprocess
 import sys
-from pathlib import Path
-from typing import Optional
 
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn

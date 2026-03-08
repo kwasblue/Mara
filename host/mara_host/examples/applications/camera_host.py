@@ -28,7 +28,6 @@ from mara_host.config.command_defs import (
     CMD_CAM_APPLY_PRESET,
     CMD_CAM_START_CAPTURE,
     CMD_CAM_STOP_CAPTURE,
-    CMD_CAM_SET_RESOLUTION,
     CMD_CAM_FLASH,
 )
 

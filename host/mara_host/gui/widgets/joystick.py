@@ -6,7 +6,7 @@ Virtual joystick widget for velocity control.
 import math
 
 from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import Qt, Signal, QPointF, QRectF
+from PySide6.QtCore import Qt, Signal, QPointF
 from PySide6.QtGui import QPainter, QColor, QRadialGradient, QPen, QBrush
 
 

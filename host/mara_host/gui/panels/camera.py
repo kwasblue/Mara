@@ -3,6 +3,13 @@
 Camera panel for MJPEG video streaming and control.
 """
 
+# Panel metadata for auto-discovery
+PANEL_META = {
+    "id": "camera",
+    "label": "Camera",
+    "order": 30,
+}
+
 from typing import Optional, Any
 
 from PySide6.QtWidgets import (
@@ -19,7 +26,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QSizePolicy,
 )
-from PySide6.QtCore import Qt, QTimer, Signal, Slot
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QImage, QPixmap
 
 from mara_host.gui.core import GuiSignals, RobotController, GuiSettings

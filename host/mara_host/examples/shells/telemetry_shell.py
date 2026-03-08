@@ -1,20 +1,11 @@
 import asyncio
-from typing import Any, Dict
+from typing import Any
 
 from mara_host.core.event_bus import EventBus
 from mara_host.command.client import MaraClient
 from mara_host.transport.tcp_transport import AsyncTcpTransport
-from mara_host.transport.serial_transport import SerialTransport  # or serial_transport
-from mara_host.transport.bluetooth_transport import BluetoothSerialTransport
 
 from mara_host.telemetry.host_module import TelemetryHostModule
-from mara_host.telemetry.models import (
-    ImuTelemetry,
-    UltrasonicTelemetry,
-    LidarTelemetry,
-    StepperTelemetry,
-    DcMotorTelemetry,
-)
 
 
 def attach_telemetry_prints(bus: EventBus) -> None:

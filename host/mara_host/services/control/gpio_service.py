@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, TYPE_CHECKING
 
-from mara_host.services.control.result import ServiceResult
+from mara_host.services.control.result import ServiceResult, send_command
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -232,17 +232,15 @@ class GpioService:
 
     async def led_on(self) -> ServiceResult:
         """Turn status LED on."""
-        ok, error = await self.client.send_reliable("CMD_LED_ON", {})
-        if ok:
-            return ServiceResult.success()
-        return ServiceResult.failure(error=error or "Failed to turn LED on")
+        return await send_command(
+            self.client, "CMD_LED_ON", {}, "Failed to turn LED on"
+        )
 
     async def led_off(self) -> ServiceResult:
         """Turn status LED off."""
-        ok, error = await self.client.send_reliable("CMD_LED_OFF", {})
-        if ok:
-            return ServiceResult.success()
-        return ServiceResult.failure(error=error or "Failed to turn LED off")
+        return await send_command(
+            self.client, "CMD_LED_OFF", {}, "Failed to turn LED off"
+        )
 
     async def set_pwm(
         self,

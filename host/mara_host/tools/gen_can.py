@@ -16,8 +16,7 @@ Usage:
     python -m mara_host.tools.gen_can
 """
 
-from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List
 
 from mara_host.tools.schema import (
     CAN_CONFIG,

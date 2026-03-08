@@ -16,9 +16,8 @@ from typing import List, Dict
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from mara_host.research.config_loader import SimulationConfig, list_available_robots
+from mara_host.research.config_loader import SimulationConfig
 from mara_host.research.simulation import DiffDriveRobot
-from mara_host.research.analysis import compute_signal_stats
 
 
 def run_trajectory(robot: DiffDriveRobot, duration: float, dt: float) -> Dict[str, np.ndarray]:

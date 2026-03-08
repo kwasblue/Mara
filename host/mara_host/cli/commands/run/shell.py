@@ -8,7 +8,6 @@ import shlex
 from typing import Optional, Any
 
 from rich.prompt import Prompt
-from rich.table import Table
 
 from mara_host.cli.console import (
     console,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
 from mara_host.camera import CameraModule
 from mara_host.vision import DetectionModule, YoloWrapper, decode_yolo_output

@@ -12,7 +12,6 @@ import json
 import time
 import numpy as np
 from pathlib import Path
-from dataclasses import dataclass
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
@@ -20,13 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from mara_host.research.config_loader import load_robot
 from mara_host.research.metrics import (
     analyze_session,
-    SessionMetrics,
-    compute_latency_stats,
-    compute_jitter,
-    compute_tracking_error,
-    analyze_step_response,
 )
-from mara_host.research.plotting import plot_latency_cdf, create_figure
+from mara_host.research.plotting import plot_latency_cdf
 import matplotlib.pyplot as plt
 
 

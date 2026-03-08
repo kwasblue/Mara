@@ -9,27 +9,19 @@
 // ControlKernel Implementation
 // -----------------------------------------------------------------------------
 
-ControlKernel::Slot* ControlKernel::getSlot_(uint8_t slot) {
-    for (auto& s : slots_) {
-        if (s.cfg.slot == slot) return &s;
-    }
-    return nullptr;
-}
-
-const ControlKernel::Slot* ControlKernel::getSlot_(uint8_t slot) const {
-    for (const auto& s : slots_) {
-        if (s.cfg.slot == slot) return &s;
-    }
-    return nullptr;
-}
+// getSlot_ is now inlined in header for O(1) access
 
 void ControlKernel::ensureSlot_(uint8_t slot) {
-    if (getSlot_(slot)) return;
-    if (slots_.size() >= MAX_SLOTS) return;
-    
-    Slot s;
-    s.cfg.slot = slot;
-    slots_.push_back(std::move(s));
+    if (slot >= MAX_SLOTS) return;
+    if (slots_[slot].configured) return;
+
+    // Initialize the slot in-place
+    slots_[slot].cfg = SlotConfig{};
+    slots_[slot].cfg.slot = slot;
+    slots_[slot].status = SlotStatus{};
+    slots_[slot].ctrl.reset();
+    slots_[slot].last_step_ms = 0;
+    slots_[slot].configured = true;
 }
 
 bool ControlKernel::configureSlot(const SlotConfig& cfg, const char* type) {
@@ -113,8 +105,10 @@ void ControlKernel::step(uint32_t now_ms, float dt_s, SignalBus& signals, bool i
     // Check watchdog for stuck slots
     watchdog_.check(now_ms);
 
-    for (auto& s : slots_) {
-        if (!s.cfg.enabled || !s.ctrl) continue;
+    // Iterate through fixed array - O(1) access, predictable cache behavior
+    for (uint8_t i = 0; i < MAX_SLOTS; i++) {
+        Slot& s = slots_[i];
+        if (!s.configured || !s.cfg.enabled || !s.ctrl) continue;
 
         // Check state gating
         if (s.cfg.require_armed && !is_armed) continue;
@@ -200,16 +194,18 @@ void ControlKernel::step(uint32_t now_ms, float dt_s, SignalBus& signals, bool i
 }
 
 void ControlKernel::resetAll() {
-    for (auto& s : slots_) {
-        if (s.ctrl) s.ctrl->reset();
-        s.status = SlotStatus{};
+    for (uint8_t i = 0; i < MAX_SLOTS; i++) {
+        if (!slots_[i].configured) continue;
+        if (slots_[i].ctrl) slots_[i].ctrl->reset();
+        slots_[i].status = SlotStatus{};
     }
 }
 
 void ControlKernel::disableAll() {
-    for (auto& s : slots_) {
-        s.cfg.enabled = false;
-        if (s.ctrl) s.ctrl->reset();
+    for (uint8_t i = 0; i < MAX_SLOTS; i++) {
+        if (!slots_[i].configured) continue;
+        slots_[i].cfg.enabled = false;
+        if (slots_[i].ctrl) slots_[i].ctrl->reset();
     }
 }
 

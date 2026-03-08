@@ -7,6 +7,7 @@ both Python and C++ code from the platform schema.
 """
 
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -124,33 +125,51 @@ class CodeGeneratorService:
         if str(self._tools_dir) not in sys.path:
             sys.path.insert(0, str(self._tools_dir))
 
-    def generate_all(self) -> GenerationSummary:
+    def generate_all(self, parallel: bool = True) -> GenerationSummary:
         """
         Run all code generators.
+
+        Args:
+            parallel: If True, run independent generators in parallel
 
         Returns:
             GenerationSummary with results for each generator
         """
         results = []
 
-        # Run in dependency order
-        order = [
-            GeneratorType.VERSION,
-            GeneratorType.COMMANDS,
-            GeneratorType.PINS,
-            GeneratorType.GPIO,
-            GeneratorType.BINARY,
-            GeneratorType.TELEMETRY,
-            GeneratorType.CAN,
-        ]
+        if not parallel:
+            # Sequential execution (original behavior)
+            order = [
+                GeneratorType.VERSION,
+                GeneratorType.COMMANDS,
+                GeneratorType.PINS,
+                GeneratorType.GPIO,
+                GeneratorType.BINARY,
+                GeneratorType.TELEMETRY,
+                GeneratorType.CAN,
+            ]
+            for gen_type in order:
+                results.append(self.generate(gen_type))
+        else:
+            # Parallel execution organized by dependency phases
+            # Phase 1: VERSION must run first
+            results.append(self.generate(GeneratorType.VERSION))
 
-        for gen_type in order:
-            result = self.generate(gen_type)
-            results.append(result)
+            # Phase 2: Independent generators in parallel
+            independent = [
+                GeneratorType.COMMANDS,
+                GeneratorType.PINS,
+                GeneratorType.GPIO,
+                GeneratorType.TELEMETRY,
+                GeneratorType.CAN,
+            ]
+            with ThreadPoolExecutor(max_workers=len(independent)) as executor:
+                futures = {executor.submit(self.generate, gt): gt for gt in independent}
+                for future in as_completed(futures):
+                    results.append(future.result())
 
-            if not result.success:
-                # Continue anyway to report all errors
-                pass
+            # Phase 3: BINARY depends on COMMANDS
+            results.append(self.generate(GeneratorType.BINARY))
 
         total_files = sum(len(r.files_generated) for r in results if r.success)
 

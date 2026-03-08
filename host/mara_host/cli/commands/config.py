@@ -5,8 +5,6 @@ import argparse
 from pathlib import Path
 
 from rich.syntax import Syntax
-from rich.panel import Panel
-from rich.tree import Tree
 
 from mara_host.cli.console import (
     console,

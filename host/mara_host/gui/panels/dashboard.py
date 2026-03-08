@@ -3,6 +3,13 @@
 Dashboard panel for telemetry overview and quick actions.
 """
 
+# Panel metadata for auto-discovery
+PANEL_META = {
+    "id": "dashboard",
+    "label": "Dashboard",
+    "order": 10,
+}
+
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -16,7 +23,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QSplitter,
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 
 from mara_host.gui.core import GuiSignals, RobotController, GuiSettings
 from mara_host.gui.core.state import DeviceCapabilities
@@ -126,6 +133,16 @@ class DashboardPanel(QWidget):
         self.refresh_btn.setMaximumWidth(80)
         self.refresh_btn.clicked.connect(self._refresh_ports)
         layout.addWidget(self.refresh_btn)
+
+        # Baud rate selector (visible when Serial selected)
+        self.baud_label = QLabel("Baud")
+        self.baud_label.setStyleSheet("color: #5C5C6E; font-size: 11px;")
+        layout.addWidget(self.baud_label)
+
+        self.baud_combo = QComboBox()
+        self.baud_combo.addItems(["115200", "921600", "57600", "38400", "19200", "9600"])
+        self.baud_combo.setMinimumWidth(90)
+        layout.addWidget(self.baud_combo)
 
         # TCP host input (hidden by default)
         self.host_label = QLabel("Host")
@@ -428,6 +445,8 @@ class DashboardPanel(QWidget):
         self.port_label.setVisible(not is_tcp)
         self.port_combo.setVisible(not is_tcp)
         self.refresh_btn.setVisible(not is_tcp)
+        self.baud_label.setVisible(not is_tcp)
+        self.baud_combo.setVisible(not is_tcp)
 
         # TCP controls
         self.host_label.setVisible(is_tcp)
@@ -463,13 +482,14 @@ class DashboardPanel(QWidget):
                 self.signals.status_error.emit("Please select a serial port")
                 return
 
+            baudrate = int(self.baud_combo.currentText())
             self.settings.set_transport_type("serial")
             self.settings.set_last_port(port)
             self.settings.add_recent_port(port)
-            self.controller.connect_serial(port)
+            self.controller.connect_serial(port, baudrate)
 
             # Notify other panels about the serial port selection
-            self.signals.serial_port_selected.emit(port, 115200)
+            self.signals.serial_port_selected.emit(port, baudrate)
 
     def _on_connection_changed(self, connected: bool, info: str) -> None:
         """Handle connection state change."""

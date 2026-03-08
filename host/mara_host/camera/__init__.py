@@ -46,48 +46,69 @@ def _check_vision_deps():
         )
 
 
+# Mapping of attribute names to (module_name, attr_name) for lazy loading
+# module_name is relative to this package; if attr_name is None, use name as-is
+_LAZY_IMPORTS = {
+    # Host module
+    "CameraHostModule": ("host_module", "CameraHostModule"),
+    # Models
+    "FrameSize": ("models", None),
+    "CaptureMode": ("models", None),
+    "StreamPreset": ("models", None),
+    "CameraConfig": ("models", None),
+    "MotionConfig": ("models", None),
+    "DeviceStatus": ("models", None),
+    "CameraStatus": ("models", None),
+    "StreamStats": ("models", None),
+    "CameraStats": ("models", None),
+    "CameraFrame": ("models", None),
+    "MLFrame": ("models", None),
+    "MotionEvent": ("models", None),
+    # Presets
+    "get_preset": ("presets", None),
+    "list_presets": ("presets", None),
+    "PRESETS": ("presets", None),
+    # Client
+    "Esp32CamClient": ("client", None),
+    "FrameResult": ("client", None),
+    # Streaming
+    "MjpegStreamClient": ("stream", None),
+    "StreamFrame": ("stream", None),
+    # Control
+    "CameraControlClient": ("control", "CameraControlClient"),
+    # Stats
+    "StatsTracker": ("stats", None),
+    "CameraStatistics": ("stats", None),
+    "FrameStats": ("stats", None),
+    # Recording
+    "FrameRecorder": ("recorder", None),
+    "MotionTriggeredRecorder": ("recorder", None),
+    "RecordingMetadata": ("recorder", None),
+    # Module
+    "CameraModule": ("module", "CameraModule"),
+    # Manager
+    "CameraManager": ("manager", None),
+    "CameraState": ("manager", None),
+    "CameraInfo": ("manager", None),
+    "MultiFrameResult": ("manager", None),
+    # Async
+    "AsyncCameraClient": ("async_client", None),
+    "AsyncMjpegClient": ("async_client", None),
+    "AsyncFrame": ("async_client", None),
+}
+
+
 def __getattr__(name: str):
-    """Lazy import with dependency check."""
+    """Lazy import with dependency check - O(1) lookup."""
+    if name not in _LAZY_IMPORTS:
+        raise AttributeError(f"module 'mara_host.camera' has no attribute '{name}'")
+
     _check_vision_deps()
 
-    # Import the actual module
-    if name == "CameraHostModule":
-        from .host_module import CameraHostModule
-        return CameraHostModule
-    elif name in ("FrameSize", "CaptureMode", "StreamPreset", "CameraConfig",
-                  "MotionConfig", "DeviceStatus", "CameraStatus", "StreamStats",
-                  "CameraStats", "CameraFrame", "MLFrame", "MotionEvent"):
-        from . import models
-        return getattr(models, name)
-    elif name in ("get_preset", "list_presets", "PRESETS"):
-        from . import presets
-        return getattr(presets, name)
-    elif name in ("Esp32CamClient", "FrameResult"):
-        from . import client
-        return getattr(client, name)
-    elif name in ("MjpegStreamClient", "StreamFrame"):
-        from . import stream
-        return getattr(stream, name)
-    elif name == "CameraControlClient":
-        from .control import CameraControlClient
-        return CameraControlClient
-    elif name in ("StatsTracker", "CameraStatistics", "FrameStats"):
-        from . import stats
-        return getattr(stats, name)
-    elif name in ("FrameRecorder", "MotionTriggeredRecorder", "RecordingMetadata"):
-        from . import recorder
-        return getattr(recorder, name)
-    elif name == "CameraModule":
-        from .module import CameraModule
-        return CameraModule
-    elif name in ("CameraManager", "CameraState", "CameraInfo", "MultiFrameResult"):
-        from . import manager
-        return getattr(manager, name)
-    elif name in ("AsyncCameraClient", "AsyncMjpegClient", "AsyncFrame"):
-        from . import async_client
-        return getattr(async_client, name)
-
-    raise AttributeError(f"module 'mara_host.camera' has no attribute '{name}'")
+    module_name, attr_name = _LAZY_IMPORTS[name]
+    import importlib
+    module = importlib.import_module(f".{module_name}", __name__)
+    return getattr(module, attr_name or name)
 
 
 __all__ = [

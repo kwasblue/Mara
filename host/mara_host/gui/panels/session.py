@@ -2,217 +2,41 @@
 """
 Session panel for recording and replay functionality.
 
-Provides UI for recording robot sessions, replaying them,
-and managing saved sessions.
+Uses workflow layer for recording/replay logic.
 """
 
-from typing import Optional
+# Panel metadata for auto-discovery
+PANEL_META = {
+    "id": "session",
+    "label": "Session",
+    "order": 90,
+}
+
 from pathlib import Path
-from dataclasses import dataclass
 
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QGridLayout,
     QGroupBox,
     QLabel,
     QPushButton,
-    QSpinBox,
-    QDoubleSpinBox,
     QLineEdit,
     QComboBox,
     QListWidget,
     QListWidgetItem,
     QTabWidget,
-    QFrame,
     QTextEdit,
-    QCheckBox,
-    QSlider,
-    QProgressBar,
-    QScrollArea,
     QMessageBox,
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QThread, QObject
+from PySide6.QtCore import Qt, QTimer
 
 from mara_host.gui.core import GuiSignals, RobotController, GuiSettings
-from mara_host.services.recording.recording_service import (
-    RecordingService,
-    ReplayService,
-    RecordingConfig,
-    SessionInfo,
-    RecordedEvent,
-)
-
-
-class RecordingWorker(QObject):
-    """Worker for background recording."""
-
-    started = Signal(str)  # session name
-    progress = Signal(int, int)  # events, duration_ms
-    stopped = Signal(str, dict)  # name, stats
-    error = Signal(str)
-
-    def __init__(self):
-        super().__init__()
-        self._service: Optional[RecordingService] = None
-        self._running = False
-
-    def start_recording(
-        self,
-        session_name: str,
-        serial_port: str,
-        baudrate: int,
-        duration_s: float = 0,
-        log_dir: str = "logs",
-    ) -> None:
-        """Start a recording session."""
-        import asyncio
-
-        async def _record():
-            config = RecordingConfig(
-                session_name=session_name,
-                log_dir=Path(log_dir),
-                serial_port=serial_port,
-                baudrate=baudrate,
-                duration_s=duration_s,
-                console_output=False,
-            )
-
-            self._service = RecordingService(config)
-            self._running = True
-
-            try:
-                path = await self._service.start()
-                self.started.emit(session_name)
-
-                start_time = asyncio.get_event_loop().time()
-
-                while self._running:
-                    await asyncio.sleep(0.1)
-
-                    # Update progress
-                    elapsed_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
-                    event_count = self._service._event_count
-                    self.progress.emit(event_count, elapsed_ms)
-
-                    # Check duration limit
-                    if duration_s > 0 and elapsed_ms / 1000 >= duration_s:
-                        break
-
-                info = await self._service.stop()
-                self.stopped.emit(session_name, {
-                    "event_count": info.event_count,
-                    "duration_s": info.duration_s,
-                    "path": str(info.path),
-                })
-
-            except Exception as e:
-                self.error.emit(str(e))
-                self._running = False
-
-        # Run in event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(_record())
-
-    def stop_recording(self) -> None:
-        """Stop the current recording."""
-        self._running = False
-
-
-class ReplayWorker(QObject):
-    """Worker for session replay."""
-
-    started = Signal(str)  # session name
-    progress = Signal(int, int, int)  # current_ms, total_ms, events_played
-    event = Signal(dict)  # event data
-    stopped = Signal()
-    error = Signal(str)
-
-    def __init__(self):
-        super().__init__()
-        self._running = False
-        self._paused = False
-
-    def start_replay(
-        self,
-        session_name: str,
-        log_dir: str = "logs",
-        speed: float = 1.0,
-        filter_topics: Optional[list] = None,
-    ) -> None:
-        """Start replaying a session."""
-        import asyncio
-        import time
-
-        async def _replay():
-            service = ReplayService(session_name, Path(log_dir))
-            info = service.get_session_info()
-
-            if not info:
-                self.error.emit(f"Session not found: {session_name}")
-                return
-
-            self._running = True
-            self.started.emit(session_name)
-
-            total_ms = int(info.duration_s * 1000)
-            events_played = 0
-            start_time = time.time()
-            last_event_ts = None
-
-            for event in service.events():
-                if not self._running:
-                    break
-
-                while self._paused and self._running:
-                    await asyncio.sleep(0.1)
-
-                # Filter by topic
-                if filter_topics and event.topic not in filter_topics:
-                    continue
-
-                # Apply timing
-                if last_event_ts is not None and speed > 0:
-                    delay = (event.timestamp - last_event_ts) / speed
-                    if delay > 0:
-                        await asyncio.sleep(delay)
-
-                last_event_ts = event.timestamp
-                events_played += 1
-
-                # Emit event
-                self.event.emit({
-                    "timestamp": event.timestamp,
-                    "topic": event.topic,
-                    "data": event.data,
-                })
-
-                # Progress
-                if info.start_time:
-                    current_ms = int((event.timestamp - info.start_time) * 1000)
-                    self.progress.emit(current_ms, total_ms, events_played)
-
-            self.stopped.emit()
-            self._running = False
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(_replay())
-
-    def pause(self) -> None:
-        self._paused = True
-
-    def resume(self) -> None:
-        self._paused = False
-
-    def stop(self) -> None:
-        self._running = False
+from mara_host.gui.widgets import ProgressIndicator, TelemetryGrid, TelemetrySpec
 
 
 class RecordingTab(QWidget):
-    """Recording control tab."""
+    """Recording control tab using RecordingWorkflow."""
 
     def __init__(
         self,
@@ -226,16 +50,11 @@ class RecordingTab(QWidget):
         self.controller = controller
         self.settings = settings
 
-        self._worker: Optional[RecordingWorker] = None
-        self._worker_thread: Optional[QThread] = None
+        self._workflow = None
         self._recording = False
 
         self._setup_ui()
-        self._setup_connections()
-
-        # Update timer
-        self._update_timer = QTimer(self)
-        self._update_timer.timeout.connect(self._update_status)
+        self._setup_timer()
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -244,35 +63,24 @@ class RecordingTab(QWidget):
 
         # Current status
         status_group = QGroupBox("Current Session")
-        status_layout = QGridLayout(status_group)
+        status_layout = QVBoxLayout(status_group)
 
-        status_layout.addWidget(QLabel("Session:"), 0, 0)
-        self.session_name_label = QLabel("--")
-        self.session_name_label.setStyleSheet("color: #FAFAFA; font-weight: bold;")
-        status_layout.addWidget(self.session_name_label, 0, 1)
+        self._status_display = TelemetryGrid([
+            TelemetrySpec("session", "Session", "", "{}"),
+            TelemetrySpec("status", "Status", "", "{}"),
+        ], columns=2)
+        self._status_display.setText("session", "--")
+        self._status_display.setText("status", "Idle")
+        status_layout.addWidget(self._status_display)
 
-        status_layout.addWidget(QLabel("Status:"), 0, 2)
-        self.status_indicator = QLabel("Idle")
-        self.status_indicator.setStyleSheet("color: #71717A;")
-        status_layout.addWidget(self.status_indicator, 0, 3)
+        self._stats_display = TelemetryGrid([
+            TelemetrySpec("duration", "Duration", "", "{}"),
+            TelemetrySpec("events", "Events", "", "{:.0f}"),
+        ], columns=2)
+        self._stats_display.setText("duration", "00:00:00")
+        self._stats_display.update("events", 0)
+        status_layout.addWidget(self._stats_display)
 
-        status_layout.addWidget(QLabel("Duration:"), 1, 0)
-        self.duration_label = QLabel("00:00:00")
-        self.duration_label.setStyleSheet(
-            "font-family: 'Menlo', 'JetBrains Mono', monospace; "
-            "font-size: 16px; color: #FAFAFA;"
-        )
-        status_layout.addWidget(self.duration_label, 1, 1)
-
-        status_layout.addWidget(QLabel("Events:"), 1, 2)
-        self.events_label = QLabel("0")
-        self.events_label.setStyleSheet(
-            "font-family: 'Menlo', 'JetBrains Mono', monospace; "
-            "font-size: 16px; color: #FAFAFA;"
-        )
-        status_layout.addWidget(self.events_label, 1, 3)
-
-        status_layout.setColumnStretch(4, 1)
         layout.addWidget(status_group)
 
         # Control buttons
@@ -302,12 +110,8 @@ class RecordingTab(QWidget):
         duration_row.addWidget(QLabel("Duration:"))
         self.duration_combo = QComboBox()
         self.duration_combo.addItems([
-            "Unlimited",
-            "10 seconds",
-            "30 seconds",
-            "1 minute",
-            "5 minutes",
-            "10 minutes",
+            "Unlimited", "10 seconds", "30 seconds",
+            "1 minute", "5 minutes", "10 minutes",
         ])
         duration_row.addWidget(self.duration_combo)
         duration_row.addStretch()
@@ -322,28 +126,21 @@ class RecordingTab(QWidget):
         layout.addWidget(new_group)
         layout.addStretch()
 
-    def _setup_connections(self) -> None:
-        pass
+    def _setup_timer(self) -> None:
+        self._update_timer = QTimer(self)
+        self._update_timer.timeout.connect(self._update_status)
 
     def _get_duration_seconds(self) -> float:
-        """Get duration from combo box."""
         text = self.duration_combo.currentText()
-        if "Unlimited" in text:
-            return 0
-        if "10 seconds" in text:
-            return 10
-        if "30 seconds" in text:
-            return 30
-        if "1 minute" in text:
-            return 60
-        if "5 minutes" in text:
-            return 300
-        if "10 minutes" in text:
-            return 600
-        return 0
+        durations = {
+            "Unlimited": 0, "10 seconds": 10, "30 seconds": 30,
+            "1 minute": 60, "5 minutes": 300, "10 minutes": 600,
+        }
+        return durations.get(text, 0)
 
     def _start_recording(self) -> None:
-        """Start a new recording."""
+        from mara_host.workflows import RecordingWorkflow
+
         session_name = self.session_name_edit.text().strip()
         if not session_name:
             import time
@@ -352,98 +149,79 @@ class RecordingTab(QWidget):
 
         duration = self._get_duration_seconds()
 
-        # Get connection details
-        state = self.controller.state
-        if not state.is_connected:
+        if not self.controller.client:
             self.signals.status_error.emit("Not connected to robot")
             return
 
-        port = state.transport_config.port
-        baudrate = state.transport_config.baudrate
-
-        # Start worker
-        self._worker = RecordingWorker()
-        self._worker_thread = QThread()
-        self._worker.moveToThread(self._worker_thread)
-
-        self._worker.started.connect(self._on_recording_started)
-        self._worker.progress.connect(self._on_recording_progress)
-        self._worker.stopped.connect(self._on_recording_stopped)
-        self._worker.error.connect(self._on_recording_error)
-
-        self._worker_thread.started.connect(
-            lambda: self._worker.start_recording(
-                session_name, port, baudrate, duration
-            )
-        )
-        self._worker_thread.start()
-
-    def _stop_recording(self) -> None:
-        """Stop the current recording."""
-        if self._worker:
-            self._worker.stop_recording()
-
-    def _on_recording_started(self, name: str) -> None:
+        self._workflow = RecordingWorkflow(self.controller.client)
+        self._workflow.on_progress = self._on_progress
         self._recording = True
-        self.session_name_label.setText(name)
-        self.status_indicator.setText("Recording")
-        self.status_indicator.setStyleSheet("color: #EF4444;")
 
+        self._status_display.setText("session", session_name)
+        self._status_display.setText("status", "Recording")
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
 
         self._update_timer.start(100)
 
-    def _on_recording_progress(self, events: int, duration_ms: int) -> None:
-        self.events_label.setText(str(events))
-
-        secs = duration_ms // 1000
-        mins = secs // 60
-        hours = mins // 60
-        self.duration_label.setText(
-            f"{hours:02d}:{mins % 60:02d}:{secs % 60:02d}"
+        import asyncio
+        asyncio.run_coroutine_threadsafe(
+            self._run_workflow(session_name, duration),
+            self.controller._loop
         )
 
-    def _on_recording_stopped(self, name: str, stats: dict) -> None:
+    async def _run_workflow(self, session_name: str, duration: float) -> None:
+        result = await self._workflow.run(
+            session_name=session_name,
+            duration_s=duration,
+        )
+
+        from PySide6.QtCore import QMetaObject, Qt, Q_ARG
+        QMetaObject.invokeMethod(
+            self, "_on_complete",
+            Qt.ConnectionType.QueuedConnection,
+            Q_ARG(object, result)
+        )
+
+    def _on_complete(self, result) -> None:
         self._recording = False
         self._update_timer.stop()
 
-        self.status_indicator.setText("Stopped")
-        self.status_indicator.setStyleSheet("color: #22C55E;")
+        if result.ok:
+            self._status_display.setText("status", "Saved")
+            self.signals.status_message.emit(
+                f"Recording saved: {result.data.get('event_count', 0)} events"
+            )
+        else:
+            self._status_display.setText("status", "Error")
+            self.signals.status_error.emit(f"Recording error: {result.error}")
 
         self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
 
-        self.signals.status_message.emit(
-            f"Recording saved: {stats.get('event_count', 0)} events"
-        )
+    def _stop_recording(self) -> None:
+        if self._workflow:
+            self._workflow.cancel()
 
-        # Cleanup
-        if self._worker_thread:
-            self._worker_thread.quit()
-            self._worker_thread.wait()
-            self._worker_thread = None
-        self._worker = None
-
-    def _on_recording_error(self, error: str) -> None:
-        self._recording = False
-        self._update_timer.stop()
-
-        self.status_indicator.setText("Error")
-        self.status_indicator.setStyleSheet("color: #EF4444;")
-
-        self.start_btn.setEnabled(True)
-        self.stop_btn.setEnabled(False)
-
-        self.signals.status_error.emit(f"Recording error: {error}")
+    def _on_progress(self, percent: int, status: str) -> None:
+        pass  # Progress handled by timer
 
     def _update_status(self) -> None:
-        """Periodic status update."""
-        pass
+        if self._workflow and self._recording:
+            events = self._workflow.event_count
+            duration = self._workflow.duration_s
+
+            secs = int(duration)
+            mins = secs // 60
+            hours = mins // 60
+            self._stats_display.setText(
+                "duration", f"{hours:02d}:{mins % 60:02d}:{secs % 60:02d}"
+            )
+            self._stats_display.update("events", events)
 
 
 class ReplayTab(QWidget):
-    """Replay control tab."""
+    """Replay control tab using ReplayWorkflow."""
 
     def __init__(
         self,
@@ -457,10 +235,8 @@ class ReplayTab(QWidget):
         self.controller = controller
         self.settings = settings
 
-        self._worker: Optional[ReplayWorker] = None
-        self._worker_thread: Optional[QThread] = None
+        self._workflow = None
         self._playing = False
-        self._paused = False
 
         self._setup_ui()
         self._refresh_sessions()
@@ -485,22 +261,12 @@ class ReplayTab(QWidget):
 
         # Session info
         info_group = QGroupBox("Session Info")
-        info_layout = QGridLayout(info_group)
-
-        info_layout.addWidget(QLabel("Duration:"), 0, 0)
-        self.info_duration_label = QLabel("--")
-        info_layout.addWidget(self.info_duration_label, 0, 1)
-
-        info_layout.addWidget(QLabel("Events:"), 0, 2)
-        self.info_events_label = QLabel("--")
-        info_layout.addWidget(self.info_events_label, 0, 3)
-
-        info_layout.addWidget(QLabel("Topics:"), 1, 0)
-        self.info_topics_label = QLabel("--")
-        self.info_topics_label.setWordWrap(True)
-        info_layout.addWidget(self.info_topics_label, 1, 1, 1, 3)
-
-        info_layout.setColumnStretch(4, 1)
+        info_layout = QVBoxLayout(info_group)
+        self._info_display = TelemetryGrid([
+            TelemetrySpec("duration", "Duration", "sec", "{:.1f}"),
+            TelemetrySpec("events", "Events", "", "{:.0f}"),
+        ], columns=2)
+        info_layout.addWidget(self._info_display)
         layout.addWidget(info_group)
 
         # Playback controls
@@ -518,31 +284,8 @@ class ReplayTab(QWidget):
         controls_layout.addLayout(speed_row)
 
         # Progress
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 100)
-        controls_layout.addWidget(self.progress_bar)
-
-        # Time display
-        time_row = QHBoxLayout()
-        self.current_time_label = QLabel("00:00")
-        self.current_time_label.setStyleSheet(
-            "font-family: 'Menlo', 'JetBrains Mono', monospace;"
-        )
-        time_row.addWidget(self.current_time_label)
-
-        time_row.addWidget(QLabel("/"))
-
-        self.total_time_label = QLabel("00:00")
-        self.total_time_label.setStyleSheet(
-            "font-family: 'Menlo', 'JetBrains Mono', monospace;"
-        )
-        time_row.addWidget(self.total_time_label)
-
-        time_row.addStretch()
-
-        self.events_played_label = QLabel("0 events")
-        time_row.addWidget(self.events_played_label)
-        controls_layout.addLayout(time_row)
+        self.progress = ProgressIndicator()
+        controls_layout.addWidget(self.progress)
 
         # Play/Pause/Stop buttons
         btn_row = QHBoxLayout()
@@ -560,7 +303,6 @@ class ReplayTab(QWidget):
         self.stop_btn.setEnabled(False)
         self.stop_btn.clicked.connect(self._stop)
         btn_row.addWidget(self.stop_btn)
-
         btn_row.addStretch()
         controls_layout.addLayout(btn_row)
 
@@ -569,139 +311,132 @@ class ReplayTab(QWidget):
         # Event log
         log_group = QGroupBox("Event Log")
         log_layout = QVBoxLayout(log_group)
-
         self.event_log = QTextEdit()
         self.event_log.setReadOnly(True)
         self.event_log.setMaximumHeight(150)
         self.event_log.setStyleSheet(
-            "font-family: 'Menlo', 'JetBrains Mono', monospace; "
-            "font-size: 11px; background-color: #18181B; color: #A1A1AA;"
+            "font-family: 'Menlo', monospace; font-size: 11px; "
+            "background-color: #18181B; color: #A1A1AA;"
         )
         log_layout.addWidget(self.event_log)
-
         layout.addWidget(log_group)
+
         layout.addStretch()
 
     def _refresh_sessions(self) -> None:
-        """Refresh the list of available sessions."""
-        sessions = ReplayService.list_sessions()
+        from mara_host.workflows import ReplayWorkflow
+        sessions = ReplayWorkflow.list_sessions()
         self.session_combo.clear()
         self.session_combo.addItems(sessions)
 
     def _on_session_selected(self, name: str) -> None:
-        """Handle session selection."""
         if not name:
             return
 
-        service = ReplayService(name)
-        info = service.get_session_info()
+        from mara_host.workflows import ReplayWorkflow
+        workflow = ReplayWorkflow(None)  # Don't need client for info
+        info = workflow.get_session_info(name)
 
         if info:
-            self.info_duration_label.setText(f"{info.duration_s:.1f} sec")
-            self.info_events_label.setText(str(info.event_count))
-            topics = ", ".join(info.topics[:5])
-            if len(info.topics) > 5:
-                topics += f" (+{len(info.topics) - 5} more)"
-            self.info_topics_label.setText(topics or "None")
-
-            # Set total time
-            mins = int(info.duration_s) // 60
-            secs = int(info.duration_s) % 60
-            self.total_time_label.setText(f"{mins:02d}:{secs:02d}")
+            self._info_display.update("duration", info.duration_s)
+            self._info_display.update("events", info.event_count)
 
     def _get_speed(self) -> float:
-        """Get playback speed."""
         text = self.speed_combo.currentText()
         return float(text.replace("x", ""))
 
     def _play(self) -> None:
-        """Start or resume playback."""
+        from mara_host.workflows import ReplayWorkflow
+
         session_name = self.session_combo.currentText()
         if not session_name:
             return
 
-        if self._paused and self._worker:
-            self._worker.resume()
-            self._paused = False
+        if self._workflow and self._workflow.is_paused:
+            self._workflow.resume()
             self.play_btn.setText("Play")
             self.pause_btn.setEnabled(True)
             return
 
-        # Start new playback
-        self._worker = ReplayWorker()
-        self._worker_thread = QThread()
-        self._worker.moveToThread(self._worker_thread)
+        self._workflow = ReplayWorkflow(self.controller.client)
+        self._workflow.on_progress = self._on_progress
+        self._workflow.on_event = self._on_event
 
-        self._worker.started.connect(self._on_replay_started)
-        self._worker.progress.connect(self._on_replay_progress)
-        self._worker.event.connect(self._on_replay_event)
-        self._worker.stopped.connect(self._on_replay_stopped)
-        self._worker.error.connect(self._on_replay_error)
-
-        speed = self._get_speed()
-        self._worker_thread.started.connect(
-            lambda: self._worker.start_replay(session_name, "logs", speed)
-        )
-        self._worker_thread.start()
-
-    def _pause(self) -> None:
-        """Pause playback."""
-        if self._worker and not self._paused:
-            self._worker.pause()
-            self._paused = True
-            self.play_btn.setText("Resume")
-            self.pause_btn.setEnabled(False)
-
-    def _stop(self) -> None:
-        """Stop playback."""
-        if self._worker:
-            self._worker.stop()
-
-    def _on_replay_started(self, name: str) -> None:
         self._playing = True
+        self.event_log.clear()
+        self.progress.reset()
         self.play_btn.setEnabled(True)
         self.pause_btn.setEnabled(True)
         self.stop_btn.setEnabled(True)
-        self.event_log.clear()
 
-    def _on_replay_progress(self, current_ms: int, total_ms: int, events: int) -> None:
-        if total_ms > 0:
-            progress = int(current_ms / total_ms * 100)
-            self.progress_bar.setValue(progress)
+        speed = self._get_speed()
 
-        secs = current_ms // 1000
-        mins = secs // 60
-        self.current_time_label.setText(f"{mins:02d}:{secs % 60:02d}")
-        self.events_played_label.setText(f"{events} events")
+        import asyncio
+        asyncio.run_coroutine_threadsafe(
+            self._run_workflow(session_name, speed),
+            self.controller._loop
+        )
 
-    def _on_replay_event(self, event_data: dict) -> None:
-        topic = event_data.get("topic", "?")
-        ts = event_data.get("timestamp", 0)
-        self.event_log.append(f"[{ts:.3f}] {topic}")
+    async def _run_workflow(self, session_name: str, speed: float) -> None:
+        result = await self._workflow.run(
+            session_name=session_name,
+            speed=speed,
+        )
 
-        # Auto-scroll
-        cursor = self.event_log.textCursor()
-        cursor.movePosition(cursor.MoveOperation.End)
-        self.event_log.setTextCursor(cursor)
+        from PySide6.QtCore import QMetaObject, Qt, Q_ARG
+        QMetaObject.invokeMethod(
+            self, "_on_complete",
+            Qt.ConnectionType.QueuedConnection,
+            Q_ARG(object, result)
+        )
 
-    def _on_replay_stopped(self) -> None:
+    def _on_complete(self, result) -> None:
         self._playing = False
-        self._paused = False
         self.play_btn.setText("Play")
         self.play_btn.setEnabled(True)
         self.pause_btn.setEnabled(False)
         self.stop_btn.setEnabled(False)
 
-        # Cleanup
-        if self._worker_thread:
-            self._worker_thread.quit()
-            self._worker_thread.wait()
-            self._worker_thread = None
-        self._worker = None
+        if result.ok:
+            self.progress.complete(f"Played {result.data.get('events_played', 0)} events")
+        elif result.state.value == "cancelled":
+            self.progress.setProgress(0, "Stopped")
+        else:
+            self.progress.error(result.error or "Playback failed")
 
-    def _on_replay_error(self, error: str) -> None:
-        self.signals.status_error.emit(f"Replay error: {error}")
-        self._on_replay_stopped()
+    def _pause(self) -> None:
+        if self._workflow and not self._workflow.is_paused:
+            self._workflow.pause()
+            self.play_btn.setText("Resume")
+            self.pause_btn.setEnabled(False)
+
+    def _stop(self) -> None:
+        if self._workflow:
+            self._workflow.cancel()
+
+    def _on_progress(self, percent: int, status: str) -> None:
+        from PySide6.QtCore import QMetaObject, Qt
+        QMetaObject.invokeMethod(
+            self.progress, "setProgress",
+            Qt.ConnectionType.QueuedConnection,
+            percent, status
+        )
+
+    def _on_event(self, event) -> None:
+        topic = event.topic
+        ts = event.timestamp
+        from PySide6.QtCore import QMetaObject, Qt
+        QMetaObject.invokeMethod(
+            self, "_append_event",
+            Qt.ConnectionType.QueuedConnection,
+            f"[{ts:.3f}] {topic}"
+        )
+
+    def _append_event(self, text: str) -> None:
+        self.event_log.append(text)
+        cursor = self.event_log.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        self.event_log.setTextCursor(cursor)
 
 
 class SessionsTab(QWidget):
@@ -734,27 +469,13 @@ class SessionsTab(QWidget):
 
         # Session details
         details_group = QGroupBox("Session Details")
-        details_layout = QGridLayout(details_group)
-
-        details_layout.addWidget(QLabel("Name:"), 0, 0)
-        self.detail_name_label = QLabel("--")
-        details_layout.addWidget(self.detail_name_label, 0, 1)
-
-        details_layout.addWidget(QLabel("Path:"), 1, 0)
-        self.detail_path_label = QLabel("--")
-        self.detail_path_label.setWordWrap(True)
-        self.detail_path_label.setStyleSheet("color: #71717A; font-size: 11px;")
-        details_layout.addWidget(self.detail_path_label, 1, 1)
-
-        details_layout.addWidget(QLabel("Duration:"), 2, 0)
-        self.detail_duration_label = QLabel("--")
-        details_layout.addWidget(self.detail_duration_label, 2, 1)
-
-        details_layout.addWidget(QLabel("Events:"), 2, 2)
-        self.detail_events_label = QLabel("--")
-        details_layout.addWidget(self.detail_events_label, 2, 3)
-
-        details_layout.setColumnStretch(4, 1)
+        details_layout = QVBoxLayout(details_group)
+        self._details = TelemetryGrid([
+            TelemetrySpec("name", "Name", "", "{}"),
+            TelemetrySpec("duration", "Duration", "sec", "{:.1f}"),
+            TelemetrySpec("events", "Events", "", "{:.0f}"),
+        ], columns=3)
+        details_layout.addWidget(self._details)
         layout.addWidget(details_group)
 
         # Action buttons
@@ -769,44 +490,38 @@ class SessionsTab(QWidget):
         self.delete_btn.setEnabled(False)
         self.delete_btn.clicked.connect(self._delete_session)
         btn_row.addWidget(self.delete_btn)
-
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
     def _refresh_sessions(self) -> None:
-        """Refresh sessions list."""
-        sessions = ReplayService.list_sessions()
+        from mara_host.workflows import ReplayWorkflow
+        sessions = ReplayWorkflow.list_sessions()
         self.sessions_list.clear()
-
         for name in sessions:
-            item = QListWidgetItem(name)
-            self.sessions_list.addItem(item)
+            self.sessions_list.addItem(QListWidgetItem(name))
 
     def _on_session_selected(self, current: QListWidgetItem, previous: QListWidgetItem) -> None:
-        """Handle session selection."""
         if not current:
             self.delete_btn.setEnabled(False)
             return
 
         name = current.text()
-        service = ReplayService(name)
-        info = service.get_session_info()
+        from mara_host.workflows import ReplayWorkflow
+        workflow = ReplayWorkflow(None)
+        info = workflow.get_session_info(name)
 
         if info:
-            self.detail_name_label.setText(info.name)
-            self.detail_path_label.setText(str(info.path))
-            self.detail_duration_label.setText(f"{info.duration_s:.1f} sec")
-            self.detail_events_label.setText(str(info.event_count))
+            self._details.setText("name", info.name)
+            self._details.update("duration", info.duration_s)
+            self._details.update("events", info.event_count)
             self.delete_btn.setEnabled(True)
         else:
-            self.detail_name_label.setText("--")
-            self.detail_path_label.setText("--")
-            self.detail_duration_label.setText("--")
-            self.detail_events_label.setText("--")
+            self._details.setText("name", "--")
+            self._details.setText("duration", "--")
+            self._details.setText("events", "--")
             self.delete_btn.setEnabled(False)
 
     def _delete_session(self) -> None:
-        """Delete the selected session."""
         item = self.sessions_list.currentItem()
         if not item:
             return
@@ -814,8 +529,7 @@ class SessionsTab(QWidget):
         name = item.text()
 
         reply = QMessageBox.question(
-            self,
-            "Delete Session",
+            self, "Delete Session",
             f"Delete session '{name}'? This cannot be undone.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
@@ -830,16 +544,7 @@ class SessionsTab(QWidget):
 
 
 class SessionPanel(QWidget):
-    """
-    Session panel for recording and replay.
-
-    Layout:
-        ┌───────────────┬───────────────────────────────────┐
-        │ Recording     │  (tab content)                    │
-        │ Replay        │                                    │
-        │ Sessions      │                                    │
-        └───────────────┴───────────────────────────────────┘
-    """
+    """Session panel for recording and replay."""
 
     def __init__(
         self,
@@ -856,22 +561,17 @@ class SessionPanel(QWidget):
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        """Set up the session panel UI."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Tab widget
         self.tabs = QTabWidget()
 
-        # Recording tab
         self.recording_tab = RecordingTab(self.signals, self.controller, self.settings)
         self.tabs.addTab(self.recording_tab, "Recording")
 
-        # Replay tab
         self.replay_tab = ReplayTab(self.signals, self.controller, self.settings)
         self.tabs.addTab(self.replay_tab, "Replay")
 
-        # Sessions tab
         self.sessions_tab = SessionsTab(self.signals, self.controller, self.settings)
         self.tabs.addTab(self.sessions_tab, "Sessions")
 

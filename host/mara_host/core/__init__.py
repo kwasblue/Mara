@@ -25,6 +25,7 @@ from .settings import (
     EncoderDefaults,
     HostSettings,
 )
+from .result import Result
 
 __all__ = [
     # Base classes
@@ -43,4 +44,6 @@ __all__ = [
     "FeatureSettings",
     "EncoderDefaults",
     "HostSettings",
+    # Result
+    "Result",
 ]

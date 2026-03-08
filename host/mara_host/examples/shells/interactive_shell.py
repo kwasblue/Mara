@@ -5,7 +5,6 @@ from typing import Callable, Iterable
 
 from mara_host.command.client import MaraClient
 from mara_host.transport.tcp_transport import AsyncTcpTransport
-from mara_host.transport.serial_transport import SerialTransport
 from mara_host.tools.imu_calibrator import ImuCalibrator  # adjust import path as needed
 
 

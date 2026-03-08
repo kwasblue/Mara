@@ -10,7 +10,6 @@ from mara_host.cli.console import (
     print_success,
     print_error,
     print_info,
-    spinner,
 )
 
 # Path to tools directory

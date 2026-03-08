@@ -8,7 +8,6 @@ Generates:
 - Python module: json_to_binary.py (JSON-to-binary converter)
 """
 
-from pathlib import Path
 from mara_host.tools.schema import BINARY_COMMANDS, CPP_COMMAND_DIR, PY_COMMAND_DIR
 
 # Output paths

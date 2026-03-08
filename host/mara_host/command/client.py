@@ -14,7 +14,7 @@ from .coms.connection_monitor import ConnectionMonitor
 from .coms.reliable_commander import ReliableCommander
 from mara_host.config.client_commands import RobotCommandsMixin
 from mara_host.telemetry.binary_parser import parse_telemetry_bin
-from mara_host.config.version import PROTOCOL_VERSION, SCHEMA_VERSION, CLIENT_VERSION, CAPABILITIES_MASK
+from mara_host.config.version import PROTOCOL_VERSION
 from mara_host.logger.logger import MaraLogBundle
 from .binary_mixin import BinaryCommandsMixin
 

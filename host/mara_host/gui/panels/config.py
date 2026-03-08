@@ -3,12 +3,18 @@
 Configuration panel for robot and transport settings.
 """
 
+# Panel metadata for auto-discovery
+PANEL_META = {
+    "id": "config",
+    "label": "Config",
+    "order": 120,
+}
+
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QGroupBox,
-    QLabel,
     QPushButton,
     QLineEdit,
     QSpinBox,
@@ -17,7 +23,6 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QTabWidget,
 )
-from PySide6.QtCore import Qt
 
 from mara_host.gui.core import GuiSignals, RobotController, GuiSettings
 

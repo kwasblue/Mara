@@ -13,7 +13,6 @@ Demonstrates a complete research workflow:
 This example ties together all research module capabilities.
 """
 import json
-import time
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -23,10 +22,8 @@ from typing import Tuple
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from mara_host.research.config_loader import SimulationConfig, load_robot
-from mara_host.research.simulation import SimulationRunner, DiffDriveRobot
+from mara_host.research.config_loader import SimulationConfig
 from mara_host.research.metrics import (
-    analyze_session,
     analyze_step_response,
     compute_tracking_error,
 )
@@ -36,16 +33,12 @@ from mara_host.research.sysid import (
     fit_step_response,
 )
 from mara_host.research.analysis import (
-    lowpass_filter,
     compute_signal_stats,
     compute_fft,
 )
 from mara_host.research.plotting import (
     plot_trajectory_2d,
-    plot_control_loop,
     plot_step_response,
-    plot_latency_cdf,
-    create_figure,
 )
 
 

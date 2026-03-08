@@ -5,9 +5,7 @@ Gamepad input handler for physical controller support.
 Supports Xbox, PlayStation, and generic USB controllers.
 """
 
-from typing import Optional, Callable
-import threading
-import time
+from typing import Optional
 
 from PySide6.QtCore import QObject, Signal, QTimer
 

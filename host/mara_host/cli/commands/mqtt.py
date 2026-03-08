@@ -6,7 +6,6 @@ import shutil
 import signal
 import subprocess
 import socket
-import sys
 import os
 from pathlib import Path
 

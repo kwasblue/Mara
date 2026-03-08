@@ -6,7 +6,6 @@ These tests verify that all pin-related rules and logic are correctly
 implemented in the service layer, not scattered across CLI or tools.
 """
 
-import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -17,7 +16,6 @@ from mara_host.services.pins import (
     GroupRecommendation,
     PIN_GROUPS,
 )
-from mara_host.tools.pins import Capability
 
 
 # =============================================================================

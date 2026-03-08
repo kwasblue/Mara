@@ -8,7 +8,6 @@ import json
 import time
 from pathlib import Path
 import asyncio
-from typing import Optional
 
 
 # ============== Existing Fixtures ==============

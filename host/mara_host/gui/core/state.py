@@ -8,7 +8,7 @@ and connection status.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Any, List
+from typing import Optional, List
 
 
 class ConnectionState(str, Enum):

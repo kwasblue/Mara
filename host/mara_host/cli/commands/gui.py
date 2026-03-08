@@ -10,7 +10,6 @@ Usage:
 """
 
 import argparse
-import sys
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:

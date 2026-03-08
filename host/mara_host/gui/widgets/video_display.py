@@ -3,7 +3,6 @@
 Video display widget for camera feeds.
 """
 
-from typing import Optional
 import time
 
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSizePolicy

@@ -15,16 +15,13 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from mara_host.research.config_loader import load_robot
 from mara_host.research.simulation import DCMotor, DCMotorConfig
 from mara_host.research.sysid import (
     identify_first_order_step,
     identify_second_order_step,
     fit_step_response,
     identify_dc_motor_step,
-    identify_coulomb_friction,
 )
-from mara_host.research.plotting import create_figure
 
 
 def collect_motor_step_response(motor: DCMotor, voltage: float, duration: float, dt: float):

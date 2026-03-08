@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-import pytest
 
 
 def _import_bus_and_recording():

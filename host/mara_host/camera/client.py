@@ -19,7 +19,6 @@ from mara_host.camera.control import CameraControlClient
 # Import canonical types from models
 from mara_host.camera.models import (
     CameraConfig,
-    MotionConfig,
     DeviceStatus,
     FrameSize,
 )

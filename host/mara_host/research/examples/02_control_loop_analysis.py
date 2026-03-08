@@ -17,8 +17,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from mara_host.research.config_loader import load_robot
-from mara_host.research.metrics import analyze_step_response, ControlMetrics
-from mara_host.research.plotting import plot_step_response, plot_control_loop
+from mara_host.research.metrics import analyze_step_response
+from mara_host.research.plotting import plot_step_response
 
 
 @dataclass

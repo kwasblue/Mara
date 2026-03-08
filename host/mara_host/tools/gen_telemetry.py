@@ -7,7 +7,6 @@ Generates:
 - Python module: telemetry_sections.py (section ID constants)
 """
 
-from pathlib import Path
 from mara_host.tools.schema import TELEMETRY_SECTIONS, CPP_TELEMETRY_DIR, PY_TELEMETRY_DIR
 
 # Output paths

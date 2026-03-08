@@ -16,7 +16,7 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Callable
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from ..robot import Robot

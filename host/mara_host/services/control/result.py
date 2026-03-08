@@ -6,7 +6,10 @@ Provides a consistent result pattern across all services.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Any
+from typing import Optional, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mara_host.command.client import MaraClient
 
 
 @dataclass
@@ -54,3 +57,46 @@ class ServiceResult:
     def __bool__(self) -> bool:
         """Allow using result in boolean context."""
         return self.ok
+
+
+async def send_command(
+    client: "MaraClient",
+    command: str,
+    payload: dict,
+    default_error: str,
+    *,
+    success_data: dict[str, Any] | None = None,
+) -> ServiceResult:
+    """
+    Send a command and return a ServiceResult.
+
+    Simplifies the common pattern:
+        ok, error = await client.send_reliable(...)
+        if ok:
+            return ServiceResult.success(data=...)
+        else:
+            return ServiceResult.failure(error=error or "default")
+
+    Args:
+        client: MaraClient instance
+        command: Command name
+        payload: Command payload
+        default_error: Default error message if no error returned
+        success_data: Data dict for successful result
+
+    Returns:
+        ServiceResult
+
+    Example:
+        return await send_command(
+            self.client,
+            "CMD_GPIO_WRITE",
+            {"channel": channel, "value": value},
+            f"Failed to write GPIO channel {channel}",
+            success_data={"channel": channel, "value": value},
+        )
+    """
+    ok, error = await client.send_reliable(command, payload)
+    if ok:
+        return ServiceResult.success(data=success_data)
+    return ServiceResult.failure(error=error or default_error)

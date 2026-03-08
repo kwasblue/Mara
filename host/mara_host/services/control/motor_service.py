@@ -6,7 +6,7 @@ Provides high-level control for DC motors with safety limits.
 """
 
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from mara_host.services.control.result import ServiceResult
 

@@ -34,8 +34,8 @@ Usage with Runtime:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from abc import ABC
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 if TYPE_CHECKING:
     from ..robot import Robot

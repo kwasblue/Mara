@@ -14,7 +14,7 @@ Run:
 """
 
 import asyncio
-from mara_host import Robot, Stepper, Servo, Encoder
+from mara_host import Robot, Stepper, Servo
 
 
 class PillDispenser:

@@ -18,7 +18,7 @@ import argparse
 import asyncio
 
 from mara_host.core.event_bus import EventBus
-from mara_host.transport.mqtt import NodeManager, NodeInfo
+from mara_host.transport.mqtt import NodeManager
 
 
 async def main(

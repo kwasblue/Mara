@@ -1,0 +1,44 @@
+# mara_host/gui/widgets/displays/__init__.py
+"""
+Reusable display widgets for the MARA GUI.
+
+AUTO-DISCOVERY: Widgets are lazily imported.
+To add a new widget, create a file and add to _EXPORTS.
+
+Example:
+    # widgets/displays/mywidget.py
+    class MyDisplay(QWidget):
+        ...
+
+Then add to _EXPORTS: "MyDisplay": "mywidget"
+"""
+
+import importlib
+from typing import Any
+
+_EXPORTS = {
+    "LabelDisplay": "label_display",
+    "TelemetryGrid": "telemetry_grid",
+    "TelemetrySpec": "telemetry_grid",
+    "ProgressIndicator": "progress_bar",
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _EXPORTS:
+        module_name = _EXPORTS[name]
+        if module_name not in _cache:
+            _cache[module_name] = importlib.import_module(
+                f".{module_name}", package=__name__
+            )
+        return getattr(_cache[module_name], name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(_EXPORTS.keys())
+
+
+__all__ = list(_EXPORTS.keys())

@@ -27,8 +27,8 @@ import asyncio
 import sys
 import time
 from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Optional, Callable
+from dataclasses import dataclass
+from typing import Optional
 from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -37,7 +37,7 @@ from mara_host.transport.serial_transport import SerialTransport
 from mara_host.transport.tcp_transport import AsyncTcpTransport
 from mara_host.command.client import MaraClient
 from mara_host.motor.motion import MotionHostModule
-from mara_host.sensor.encoder import EncoderHostModule, EncoderDefaults
+from mara_host.sensor.encoder import EncoderHostModule
 from mara_host.telemetry.host_module import TelemetryHostModule
 from mara_host.core.event_bus import EventBus
 from mara_host.logger.logger import MaraLogBundle

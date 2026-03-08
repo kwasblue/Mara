@@ -12,7 +12,6 @@ from typing import Optional, Tuple, Union
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .state_space import StateSpaceModel
 
 
 def lqr(

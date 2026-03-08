@@ -24,7 +24,6 @@ import sys
 import time
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

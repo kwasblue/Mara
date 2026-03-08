@@ -1,7 +1,6 @@
 import asyncio
 import pytest
 
-from mara_host.core import protocol
 from tests.fakes.fake_async_transport import FakeAsyncTransport
 from tests.helpers import CapturingBus
 

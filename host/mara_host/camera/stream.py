@@ -184,7 +184,6 @@ class MjpegStreamClient:
 
     def get_stats(self) -> "CameraStatistics":
         """Get streaming statistics."""
-        from mara_host.camera.stats import CameraStatistics
         return self.stats.get_stats()
 
     def get_buffer_usage(self) -> Tuple[int, int]:

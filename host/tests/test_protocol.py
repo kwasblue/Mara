@@ -1,4 +1,3 @@
-import pytest
 from mara_host.core import protocol
 
 

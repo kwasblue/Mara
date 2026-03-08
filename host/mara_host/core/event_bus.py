@@ -1,7 +1,10 @@
 # mara_host/core/event_bus.py
 
+import logging
 from collections import defaultdict
 from typing import Callable, Dict, List, Any
+
+logger = logging.getLogger(__name__)
 
 
 class EventBus:
@@ -31,4 +34,4 @@ class EventBus:
             try:
                 h(data)
             except Exception as e:  # don't kill the loop if one handler dies
-                print(f"[Bus] handler error on '{topic}': {e}")
+                logger.warning("Handler error on '%s': %s", topic, e)

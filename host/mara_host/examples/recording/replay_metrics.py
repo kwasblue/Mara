@@ -1,5 +1,4 @@
 from pathlib import Path
-import pandas as pd
 
 from mara_host.research.replay import SessionReplay
 

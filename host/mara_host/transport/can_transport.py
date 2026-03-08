@@ -36,7 +36,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Dict, Any
+from typing import Callable, Optional, Any
 
 from mara_host.transport.async_base_transport import AsyncBaseTransport
 from mara_host.transport.can_defs import (
@@ -54,7 +54,6 @@ from mara_host.transport.can_defs import (
     extract_node_id,
     get_base_id,
     encode_protocol_frames,
-    PROTO_PAYLOAD_SIZE,
     DEFAULT_BAUD_RATE,
     BROADCAST_ID,
 )

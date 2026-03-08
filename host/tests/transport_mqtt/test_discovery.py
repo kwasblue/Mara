@@ -1,10 +1,7 @@
 # tests/transport_mqtt/test_discovery.py
 """Tests for NodeDiscovery."""
 
-import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
 
 from mara_host.core.event_bus import EventBus
 from mara_host.transport.mqtt.discovery import NodeDiscovery

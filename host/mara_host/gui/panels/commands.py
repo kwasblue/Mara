@@ -3,12 +3,18 @@
 Commands panel for testing and sending robot commands.
 """
 
+# Panel metadata for auto-discovery
+PANEL_META = {
+    "id": "commands",
+    "label": "Commands",
+    "order": 40,
+}
+
 import json
 
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QHBoxLayout,
     QSplitter,
     QGroupBox,
     QLabel,

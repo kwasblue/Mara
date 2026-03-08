@@ -3,12 +3,10 @@
 
 import argparse
 import asyncio
-from typing import Optional
 
 from mara_host.cli.console import (
     console,
     print_success,
-    print_error,
     print_info,
     print_warning,
 )

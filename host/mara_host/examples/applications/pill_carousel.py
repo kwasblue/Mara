@@ -1,7 +1,6 @@
 from __future__ import annotations
 import asyncio
 import time
-from typing import Optional
 
 from mara_host.core.event_bus import EventBus
 from mara_host.command.client import MaraClient

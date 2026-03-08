@@ -4,7 +4,6 @@
 Reads defaults from ~/.mara.yaml or ~/.config/mara/config.yaml
 """
 
-import os
 from pathlib import Path
 from typing import Any, Optional
 

@@ -3,6 +3,13 @@
 Firmware panel for building and uploading ESP32 firmware.
 """
 
+# Panel metadata for auto-discovery
+PANEL_META = {
+    "id": "firmware",
+    "label": "Firmware",
+    "order": 110,
+}
+
 import subprocess
 import sys
 from pathlib import Path
@@ -12,7 +19,6 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QGridLayout,
     QGroupBox,
     QLabel,
     QPushButton,
@@ -20,10 +26,9 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QCheckBox,
-    QSplitter,
     QTabWidget,
 )
-from PySide6.QtCore import Qt, QThread, Signal, QProcess
+from PySide6.QtCore import Qt, QThread, Signal
 
 from mara_host.gui.core import GuiSignals, RobotController, GuiSettings
 from mara_host.gui.widgets.serial_monitor import SerialMonitorWidget, SerialMonitorWindow

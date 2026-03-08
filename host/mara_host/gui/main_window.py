@@ -2,10 +2,26 @@
 """
 Main window for the MARA Control GUI.
 
-Provides sidebar navigation and panel management.
+AUTO-DISCOVERY: Panels are automatically discovered from gui/panels/.
+To add a new panel, create a file with PANEL_META and a Panel class.
+
+Example:
+    # gui/panels/mypanel.py
+    PANEL_META = {
+        "id": "mypanel",
+        "label": "My Panel",
+        "order": 50,  # Lower = higher in sidebar
+    }
+
+    class MyPanelPanel(QWidget):
+        def __init__(self, signals, controller, settings):
+            ...
+
+The panel will be auto-discovered and added to the sidebar.
 """
 
-from typing import Optional
+import importlib
+from pathlib import Path
 
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -22,18 +38,72 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QFont, QCloseEvent, QShortcut, QKeySequence
 
 from mara_host.gui.core import GuiSignals, RobotController, GuiSettings, DeviceCapabilities
-from mara_host.gui.panels.dashboard import DashboardPanel
-from mara_host.gui.panels.control import ControlPanel
-from mara_host.gui.panels.camera import CameraPanel
-from mara_host.gui.panels.commands import CommandsPanel
-from mara_host.gui.panels.calibration import CalibrationPanel
-from mara_host.gui.panels.testing import TestingPanel
-from mara_host.gui.panels.advanced import AdvancedPanel
-from mara_host.gui.panels.session import SessionPanel
-from mara_host.gui.panels.pinout import PinoutPanel
-from mara_host.gui.panels.firmware import FirmwarePanel
-from mara_host.gui.panels.config import ConfigPanel
-from mara_host.gui.panels.logs import LogsPanel
+
+
+def _discover_panels() -> list[dict]:
+    """
+    Auto-discover panel modules from gui/panels/.
+
+    Returns list of panel info dicts sorted by order.
+    Each dict has: id, label, order, module_name, class_name
+    """
+    panels = []
+    panels_dir = Path(__file__).parent / "panels"
+
+    for item in sorted(panels_dir.iterdir()):
+        # Skip __pycache__ and private files
+        if item.name.startswith("_"):
+            continue
+
+        # Determine module name
+        if item.is_file() and item.suffix == ".py":
+            module_name = item.stem
+        elif item.is_dir() and (item / "__init__.py").exists():
+            module_name = item.name
+        else:
+            continue
+
+        try:
+            # Import the module
+            module = importlib.import_module(
+                f"mara_host.gui.panels.{module_name}"
+            )
+
+            # Check for PANEL_META
+            if not hasattr(module, "PANEL_META"):
+                continue
+
+            meta = module.PANEL_META
+            if not isinstance(meta, dict) or "id" not in meta or "label" not in meta:
+                continue
+
+            # Find the panel class (convention: class name ends with "Panel")
+            panel_class = None
+            for attr_name in dir(module):
+                if attr_name.endswith("Panel") and attr_name != "Panel":
+                    cls = getattr(module, attr_name)
+                    if isinstance(cls, type):
+                        panel_class = cls
+                        break
+
+            if panel_class is None:
+                continue
+
+            panels.append({
+                "id": meta["id"],
+                "label": meta["label"],
+                "order": meta.get("order", 100),
+                "module_name": module_name,
+                "class": panel_class,
+            })
+
+        except ImportError as e:
+            import warnings
+            warnings.warn(f"Failed to import panel '{module_name}': {e}")
+
+    # Sort by order
+    panels.sort(key=lambda p: p["order"])
+    return panels
 
 
 class MainWindow(QMainWindow):
@@ -56,22 +126,6 @@ class MainWindow(QMainWindow):
         └──────────────────────────────────────────────────┘
     """
 
-    # Panel definitions: (id, label)
-    PANELS = [
-        ("dashboard", "Dashboard"),
-        ("control", "Control"),
-        ("camera", "Camera"),
-        ("commands", "Commands"),
-        ("calibration", "Calibration"),
-        ("testing", "Testing"),
-        ("advanced", "Advanced"),
-        ("session", "Session"),
-        ("pinout", "Pinout"),
-        ("firmware", "Firmware"),
-        ("config", "Config"),
-        ("logs", "Logs"),
-    ]
-
     def __init__(self, signals: GuiSignals, controller: RobotController, dev_mode: bool = False):
         super().__init__()
 
@@ -79,6 +133,9 @@ class MainWindow(QMainWindow):
         self.controller = controller
         self.settings = GuiSettings()
         self._dev_mode = dev_mode
+
+        # Discover panels
+        self._panel_infos = _discover_panels()
 
         self.setWindowTitle("MARA Control" + (" [DEV]" if dev_mode else ""))
         self.setMinimumSize(1024, 768)
@@ -156,9 +213,9 @@ class MainWindow(QMainWindow):
         self.nav_list.setObjectName("Sidebar")
         self.nav_list.setSpacing(2)
 
-        for panel_id, label in self.PANELS:
-            item = QListWidgetItem(label)
-            item.setData(Qt.UserRole, panel_id)
+        for panel_info in self._panel_infos:
+            item = QListWidgetItem(panel_info["label"])
+            item.setData(Qt.UserRole, panel_info["id"])
             item.setSizeHint(QSize(160, 36))
             self.nav_list.addItem(item)
 
@@ -194,82 +251,25 @@ class MainWindow(QMainWindow):
         return sidebar
 
     def _create_panels(self) -> None:
-        """Create and add panel widgets."""
+        """Create and add panel widgets (auto-discovered)."""
         self.panels = {}
 
-        # Dashboard
-        self.panels["dashboard"] = DashboardPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["dashboard"])
+        for panel_info in self._panel_infos:
+            panel_id = panel_info["id"]
+            panel_class = panel_info["class"]
 
-        # Control
-        self.panels["control"] = ControlPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["control"])
-
-        # Camera
-        self.panels["camera"] = CameraPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["camera"])
-
-        # Commands
-        self.panels["commands"] = CommandsPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["commands"])
-
-        # Calibration
-        self.panels["calibration"] = CalibrationPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["calibration"])
-
-        # Testing
-        self.panels["testing"] = TestingPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["testing"])
-
-        # Advanced
-        self.panels["advanced"] = AdvancedPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["advanced"])
-
-        # Session
-        self.panels["session"] = SessionPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["session"])
-
-        # Pinout
-        self.panels["pinout"] = PinoutPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["pinout"])
-
-        # Firmware
-        self.panels["firmware"] = FirmwarePanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["firmware"])
-
-        # Config
-        self.panels["config"] = ConfigPanel(
-            self.signals, self.controller, self.settings
-        )
-        self.content_stack.addWidget(self.panels["config"])
-
-        # Logs
-        self.panels["logs"] = LogsPanel(self.signals, self.controller, self.settings)
-        self.content_stack.addWidget(self.panels["logs"])
+            try:
+                # Instantiate the panel
+                panel = panel_class(self.signals, self.controller, self.settings)
+                self.panels[panel_id] = panel
+                self.content_stack.addWidget(panel)
+            except Exception as e:
+                import warnings
+                warnings.warn(f"Failed to create panel '{panel_id}': {e}")
 
         # Select initial panel
         last_panel = self.settings.get_last_panel()
-        panel_ids = [p[0] for p in self.PANELS]
+        panel_ids = [p["id"] for p in self._panel_infos]
         if last_panel in panel_ids:
             idx = panel_ids.index(last_panel)
             self.nav_list.setCurrentRow(idx)
@@ -349,8 +349,8 @@ class MainWindow(QMainWindow):
             self.controller.activate
         )
 
-        # Panel switching: Ctrl+1 through Ctrl+8
-        for i, (panel_id, _) in enumerate(self.PANELS):
+        # Panel switching: Ctrl+1 through Ctrl+9
+        for i, panel_info in enumerate(self._panel_infos):
             if i < 9:
                 shortcut = QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self)
                 shortcut.activated.connect(
@@ -365,8 +365,8 @@ class MainWindow(QMainWindow):
 
     def _on_nav_changed(self, index: int) -> None:
         """Handle navigation change."""
-        if 0 <= index < len(self.PANELS):
-            panel_id = self.PANELS[index][0]
+        if 0 <= index < len(self._panel_infos):
+            panel_id = self._panel_infos[index]["id"]
             self.content_stack.setCurrentIndex(index)
             self.settings.set_last_panel(panel_id)
 

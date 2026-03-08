@@ -3,11 +3,17 @@
 Logs panel for viewing application and robot events.
 """
 
+# Panel metadata for auto-discovery
+PANEL_META = {
+    "id": "logs",
+    "label": "Logs",
+    "order": 130,
+}
+
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QGroupBox,
     QLabel,
     QPushButton,
     QPlainTextEdit,
@@ -15,8 +21,6 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QLineEdit,
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QTextCharFormat, QColor
 
 from mara_host.gui.core import GuiSignals, RobotController, GuiSettings
 from mara_host.gui.core.dev_mode import is_dev_mode

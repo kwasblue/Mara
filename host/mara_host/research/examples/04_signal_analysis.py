@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from mara_host.research.analysis import (
     lowpass_filter,
-    highpass_filter,
     moving_average,
     median_filter,
     exponential_moving_average,
@@ -27,7 +26,6 @@ from mara_host.research.analysis import (
     detect_outliers_iqr,
     detect_outliers_zscore,
     detect_outliers_mad,
-    cross_correlation,
     find_lag,
 )
 from mara_host.research.plotting import plot_histogram, plot_fft, plot_psd

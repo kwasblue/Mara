@@ -2,7 +2,7 @@
 """Tests for MQTTTransport."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 import pytest
 
 from mara_host.core import protocol

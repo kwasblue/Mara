@@ -6,9 +6,9 @@ This module is the single source of truth for all camera-related types.
 All other camera files should import from here.
 """
 
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 import numpy as np
 
 

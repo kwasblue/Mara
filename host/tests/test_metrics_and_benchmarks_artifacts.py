@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-import pytest
 
 
 def test_basic_metrics_outputs(tmp_path: Path):

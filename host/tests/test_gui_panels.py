@@ -6,8 +6,7 @@ basic functionality works correctly with mocked dependencies.
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-from dataclasses import dataclass
+from unittest.mock import MagicMock, AsyncMock
 
 
 # ============== Fixtures ==============
@@ -339,37 +338,53 @@ class TestTestService:
 # ============== Calibration Tests ==============
 
 
-class TestCalibrationResult:
-    """Tests for calibration result handling."""
+class TestWorkflowResult:
+    """Tests for workflow result handling."""
 
-    def test_calibration_result_structure(self):
-        """Test CalibrationResult dataclass."""
-        from mara_host.gui.panels.calibration import CalibrationResult
+    def test_workflow_result_structure(self):
+        """Test WorkflowResult dataclass."""
+        from mara_host.workflows import WorkflowResult, WorkflowState
 
-        result = CalibrationResult(
-            wizard_type="motor",
-            success=True,
-            message="Calibration complete",
+        result = WorkflowResult(
+            ok=True,
             data={"dead_zone": 15, "inverted": False}
         )
 
-        assert result.wizard_type == "motor"
-        assert result.success is True
+        assert result.ok is True
         assert result.data["dead_zone"] == 15
+        assert result.state == WorkflowState.COMPLETED
+
+    def test_workflow_result_success_factory(self):
+        """Test WorkflowResult.success() factory method."""
+        from mara_host.workflows import WorkflowResult
+
+        result = WorkflowResult.success({"calibrated": True})
+        assert result.ok is True
+        assert result.data["calibrated"] is True
+
+    def test_workflow_result_failure_factory(self):
+        """Test WorkflowResult.failure() factory method."""
+        from mara_host.workflows import WorkflowResult, WorkflowState
+
+        result = WorkflowResult.failure("Motor not responding")
+        assert result.ok is False
+        assert result.error == "Motor not responding"
+        assert result.state == WorkflowState.ERROR
 
 
-class TestCalibrationState:
-    """Tests for CalibrationState enum."""
+class TestWorkflowState:
+    """Tests for WorkflowState enum."""
 
-    def test_calibration_states(self):
-        """Test CalibrationState values."""
-        from mara_host.gui.panels.calibration import CalibrationState
+    def test_workflow_states(self):
+        """Test WorkflowState values."""
+        from mara_host.workflows import WorkflowState
 
-        assert CalibrationState.IDLE.value == "idle"
-        assert CalibrationState.RUNNING.value == "running"
-        assert CalibrationState.WAITING_USER.value == "waiting_user"
-        assert CalibrationState.COMPLETED.value == "completed"
-        assert CalibrationState.CANCELLED.value == "cancelled"
+        assert WorkflowState.IDLE.value == "idle"
+        assert WorkflowState.RUNNING.value == "running"
+        assert WorkflowState.WAITING_USER.value == "waiting_user"
+        assert WorkflowState.COMPLETED.value == "completed"
+        assert WorkflowState.CANCELLED.value == "cancelled"
+        assert WorkflowState.ERROR.value == "error"
 
 
 # ============== Session Recording Tests ==============
@@ -425,7 +440,6 @@ class TestReplayService:
     def test_list_sessions_with_sessions(self, tmp_path):
         """Test listing sessions with existing sessions."""
         from mara_host.services.recording.recording_service import ReplayService
-        import json
 
         # Create fake sessions
         session1 = tmp_path / "session1"
@@ -617,16 +631,10 @@ class TestPanelImports:
         from mara_host.gui.panels import (
             DashboardPanel,
             ControlPanel,
-            CameraPanel,
-            CommandsPanel,
             CalibrationPanel,
             TestingPanel,
             AdvancedPanel,
             SessionPanel,
-            PinoutPanel,
-            FirmwarePanel,
-            ConfigPanel,
-            LogsPanel,
         )
 
         assert DashboardPanel is not None

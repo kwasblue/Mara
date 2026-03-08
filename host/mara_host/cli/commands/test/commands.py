@@ -10,7 +10,6 @@ from typing import Optional, Any
 
 from mara_host.cli.console import (
     console,
-    print_success,
     print_error,
     print_info,
     print_warning,

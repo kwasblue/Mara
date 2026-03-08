@@ -176,9 +176,6 @@ async def example_upload_to_mcu():
         StateSpaceModel,
         lqr,
         observer_gains,
-        configure_state_feedback,
-        ControllerConfig,
-        upload_controller,
     )
 
     print("\n" + "=" * 60)

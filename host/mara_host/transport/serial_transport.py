@@ -1,4 +1,5 @@
 from __future__ import annotations
+import time
 from typing import Optional
 
 import serial
@@ -38,6 +39,9 @@ class SerialTransport(StreamTransport):
         except Exception:
             pass
 
+        # Brief stabilization delay for macOS USB serial drivers
+        time.sleep(0.1)
+
     def _close(self) -> None:
         if not self._ser:
             return
@@ -61,7 +65,14 @@ class SerialTransport(StreamTransport):
     def _read_raw(self, n: int) -> bytes:
         if not self._ser:
             return b""
-        return self._ser.read(n)
+        try:
+            return self._ser.read(n)
+        except serial.SerialException as e:
+            # Handle transient "device reports readiness" errors on macOS
+            if "returned no data" in str(e):
+                time.sleep(0.05)
+                return b""
+            raise
 
     def _send_bytes(self, data: bytes) -> None:
         if not self._ser or not self._ser.is_open:

@@ -1,8 +1,7 @@
 # tests/transport_mqtt/test_failover.py
 """Tests for broker failover logic."""
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 import pytest
 
 from mara_host.transport.mqtt.broker_failover import (

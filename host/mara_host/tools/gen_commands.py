@@ -6,7 +6,7 @@ from typing import Any
 from pathlib import Path
 import json
 from mara_host.tools.schema import (
-    ROOT, COMMANDS, VERSION, CAPABILITIES, CAPABILITIES_MASK,
+    COMMANDS, VERSION, CAPABILITIES, CAPABILITIES_MASK,
     PY_CONFIG_DIR, CPP_CONFIG_DIR
 )
 

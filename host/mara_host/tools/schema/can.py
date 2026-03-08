@@ -1,7 +1,7 @@
 # schema/can.py
 """CAN bus message definitions for hybrid real-time/protocol transport."""
 
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 # CAN message IDs and structure definitions.
 # Maps to MCU's config/CanDefs.h for interoperability.

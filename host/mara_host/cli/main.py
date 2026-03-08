@@ -2,16 +2,82 @@
 # mara_host/cli/main.py
 """MARA CLI - Modular Asynchronous Robotics Architecture.
 
-Unified command-line interface for mara_host tools.
+AUTO-DISCOVERY: CLI commands are automatically discovered.
+To add a new command, create a file in `cli/commands/` with a
+`register(subparsers)` function.
+
+Example:
+    # cli/commands/mycommand.py
+    def register(subparsers):
+        parser = subparsers.add_parser("mycommand", help="My command")
+        parser.set_defaults(func=cmd_mycommand)
+
+    def cmd_mycommand(args):
+        print("Hello from mycommand!")
+        return 0
+
+The command will be auto-discovered and registered.
 """
 
 import argparse
+import importlib
 import sys
-from typing import Callable
+from pathlib import Path
 
-from rich.console import Console
 
-from mara_host.cli.console import print_header, console
+from mara_host.cli.console import console
+
+
+def _discover_commands(subparsers: argparse._SubParsersAction) -> list[str]:
+    """
+    Auto-discover and register CLI command modules.
+
+    Scans cli/commands/ for modules with a register() function.
+    Returns list of registered command names for debugging.
+    """
+    registered = []
+    commands_dir = Path(__file__).parent / "commands"
+
+    # Find all .py files and packages in commands/
+    for item in sorted(commands_dir.iterdir()):
+        # Skip __pycache__ and private files
+        if item.name.startswith("_"):
+            continue
+
+        # Determine module name
+        if item.is_file() and item.suffix == ".py":
+            module_name = item.stem
+        elif item.is_dir() and (item / "__init__.py").exists():
+            module_name = item.name
+        else:
+            continue
+
+        try:
+            # Import the module
+            module = importlib.import_module(
+                f"mara_host.cli.commands.{module_name}"
+            )
+
+            # Check for register function
+            if hasattr(module, "register") and callable(module.register):
+                module.register(subparsers)
+                registered.append(module_name)
+
+        except ImportError as e:
+            # Log but don't fail - allows partial CLI functionality
+            console.print(f"[dim]Warning: Failed to load command '{module_name}': {e}[/dim]")
+
+    return registered
+
+
+def _register_completions(subparsers: argparse._SubParsersAction) -> None:
+    """Register shell completions command (special case - in cli/ not commands/)."""
+    try:
+        from mara_host.cli import completions
+        if hasattr(completions, "register"):
+            completions.register(subparsers)
+    except ImportError:
+        pass
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -46,42 +112,13 @@ For more help on a specific command:
         metavar="<command>",
     )
 
-    # Register all command groups
-    from mara_host.cli.commands import pins
-    from mara_host.cli.commands import build
-    from mara_host.cli.commands import generate
-    from mara_host.cli.commands import run
-    from mara_host.cli.commands import record
-    from mara_host.cli.commands import config
-    from mara_host.cli.commands import dashboard
-    from mara_host.cli.commands import flash
-    from mara_host.cli.commands import monitor
-    from mara_host.cli.commands import calibrate
-    from mara_host.cli.commands import test
-    from mara_host.cli.commands import logs
-    from mara_host.cli.commands import sim
-    from mara_host.cli.commands import mqtt
-    from mara_host.cli.commands import gui
-    from mara_host.cli import completions
+    # Auto-discover and register all commands from cli/commands/
+    _discover_commands(subparsers)
 
-    pins.register(subparsers)
-    build.register(subparsers)
-    generate.register(subparsers)
-    run.register(subparsers)
-    record.register(subparsers)
-    config.register(subparsers)
-    dashboard.register(subparsers)
-    flash.register(subparsers)
-    monitor.register(subparsers)
-    calibrate.register(subparsers)
-    test.register(subparsers)
-    logs.register(subparsers)
-    sim.register(subparsers)
-    mqtt.register(subparsers)
-    gui.register(subparsers)
-    completions.register(subparsers)
+    # Register completions (special location)
+    _register_completions(subparsers)
 
-    # Version command
+    # Version command (built-in)
     version_parser = subparsers.add_parser(
         "version",
         help="Show version information",

@@ -1,8 +1,6 @@
 # mara_host/main_with_camera.py (example)
 
-import time
 import torch  # if you're using torch; otherwise remove
-from typing import Optional
 
 import numpy as np
 

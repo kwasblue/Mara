@@ -1,7 +1,7 @@
 # schema/binary.py
 """Binary command definitions for high-rate streaming."""
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 
 # Binary commands are compact fixed-format messages for control loops.
 # Use JSON commands for setup/config, binary for real-time streaming (50+ Hz).

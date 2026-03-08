@@ -4,8 +4,7 @@ Generate PinConfig.h (C++) and pin_config.py (Python)
 from PINS in schema (which itself loads pins.json).
 """
 
-from pathlib import Path
-from mara_host.tools.schema import ROOT, PINS, PINS_JSON, CPP_CONFIG_DIR, PY_CONFIG_DIR
+from mara_host.tools.schema import PINS, PINS_JSON, CPP_CONFIG_DIR, PY_CONFIG_DIR
 
 # Where to write the C++ header (ESP32 firmware project)
 CPP_OUT = CPP_CONFIG_DIR / "PinConfig.h"

@@ -357,7 +357,6 @@ complete -c mara -s v -l verbose -d 'Verbose output'
 
 def _install_completions(shell: str, script: str) -> int:
     """Install completions to appropriate location."""
-    import os
 
     home = Path.home()
 

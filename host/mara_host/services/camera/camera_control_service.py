@@ -5,7 +5,7 @@ Camera control service.
 Provides high-level control for camera settings.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import IntEnum
 from typing import Optional, TYPE_CHECKING
 

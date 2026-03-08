@@ -8,7 +8,6 @@ commands with additional conveniences.
 
 import asyncio
 from dataclasses import dataclass
-from typing import Optional
 
 from mara_host.command.client import MaraClient
 

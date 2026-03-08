@@ -178,7 +178,8 @@ class RecordingService:
         try:
             await asyncio.sleep(duration_s)
         finally:
-            return await self.stop()
+            result = await self.stop()
+        return result
 
     async def __aenter__(self) -> "RecordingService":
         await self.start()

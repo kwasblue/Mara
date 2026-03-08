@@ -5,6 +5,7 @@ Motion control service for velocity and trajectory commands.
 Provides a high-level interface for robot motion control.
 """
 
+import time
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 
@@ -58,6 +59,10 @@ class MotionService:
         self._velocity_limit_linear = 1.0  # m/s
         self._velocity_limit_angular = 2.0  # rad/s
 
+        # Rate limiting for GUI/joystick use
+        self._rate_limit_hz = 50.0
+        self._last_send_time = 0.0
+
     @property
     def last_velocity(self) -> Velocity:
         """Get the last commanded velocity."""
@@ -83,13 +88,62 @@ class MotionService:
         """Set angular velocity limit (rad/s)."""
         self._velocity_limit_angular = abs(value)
 
+    @property
+    def rate_limit_hz(self) -> float:
+        """Get command rate limit (Hz)."""
+        return self._rate_limit_hz
+
+    @rate_limit_hz.setter
+    def rate_limit_hz(self, value: float) -> None:
+        """Set command rate limit (Hz)."""
+        self._rate_limit_hz = max(1.0, abs(value))
+
+    def set_limits(
+        self,
+        linear: Optional[float] = None,
+        angular: Optional[float] = None,
+        rate_hz: Optional[float] = None,
+    ) -> None:
+        """
+        Configure velocity and rate limits.
+
+        Args:
+            linear: Linear velocity limit in m/s (default: unchanged)
+            angular: Angular velocity limit in rad/s (default: unchanged)
+            rate_hz: Command rate limit in Hz for GUI use (default: unchanged)
+
+        Example:
+            motion.set_limits(linear=0.5, angular=1.0, rate_hz=30)
+        """
+        if linear is not None:
+            self._velocity_limit_linear = abs(linear)
+        if angular is not None:
+            self._velocity_limit_angular = abs(angular)
+        if rate_hz is not None:
+            self._rate_limit_hz = max(1.0, abs(rate_hz))
+
+    def _check_rate_limit(self) -> bool:
+        """
+        Check if rate limit allows sending a command.
+
+        Returns:
+            True if enough time has passed since last send
+        """
+        now = time.time()
+        min_interval = 1.0 / self._rate_limit_hz
+        if now - self._last_send_time >= min_interval:
+            self._last_send_time = now
+            return True
+        return False
+
     async def set_velocity(
         self,
         vx: float,
         omega: float,
         clamp: bool = True,
         binary: bool = True,
-    ) -> None:
+        respect_rate_limit: bool = False,
+    ) -> bool:
         """
         Set robot velocity (fire-and-forget for real-time control).
 
@@ -99,7 +153,17 @@ class MotionService:
             clamp: If True, clamp velocities to limits
             binary: If True, use binary encoding (lower latency for 50+ Hz).
                     All commands still flow through commander for event logging.
+            respect_rate_limit: If True, skip command if rate limit exceeded.
+                               Useful for GUI joystick input that may fire
+                               faster than desired command rate.
+
+        Returns:
+            True if command was sent, False if skipped due to rate limit
         """
+        # Check rate limit if requested
+        if respect_rate_limit and not self._check_rate_limit():
+            return False
+
         if clamp:
             vx = max(-self._velocity_limit_linear, min(self._velocity_limit_linear, vx))
             omega = max(
@@ -115,6 +179,7 @@ class MotionService:
         )
 
         self._last_velocity = Velocity(vx=vx, omega=omega)
+        return True
 
     async def set_velocity_reliable(
         self,

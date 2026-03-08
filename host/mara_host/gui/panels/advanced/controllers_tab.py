@@ -2,64 +2,27 @@
 """Controllers management tab for Advanced panel."""
 
 from PySide6.QtWidgets import (
-    QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QGridLayout,
     QGroupBox,
     QLabel,
-    QPushButton,
     QSpinBox,
     QDoubleSpinBox,
     QComboBox,
-    QFrame,
     QDialog,
     QDialogButtonBox,
-    QCheckBox,
-    QScrollArea,
 )
-from PySide6.QtCore import Qt
 
 from mara_host.gui.core import GuiSignals, RobotController
+from mara_host.gui.panels.advanced.slot_base import SlotWidgetBase, SlotTabPanel
 
 
-class ControllerSlotWidget(QFrame):
+class ControllerSlotWidget(SlotWidgetBase):
     """Widget for a single controller slot."""
 
-    def __init__(
-        self,
-        slot: int,
-        controller: RobotController,
-        parent=None,
-    ):
-        super().__init__(parent)
-        self.slot = slot
-        self.robot_controller = controller
-        self._configured = False
-
-        self.setFrameShape(QFrame.Shape.StyledPanel)
-        self.setStyleSheet("QFrame { background-color: #1A1A1C; border-radius: 8px; padding: 12px; }")
-
-        self._setup_ui()
-
-    def _setup_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setSpacing(8)
-
-        # Header
-        header = QHBoxLayout()
-        self.title_label = QLabel(f"Slot {self.slot}: [Unconfigured]")
-        self.title_label.setStyleSheet("font-weight: bold; color: #FAFAFA;")
-        header.addWidget(self.title_label)
-
-        self.enabled_check = QCheckBox("Enabled")
-        self.enabled_check.stateChanged.connect(self._on_enable_changed)
-        header.addWidget(self.enabled_check)
-        header.addStretch()
-        layout.addLayout(header)
-
-        # Info labels (hidden when unconfigured)
-        self.info_frame = QFrame()
+    def _setup_info_frame(self) -> None:
+        """Set up controller-specific info labels."""
         info_layout = QGridLayout(self.info_frame)
         info_layout.setSpacing(4)
 
@@ -83,26 +46,8 @@ class ControllerSlotWidget(QFrame):
         self.gains_label.setStyleSheet("color: #71717A;")
         info_layout.addWidget(self.gains_label, 2, 1, 1, 3)
 
-        self.info_frame.setVisible(False)
-        layout.addWidget(self.info_frame)
-
-        # Buttons
-        btn_row = QHBoxLayout()
-        self.configure_btn = QPushButton("Configure")
-        self.configure_btn.setObjectName("secondary")
-        self.configure_btn.clicked.connect(self._configure)
-        btn_row.addWidget(self.configure_btn)
-
-        self.reset_btn = QPushButton("Reset")
-        self.reset_btn.setObjectName("secondary")
-        self.reset_btn.clicked.connect(self._reset)
-        btn_row.addWidget(self.reset_btn)
-
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
-
-    def _on_enable_changed(self, state: int) -> None:
-        enable = state == Qt.CheckState.Checked.value
+    def _on_enable_changed(self, enable: bool) -> None:
+        """Handle enable/disable."""
         self.robot_controller.controller_enable(self.slot, enable)
 
     def _configure(self) -> None:
@@ -156,7 +101,7 @@ class ControllerSlotWidget(QFrame):
 
         layout.addWidget(signals_group)
 
-        # PID gains (shown for PID type)
+        # PID gains
         pid_group = QGroupBox("PID Gains")
         pid_layout = QGridLayout(pid_group)
 
@@ -199,11 +144,9 @@ class ControllerSlotWidget(QFrame):
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             ctrl_type = type_combo.currentText()
-            rate = rate_spin.value()
-
             config = {
                 "type": ctrl_type.lower().replace("-", "_"),
-                "rate_hz": rate,
+                "rate_hz": rate_spin.value(),
                 "ref_signal_id": ref_spin.value(),
                 "meas_signal_id": meas_spin.value(),
                 "out_signal_id": out_spin.value(),
@@ -212,15 +155,14 @@ class ControllerSlotWidget(QFrame):
                 "kd": kd_spin.value(),
                 "out_limit": limit_spin.value(),
             }
-
             self.robot_controller.controller_config(self.slot, config)
             self._update_display(config)
 
     def _update_display(self, config: dict) -> None:
         """Update display with config."""
-        self._configured = True
         ctrl_type = config.get("type", "pid").upper().replace("_", "-")
-        self.title_label.setText(f"Slot {self.slot}: {ctrl_type} Controller")
+        self._set_configured(f"{ctrl_type} Controller")
+
         self.type_label.setText(ctrl_type)
         self.rate_label.setText(f"{config.get('rate_hz', 100)} Hz")
 
@@ -234,59 +176,15 @@ class ControllerSlotWidget(QFrame):
         kd = config.get("kd", 0)
         self.gains_label.setText(f"Kp={kp}, Ki={ki}, Kd={kd}")
 
-        self.info_frame.setVisible(True)
-
     def _reset(self) -> None:
         """Reset slot."""
         self.robot_controller.controller_reset(self.slot)
-        self._configured = False
-        self.title_label.setText(f"Slot {self.slot}: [Unconfigured]")
-        self.info_frame.setVisible(False)
-        self.enabled_check.setChecked(False)
+        super()._reset()
 
 
-class ControllersTab(QWidget):
+class ControllersTab(SlotTabPanel):
     """Controllers management tab."""
 
     NUM_SLOTS = 8
-
-    def __init__(
-        self,
-        signals: GuiSignals,
-        controller: RobotController,
-        parent=None,
-    ):
-        super().__init__(parent)
-        self.signals = signals
-        self.controller = controller
-
-        self._setup_ui()
-
-    def _setup_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
-
-        # Info
-        info_label = QLabel(f"Control Slots ({self.NUM_SLOTS} available)")
-        info_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #FAFAFA;")
-        layout.addWidget(info_label)
-
-        # Scroll area for slots
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setSpacing(12)
-
-        self.slot_widgets = []
-        for i in range(self.NUM_SLOTS):
-            slot_widget = ControllerSlotWidget(i, self.controller)
-            self.slot_widgets.append(slot_widget)
-            scroll_layout.addWidget(slot_widget)
-
-        scroll_layout.addStretch()
-        scroll.setWidget(scroll_content)
-        layout.addWidget(scroll, 1)
+    SLOT_WIDGET_CLASS = ControllerSlotWidget
+    TITLE_FORMAT = "Control Slots ({} available)"

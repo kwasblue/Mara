@@ -15,12 +15,17 @@ PANEL_META = {
     "order": 70,
 }
 
+from mara_host.gui.panels.advanced.slot_base import SlotWidgetBase, SlotTabPanel
 from mara_host.gui.panels.advanced.signal_bus_tab import SignalBusTab
 from mara_host.gui.panels.advanced.controllers_tab import ControllersTab, ControllerSlotWidget
 from mara_host.gui.panels.advanced.observers_tab import ObserversTab, ObserverSlotWidget
 from mara_host.gui.panels.advanced.panel import AdvancedPanel
 
 __all__ = [
+    # Base classes
+    "SlotWidgetBase",
+    "SlotTabPanel",
+    # Tabs
     "AdvancedPanel",
     "SignalBusTab",
     "ControllersTab",

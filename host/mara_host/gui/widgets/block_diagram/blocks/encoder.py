@@ -5,19 +5,11 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont
-from PySide6.QtWidgets import (
-    QDialog,
-    QWidget,
-    QVBoxLayout,
-    QLineEdit,
-    QSpinBox,
-    QDialogButtonBox,
-    QGroupBox,
-    QFormLayout,
-)
+from PySide6.QtWidgets import QDialog, QWidget
 
 from ..core.block import BlockBase
 from ..core.models import BlockConfig, PortConfig, PortKind, PortType
+from ..dialogs.base import BaseBlockConfigDialog, FieldDef
 
 
 def create_encoder_config(
@@ -120,49 +112,14 @@ class EncoderBlock(BlockBase):
         return EncoderConfigDialog(self.config.properties, parent)
 
 
-class EncoderConfigDialog(QDialog):
+class EncoderConfigDialog(BaseBlockConfigDialog):
     """Configuration dialog for encoder."""
 
-    def __init__(self, properties: dict, parent=None):
-        super().__init__(parent)
-        self._properties = properties.copy()
-        self._setup_ui()
-
-    def _setup_ui(self) -> None:
-        self.setWindowTitle("Encoder Configuration")
-        self.setMinimumWidth(280)
-
-        layout = QVBoxLayout(self)
-
-        group = QGroupBox("Encoder Settings")
-        form = QFormLayout(group)
-
-        self.name_edit = QLineEdit(self._properties.get("name", "Encoder"))
-        form.addRow("Name:", self.name_edit)
-
-        self.id_spin = QSpinBox()
-        self.id_spin.setRange(0, 7)
-        self.id_spin.setValue(self._properties.get("encoder_id", 0))
-        form.addRow("Encoder ID:", self.id_spin)
-
-        self.ppr_spin = QSpinBox()
-        self.ppr_spin.setRange(1, 10000)
-        self.ppr_spin.setValue(self._properties.get("ppr", 11))
-        form.addRow("Pulses/Rev:", self.ppr_spin)
-
-        layout.addWidget(group)
-
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
-
-    def get_config(self) -> dict:
-        """Get configuration from dialog."""
-        return {
-            "name": self.name_edit.text(),
-            "encoder_id": self.id_spin.value(),
-            "ppr": self.ppr_spin.value(),
-        }
+    dialog_title = "Encoder Configuration"
+    show_live_tune = False
+    min_width = 280
+    fields = [
+        FieldDef("name", "Name", field_type="str", default="Encoder"),
+        FieldDef("encoder_id", "Encoder ID", field_type="int", default=0, min_val=0, max_val=7),
+        FieldDef("ppr", "Pulses/Rev", field_type="int", default=11, min_val=1, max_val=10000),
+    ]

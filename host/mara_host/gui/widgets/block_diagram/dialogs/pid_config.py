@@ -1,10 +1,10 @@
 # mara_host/gui/widgets/block_diagram/dialogs/pid_config.py
 """PID controller configuration dialog."""
 
+from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QFormLayout,
@@ -20,6 +20,8 @@ from PySide6.QtWidgets import (
     QSlider,
     QFrame,
 )
+
+from .base import BaseBlockConfigDialog, FieldDef
 
 
 class GainSlider(QFrame):
@@ -83,21 +85,33 @@ class GainSlider(QFrame):
         self.spinbox.setValue(value)
 
 
-class PIDConfigDialog(QDialog):
+class PIDConfigDialog(BaseBlockConfigDialog):
     """
     Configuration dialog for PID controller.
 
     Provides intuitive controls for PID gains with real-time
     slider feedback and advanced options.
 
+    This dialog uses a custom layout with tabs and GainSliders
+    rather than the declarative field definitions, but inherits
+    common functionality from BaseBlockConfigDialog.
+
     Signals:
         live_update(int, dict): Emitted when Live Tune is enabled and a
                                 parameter changes. Args: (slot, {param: value})
     """
 
-    live_update = Signal(int, dict)  # slot, {param: value}
+    dialog_title = "PID Controller Configuration"
+    show_live_tune = False  # We handle this manually with custom UI
+    min_width = 400
 
-    def __init__(self, properties: dict, parent=None, controller=None):
+    def __init__(
+        self,
+        properties: dict,
+        parent: QWidget = None,
+        controller: Any = None,
+        slot: int = 0,
+    ):
         """
         Initialize PID config dialog.
 
@@ -105,16 +119,22 @@ class PIDConfigDialog(QDialog):
             properties: Current block properties
             parent: Parent widget
             controller: RobotController for live tuning (optional)
+            slot: Controller slot number
         """
-        super().__init__(parent)
+        # Don't call super().__init__ since we override _setup_ui completely
+        # but do basic QDialog init
+        QWidget.__init__(self, parent)
         self._properties = properties.copy()
         self._controller = controller
+        self._slot = slot
         self._live_tune = False
-        self._setup_ui()
+        self._widgets = {}
+        self.setWindowTitle(self.dialog_title)
+        self.setMinimumWidth(self.min_width)
+        self._setup_ui_custom()
 
-    def _setup_ui(self) -> None:
-        self.setWindowTitle("PID Controller Configuration")
-        self.setMinimumWidth(400)
+    def _setup_ui_custom(self) -> None:
+        """Set up custom tabbed UI for PID dialog."""
         self.setMinimumHeight(450)
 
         layout = QVBoxLayout(self)
@@ -307,7 +327,7 @@ class PIDConfigDialog(QDialog):
         self.live_update.emit(slot, {param: value})
 
         # Direct controller update if available
-        if self._controller and self._controller.is_connected:
+        if self._controller and getattr(self._controller, "is_connected", False):
             # Use single-param update for efficiency (hot-swap)
             self._controller.controller_set_param(slot, param, value)
 

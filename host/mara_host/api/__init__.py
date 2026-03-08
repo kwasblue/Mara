@@ -18,6 +18,7 @@ Sensors:
     Encoder - Quadrature encoder
     IMU - Inertial measurement unit
     Ultrasonic - Ultrasonic distance sensor
+    TelemetrySensor - Base class for custom telemetry sensors
 
 I/O:
     GPIO - Digital I/O with channel registration
@@ -35,6 +36,7 @@ from .dc_motor import DCMotor
 from .encoder import Encoder, EncoderReading
 from .imu import IMU, IMUReading
 from .ultrasonic import Ultrasonic, UltrasonicReading
+from .sensor_base import TelemetrySensor
 from .velocity import VelocityController
 from .gpio import GPIO
 from .pwm import PWM
@@ -53,6 +55,7 @@ __all__ = [
     "IMUReading",
     "Ultrasonic",
     "UltrasonicReading",
+    "TelemetrySensor",
     # I/O
     "GPIO",
     "PWM",

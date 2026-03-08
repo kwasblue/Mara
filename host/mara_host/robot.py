@@ -45,6 +45,8 @@ if TYPE_CHECKING:
     from .core.event_bus import EventBus
     from .api.gpio import GPIO
     from .services.control.motion_service import MotionService
+    from .services.control.motor_service import MotorService
+    from .services.control.servo_service import ServoService
 
 
 class Session:
@@ -161,6 +163,8 @@ class Robot:
         # Lazy-initialized API / Services
         self._gpio: Optional[GPIO] = None
         self._motion: Optional[MotionService] = None
+        self._motor_service: Optional[MotorService] = None
+        self._servo_service: Optional[ServoService] = None
 
     def _setup(self) -> None:
         """Initialize transport, bus, and client (called by connect)."""
@@ -317,6 +321,30 @@ class Robot:
             from .services.control.motion_service import MotionService
             self._motion = MotionService(self.client)
         return self._motion
+
+    @property
+    def motor_service(self) -> "MotorService":
+        """
+        Shared motor service instance.
+
+        Used internally by DCMotor API. Access directly for low-level control.
+        """
+        if self._motor_service is None:
+            from .services.control.motor_service import MotorService
+            self._motor_service = MotorService(self.client)
+        return self._motor_service
+
+    @property
+    def servo_service(self) -> "ServoService":
+        """
+        Shared servo service instance.
+
+        Used internally by Servo API. Access directly for low-level control.
+        """
+        if self._servo_service is None:
+            from .services.control.servo_service import ServoService
+            self._servo_service = ServoService(self.client)
+        return self._servo_service
 
     # -------------------------------------------------------------------------
     # Event Subscription

@@ -5,19 +5,11 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont
-from PySide6.QtWidgets import (
-    QDialog,
-    QWidget,
-    QVBoxLayout,
-    QLineEdit,
-    QComboBox,
-    QDialogButtonBox,
-    QGroupBox,
-    QFormLayout,
-)
+from PySide6.QtWidgets import QDialog, QWidget
 
 from ..core.block import BlockBase
 from ..core.models import BlockConfig, PortConfig, PortKind, PortType
+from ..dialogs.base import BaseBlockConfigDialog, FieldDef
 
 
 def _build_sensor_types() -> dict:
@@ -269,60 +261,44 @@ class SensorBlock(BlockBase):
         return SensorConfigDialog(self.config.properties, parent)
 
 
-class SensorConfigDialog(QDialog):
+class SensorConfigDialog(BaseBlockConfigDialog):
     """Configuration dialog for sensor."""
 
+    dialog_title = "Sensor Configuration"
+    show_live_tune = False
+
     def __init__(self, properties: dict, parent=None):
-        super().__init__(parent)
-        self._properties = properties.copy()
-        self._setup_ui()
-
-    def _setup_ui(self) -> None:
-        self.setWindowTitle("Sensor Configuration")
-        self.setMinimumWidth(300)
-
-        layout = QVBoxLayout(self)
-
-        group = QGroupBox("Sensor Settings")
-        form = QFormLayout(group)
-
-        self.name_edit = QLineEdit(self._properties.get("name", "Sensor"))
-        form.addRow("Name:", self.name_edit)
-
-        self.type_combo = QComboBox()
-        self.type_combo.addItems(list(SENSOR_TYPES.keys()))
-        current_type = self._properties.get("sensor_type", "imu")
-        self.type_combo.setCurrentText(current_type)
-        form.addRow("Type:", self.type_combo)
-
-        # I2C address (only for I2C sensors)
-        self.address_edit = QLineEdit()
-        addr = self._properties.get("i2c_address")
-        if addr:
-            self.address_edit.setText(f"0x{addr:02X}")
+        # Convert i2c_address to hex string for display
+        props = properties.copy()
+        addr = props.get("i2c_address")
+        if addr is not None:
+            props["i2c_address"] = f"0x{addr:02X}"
         else:
-            self.address_edit.setText("0x68")
-        form.addRow("I2C Address:", self.address_edit)
+            props["i2c_address"] = "0x68"
 
-        layout.addWidget(group)
+        # Set fields dynamically to get current sensor types
+        self.__class__.fields = [
+            FieldDef("name", "Name", field_type="str", default="Sensor"),
+            FieldDef("sensor_type", "Type", field_type="choice", default="imu",
+                     choices=list(SENSOR_TYPES.keys())),
+            FieldDef("i2c_address", "I2C Address", field_type="str", default="0x68"),
+        ]
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        super().__init__(props, parent=parent)
 
     def get_config(self) -> dict:
-        """Get configuration from dialog."""
-        addr_text = self.address_edit.text()
+        """Get configuration from dialog, converting I2C address to int."""
+        values = self.get_values()
+
+        # Convert hex string to int
+        addr_text = values.get("i2c_address", "0x68")
         try:
             addr = int(addr_text, 16) if addr_text.startswith("0x") else int(addr_text)
         except ValueError:
             addr = 0x68
 
         return {
-            "name": self.name_edit.text(),
-            "sensor_type": self.type_combo.currentText(),
+            "name": values["name"],
+            "sensor_type": values["sensor_type"],
             "i2c_address": addr,
         }

@@ -17,6 +17,7 @@ import importlib
 from typing import Any
 
 _EXPORTS = {
+    "RangeSliderWidget": "slider_base",
     "MotorSliderGroup": "motor_slider",
     "ServoSliderGroup": "servo_slider",
     "ParameterGrid": "parameter_grid",

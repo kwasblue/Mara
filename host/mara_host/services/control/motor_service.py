@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
+from mara_host.services.control.service_base import ConfigurableService
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -33,7 +34,7 @@ class MotorState:
     enabled: bool = True
 
 
-class MotorService:
+class MotorService(ConfigurableService[MotorConfig, MotorState]):
     """
     Service for DC motor control.
 
@@ -53,16 +54,9 @@ class MotorService:
         await motor_svc.stop_all()
     """
 
-    def __init__(self, client: "MaraClient"):
-        """
-        Initialize motor service.
-
-        Args:
-            client: Connected MaraClient instance
-        """
-        self.client = client
-        self._configs: dict[int, MotorConfig] = {}
-        self._states: dict[int, MotorState] = {}
+    config_class = MotorConfig
+    state_class = MotorState
+    id_field = "motor_id"
 
     def configure(
         self,
@@ -87,23 +81,12 @@ class MotorService:
             inverted=inverted,
         )
 
-    def get_config(self, motor_id: int) -> MotorConfig:
-        """Get motor configuration (creates default if not exists)."""
-        if motor_id not in self._configs:
-            self._configs[motor_id] = MotorConfig(motor_id=motor_id)
-        return self._configs[motor_id]
-
-    def get_state(self, motor_id: int) -> MotorState:
-        """Get motor state (creates default if not exists)."""
-        if motor_id not in self._states:
-            self._states[motor_id] = MotorState(motor_id=motor_id)
-        return self._states[motor_id]
-
     async def set_speed(
         self,
         motor_id: int,
         speed: float,
         clamp: bool = True,
+        request_ack: bool = True,
     ) -> ServiceResult:
         """
         Set motor speed.
@@ -112,9 +95,10 @@ class MotorService:
             motor_id: Motor ID (0-3)
             speed: Speed from -1.0 to 1.0 (sign = direction)
             clamp: If True, clamp to configured limits
+            request_ack: If True, wait for ACK (reliable). If False, fire-and-forget (fast).
 
         Returns:
-            ServiceResult with success/failure
+            ServiceResult with success/failure (always success if request_ack=False)
         """
         config = self.get_config(motor_id)
 
@@ -126,54 +110,34 @@ class MotorService:
         if clamp:
             speed = max(config.min_speed, min(config.max_speed, speed))
 
-        ok, error = await self.client.send_reliable(
-            "CMD_DC_SET_SPEED",
-            {"motor_id": motor_id, "speed": speed},
-        )
-
-        if ok:
-            state = self.get_state(motor_id)
-            state.speed = speed
-            return ServiceResult.success(data={"motor_id": motor_id, "speed": speed})
+        if request_ack:
+            ok, error = await self.client.send_reliable(
+                "CMD_DC_SET_SPEED",
+                {"motor_id": motor_id, "speed": speed},
+            )
+            if not ok:
+                return ServiceResult.failure(error=error or f"Failed to set motor {motor_id} speed")
         else:
-            return ServiceResult.failure(error=error or f"Failed to set motor {motor_id} speed")
+            # Fire-and-forget - don't wait for ACK
+            await self.client.send_auto(
+                "CMD_DC_SET_SPEED",
+                {"motor_id": motor_id, "speed": speed},
+            )
 
+        # Update local state
+        state = self.get_state(motor_id)
+        state.speed = speed
+        return ServiceResult.success(data={"motor_id": motor_id, "speed": speed})
+
+    # Backwards compatibility alias
     async def set_speed_fast(
         self,
         motor_id: int,
         speed: float,
         clamp: bool = True,
-    ) -> None:
-        """
-        Set motor speed without waiting for ACK (fire-and-forget).
-
-        Use this for real-time control like sliders where low latency
-        is more important than guaranteed delivery.
-
-        Args:
-            motor_id: Motor ID (0-3)
-            speed: Speed from -1.0 to 1.0 (sign = direction)
-            clamp: If True, clamp to configured limits
-        """
-        config = self.get_config(motor_id)
-
-        # Apply inversion
-        if config.inverted:
-            speed = -speed
-
-        # Clamp to limits
-        if clamp:
-            speed = max(config.min_speed, min(config.max_speed, speed))
-
-        # Fire-and-forget - don't wait for ACK
-        await self.client.send_auto(
-            "CMD_DC_SET_SPEED",
-            {"motor_id": motor_id, "speed": speed},
-        )
-
-        # Update local state
-        state = self.get_state(motor_id)
-        state.speed = speed
+    ) -> ServiceResult:
+        """Deprecated: Use set_speed(..., request_ack=False) instead."""
+        return await self.set_speed(motor_id, speed, clamp, request_ack=False)
 
     async def set_speed_percent(
         self,

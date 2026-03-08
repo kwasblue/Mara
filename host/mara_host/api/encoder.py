@@ -19,7 +19,9 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Callable
+from typing import TYPE_CHECKING, Optional
+
+from .sensor_base import TelemetrySensor
 
 if TYPE_CHECKING:
     from ..robot import Robot
@@ -28,13 +30,14 @@ if TYPE_CHECKING:
 @dataclass
 class EncoderReading:
     """Encoder telemetry reading."""
+
     encoder_id: int
     count: int
     velocity: float  # counts per second
     ts_ms: int
 
 
-class Encoder:
+class Encoder(TelemetrySensor[EncoderReading]):
     """
     Quadrature encoder interface.
 
@@ -66,15 +69,17 @@ class Encoder:
         await encoder.reset()
     """
 
+    # Base topic - will be modified per encoder_id
+    telemetry_topic = "telemetry.encoder"
+
     def __init__(
         self,
-        robot: Robot,
+        robot: "Robot",
         encoder_id: int = 0,
         pin_a: int = 32,
         pin_b: int = 33,
         counts_per_rev: Optional[int] = None,
     ) -> None:
-        self._robot = robot
         self.encoder_id = encoder_id
         self.pin_a = pin_a
         self.pin_b = pin_b
@@ -84,16 +89,26 @@ class Encoder:
         self._count: int = 0
         self._velocity: float = 0.0
         self._ts_ms: int = 0
-        self._callbacks: list[Callable[[EncoderReading], None]] = []
 
-        # Subscribe to telemetry
-        topic = f"telemetry.encoder{encoder_id}"
-        robot.on(topic, self._on_telemetry)
+        # Initialize base class with encoder_id as sensor_id
+        super().__init__(robot, sensor_id=encoder_id, auto_subscribe=True)
 
-    @property
-    def client(self):
-        """Access underlying client."""
-        return self._robot.client
+    def _get_topic(self) -> str:
+        """Get encoder-specific telemetry topic."""
+        return f"telemetry.encoder{self.encoder_id}"
+
+    def _parse_reading(self, data: dict) -> EncoderReading:
+        """Parse raw telemetry into EncoderReading."""
+        self._count = data.get("ticks", self._count)
+        self._velocity = data.get("velocity", self._velocity)
+        self._ts_ms = data.get("ts_ms", self._ts_ms)
+
+        return EncoderReading(
+            encoder_id=self.encoder_id,
+            count=self._count,
+            velocity=self._velocity,
+            ts_ms=self._ts_ms,
+        )
 
     @property
     def count(self) -> int:
@@ -117,26 +132,6 @@ class Encoder:
         """Whether encoder is attached."""
         return self._attached
 
-    def _on_telemetry(self, data: dict) -> None:
-        """Handle incoming encoder telemetry."""
-        self._count = data.get("ticks", self._count)
-        self._velocity = data.get("velocity", self._velocity)
-        self._ts_ms = data.get("ts_ms", self._ts_ms)
-
-        # Notify callbacks
-        if self._callbacks:
-            reading = EncoderReading(
-                encoder_id=self.encoder_id,
-                count=self._count,
-                velocity=self._velocity,
-                ts_ms=self._ts_ms,
-            )
-            for callback in self._callbacks:
-                try:
-                    callback(reading)
-                except Exception:
-                    pass  # Don't let callback errors break telemetry
-
     async def attach(self) -> None:
         """
         Attach the encoder to its GPIO pins.
@@ -154,15 +149,6 @@ class Encoder:
         """Reset encoder count to zero."""
         await self.client.cmd_encoder_reset(encoder_id=self.encoder_id)
         self._count = 0
-
-    def on_update(self, callback: Callable[[EncoderReading], None]) -> None:
-        """
-        Register callback for encoder updates.
-
-        Args:
-            callback: Function called with EncoderReading on each update
-        """
-        self._callbacks.append(callback)
 
     def __repr__(self) -> str:
         status = "attached" if self._attached else "detached"

@@ -18,6 +18,7 @@ Example:
     await motor_svc.set_speed(0, 0.5)
 """
 
+from mara_host.services.control.service_base import ConfigurableService
 from mara_host.services.control.state_service import (
     StateService,
     RobotState,
@@ -47,6 +48,8 @@ from mara_host.core.result import (
 )
 
 __all__ = [
+    # Base class
+    "ConfigurableService",
     # State management
     "StateService",
     "RobotState",

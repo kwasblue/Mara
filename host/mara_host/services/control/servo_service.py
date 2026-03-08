@@ -5,11 +5,12 @@ Servo control service.
 Provides high-level control for servo motors with angle management.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 import asyncio
 
 from mara_host.core.result import ServiceResult
+from mara_host.services.control.service_base import ConfigurableService
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -20,7 +21,7 @@ class ServoConfig:
     """Configuration for a servo."""
 
     servo_id: int
-    channel: int  # GPIO channel/pin
+    channel: int = 0  # GPIO channel/pin
     min_angle: float = 0.0
     max_angle: float = 180.0
     min_us: int = 500
@@ -37,7 +38,7 @@ class ServoState:
     attached: bool = False
 
 
-class ServoService:
+class ServoService(ConfigurableService[ServoConfig, ServoState]):
     """
     Service for servo motor control.
 
@@ -59,16 +60,9 @@ class ServoService:
         await servo_svc.detach(0)
     """
 
-    def __init__(self, client: "MaraClient"):
-        """
-        Initialize servo service.
-
-        Args:
-            client: Connected MaraClient instance
-        """
-        self.client = client
-        self._configs: dict[int, ServoConfig] = {}
-        self._states: dict[int, ServoState] = {}
+    config_class = ServoConfig
+    state_class = ServoState
+    id_field = "servo_id"
 
     def configure(
         self,
@@ -106,16 +100,6 @@ class ServoService:
         )
         self._configs[servo_id] = config
         return config
-
-    def get_config(self, servo_id: int) -> Optional[ServoConfig]:
-        """Get servo configuration."""
-        return self._configs.get(servo_id)
-
-    def get_state(self, servo_id: int) -> ServoState:
-        """Get servo state (creates default if not exists)."""
-        if servo_id not in self._states:
-            self._states[servo_id] = ServoState(servo_id=servo_id)
-        return self._states[servo_id]
 
     def get_attached_servos(self) -> list[int]:
         """Get list of attached servo IDs."""
@@ -218,6 +202,7 @@ class ServoService:
         angle: float,
         duration_ms: int = 0,
         clamp: bool = True,
+        request_ack: bool = True,
     ) -> ServiceResult:
         """
         Set servo angle.
@@ -227,9 +212,10 @@ class ServoService:
             angle: Target angle in degrees
             duration_ms: Movement duration (0 = immediate)
             clamp: If True, clamp to configured limits
+            request_ack: If True, wait for ACK (reliable). If False, fire-and-forget (fast).
 
         Returns:
-            ServiceResult
+            ServiceResult (always success if request_ack=False)
         """
         config = self.get_config(servo_id)
 
@@ -241,62 +227,34 @@ class ServoService:
         if config and config.inverted:
             angle = config.max_angle - (angle - config.min_angle)
 
-        ok, error = await self.client.send_reliable(
-            "CMD_SERVO_SET_ANGLE",
-            {
-                "servo_id": servo_id,
-                "angle_deg": angle,
-                "duration_ms": duration_ms,
-            },
-        )
+        payload = {
+            "servo_id": servo_id,
+            "angle_deg": angle,
+            "duration_ms": duration_ms,
+        }
 
-        if ok:
-            state = self.get_state(servo_id)
-            state.angle = angle
-            return ServiceResult.success(data={"servo_id": servo_id, "angle": angle})
+        if request_ack:
+            ok, error = await self.client.send_reliable("CMD_SERVO_SET_ANGLE", payload)
+            if not ok:
+                return ServiceResult.failure(error=error or f"Failed to set servo {servo_id} angle")
         else:
-            return ServiceResult.failure(error=error or f"Failed to set servo {servo_id} angle")
+            # Fire-and-forget - don't wait for ACK
+            await self.client.send_auto("CMD_SERVO_SET_ANGLE", payload)
 
+        # Update local state
+        state = self.get_state(servo_id)
+        state.angle = angle
+        return ServiceResult.success(data={"servo_id": servo_id, "angle": angle})
+
+    # Backwards compatibility alias
     async def set_angle_fast(
         self,
         servo_id: int,
         angle: float,
         clamp: bool = True,
-    ) -> None:
-        """
-        Set servo angle without waiting for ACK (fire-and-forget).
-
-        Use this for real-time control like sliders where low latency
-        is more important than guaranteed delivery.
-
-        Args:
-            servo_id: Servo ID
-            angle: Target angle in degrees
-            clamp: If True, clamp to configured limits
-        """
-        config = self.get_config(servo_id)
-
-        # Apply clamping
-        if clamp and config:
-            angle = max(config.min_angle, min(config.max_angle, angle))
-
-        # Apply inversion
-        if config and config.inverted:
-            angle = config.max_angle - (angle - config.min_angle)
-
-        # Fire-and-forget - don't wait for ACK
-        await self.client.send_auto(
-            "CMD_SERVO_SET_ANGLE",
-            {
-                "servo_id": servo_id,
-                "angle_deg": angle,
-                "duration_ms": 0,
-            },
-        )
-
-        # Update local state
-        state = self.get_state(servo_id)
-        state.angle = angle
+    ) -> ServiceResult:
+        """Deprecated: Use set_angle(..., request_ack=False) instead."""
+        return await self.set_angle(servo_id, angle, duration_ms=0, clamp=clamp, request_ack=False)
 
     async def center(self, servo_id: int, duration_ms: int = 0) -> ServiceResult:
         """

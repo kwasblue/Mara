@@ -62,8 +62,6 @@ class Servo:
         min_angle: float = 0.0,
         max_angle: float = 180.0,
     ) -> None:
-        from ..services.control.servo_service import ServoService
-
         self._robot = robot
         self._servo_id = servo_id
         self._channel = channel
@@ -71,18 +69,23 @@ class Servo:
         self._max_us = max_us
         self._min_angle = min_angle
         self._max_angle = max_angle
+        self._configured = False
 
-        # Create/get service instance
-        self._service = ServoService(robot.client)
-        # Pre-configure this servo
-        self._service.configure(
-            servo_id=servo_id,
-            channel=channel,
-            min_angle=min_angle,
-            max_angle=max_angle,
-            min_us=min_us,
-            max_us=max_us,
-        )
+    @property
+    def _service(self):
+        """Use shared service from Robot (lazy access)."""
+        # Configure on first access
+        if not self._configured:
+            self._robot.servo_service.configure(
+                servo_id=self._servo_id,
+                channel=self._channel,
+                min_angle=self._min_angle,
+                max_angle=self._max_angle,
+                min_us=self._min_us,
+                max_us=self._max_us,
+            )
+            self._configured = True
+        return self._robot.servo_service
 
     @property
     def servo_id(self) -> int:

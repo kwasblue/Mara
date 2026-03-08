@@ -9,7 +9,7 @@ Example:
         imu = IMU(robot)
 
         # Read latest values
-        print(f"Roll: {imu.roll_deg:.1f}°, Pitch: {imu.pitch_deg:.1f}°")
+        print(f"Roll: {imu.roll_deg:.1f}, Pitch: {imu.pitch_deg:.1f}")
         print(f"Accel: {imu.acceleration}")
 
         # Subscribe to updates
@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Tuple
+from typing import TYPE_CHECKING, Tuple
+
+from .sensor_base import TelemetrySensor
 
 if TYPE_CHECKING:
     from ..robot import Robot
@@ -29,6 +31,7 @@ if TYPE_CHECKING:
 @dataclass
 class IMUReading:
     """IMU telemetry reading."""
+
     ts_ms: int
     online: bool
     ok: bool
@@ -51,7 +54,7 @@ class IMUReading:
     pitch_deg: float
 
 
-class IMU:
+class IMU(TelemetrySensor[IMUReading]):
     """
     Inertial Measurement Unit interface.
 
@@ -74,8 +77,8 @@ class IMU:
             gx, gy, gz = imu.gyro
 
             # Read derived orientation
-            print(f"Roll: {imu.roll_deg:.1f}°")
-            print(f"Pitch: {imu.pitch_deg:.1f}°")
+            print(f"Roll: {imu.roll_deg:.1f}")
+            print(f"Pitch: {imu.pitch_deg:.1f}")
 
         # Subscribe to updates
         def on_imu(reading: IMUReading):
@@ -87,19 +90,23 @@ class IMU:
         await imu.calibrate_bias(samples=100)
     """
 
+    telemetry_topic = "telemetry.imu"
+
     def __init__(
         self,
-        robot: Robot,
+        robot: "Robot",
         apply_bias: bool = True,
     ) -> None:
-        self._robot = robot
+        # Initialize base class
+        super().__init__(robot, sensor_id=0, auto_subscribe=True)
+
         self._apply_bias = apply_bias
 
         # Bias correction
         self._accel_bias = (0.0, 0.0, 0.0)
         self._gyro_bias = (0.0, 0.0, 0.0)
 
-        # Cached state
+        # Cached raw state (for properties that don't require full reading)
         self._online = False
         self._ok = False
         self._ts_ms = 0
@@ -111,13 +118,9 @@ class IMU:
         self._gz = 0.0
         self._temp_c = 0.0
 
-        self._callbacks: list[Callable[[IMUReading], None]] = []
-
-        # Subscribe to telemetry
-        robot.on("telemetry.imu", self._on_telemetry)
-
-    def _on_telemetry(self, data: dict) -> None:
-        """Handle incoming IMU telemetry."""
+    def _parse_reading(self, data: dict) -> IMUReading:
+        """Parse raw telemetry into IMUReading."""
+        # Update cached state
         self._online = data.get("online", False)
         self._ok = data.get("ok", False)
         self._ts_ms = data.get("ts_ms", 0)
@@ -139,31 +142,29 @@ class IMU:
             gy -= self._gyro_bias[1]
             gz -= self._gyro_bias[2]
 
+        # Cache corrected values
         self._ax, self._ay, self._az = ax, ay, az
         self._gx, self._gy, self._gz = gx, gy, gz
         self._temp_c = data.get("temp_c", 0.0)
 
-        # Notify callbacks
-        if self._callbacks:
-            reading = IMUReading(
-                ts_ms=self._ts_ms,
-                online=self._online,
-                ok=self._ok,
-                ax=self._ax,
-                ay=self._ay,
-                az=self._az,
-                gx=self._gx,
-                gy=self._gy,
-                gz=self._gz,
-                temp_c=self._temp_c,
-                roll_deg=self.roll_deg,
-                pitch_deg=self.pitch_deg,
-            )
-            for callback in self._callbacks:
-                try:
-                    callback(reading)
-                except Exception:
-                    pass
+        # Compute orientation
+        roll_deg = math.degrees(math.atan2(ay, az))
+        pitch_deg = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2)))
+
+        return IMUReading(
+            ts_ms=self._ts_ms,
+            online=self._online,
+            ok=self._ok,
+            ax=ax,
+            ay=ay,
+            az=az,
+            gx=gx,
+            gy=gy,
+            gz=gz,
+            temp_c=self._temp_c,
+            roll_deg=roll_deg,
+            pitch_deg=pitch_deg,
+        )
 
     @property
     def is_online(self) -> bool:
@@ -227,15 +228,6 @@ class IMU:
         self._accel_bias = accel_bias
         self._gyro_bias = gyro_bias
 
-    def on_update(self, callback: Callable[[IMUReading], None]) -> None:
-        """
-        Register callback for IMU updates.
-
-        Args:
-            callback: Function called with IMUReading on each update
-        """
-        self._callbacks.append(callback)
-
     def __repr__(self) -> str:
         status = "online" if self._online else "offline"
-        return f"IMU({status}, roll={self.roll_deg:.1f}°, pitch={self.pitch_deg:.1f}°)"
+        return f"IMU({status}, roll={self.roll_deg:.1f}, pitch={self.pitch_deg:.1f})"

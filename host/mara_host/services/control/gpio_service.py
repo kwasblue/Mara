@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult, send_command
+from mara_host.services.control.service_base import ConfigurableService
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -35,12 +36,15 @@ class GpioChannel:
     label: str = ""
 
 
-class GpioService:
+class GpioService(ConfigurableService[GpioChannel, GpioChannel]):
     """
     Service for GPIO control.
 
     Manages GPIO channels with read/write/toggle operations
     and state tracking.
+
+    Note: GPIO uses a single GpioChannel type for both config and state
+    since they're combined in this service.
 
     Example:
         gpio = GpioService(client)
@@ -59,6 +63,10 @@ class GpioService:
         print(f"Value: {result.data['value']}")
     """
 
+    config_class = GpioChannel
+    state_class = GpioChannel
+    id_field = "channel"
+
     def __init__(self, client: "MaraClient"):
         """
         Initialize GPIO service.
@@ -66,8 +74,9 @@ class GpioService:
         Args:
             client: Connected MaraClient instance
         """
-        self.client = client
-        self._channels: dict[int, GpioChannel] = {}
+        super().__init__(client)
+        # Alias for backwards compatibility
+        self._channels = self._configs
 
     def configure(
         self,

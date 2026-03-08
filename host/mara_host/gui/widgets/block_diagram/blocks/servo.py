@@ -5,19 +5,11 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QPainterPath
-from PySide6.QtWidgets import (
-    QDialog,
-    QWidget,
-    QVBoxLayout,
-    QLineEdit,
-    QSpinBox,
-    QDialogButtonBox,
-    QGroupBox,
-    QFormLayout,
-)
+from PySide6.QtWidgets import QDialog, QWidget
 
 from ..core.block import BlockBase
 from ..core.models import BlockConfig, PortConfig, PortKind, PortType
+from ..dialogs.base import BaseBlockConfigDialog, FieldDef
 
 
 def create_servo_config(
@@ -118,85 +110,23 @@ class ServoBlock(BlockBase):
         return ServoConfigDialog(self.config.properties, parent)
 
 
-class ServoConfigDialog(QDialog):
+class ServoConfigDialog(BaseBlockConfigDialog):
     """Configuration dialog for servo."""
 
-    def __init__(self, properties: dict, parent=None):
-        super().__init__(parent)
-        self._properties = properties.copy()
-        self._setup_ui()
-
-    def _setup_ui(self) -> None:
-        self.setWindowTitle("Servo Configuration")
-        self.setMinimumWidth(300)
-
-        layout = QVBoxLayout(self)
-
+    dialog_title = "Servo Configuration"
+    show_live_tune = False
+    fields = [
         # Basic settings
-        basic_group = QGroupBox("Servo Settings")
-        form = QFormLayout(basic_group)
-
-        self.name_edit = QLineEdit(self._properties.get("name", "Servo"))
-        form.addRow("Name:", self.name_edit)
-
-        self.id_spin = QSpinBox()
-        self.id_spin.setRange(0, 15)
-        self.id_spin.setValue(self._properties.get("servo_id", 0))
-        form.addRow("Servo ID:", self.id_spin)
-
-        layout.addWidget(basic_group)
-
+        FieldDef("name", "Name", field_type="str", default="Servo"),
+        FieldDef("servo_id", "Servo ID", field_type="int", default=0, min_val=0, max_val=15),
         # PWM timing
-        timing_group = QGroupBox("PWM Timing")
-        timing_form = QFormLayout(timing_group)
-
-        self.min_us_spin = QSpinBox()
-        self.min_us_spin.setRange(100, 2000)
-        self.min_us_spin.setValue(self._properties.get("min_us", 500))
-        self.min_us_spin.setSuffix(" us")
-        timing_form.addRow("Min Pulse:", self.min_us_spin)
-
-        self.max_us_spin = QSpinBox()
-        self.max_us_spin.setRange(1000, 3000)
-        self.max_us_spin.setValue(self._properties.get("max_us", 2500))
-        self.max_us_spin.setSuffix(" us")
-        timing_form.addRow("Max Pulse:", self.max_us_spin)
-
-        layout.addWidget(timing_group)
-
+        FieldDef("min_us", "Min Pulse", field_type="int", default=500, min_val=100, max_val=2000,
+                 suffix="us", group="PWM Timing"),
+        FieldDef("max_us", "Max Pulse", field_type="int", default=2500, min_val=1000, max_val=3000,
+                 suffix="us", group="PWM Timing"),
         # Angle range
-        angle_group = QGroupBox("Angle Range")
-        angle_form = QFormLayout(angle_group)
-
-        self.min_angle_spin = QSpinBox()
-        self.min_angle_spin.setRange(-180, 180)
-        self.min_angle_spin.setValue(self._properties.get("min_angle", 0))
-        self.min_angle_spin.setSuffix(" deg")
-        angle_form.addRow("Min Angle:", self.min_angle_spin)
-
-        self.max_angle_spin = QSpinBox()
-        self.max_angle_spin.setRange(-180, 360)
-        self.max_angle_spin.setValue(self._properties.get("max_angle", 180))
-        self.max_angle_spin.setSuffix(" deg")
-        angle_form.addRow("Max Angle:", self.max_angle_spin)
-
-        layout.addWidget(angle_group)
-
-        # Buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
-
-    def get_config(self) -> dict:
-        """Get configuration from dialog."""
-        return {
-            "name": self.name_edit.text(),
-            "servo_id": self.id_spin.value(),
-            "min_us": self.min_us_spin.value(),
-            "max_us": self.max_us_spin.value(),
-            "min_angle": self.min_angle_spin.value(),
-            "max_angle": self.max_angle_spin.value(),
-        }
+        FieldDef("min_angle", "Min Angle", field_type="int", default=0, min_val=-180, max_val=180,
+                 suffix="deg", group="Angle Range"),
+        FieldDef("max_angle", "Max Angle", field_type="int", default=180, min_val=-180, max_val=360,
+                 suffix="deg", group="Angle Range"),
+    ]

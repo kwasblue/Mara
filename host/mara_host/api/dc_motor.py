@@ -51,11 +51,13 @@ class DCMotor:
         robot: Robot,
         motor_id: int = 0,
     ) -> None:
-        from ..services.control.motor_service import MotorService
-
         self._robot = robot
         self._motor_id = motor_id
-        self._service = MotorService(robot.client)
+
+    @property
+    def _service(self):
+        """Use shared service from Robot (lazy access)."""
+        return self._robot.motor_service
 
     @property
     def motor_id(self) -> int:

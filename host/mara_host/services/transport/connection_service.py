@@ -115,16 +115,15 @@ class ConnectionService:
         # Start connection
         await self.client.start()
 
-        # Return connection info
-        identity = self.client.get_identity()
+        # Return connection info from client properties
         return ConnectionInfo(
             transport_type=self.config.transport_type,
-            firmware_version=identity.get("firmware"),
-            protocol_version=identity.get("protocol"),
-            board=identity.get("board"),
-            platform_name=identity.get("name"),
-            features=identity.get("features", []),
-            capabilities=identity.get("capabilities", 0),
+            firmware_version=self.client.firmware_version,
+            protocol_version=self.client.protocol_version,
+            board=self.client.board,
+            platform_name=self.client.platform_name,
+            features=self.client.features or [],
+            capabilities=self.client.capabilities or 0,
         )
 
     async def disconnect(self) -> None:

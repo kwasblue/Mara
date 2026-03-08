@@ -142,7 +142,6 @@ class TestService:
         start = time.time()
         try:
             # Connection already established if we got here
-            identity = self.client.get_identity()
             duration = (time.time() - start) * 1000
 
             return TestResult(
@@ -151,9 +150,9 @@ class TestService:
                 message="Connected successfully",
                 duration_ms=duration,
                 details={
-                    "firmware": identity.get("firmware"),
-                    "protocol": identity.get("protocol"),
-                    "features": identity.get("features", []),
+                    "firmware": self.client.firmware_version,
+                    "protocol": self.client.protocol_version,
+                    "features": self.client.features or [],
                 }
             )
         except Exception as e:
@@ -429,13 +428,19 @@ class TestService:
         start = time.time()
         try:
             for servo_id in servo_ids:
-                # Attach servo
-                await self.client.cmd_servo_attach(servo_id)
+                # Attach servo - use servo_id as channel (default mapping)
+                # min_us=500, max_us=2500 for wider range
+                await self.client.cmd_servo_attach(
+                    servo_id=servo_id,
+                    channel=servo_id,  # Map servo_id to same channel
+                    min_us=500,
+                    max_us=2500
+                )
                 await asyncio.sleep(0.1)
 
                 # Small sweep: 90 -> 45 -> 135 -> 90
                 for angle in [90, 45, 135, 90]:
-                    await self.client.cmd_servo_set(servo_id, angle)
+                    await self.client.cmd_servo_set_angle(servo_id, float(angle))
                     await asyncio.sleep(0.3)
 
                 # Detach

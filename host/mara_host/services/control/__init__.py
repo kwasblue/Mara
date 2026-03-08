@@ -1,0 +1,69 @@
+# mara_host/services/control/__init__.py
+"""
+Control services for robot state, motion, and hardware management.
+
+Provides high-level control operations that can be shared
+between GUI and CLI interfaces.
+
+Example:
+    from mara_host.services.control import StateService, MotionService
+    from mara_host.services.control import MotorService, ServoService, GpioService
+
+    state_svc = StateService(client)
+    result = await state_svc.arm()
+    if result.ok:
+        print(f"Robot armed: {result.state}")
+
+    motor_svc = MotorService(client)
+    await motor_svc.set_speed(0, 0.5)
+"""
+
+from mara_host.services.control.state_service import (
+    StateService,
+    RobotState,
+)
+from mara_host.services.control.motion_service import (
+    MotionService,
+    Velocity,
+)
+from mara_host.services.control.motor_service import (
+    MotorService,
+    MotorConfig,
+    MotorState,
+)
+from mara_host.services.control.servo_service import (
+    ServoService,
+    ServoConfig,
+    ServoState,
+)
+from mara_host.services.control.gpio_service import (
+    GpioService,
+    GpioChannel,
+    GpioMode,
+)
+from mara_host.services.control.result import (
+    ServiceResult,
+)
+
+__all__ = [
+    # State management
+    "StateService",
+    "RobotState",
+    # Motion control
+    "MotionService",
+    "Velocity",
+    # Motor control
+    "MotorService",
+    "MotorConfig",
+    "MotorState",
+    # Servo control
+    "ServoService",
+    "ServoConfig",
+    "ServoState",
+    # GPIO control
+    "GpioService",
+    "GpioChannel",
+    "GpioMode",
+    # Result type
+    "ServiceResult",
+]

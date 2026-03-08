@@ -61,6 +61,7 @@ For more help on a specific command:
     from mara_host.cli.commands import logs
     from mara_host.cli.commands import sim
     from mara_host.cli.commands import mqtt
+    from mara_host.cli.commands import gui
     from mara_host.cli import completions
 
     pins.register(subparsers)
@@ -77,6 +78,7 @@ For more help on a specific command:
     logs.register(subparsers)
     sim.register(subparsers)
     mqtt.register(subparsers)
+    gui.register(subparsers)
     completions.register(subparsers)
 
     # Version command

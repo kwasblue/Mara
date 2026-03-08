@@ -28,6 +28,14 @@ Control:
     VelocityController - High-rate velocity streaming
     PIDController - Velocity PID for DC motors
     DifferentialDrive - Motion primitives for diff drive robots
+    SignalBus - Signal bus for control systems
+    ControllerSlotManager - Controller slot management
+    ObserverSlotManager - Observer slot management
+
+Utilities:
+    Recording - Session recording and replay
+    Testing - Hardware testing framework
+    Pins - Pin management and validation
 """
 
 from .stepper import Stepper
@@ -42,6 +50,12 @@ from .gpio import GPIO
 from .pwm import PWM
 from .pid_controller import PIDController, PIDGains
 from .differential_drive import DifferentialDrive, DriveConfig
+from .signals import SignalBus, Signal, SignalKind
+from .controller_slot import ControllerSlotManager, ControllerSlot, ControllerConfig
+from .observer_slot import ObserverSlotManager, ObserverSlot, ObserverConfig
+from .recording import Recording, RecordingSession, RecordingEvent
+from .testing import Testing, TestResult, TestSuite, TestStatus
+from .pins import Pins, PinInfo, PinFunction, PinConflict
 
 __all__ = [
     # Actuators
@@ -65,4 +79,26 @@ __all__ = [
     "PIDGains",
     "DifferentialDrive",
     "DriveConfig",
+    # Signal Bus & Slots
+    "SignalBus",
+    "Signal",
+    "SignalKind",
+    "ControllerSlotManager",
+    "ControllerSlot",
+    "ControllerConfig",
+    "ObserverSlotManager",
+    "ObserverSlot",
+    "ObserverConfig",
+    # Utilities
+    "Recording",
+    "RecordingSession",
+    "RecordingEvent",
+    "Testing",
+    "TestResult",
+    "TestSuite",
+    "TestStatus",
+    "Pins",
+    "PinInfo",
+    "PinFunction",
+    "PinConflict",
 ]

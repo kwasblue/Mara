@@ -27,6 +27,10 @@ from typing import Any
 _PANELS = {
     "DashboardPanel": "dashboard",
     "ControlPanel": "control",
+    "MotionPanel": "motion",
+    "PWMPanel": "pwm",
+    "StepperPanel": "stepper",
+    "SensorsPanel": "sensors",
     "CameraPanel": "camera",
     "CommandsPanel": "commands",
     "CalibrationPanel": "calibration",

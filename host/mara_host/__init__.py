@@ -60,7 +60,7 @@ Internal modules (not stable, for advanced use only):
 """
 
 # Version
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 # Core - Main entry points
 from .robot import Robot

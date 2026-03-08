@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-08 14:24:17
-Total Files: 678
-Total Lines of Code: 73,474
+Generated: 2026-03-08 16:04:12
+Total Files: 701
+Total Lines of Code: 77,180
 ================================================================================
 
 
@@ -73,11 +73,26 @@ HOST (Python)
 
   host/mara_host/__main__.py (4 lines)
 
-  host/mara_host/api/__init__.py (29 lines)
+  host/mara_host/api/__init__.py (57 lines)
 
-  host/mara_host/api/dc_motor.py (47 lines)
+  host/mara_host/api/controller_slot.py (116 lines)
+    [Class] ControllerType
+    [Class] ControllerConfig
+    [Class] ControllerSlot
+      |-- __init__(self, robot, slot)
+      |-- slot(self)
+      |-- config(self)
+      `-- is_enabled(self)
+    [Class] ControllerSlotManager
+      |-- __init__(self, robot)
+      |-- __getitem__(self, index)
+      |-- __iter__(self)
+      `-- __len__(self)
+
+  host/mara_host/api/dc_motor.py (48 lines)
     [Class] DCMotor
       |-- __init__(self, robot, motor_id)
+      |-- _service(self)
       |-- motor_id(self)
       |-- client(self)
       |-- current_speed(self)
@@ -94,17 +109,16 @@ HOST (Python)
       |-- _clamp_velocity(self, vx, omega)
       `-- __repr__(self)
 
-  host/mara_host/api/encoder.py (80 lines)
+  host/mara_host/api/encoder.py (70 lines)
     [Class] EncoderReading
     [Class] Encoder
       |-- __init__(self, robot, encoder_id, pin_a, pin_b, counts_per_rev)
-      |-- client(self)
+      |-- _get_topic(self)
+      |-- _parse_reading(self, data)
       |-- count(self)
       |-- velocity(self)
       |-- revolutions(self)
       |-- is_attached(self)
-      |-- _on_telemetry(self, data)
-      |-- on_update(self, callback)
       `-- __repr__(self)
 
   host/mara_host/api/gpio.py (55 lines)
@@ -116,11 +130,11 @@ HOST (Python)
       |-- get_pin(self, channel)
       `-- __repr__(self)
 
-  host/mara_host/api/imu.py (123 lines)
+  host/mara_host/api/imu.py (117 lines)
     [Class] IMUReading
     [Class] IMU
       |-- __init__(self, robot, apply_bias)
-      |-- _on_telemetry(self, data)
+      |-- _parse_reading(self, data)
       |-- is_online(self)
       |-- is_ok(self)
       |-- acceleration(self)
@@ -131,8 +145,21 @@ HOST (Python)
       |-- roll_rad(self)
       |-- pitch_rad(self)
       |-- set_bias(self, accel_bias, gyro_bias)
-      |-- on_update(self, callback)
       `-- __repr__(self)
+
+  host/mara_host/api/observer_slot.py (102 lines)
+    [Class] ObserverType
+    [Class] ObserverConfig
+    [Class] ObserverSlot
+      |-- __init__(self, robot, slot)
+      |-- slot(self)
+      |-- config(self)
+      `-- is_enabled(self)
+    [Class] ObserverSlotManager
+      |-- __init__(self, robot)
+      |-- __getitem__(self, index)
+      |-- __iter__(self)
+      `-- __len__(self)
 
   host/mara_host/api/pid_controller.py (69 lines)
     [Class] PIDGains
@@ -143,6 +170,22 @@ HOST (Python)
       |-- gains(self)
       `-- __repr__(self)
 
+  host/mara_host/api/pins.py (186 lines)
+    [Class] PinFunction
+    [Class] PinCapabilities
+    [Class] PinInfo
+    [Class] PinConflict
+    [Class] Pins
+      |-- __init__(self, robot)
+      |-- list_all(self)
+      |-- list_available(self, function)
+      |-- info(self, pin_number)
+      |-- assign(self, pin_number, device, function)
+      |-- unassign(self, pin_number)
+      |-- validate(self)
+      |-- get_assignments(self)
+      `-- suggest(self, device_type, count)
+
   host/mara_host/api/pwm.py (51 lines)
     [Class] PWM
       |-- __init__(self, robot, default_freq_hz)
@@ -151,9 +194,44 @@ HOST (Python)
       |-- get_frequency(self, channel)
       `-- __repr__(self)
 
-  host/mara_host/api/servo.py (108 lines)
+  host/mara_host/api/recording.py (153 lines)
+    [Class] RecordingEvent
+    [Class] RecordingSession
+      |-- duration_seconds(self)
+      `-- event_count(self)
+    [Class] Recording
+      |-- __init__(self, robot)
+      |-- is_recording(self)
+      |-- active_session(self)
+      |-- _on_telemetry(self, topic, data)
+      |-- _on_command(self, topic, data)
+      |-- list_sessions(self)
+      |-- get_session(self, name)
+      `-- delete_session(self, name)
+
+  host/mara_host/api/sensor_base.py (79 lines)
+    [Class] TelemetrySensor
+      |-- __init__(self, robot, sensor_id, auto_subscribe)
+      |-- robot(self)
+      |-- client(self)
+      |-- sensor_id(self)
+      |-- reading(self)
+      |-- has_reading(self)
+      |-- _parse_reading(self, data)
+      |-- _filter_telemetry(self, data)
+      |-- _subscribe(self)
+      |-- _get_topic(self)
+      |-- _on_telemetry(self, data)
+      |-- _notify_callbacks(self, reading)
+      |-- on_reading(self, callback)
+      |-- on_update(self, callback)
+      |-- remove_callback(self, callback)
+      `-- clear_callbacks(self)
+
+  host/mara_host/api/servo.py (112 lines)
     [Class] Servo
       |-- __init__(self, robot, servo_id, channel, min_us, max_us, min_angle, max_angle)
+      |-- _service(self)
       |-- servo_id(self)
       |-- channel(self)
       |-- min_us(self)
@@ -167,6 +245,14 @@ HOST (Python)
       |-- pulse_to_angle(self, pulse_us)
       `-- __repr__(self)
 
+  host/mara_host/api/signals.py (78 lines)
+    [Class] SignalKind
+    [Class] Signal
+    [Class] SignalBus
+      |-- __init__(self, robot)
+      |-- __getitem__(self, signal_id)
+      `-- __contains__(self, signal_id)
+
   host/mara_host/api/stepper.py (81 lines)
     [Class] Stepper
       |-- __init__(self, robot, motor_id, steps_per_rev)
@@ -178,19 +264,30 @@ HOST (Python)
       |-- reset_position(self, position)
       `-- __repr__(self)
 
-  host/mara_host/api/ultrasonic.py (79 lines)
+  host/mara_host/api/testing.py (238 lines)
+    [Class] TestStatus
+    [Class] TestResult
+      `-- passed(self)
+    [Class] TestSuite
+      |-- passed(self)
+      |-- pass_count(self)
+      |-- fail_count(self)
+      `-- duration_ms(self)
+    [Class] Testing
+      `-- __init__(self, robot)
+
+  host/mara_host/api/ultrasonic.py (67 lines)
     [Class] UltrasonicReading
     [Class] Ultrasonic
       |-- __init__(self, robot, sensor_id, max_distance_cm)
-      |-- client(self)
-      |-- _on_telemetry(self, data)
+      |-- _filter_telemetry(self, data)
+      |-- _parse_reading(self, data)
       |-- distance_cm(self)
       |-- distance_m(self)
       |-- distance_inches(self)
       |-- is_ok(self)
       |-- is_attached(self)
       |-- is_in_range(self)
-      |-- on_update(self, callback)
       `-- __repr__(self)
 
   host/mara_host/api/velocity.py (40 lines)
@@ -633,6 +730,17 @@ HOST (Python)
     [Fn] cmd_validate(args)
     [Fn] cmd_export_config(args)
 
+  host/mara_host/cli/commands/encoder.py (190 lines)
+    [Fn] register(subparsers)
+    [Fn] add_port_arg(parser)
+    [Fn] cmd_help(parser)
+    [Fn] _run_async(coro)
+    [Fn] cmd_encoder_attach(args)
+    [Fn] cmd_encoder_detach(args)
+    [Fn] cmd_encoder_read(args)
+    [Fn] cmd_encoder_reset(args)
+    [Fn] cmd_encoder_monitor(args)
+
   host/mara_host/cli/commands/flash.py (233 lines)
     [Fn] register(subparsers)
     [Fn] _find_esp32_ports()
@@ -653,9 +761,33 @@ HOST (Python)
     [Fn] cmd_binary(args)
     [Fn] cmd_gpio(args)
 
+  host/mara_host/cli/commands/gpio.py (225 lines)
+    [Fn] register(subparsers)
+    [Fn] add_port_arg(parser)
+    [Fn] cmd_help(parser)
+    [Fn] _run_async(coro)
+    [Fn] cmd_gpio_register(args)
+    [Fn] cmd_gpio_high(args)
+    [Fn] cmd_gpio_low(args)
+    [Fn] cmd_gpio_write(args)
+    [Fn] cmd_gpio_read(args)
+    [Fn] cmd_gpio_toggle(args)
+    [Fn] cmd_gpio_blink(args)
+
   host/mara_host/cli/commands/gui.py (42 lines)
     [Fn] register(subparsers)
     [Fn] cmd_gui(args)
+
+  host/mara_host/cli/commands/imu.py (206 lines)
+    [Fn] register(subparsers)
+    [Fn] add_port_arg(parser)
+    [Fn] cmd_help(parser)
+    [Fn] _run_async(coro)
+    [Fn] cmd_imu_read(args)
+    [Fn] cmd_imu_calibrate(args)
+    [Fn] cmd_imu_set_bias(args)
+    [Fn] cmd_imu_monitor(args)
+    [Fn] cmd_imu_zero(args)
 
   host/mara_host/cli/commands/monitor.py (190 lines)
     [Class] MonitorState
@@ -665,6 +797,17 @@ HOST (Python)
     [Fn] on_telemetry(data)
     [Fn] on_error(data)
     [Fn] _generate_display(state, args)
+
+  host/mara_host/cli/commands/motor.py (159 lines)
+    [Fn] register(subparsers)
+    [Fn] add_port_arg(parser)
+    [Fn] cmd_help(parser)
+    [Fn] _run_async(coro)
+    [Fn] cmd_motor_set(args)
+    [Fn] cmd_motor_stop(args)
+    [Fn] cmd_motor_brake(args)
+    [Fn] cmd_motor_all_stop(args)
+    [Fn] cmd_motor_status(args)
 
   host/mara_host/cli/commands/mqtt.py (63 lines)
     [Fn] _get_local_ip()
@@ -720,6 +863,17 @@ HOST (Python)
     [Fn] _wizard_spi()
     [Fn] _wizard_uart()
 
+  host/mara_host/cli/commands/pwm.py (207 lines)
+    [Fn] register(subparsers)
+    [Fn] add_port_arg(parser)
+    [Fn] cmd_help(parser)
+    [Fn] _run_async(coro)
+    [Fn] cmd_pwm_set(args)
+    [Fn] cmd_pwm_duty(args)
+    [Fn] cmd_pwm_percent(args)
+    [Fn] cmd_pwm_stop(args)
+    [Fn] cmd_pwm_fade(args)
+
   host/mara_host/cli/commands/record.py (201 lines)
     [Fn] register(subparsers)
     [Fn] cmd_record(args)
@@ -762,6 +916,18 @@ HOST (Python)
     [Fn] cmd_tcp(args)
     [Fn] _run_tcp_client(host, port, log_level, log_dir)
 
+  host/mara_host/cli/commands/servo.py (238 lines)
+    [Fn] register(subparsers)
+    [Fn] add_port_arg(parser)
+    [Fn] cmd_help(parser)
+    [Fn] _run_async(coro)
+    [Fn] cmd_servo_attach(args)
+    [Fn] cmd_servo_detach(args)
+    [Fn] cmd_servo_set(args)
+    [Fn] cmd_servo_pulse(args)
+    [Fn] cmd_servo_sweep(args)
+    [Fn] cmd_servo_center(args)
+
   host/mara_host/cli/commands/sim.py (146 lines)
     [Fn] register(subparsers)
     [Fn] cmd_virtual(args)
@@ -773,6 +939,20 @@ HOST (Python)
       `-- set_frame_handler(self, handler)
     [Fn] on_event(topic)
     [Fn] handler(data)
+
+  host/mara_host/cli/commands/stepper.py (241 lines)
+    [Fn] register(subparsers)
+    [Fn] add_port_arg(parser)
+    [Fn] cmd_help(parser)
+    [Fn] _run_async(coro)
+    [Fn] cmd_stepper_enable(args)
+    [Fn] cmd_stepper_disable(args)
+    [Fn] cmd_stepper_move(args)
+    [Fn] cmd_stepper_degrees(args)
+    [Fn] cmd_stepper_revs(args)
+    [Fn] cmd_stepper_stop(args)
+    [Fn] cmd_stepper_position(args)
+    [Fn] cmd_stepper_reset(args)
 
   host/mara_host/cli/commands/test/__init__.py (2 lines)
 
@@ -825,6 +1005,16 @@ HOST (Python)
 
   host/mara_host/cli/commands/test/stepper.py (79 lines)
     [Fn] cmd_stepper(args)
+
+  host/mara_host/cli/commands/ultrasonic.py (176 lines)
+    [Fn] register(subparsers)
+    [Fn] add_port_arg(parser)
+    [Fn] cmd_help(parser)
+    [Fn] _run_async(coro)
+    [Fn] cmd_ultrasonic_attach(args)
+    [Fn] cmd_ultrasonic_detach(args)
+    [Fn] cmd_ultrasonic_read(args)
+    [Fn] cmd_ultrasonic_monitor(args)
 
   host/mara_host/cli/completions.py (288 lines)
     [Fn] register(subparsers)
@@ -1390,37 +1580,32 @@ HOST (Python)
       |-- _save_window_state(self)
       `-- closeEvent(self, event)
 
-  host/mara_host/gui/panels/__init__.py (30 lines)
+  host/mara_host/gui/panels/__init__.py (34 lines)
     [Fn] __getattr__(name)
     [Fn] __dir__()
 
-  host/mara_host/gui/panels/advanced/__init__.py (17 lines)
+  host/mara_host/gui/panels/advanced/__init__.py (20 lines)
 
-  host/mara_host/gui/panels/advanced/controllers_tab.py (220 lines)
+  host/mara_host/gui/panels/advanced/controllers_tab.py (141 lines)
     [Class] ControllerSlotWidget
-      |-- __init__(self, slot, controller, parent)
-      |-- _setup_ui(self)
-      |-- _on_enable_changed(self, state)
+      |-- _setup_info_frame(self)
+      |-- _on_enable_changed(self, enable)
       |-- _configure(self)
       |-- _update_display(self, config)
       `-- _reset(self)
     [Class] ControllersTab
-      |-- __init__(self, signals, controller, parent)
-      `-- _setup_ui(self)
 
-  host/mara_host/gui/panels/advanced/observers_tab.py (236 lines)
+  host/mara_host/gui/panels/advanced/observers_tab.py (168 lines)
     [Class] ObserverSlotWidget
-      |-- __init__(self, slot, controller, parent)
-      |-- _setup_ui(self)
-      |-- _on_enable_changed(self, state)
+      |-- _setup_info_frame(self)
+      |-- _setup_buttons(self, btn_row)
+      |-- _on_enable_changed(self, enable)
       |-- _configure(self)
       |-- _update_display(self, config)
       |-- _set_matrices(self)
       |-- _apply_matrix(self, matrix_key, text)
       `-- _reset(self)
     [Class] ObserversTab
-      |-- __init__(self, signals, controller, parent)
-      `-- _setup_ui(self)
 
   host/mara_host/gui/panels/advanced/panel.py (33 lines)
     [Class] AdvancedPanel
@@ -1440,6 +1625,21 @@ HOST (Python)
       |-- _clear_all(self)
       |-- _refresh_signals(self)
       `-- _set_signal_value(self)
+
+  host/mara_host/gui/panels/advanced/slot_base.py (116 lines)
+    [Class] SlotWidgetBase
+      |-- __init__(self, slot, controller, parent)
+      |-- _setup_ui(self)
+      |-- _setup_info_frame(self)
+      |-- _setup_buttons(self, btn_row)
+      |-- _handle_enable_changed(self, state)
+      |-- _on_enable_changed(self, enable)
+      |-- _configure(self)
+      |-- _reset(self)
+      `-- _set_configured(self, title)
+    [Class] SlotTabPanel
+      |-- __init__(self, signals, controller, parent)
+      `-- _setup_ui(self)
 
   host/mara_host/gui/panels/calibration.py (601 lines)
     [Class] MotorCalibrationUI
@@ -1655,6 +1855,26 @@ HOST (Python)
       |-- _clear_logs(self)
       `-- _export_logs(self)
 
+  host/mara_host/gui/panels/motion.py (264 lines)
+    [Class] MotionPanel
+      |-- __init__(self, signals, controller, settings)
+      |-- _setup_ui(self)
+      |-- _create_drive_straight_group(self)
+      |-- _create_turn_group(self)
+      |-- _create_arc_group(self)
+      |-- _create_velocity_group(self)
+      |-- _create_quick_actions(self)
+      |-- _setup_connections(self)
+      |-- _on_connection_changed(self, connected, info)
+      |-- _drive_straight(self)
+      |-- _drive_quick(self, distance)
+      |-- _turn(self)
+      |-- _turn_quick(self, angle)
+      |-- _arc(self)
+      |-- _set_velocity(self)
+      |-- _stop(self)
+      `-- _estop(self)
+
   host/mara_host/gui/panels/pinout/__init__.py (18 lines)
 
   host/mara_host/gui/panels/pinout/board_diagram.py (478 lines)
@@ -1733,6 +1953,50 @@ HOST (Python)
       |-- _apply_suggestion(self)
       `-- get_current_suggestion(self)
 
+  host/mara_host/gui/panels/pwm.py (166 lines)
+    [Class] PWMChannelWidget
+      |-- __init__(self, channel, controller, parent)
+      |-- _setup_ui(self)
+      |-- _on_enable_changed(self, state)
+      |-- _on_freq_changed(self, value)
+      |-- _on_duty_changed(self, value)
+      |-- _set_duty(self, percent)
+      `-- _send_pwm(self)
+    [Class] PWMPanel
+      |-- __init__(self, signals, controller, settings)
+      |-- _setup_ui(self)
+      |-- _setup_connections(self)
+      |-- _on_connection_changed(self, connected, info)
+      `-- _stop_all(self)
+
+  host/mara_host/gui/panels/sensors.py (364 lines)
+    [Class] EncoderWidget
+      |-- __init__(self, encoder_id, controller, parent)
+      |-- _setup_ui(self)
+      |-- _attach(self)
+      |-- _detach(self)
+      |-- _reset(self)
+      `-- update_reading(self, count, velocity)
+    [Class] UltrasonicWidget
+      |-- __init__(self, sensor_id, controller, parent)
+      |-- _setup_ui(self)
+      |-- _attach(self)
+      |-- _detach(self)
+      |-- _read(self)
+      `-- update_reading(self, distance_cm)
+    [Class] IMUWidget
+      |-- __init__(self, controller, parent)
+      |-- _setup_ui(self)
+      |-- _calibrate(self)
+      |-- _zero(self)
+      `-- update_reading(self, ax, ay, az, gx, gy, gz, temp)
+    [Class] SensorsPanel
+      |-- __init__(self, signals, controller, settings)
+      |-- _setup_ui(self)
+      |-- _setup_connections(self)
+      |-- _on_connection_changed(self, connected, info)
+      `-- _on_telemetry(self, topic, data)
+
   host/mara_host/gui/panels/session.py (445 lines)
     [Class] RecordingTab
       |-- __init__(self, signals, controller, settings, parent)
@@ -1766,6 +2030,23 @@ HOST (Python)
     [Class] SessionPanel
       |-- __init__(self, signals, controller, settings)
       `-- _setup_ui(self)
+
+  host/mara_host/gui/panels/stepper.py (231 lines)
+    [Class] StepperWidget
+      |-- __init__(self, stepper_id, controller, parent)
+      |-- _setup_ui(self)
+      |-- _on_enable_changed(self, state)
+      |-- _on_mode_changed(self, index)
+      |-- _move(self)
+      |-- _quick_move(self, amount)
+      |-- _stop(self)
+      `-- _reset_position(self)
+    [Class] StepperPanel
+      |-- __init__(self, signals, controller, settings)
+      |-- _setup_ui(self)
+      |-- _setup_connections(self)
+      |-- _on_connection_changed(self, connected, info)
+      `-- _stop_all(self)
 
   host/mara_host/gui/panels/testing.py (383 lines)
     [Class] TestWorker
@@ -1890,7 +2171,7 @@ HOST (Python)
       |-- __init__(self, block_id, label)
       `-- get_display_text(self)
 
-  host/mara_host/gui/widgets/block_diagram/blocks/encoder.py (125 lines)
+  host/mara_host/gui/widgets/block_diagram/blocks/encoder.py (92 lines)
     [Fn] create_encoder_config(block_id, label, encoder_id)
     [Class] EncoderBlock
       |-- __init__(self, block_id, label, encoder_id)
@@ -1898,9 +2179,6 @@ HOST (Python)
       |-- paint_content(self, painter, rect)
       `-- get_config_dialog(self, parent)
     [Class] EncoderConfigDialog
-      |-- __init__(self, properties, parent)
-      |-- _setup_ui(self)
-      `-- get_config(self)
 
   host/mara_host/gui/widgets/block_diagram/blocks/esp32.py (164 lines)
     [Fn] create_esp32_config(block_id, label)
@@ -1917,7 +2195,7 @@ HOST (Python)
       |-- _show_pin_info(self, gpio, pos)
       `-- get_port_color(self, port)
 
-  host/mara_host/gui/widgets/block_diagram/blocks/motor.py (138 lines)
+  host/mara_host/gui/widgets/block_diagram/blocks/motor.py (104 lines)
     [Fn] create_motor_config(block_id, label, motor_id)
     [Class] MotorBlock
       |-- __init__(self, block_id, label, motor_id)
@@ -1925,9 +2203,6 @@ HOST (Python)
       |-- paint_content(self, painter, rect)
       `-- get_config_dialog(self, parent)
     [Class] MotorConfigDialog
-      |-- __init__(self, properties, parent)
-      |-- _setup_ui(self)
-      `-- get_config(self)
 
   host/mara_host/gui/widgets/block_diagram/blocks/observer.py (174 lines)
     [Fn] create_observer_config(block_id, label, slot, n_states)
@@ -1954,7 +2229,7 @@ HOST (Python)
       |-- _setup_ui(self)
       `-- get_config(self)
 
-  host/mara_host/gui/widgets/block_diagram/blocks/sensor.py (237 lines)
+  host/mara_host/gui/widgets/block_diagram/blocks/sensor.py (215 lines)
     [Fn] _build_sensor_types()
     [Fn] create_sensor_config(block_id, sensor_type, label)
     [Class] SensorBlock
@@ -1968,7 +2243,6 @@ HOST (Python)
       `-- get_config_dialog(self, parent)
     [Class] SensorConfigDialog
       |-- __init__(self, properties, parent)
-      |-- _setup_ui(self)
       `-- get_config(self)
 
   host/mara_host/gui/widgets/block_diagram/blocks/service.py (254 lines)
@@ -1991,7 +2265,7 @@ HOST (Python)
       |-- paint_content(self, painter, rect)
       `-- get_config_dialog(self, parent)
 
-  host/mara_host/gui/widgets/block_diagram/blocks/servo.py (144 lines)
+  host/mara_host/gui/widgets/block_diagram/blocks/servo.py (92 lines)
     [Fn] create_servo_config(block_id, label, servo_id)
     [Class] ServoBlock
       |-- __init__(self, block_id, label, servo_id)
@@ -1999,9 +2273,6 @@ HOST (Python)
       |-- paint_content(self, painter, rect)
       `-- get_config_dialog(self, parent)
     [Class] ServoConfigDialog
-      |-- __init__(self, properties, parent)
-      |-- _setup_ui(self)
-      `-- get_config(self)
 
   host/mara_host/gui/widgets/block_diagram/blocks/signal.py (770 lines)
     [Fn] create_signal_source_config(block_id, label, signal_id)
@@ -2305,17 +2576,27 @@ HOST (Python)
       |-- _add_component_group(self, layout, title, components)
       `-- set_palette_type(self, palette_type)
 
-  host/mara_host/gui/widgets/block_diagram/dialogs/__init__.py (9 lines)
+  host/mara_host/gui/widgets/block_diagram/dialogs/__init__.py (12 lines)
 
-  host/mara_host/gui/widgets/block_diagram/dialogs/block_config.py (135 lines)
-    [Class] BlockConfigDialog
-      |-- __init__(self, properties, schema, title, parent)
-      |-- _infer_schema(self, properties)
+  host/mara_host/gui/widgets/block_diagram/dialogs/base.py (197 lines)
+    [Class] FieldDef
+    [Class] BaseBlockConfigDialog
+      |-- __init__(self, properties, parent, controller, slot)
       |-- _setup_ui(self)
-      |-- _create_field_widget(self, field_name, config)
+      |-- _create_widget(self, field_def)
+      |-- _on_live_tune_changed(self, state)
+      |-- _on_value_changed(self, name, value)
+      |-- set_controller(self, controller)
+      |-- get_values(self)
       `-- get_config(self)
 
-  host/mara_host/gui/widgets/block_diagram/dialogs/pid_config.py (228 lines)
+  host/mara_host/gui/widgets/block_diagram/dialogs/block_config.py (62 lines)
+    [Fn] _schema_to_fields(schema)
+    [Fn] _infer_schema(properties)
+    [Class] BlockConfigDialog
+      `-- __init__(self, properties, schema, title, parent)
+
+  host/mara_host/gui/widgets/block_diagram/dialogs/pid_config.py (239 lines)
     [Class] GainSlider
       |-- __init__(self, min_val, max_val, initial, decimals, parent)
       |-- _on_slider_changed(self, value)
@@ -2323,8 +2604,8 @@ HOST (Python)
       |-- value(self)
       `-- setValue(self, value)
     [Class] PIDConfigDialog
-      |-- __init__(self, properties, parent, controller)
-      |-- _setup_ui(self)
+      |-- __init__(self, properties, parent, controller, slot)
+      |-- _setup_ui_custom(self)
       |-- _setup_basic_tab(self, layout)
       |-- _setup_advanced_tab(self, layout)
       |-- _on_live_tune_changed(self, state)
@@ -2345,20 +2626,17 @@ HOST (Python)
       `-- _apply_style(self)
     [Fn] show_pin_info_popup(gpio, parent, pos)
 
-  host/mara_host/gui/widgets/controls/__init__.py (22 lines)
+  host/mara_host/gui/widgets/controls/__init__.py (23 lines)
     [Fn] __getattr__(name)
     [Fn] __dir__()
 
-  host/mara_host/gui/widgets/controls/motor_slider.py (69 lines)
+  host/mara_host/gui/widgets/controls/motor_slider.py (37 lines)
     [Class] MotorSliderGroup
       |-- __init__(self, motor_id, label, min_value, max_value, initial_value, auto_zero, parent)
-      |-- _setup_ui(self, label, initial_value)
+      |-- motor_id(self)
       |-- _on_value_changed(self, value)
       |-- _on_released(self)
-      |-- value(self)
-      |-- setValue(self, value)
-      |-- speed(self)
-      `-- setEnabled(self, enabled)
+      `-- speed(self)
 
   host/mara_host/gui/widgets/controls/parameter_grid.py (84 lines)
     [Class] ParameterSpec
@@ -2372,17 +2650,27 @@ HOST (Python)
       |-- setValues(self, values)
       `-- setEnabled(self, enabled)
 
-  host/mara_host/gui/widgets/controls/servo_slider.py (71 lines)
+  host/mara_host/gui/widgets/controls/servo_slider.py (35 lines)
     [Class] ServoSliderGroup
       |-- __init__(self, servo_id, label, min_angle, max_angle, initial_angle, parent)
-      |-- _setup_ui(self, label, initial_angle)
+      |-- servo_id(self)
+      |-- _on_value_changed(self, value)
+      |-- _on_released(self)
+      |-- angle(self)
+      `-- center(self)
+
+  host/mara_host/gui/widgets/controls/slider_base.py (73 lines)
+    [Class] RangeSliderWidget
+      |-- __init__(self, item_id, label, unit, min_value, max_value, initial_value, parent)
+      |-- item_id(self)
+      |-- _setup_ui(self, label, initial_value)
+      |-- _handle_value_changed(self, value)
+      |-- _handle_released(self)
       |-- _on_value_changed(self, value)
       |-- _on_released(self)
       |-- value(self)
       |-- setValue(self, value)
-      |-- angle(self)
-      |-- setRange(self, min_angle, max_angle)
-      |-- center(self)
+      |-- setRange(self, min_value, max_value)
       `-- setEnabled(self, enabled)
 
   host/mara_host/gui/widgets/controls/spinbox_row.py (78 lines)
@@ -2844,7 +3132,7 @@ HOST (Python)
     [Fn] model(params, v)
     [Fn] cost(params)
 
-  host/mara_host/robot.py (199 lines)
+  host/mara_host/robot.py (215 lines)
     [Class] Session
       |-- __init__(self, robot, name, log_dir)
       |-- start(self)
@@ -2862,6 +3150,8 @@ HOST (Python)
       |-- name(self)
       |-- gpio(self)
       |-- motion(self)
+      |-- motor_service(self)
+      |-- servo_service(self)
       |-- on(self, event, handler)
       |-- from_config(cls, config_path, profile)
       `-- __repr__(self)
@@ -2955,9 +3245,9 @@ HOST (Python)
       |-- _notify_progress(self, gen_type, message)
       `-- get_available_generators()
 
-  host/mara_host/services/control/__init__.py (44 lines)
+  host/mara_host/services/control/__init__.py (46 lines)
 
-  host/mara_host/services/control/gpio_service.py (146 lines)
+  host/mara_host/services/control/gpio_service.py (150 lines)
     [Class] GpioMode
     [Class] GpioChannel
     [Class] GpioService
@@ -2966,7 +3256,7 @@ HOST (Python)
       |-- get_channel(self, channel)
       `-- get_all_channels(self)
 
-  host/mara_host/services/control/motion_service.py (111 lines)
+  host/mara_host/services/control/motion_service.py (143 lines)
     [Class] Velocity
       `-- zero(cls)
     [Class] MotionService
@@ -2976,26 +3266,38 @@ HOST (Python)
       |-- velocity_limit_linear(self, value)
       |-- velocity_limit_angular(self)
       |-- velocity_limit_angular(self, value)
+      |-- rate_limit_hz(self)
+      |-- rate_limit_hz(self, value)
+      |-- set_limits(self, linear, angular, rate_hz)
+      |-- _check_rate_limit(self)
       `-- compute_arcade_drive(self, throttle, steering, max_linear, max_angular)
 
-  host/mara_host/services/control/motor_service.py (144 lines)
+  host/mara_host/services/control/motor_service.py (132 lines)
     [Class] MotorConfig
     [Class] MotorState
     [Class] MotorService
-      |-- __init__(self, client)
       |-- configure(self, motor_id, min_speed, max_speed, inverted)
-      |-- get_config(self, motor_id)
-      |-- get_state(self, motor_id)
       `-- compute_diff_drive(self, vx, omega, track_width, wheel_radius, max_speed)
 
-  host/mara_host/services/control/servo_service.py (199 lines)
+  host/mara_host/services/control/service_base.py (80 lines)
+    [Class] ConfigurableService
+      |-- __init__(self, client)
+      |-- _create_default_config(self, item_id)
+      |-- _create_default_state(self, item_id)
+      |-- get_config(self, item_id)
+      |-- get_state(self, item_id)
+      |-- has_config(self, item_id)
+      |-- has_state(self, item_id)
+      |-- get_all_configs(self)
+      |-- get_all_states(self)
+      |-- clear_configs(self)
+      `-- clear_states(self)
+
+  host/mara_host/services/control/servo_service.py (180 lines)
     [Class] ServoConfig
     [Class] ServoState
     [Class] ServoService
-      |-- __init__(self, client)
       |-- configure(self, servo_id, channel, min_angle, max_angle, min_us, max_us, inverted)
-      |-- get_config(self, servo_id)
-      |-- get_state(self, servo_id)
       `-- get_attached_servos(self)
 
   host/mara_host/services/control/state_service.py (120 lines)
@@ -6315,22 +6617,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     429
+  Python Files:     452
   C++ Files:        249
-  Total Files:      678
+  Total Files:      701
 
 DEFINITIONS
-  Classes:          763
+  Classes:          802
   Structs:          136
-  Functions:        1863
-  Methods:          2140
+  Functions:        1942
+  Methods:          2278
 
 LINES OF CODE
-  Python:           53,999
+  Python:           57,705
   C++:              19,475
-  Total Code:       73,474
-  Blank Lines:      21,086
-  Comment Lines:    21,487
-  Total Lines:      116,047
+  Total Code:       77,180
+  Blank Lines:      22,135
+  Comment Lines:    22,661
+  Total Lines:      121,976
 
 ================================================================================

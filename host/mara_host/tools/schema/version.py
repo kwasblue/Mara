@@ -5,7 +5,7 @@ from typing import Any
 
 # === VERSION INFO ===
 VERSION: dict[str, Any] = {
-    "firmware": "1.0.0",
+    "firmware": "0.5.0",
     "protocol": 1,
     "schema_version": 1,
     "board": "esp32",

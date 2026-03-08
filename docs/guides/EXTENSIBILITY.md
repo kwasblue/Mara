@@ -16,6 +16,7 @@
 |:-------|:------------|:-----------|
 | CLI command | `cli/commands/mycommand.py` | Has `register()` function |
 | GUI panel | `gui/panels/mypanel.py` | Has `PANEL_META` dict |
+| API class | `api/myclass.py` | Add to `__all__` in `api/__init__.py` |
 | Widget | `gui/widgets/controls/mywidget.py` | Add to `_EXPORTS` |
 | Block diagram block | `gui/widgets/block_diagram/blocks/myblock.py` | Add to `_EXPORTS` |
 | Workflow | `workflows/calibration/myworkflow.py` | Add to `_EXPORTS` |
@@ -144,6 +145,54 @@ MYFEATURE_COMMANDS: dict[str, dict] = {
 
 ---
 
+## API Classes
+
+Create a class in `api/` and add to exports:
+
+```python
+# api/mydevice.py
+"""My device API."""
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mara_host.robot import Robot
+
+
+class MyDevice:
+    """Interface to my device."""
+
+    def __init__(self, robot: "Robot", device_id: int = 0) -> None:
+        self._robot = robot
+        self._device_id = device_id
+
+    async def do_thing(self, value: float) -> None:
+        """Do something."""
+        await self._robot.client.send_reliable(
+            "CMD_MY_DEVICE_THING",
+            {"device_id": self._device_id, "value": value}
+        )
+```
+
+Then add to `api/__init__.py`:
+```python
+from .mydevice import MyDevice
+
+__all__ = [
+    # ... existing exports
+    "MyDevice",
+]
+```
+
+Now usable as:
+```python
+from mara_host.api import MyDevice
+device = MyDevice(robot, device_id=0)
+await device.do_thing(1.5)
+```
+
+---
+
 ## Services
 
 Create a service in `services/control/`:
@@ -241,6 +290,7 @@ _EXPORTS = {
 |:----------|:--------|:-------------|
 | CLI Commands | Scan + register() | `cli/main.py` scans `commands/` for modules with `register()` |
 | GUI Panels | Scan + PANEL_META | `main_window.py` scans `panels/` for modules with `PANEL_META` |
+| API Classes | Export in __all__ | `api/__init__.py` exports from `__all__` list |
 | Widgets | Lazy import | `__getattr__` loads from `_EXPORTS` dict on first access |
 | Block Diagram | Lazy import | `blocks/__init__.py` uses `_EXPORTS` dict |
 | Workflows | Lazy import | `workflows/__init__.py` uses `_EXPORTS` dict |
@@ -258,6 +308,10 @@ Panel `order` values control sidebar position (lower = higher):
 |:------|:------|
 | 10 | Dashboard |
 | 20 | Control |
+| 21 | Motion |
+| 25 | PWM |
+| 26 | Stepper |
+| 27 | Sensors |
 | 30 | Camera |
 | 40 | Commands |
 | 50 | Calibration |

@@ -109,9 +109,18 @@ class GPIO:
         if not self.is_registered(channel):
             raise ValueError(f"Channel {channel} is not registered")
 
-        result = await self._service.write(channel, value)
-        if not result.ok:
-            raise RuntimeError(result.error)
+        # Direct client call (validated above, skip service re-validation)
+        value = 1 if value else 0
+        ok, error = await self._robot.client.send_reliable(
+            "CMD_GPIO_WRITE",
+            {"channel": channel, "value": value},
+        )
+        if ok:
+            ch = self._service.get_channel(channel)
+            if ch:
+                ch.value = value
+        else:
+            raise RuntimeError(error or f"Failed to write GPIO channel {channel}")
 
     async def read(self, channel: int) -> None:
         """
@@ -129,9 +138,13 @@ class GPIO:
         if not self.is_registered(channel):
             raise ValueError(f"Channel {channel} is not registered")
 
-        result = await self._service.read(channel)
-        if not result.ok:
-            raise RuntimeError(result.error)
+        # Direct client call (validated above, skip service re-validation)
+        ok, error = await self._robot.client.send_reliable(
+            "CMD_GPIO_READ",
+            {"channel": channel},
+        )
+        if not ok:
+            raise RuntimeError(error or f"Failed to read GPIO channel {channel}")
 
     async def toggle(self, channel: int) -> None:
         """
@@ -147,9 +160,17 @@ class GPIO:
         if not self.is_registered(channel):
             raise ValueError(f"Channel {channel} is not registered")
 
-        result = await self._service.toggle(channel)
-        if not result.ok:
-            raise RuntimeError(result.error)
+        # Direct client call (validated above, skip service re-validation)
+        ok, error = await self._robot.client.send_reliable(
+            "CMD_GPIO_TOGGLE",
+            {"channel": channel},
+        )
+        if ok:
+            ch = self._service.get_channel(channel)
+            if ch:
+                ch.value = 1 - ch.value  # Toggle local state
+        else:
+            raise RuntimeError(error or f"Failed to toggle GPIO channel {channel}")
 
     async def high(self, channel: int) -> None:
         """Set a channel's output high (1)."""

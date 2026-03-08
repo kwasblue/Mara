@@ -2,11 +2,18 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
-
-import yaml
+from typing import Optional, TYPE_CHECKING
 
 from ..config.pin_config import ENC0_A, ENC0_B
+
+if TYPE_CHECKING:
+    import yaml
+
+
+def _load_yaml():
+    """Lazy-load yaml module for startup time optimization."""
+    import yaml
+    return yaml
 
 
 @dataclass
@@ -68,6 +75,7 @@ class HostSettings:
         base = Path(__file__).resolve().parent.parent
         cfg_path = base / "config" / f"robot_profile_{profile}.yaml"
 
+        yaml = _load_yaml()
         data = yaml.safe_load(cfg_path.read_text())
 
         transport = TransportSettings(**data["transport"])

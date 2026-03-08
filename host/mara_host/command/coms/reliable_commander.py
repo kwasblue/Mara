@@ -145,8 +145,11 @@ class ReliableCommander:
         payload: Optional[Dict[str, Any]] = None,
     ) -> int:
         """Send without tracking. Use for heartbeats etc."""
-        payload = dict(payload or {})
-        payload["wantAck"] = False
+        # Avoid dict copy for efficiency - safe for fire-and-forget (no retry/tracking)
+        if payload is None:
+            payload = {"wantAck": False}
+        elif "wantAck" not in payload:
+            payload["wantAck"] = False  # Mutate in place
         sent_ns = time.monotonic_ns()
         seq = await self.send_func(cmd_type, payload, None)
         self.commands_sent += 1

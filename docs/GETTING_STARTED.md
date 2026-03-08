@@ -1,15 +1,21 @@
 # Getting Started with MARA
 
-This guide walks you through building a robot with the MARA platform, from hardware setup to your first autonomous program.
+<div align="center">
 
----
+**Build your first robot with MARA**
 
-## Overview
+*From hardware setup to autonomous control*
 
-MARA (Modular Asynchronous Robotics Architecture) consists of:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
+
+## What is MARA?
+
+MARA (Modular Asynchronous Robotics Architecture) is a platform for building ESP32-based robots.
 
 | Component | What it does |
-|-----------|--------------|
+|:----------|:-------------|
 | **ESP32 Firmware** | Real-time motor control, sensor reading, safety |
 | **Python Host** | High-level control, telemetry, research tools |
 | **CLI (`mara`)** | Testing, calibration, monitoring |
@@ -21,15 +27,14 @@ MARA (Modular Asynchronous Robotics Architecture) consists of:
 ### Minimum Setup
 
 | Part | Purpose | Example |
-|------|---------|---------|
+|:-----|:--------|:--------|
 | ESP32 dev board | Main controller | ESP32-DevKitC, ESP32-S3 |
 | USB cable | Programming & serial | Micro-USB or USB-C |
 | DC motors (2x) | Drive wheels | TT motors, N20 motors |
 | Motor driver | PWM control | L298N, TB6612, DRV8833 |
-| Encoders (optional) | Velocity feedback | Hall effect or optical |
 | Power supply | Motors & ESP32 | 7.4V LiPo + 5V regulator |
 
-### Wiring Example (Differential Drive)
+### Wiring Example
 
 ```
 ESP32                    Motor Driver (L298N)
@@ -47,9 +52,9 @@ GND ────────────────────► GND
 
 ---
 
-## Step 2: Install the Platform
+## Step 2: Installation
 
-### Clone the Repository
+### Clone Repository
 
 ```bash
 git clone https://github.com/yourusername/mara.git
@@ -61,10 +66,10 @@ cd mara
 ```bash
 # Create virtual environment
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
 
 # Install MARA
-make install
+pip install -e host/
 ```
 
 ### Install PlatformIO (for firmware)
@@ -79,7 +84,7 @@ pip install platformio
 
 ### Pin Configuration
 
-Edit `host/mara_host/config/pins.json` with your GPIO assignments:
+Edit `host/mara_host/config/pins.json`:
 
 ```json
 {
@@ -108,19 +113,16 @@ Edit `host/mara_host/config/pins.json` with your GPIO assignments:
 mara generate pins
 ```
 
-This creates matching Python and C++ config files.
-
 ---
 
 ## Step 4: Build & Flash Firmware
 
-### Choose a Build Profile
+### Choose Build Profile
 
 | Profile | Features | Use case |
-|---------|----------|----------|
+|:--------|:---------|:---------|
 | `esp32_minimal` | UART only | Debugging |
 | `esp32_motors` | Motors + encoders | Basic robot |
-| `esp32_control` | Full control system | Advanced |
 | `esp32_full` | Everything | Development |
 
 ### Build and Flash
@@ -138,7 +140,7 @@ pio run -e esp32_motors -t upload
 pio device monitor -b 115200
 ```
 
-You should see:
+Expected output:
 ```
 [MCU] Booting...
 [MOTORS] Initialized 2 DC motors
@@ -149,7 +151,7 @@ You should see:
 
 ## Step 5: First Connection
 
-### Find Your Serial Port
+### Find Serial Port
 
 ```bash
 # macOS
@@ -165,18 +167,12 @@ ls /dev/ttyUSB*
 mara test connection --port /dev/cu.usbserial-0001
 ```
 
-Expected output:
+Expected:
 ```
 ✓ Serial port opened
 ✓ Handshake successful
 ✓ Firmware version: 1.0.0
 ✓ Protocol version: 1
-```
-
-### Run Hardware Tests
-
-```bash
-mara test commands --port /dev/cu.usbserial-0001
 ```
 
 ---
@@ -188,33 +184,24 @@ mara test commands --port /dev/cu.usbserial-0001
 ```python
 # my_robot.py
 import asyncio
-from mara_host.transport.serial_transport import SerialTransport
-from mara_host.command.client import MaraClient
+from mara_host import Robot
 
 async def main():
-    # Connect
-    transport = SerialTransport("/dev/cu.usbserial-0001")
-    client = MaraClient(transport)
-
-    await client.start()
-
-    try:
-        # Safety sequence: arm → activate
-        await client.cmd_arm()
-        await client.cmd_activate()
+    async with Robot("/dev/cu.usbserial-0001") as robot:
+        # Safety sequence
+        await robot.arm()
+        await robot.activate()
 
         # Drive forward for 2 seconds
-        await client.set_vel(vx=0.3, omega=0.0)
+        await robot.motion.set_velocity(vx=0.3, omega=0.0)
         await asyncio.sleep(2.0)
 
         # Stop
-        await client.cmd_stop()
+        await robot.motion.stop()
 
-    finally:
-        # Always cleanup
-        await client.cmd_deactivate()
-        await client.cmd_disarm()
-        await client.stop()
+        # Cleanup
+        await robot.deactivate()
+        await robot.disarm()
 
 asyncio.run(main())
 ```
@@ -226,33 +213,37 @@ python my_robot.py
 
 ---
 
-## Step 7: Using the High-Level API
+## Step 7: High-Level API
 
-For more complex behaviors, use the API layer:
+For more complex behaviors:
 
 ```python
 import asyncio
-from mara_host import Robot, DifferentialDrive, GPIO
+from mara_host import Robot
+from mara_host.api import GPIO
 
 async def main():
     async with Robot("/dev/cu.usbserial-0001") as robot:
-        # Create high-level interfaces
-        drive = DifferentialDrive(robot)
         gpio = GPIO(robot)
 
-        # Setup an LED
+        # Setup LED on channel 0
         await gpio.register(channel=0, pin=2, mode="output")
 
-        # Blink LED while driving
         await robot.arm()
-        await gpio.high(0)
+        await robot.activate()
 
-        # Drive in a square
+        # Blink while driving
         for _ in range(4):
-            await drive.drive_straight(distance=0.5, speed=0.3)
-            await drive.turn(angle=90, speed=0.2)
+            await gpio.high(0)
+            await robot.motion.set_velocity(0.3, 0.0, binary=True)
+            await asyncio.sleep(0.5)
 
-        await gpio.low(0)
+            await gpio.low(0)
+            await robot.motion.set_velocity(0.0, 0.3, binary=True)
+            await asyncio.sleep(0.5)
+
+        await robot.motion.stop()
+        await robot.deactivate()
         await robot.disarm()
 
 asyncio.run(main())
@@ -260,7 +251,7 @@ asyncio.run(main())
 
 ---
 
-## Step 8: Adding Telemetry
+## Step 8: Telemetry
 
 Subscribe to sensor data:
 
@@ -270,96 +261,98 @@ async def main():
         # Handle IMU data
         @robot.on("telemetry.imu")
         def on_imu(data):
-            print(f"Accel: {data.accel_x:.2f}, {data.accel_y:.2f}")
+            print(f"Accel: {data['ax']:.2f}, {data['ay']:.2f}")
 
         # Handle encoder data
         @robot.on("telemetry.encoder0")
         def on_encoder(data):
-            print(f"Velocity: {data.velocity:.2f} rad/s")
+            print(f"Velocity: {data['velocity']:.2f} rad/s")
 
         await robot.arm()
-        await asyncio.sleep(10)  # Collect data for 10s
+        await asyncio.sleep(10)  # Collect data
         await robot.disarm()
 ```
 
 ---
 
-## Step 9: WiFi Connection (Optional)
+## Step 9: High-Rate Control (50+ Hz)
 
-For wireless operation:
+For real-time control, use binary encoding:
 
-### Configure WiFi Credentials
+```python
+async def control_loop(robot):
+    """50Hz control loop with minimal latency."""
+    await robot.arm()
+    await robot.activate()
+
+    try:
+        while True:
+            # Get sensor data
+            # ... your controller here ...
+
+            # Send velocity (binary for speed)
+            await robot.motion.set_velocity(vx, omega, binary=True)
+            await asyncio.sleep(0.02)  # 50Hz
+
+    finally:
+        await robot.motion.stop()
+        await robot.deactivate()
+        await robot.disarm()
+```
+
+**Performance:**
+- JSON path: ~50 bytes, good for setup/config
+- Binary path: ~9 bytes, 5x smaller, use for streaming
+
+---
+
+## Step 10: WiFi Connection (Optional)
+
+### Configure WiFi
 
 Edit `firmware/mcu/include/config/WifiSecrets.h`:
 
 ```cpp
 #define WIFI_STA_SSID        "YourNetwork"
 #define WIFI_STA_PASSWORD    "YourPassword"
-#define MQTT_BROKER_HOST     "10.0.0.59"  // Your computer's IP
 ```
 
-### Flash WiFi-Enabled Firmware
+### Flash WiFi Firmware
 
 ```bash
 pio run -e esp32_usb -t upload
 ```
 
-### Start MQTT Broker (on your computer)
-
-```bash
-mara mqtt start
-```
-
 ### Connect via TCP
 
 ```python
-from mara_host.transport.tcp_transport import AsyncTcpTransport
+from mara_host import Robot
 
-transport = AsyncTcpTransport("10.0.0.60", port=3333)  # ESP32's IP
+async with Robot("tcp://10.0.0.60:3333") as robot:
+    # Same API as serial
+    await robot.arm()
+    ...
 ```
 
 ---
 
-## Step 10: Calibration
-
-### Motor Calibration
-
-```bash
-mara calibrate motor --port /dev/cu.usbserial-0001
-```
-
-### Encoder Calibration
-
-```bash
-mara calibrate encoder --port /dev/cu.usbserial-0001
-```
-
-### PID Tuning
-
-```bash
-mara calibrate pid --port /dev/cu.usbserial-0001
-```
-
----
-
-## Common Issues
+## Troubleshooting
 
 ### "Handshake timed out"
 
 - Check USB cable (some are charge-only)
 - Verify correct port: `ls /dev/cu.*`
-- Try pressing ESP32 reset button
+- Press ESP32 reset button
 
 ### "Command rejected: not_armed"
 
-Always follow the safety sequence:
+Follow safety sequence:
 ```python
-await client.cmd_arm()      # IDLE → ARMED
-await client.cmd_activate() # ARMED → ACTIVE
+await robot.arm()       # IDLE → ARMED
+await robot.activate()  # ARMED → ACTIVE
 # ... do stuff ...
-await client.cmd_stop()
-await client.cmd_deactivate()
-await client.cmd_disarm()
+await robot.deactivate()
+await robot.disarm()
 ```
 
 ### Motors don't move
@@ -372,20 +365,35 @@ await client.cmd_disarm()
 
 1. Check credentials in `WifiSecrets.h`
 2. Ensure 2.4GHz network (ESP32 doesn't support 5GHz)
-3. Check serial monitor for connection status
+3. Check serial monitor for status
+
+---
+
+## Command Reference
+
+| Command | Description |
+|:--------|:------------|
+| `mara test connection` | Test serial connection |
+| `mara test commands` | Test command ACKs |
+| `mara test motors` | Test motor outputs |
+| `mara generate all` | Regenerate code |
+| `mara calibrate pid` | Tune PID gains |
 
 ---
 
 ## Next Steps
 
-- [Examples](../host/mara_host/examples/README.md) - More code examples
-- [CLI Reference](ADDING_COMMANDS.md) - Full command documentation
-- [Architecture](ARCHITECTURE.md) - System design
-- [MQTT Guide](MQTT.md) - Multi-robot control
+| Document | Description |
+|:---------|:------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design |
+| [ADDING_COMMANDS.md](ADDING_COMMANDS.md) | Add new commands |
+| [EXTENDING.md](EXTENDING.md) | Add sensors, motors |
+| [MQTT.md](MQTT.md) | Multi-robot control |
 
 ---
 
-## Getting Help
+<div align="center">
 
-- Issues: https://github.com/yourusername/mara/issues
-- Examples: `host/mara_host/examples/`
+*Need help? Open an issue on GitHub*
+
+</div>

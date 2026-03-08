@@ -88,7 +88,7 @@ class MotionService:
         vx: float,
         omega: float,
         clamp: bool = True,
-        fast: bool = False,
+        binary: bool = True,
     ) -> None:
         """
         Set robot velocity (fire-and-forget for real-time control).
@@ -97,8 +97,8 @@ class MotionService:
             vx: Linear velocity in m/s (positive = forward)
             omega: Angular velocity in rad/s (positive = counter-clockwise)
             clamp: If True, clamp velocities to limits
-            fast: If True, use ultra-fast binary path (bypasses commander/JSON).
-                  Use for 50+ Hz streaming where latency is critical.
+            binary: If True, use binary encoding (lower latency for 50+ Hz).
+                    All commands still flow through commander for event logging.
         """
         if clamp:
             vx = max(-self._velocity_limit_linear, min(self._velocity_limit_linear, vx))
@@ -106,16 +106,13 @@ class MotionService:
                 -self._velocity_limit_angular, min(self._velocity_limit_angular, omega)
             )
 
-        if fast:
-            # Ultra-fast: direct binary encode + send, no tracking/events
-            await self.client.send_vel_fast(vx, omega)
-        else:
-            # Standard path: fire-and-forget with event emission
-            await self.client.send_stream(
-                "CMD_SET_VEL",
-                {"vx": vx, "omega": omega},
-                request_ack=False,
-            )
+        # All commands flow through commander (binary or JSON)
+        await self.client.send_stream(
+            "CMD_SET_VEL",
+            {"vx": vx, "omega": omega},
+            request_ack=False,
+            binary=binary,
+        )
 
         self._last_velocity = Velocity(vx=vx, omega=omega)
 

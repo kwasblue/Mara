@@ -5,7 +5,6 @@ import contextlib
 import json
 import asyncio
 import inspect
-import struct
 import time
 from typing import Optional, Protocol, Callable, Dict, Any, Tuple
 
@@ -17,7 +16,6 @@ from mara_host.config.client_commands import RobotCommandsMixin
 from mara_host.telemetry.binary_parser import parse_telemetry_bin
 from mara_host.config.version import PROTOCOL_VERSION
 from .binary_mixin import BinaryCommandsMixin
-from .binary_commands import Opcode
 
 class HasSendBytes(Protocol):
     """Minimal transport interface used by the async robot client."""
@@ -93,11 +91,13 @@ class BaseMaraClient(BinaryCommandsMixin):
         )
 
         # Reliable commander (uses lazy logs via property)
+        # Handles both reliable (tracked) and streaming (fire-and-forget) commands
         self.commander = ReliableCommander(
             send_func=self._send_json_cmd_internal,
+            send_binary_func=self._send_binary_cmd,
             timeout_s=command_timeout_s,
             max_retries=max_retries,
-            on_event=lambda event, data: self._log_event(event, data)
+            on_event=lambda event, data: self._log_event(event, data),
         )
 
         self._heartbeat_interval_s = heartbeat_interval_s
@@ -476,6 +476,21 @@ class BaseMaraClient(BinaryCommandsMixin):
         await self._send_frame(MSG_CMD_JSON, data)
         return seq
 
+    async def _send_binary_cmd(self, cmd_type: str, payload: Dict[str, Any]) -> None:
+        """
+        Internal: send command as binary (for streaming).
+
+        Used by ReliableCommander for fire-and-forget binary commands.
+        Lower latency and smaller wire size than JSON.
+        """
+        cmd = {"type": cmd_type, **payload}
+        binary_payload = self._binary_encoder.encode(cmd)
+        if binary_payload is not None:
+            await self._send_frame(MSG_CMD_BIN, binary_payload)
+        else:
+            # Fall back to JSON if no binary encoding available
+            await self._send_json_cmd_internal(cmd_type, payload)
+
     # ---------- Public API ----------
 
     async def send_ping(self) -> None:
@@ -510,48 +525,31 @@ class BaseMaraClient(BinaryCommandsMixin):
         """
         return await self.commander.send(type_str, payload, wait_for_ack)
     
-    async def send_stream(self, cmd_type: str, payload: dict, request_ack: bool = False):
+    async def send_stream(
+        self,
+        cmd_type: str,
+        payload: dict,
+        request_ack: bool = False,
+        binary: bool = False,
+    ):
         """
-        Streaming-friendly send:
-        - request_ack=False: fire-and-forget (fast, no pending tracking)
-        - request_ack=True: reliable send (tracked + retries)
+        Streaming-friendly send. All commands flow through ReliableCommander.
+
+        Args:
+            cmd_type: Command type (e.g., "CMD_SET_VEL")
+            payload: Command payload dict
+            request_ack: If True, use reliable send with ACK tracking
+            binary: If True, use binary encoding (lower latency for 50+ Hz)
+
+        Returns:
+            (success, error_msg) tuple
         """
         if request_ack:
             return await self.send_reliable(cmd_type, payload, wait_for_ack=True)
 
-        # fastest path for high-rate streaming
-        await self.commander.send_fire_and_forget(cmd_type, payload)
+        # Fire-and-forget through commander (binary or JSON)
+        await self.commander.send_fire_and_forget(cmd_type, payload, binary=binary)
         return True, None
-
-    # ---------- Ultra-fast binary paths ----------
-
-    async def send_vel_fast(self, vx: float, omega: float) -> None:
-        """
-        Ultra-fast velocity send. Bypasses:
-        - ReliableCommander (no tracking, no event emission)
-        - JSON encoding (binary instead: 9 bytes vs ~50 bytes JSON)
-        - Dict creation/copy
-
-        Use for 50+ Hz streaming where latency is critical.
-        For reliable delivery, use set_vel() or send_reliable() instead.
-
-        Wire format: [opcode:1][vx:f32][omega:f32] = 9 bytes payload
-        Total frame: ~15 bytes with header/CRC
-        """
-        # Direct binary encode: [opcode:u8][vx:f32][omega:f32] = 9 bytes
-        payload = struct.pack("<Bff", Opcode.SET_VEL, vx, omega)
-        frame = protocol.encode(MSG_CMD_BIN, payload)
-        await self.transport.send_bytes(frame)
-
-    async def send_stop_fast(self) -> None:
-        """
-        Ultra-fast STOP command. Bypasses all tracking/encoding layers.
-
-        Use for emergency stops or high-rate control loops.
-        """
-        payload = struct.pack("<B", Opcode.STOP)
-        frame = protocol.encode(MSG_CMD_BIN, payload)
-        await self.transport.send_bytes(frame)
 
     # ---------- Convenience methods ----------
 

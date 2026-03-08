@@ -1,34 +1,42 @@
-# Adding Hardware - End-to-End Guide
+# Adding Hardware
 
-This guide walks through adding new hardware (sensors, actuators, peripherals) to the MARA platform.
+<div align="center">
+
+**End-to-end guide for adding sensors, actuators, and peripherals**
+
+*From registry to firmware implementation*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## Quick Start (2 Files)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     ADDING NEW HARDWARE                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  FILE 1: Hardware Registry (Python)                             │
-│          tools/schema/hardware/_sensors.py                      │
-│          → Defines commands, telemetry, GUI                     │
-│          → Run: mara generate all                               │
-│                           ↓                                     │
-│  FILE 2: Firmware Driver (C++)                                  │
-│          firmware/mcu/include/sensor/MySensor.h                 │
-│          → Hardware + command handling in ONE file              │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          ADDING NEW HARDWARE                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  FILE 1: Hardware Registry (Python)                                         │
+│          tools/schema/hardware/_sensors.py                                   │
+│          → Defines commands, telemetry, GUI                                 │
+│          → Run: mara generate all                                           │
+│                              ↓                                              │
+│  FILE 2: Firmware Driver (C++)                                              │
+│          firmware/mcu/include/sensor/MySensor.h                              │
+│          → Hardware + command handling in ONE file                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 | What | Manual | Auto-Generated |
-|------|--------|----------------|
-| Hardware definition | ✓ 1 file | - |
-| Firmware C++ | ✓ 1 file | - |
-| Python commands | - | ✓ `client_commands.py` |
-| Python telemetry | - | ✓ `models.py`, `binary_parser.py` |
-| GUI blocks | - | ✓ `SENSOR_TYPES`, palette |
-| C++ headers | - | ✓ `CommandDefs.h`, `TelemetrySections.h` |
+|:-----|:-------|:---------------|
+| Hardware definition | 1 file | - |
+| Firmware C++ | 1 file | - |
+| Python commands | - | `client_commands.py` |
+| Python telemetry | - | `models.py`, `binary_parser.py` |
+| GUI blocks | - | `SENSOR_TYPES`, palette |
+| C++ headers | - | `CommandDefs.h`, `TelemetrySections.h` |
 
 ---
 
@@ -178,7 +186,7 @@ public:
     struct Sensor {
         uint8_t i2c_addr = 0x48;
         bool attached = false;
-        int16_t temp_centi = -27315;  // -273.15°C = invalid
+        int16_t temp_centi = -27315;  // -273.15C = invalid
         uint32_t last_read_ms = 0;
     };
 
@@ -260,8 +268,28 @@ public:
 Then register in main:
 ```cpp
 TemperatureSensor temp_sensor(i2c);
-command_bus.registerHandler(temp_sensor);  // Uses canHandle/handle
+command_bus.registerHandler(temp_sensor);
 telemetry.addProvider([&](auto& buf) { temp_sensor.publishTelemetry(buf); });
+```
+
+### Step 4: Create Service (Optional)
+
+```python
+# services/control/temperature_service.py
+from mara_host.core.result import ServiceResult
+
+class TemperatureService:
+    def __init__(self, client):
+        self.client = client
+
+    async def attach(self, sensor_id: int, i2c_addr: int = 0x48) -> ServiceResult:
+        ok, error = await self.client.send_reliable(
+            "CMD_TEMP_ATTACH",
+            {"sensor_id": sensor_id, "i2c_addr": i2c_addr},
+        )
+        if ok:
+            return ServiceResult.success(data={"sensor_id": sensor_id})
+        return ServiceResult.failure(error=error or "Failed")
 ```
 
 ### Done!
@@ -275,38 +303,20 @@ The temperature sensor now:
 
 ## Checklist
 
-### Required (3 files + codegen)
+### Required (2-3 files + codegen)
+
 - [ ] Add entry to `tools/schema/hardware/_sensors.py`
 - [ ] Run `mara generate all`
 - [ ] Create `firmware/mcu/include/sensor/MyManager.h`
-- [ ] Add handler cases in `firmware/mcu/include/command/handlers/`
+- [ ] Register handler in firmware
 
 ### Optional
+
 - [ ] Add feature flag in `FeatureFlags.h`
-- [ ] Create dedicated Python service in `services/control/`
+- [ ] Create service in `services/control/`
+- [ ] Create API class in `api/`
 - [ ] Add HIL test in `tests/test_hil_send_commands.py`
 - [ ] Add MCU native test in `firmware/mcu/test/`
-
----
-
-## File Reference
-
-### You Edit (3 files)
-| File | Purpose |
-|------|---------|
-| `tools/schema/hardware/_sensors.py` | Hardware definition |
-| `firmware/mcu/include/sensor/*.h` | Hardware driver |
-| `firmware/mcu/include/command/handlers/*.h` | Command handler |
-
-### Auto-Generated (don't edit)
-| File | Source |
-|------|--------|
-| `CommandDefs.h` | Hardware registry |
-| `TelemetrySections.h` | Hardware registry |
-| `command_defs.py` | Hardware registry |
-| `client_commands.py` | Hardware registry |
-| `telemetry_sections.py` | Hardware registry |
-| GUI `SENSOR_TYPES` | Hardware registry (runtime) |
 
 ---
 
@@ -315,7 +325,7 @@ The temperature sensor now:
 ### Telemetry Format String
 
 | Type | Bytes | C++ | Python |
-|------|-------|-----|--------|
+|:-----|:------|:----|:-------|
 | `u8` | 1 | `uint8_t` | `int` |
 | `i8` | 1 | `int8_t` | `int` |
 | `u16` | 2 | `uint16_t` | `int` |
@@ -329,7 +339,7 @@ Example: `"sensor_id(u8) ok(u8) value(i16)"` = 4 bytes total
 ### Interface Types
 
 | Interface | Typical Ports | Use Case |
-|-----------|---------------|----------|
+|:----------|:--------------|:---------|
 | `i2c` | SDA, SCL | IMU, temperature, OLED |
 | `gpio` | TRIG, ECHO, A, B | Ultrasonic, encoder |
 | `uart` | TX, RX | LiDAR, GPS |
@@ -343,7 +353,21 @@ Example: `"sensor_id(u8) ok(u8) value(i16)"` = 4 bytes total
 1. **Use feature flags** - Wrap C++ in `#if HAS_FEATURE` so unused hardware compiles out
 2. **Non-blocking reads** - Cache values in managers; never block the main loop
 3. **Fixed telemetry sizes** - Use fixed-size sections when possible for efficient parsing
-4. **Rate limit** - Don't read sensors faster than they update (waste of I2C bandwidth)
+4. **Rate limit** - Don't read sensors faster than they update
 5. **Test incrementally** - Test firmware with native tests before HIL
 
-See also: [ADDING_COMMANDS.md](./ADDING_COMMANDS.md) for command schema details.
+---
+
+## See Also
+
+- [ADDING_COMMANDS.md](./ADDING_COMMANDS.md) - Command schema details
+- [EXTENDING.md](./EXTENDING.md) - Adding services and APIs
+- [CODEGEN.md](./CODEGEN.md) - Code generation system
+
+---
+
+<div align="center">
+
+*Define once in registry, generate everywhere*
+
+</div>

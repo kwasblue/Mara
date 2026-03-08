@@ -429,3 +429,632 @@ class GainConfigDialog(QDialog):
 
     def get_config(self) -> dict:
         return {"gain": self.gain_spin.value()}
+
+
+# --- Integrator Block ---
+
+def create_integrator_config(
+    block_id: str,
+    label: str = "Int",
+    gain: float = 1.0,
+) -> BlockConfig:
+    """Create configuration for an integrator block."""
+    return BlockConfig(
+        block_type="integrator",
+        block_id=block_id,
+        label=label,
+        width=60,
+        height=50,
+        input_ports=[
+            PortConfig(
+                port_id="in",
+                label="in",
+                kind=PortKind.INPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        output_ports=[
+            PortConfig(
+                port_id="out",
+                label="out",
+                kind=PortKind.OUTPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        properties={
+            "gain": gain,
+            "initial_value": 0.0,
+            "anti_windup": True,
+            "limit_min": -1000.0,
+            "limit_max": 1000.0,
+        },
+    )
+
+
+class IntegratorBlock(BlockBase):
+    """
+    Integrator block (1/s).
+
+    Integrates input signal over time: y = integral(K * u) dt
+    """
+
+    def __init__(
+        self,
+        block_id: str,
+        label: str = "Int",
+        gain: float = 1.0,
+    ):
+        config = create_integrator_config(block_id, label, gain)
+        super().__init__(config)
+
+    def get_icon_color(self) -> QColor:
+        return QColor("#14B8A6")  # Teal
+
+    def paint(self, painter: QPainter) -> None:
+        """Paint integrator block."""
+        rect = self.rect
+
+        painter.setPen(QPen(self.get_border_color(), 2 if self._selected else 1))
+        painter.setBrush(QBrush(self.get_background_color()))
+        painter.drawRoundedRect(rect, 4, 4)
+
+        # Draw integrator symbol: 1/s
+        painter.setFont(QFont("Times New Roman", 12))
+        painter.setPen(QPen(QColor("#14B8A6")))
+        painter.drawText(rect, Qt.AlignCenter, "1/s")
+
+        # Draw ports
+        for port in self.all_ports:
+            port.paint(painter)
+
+    def get_config_dialog(self, parent: QWidget) -> Optional[QDialog]:
+        return IntegratorConfigDialog(self.config.properties, parent)
+
+
+class IntegratorConfigDialog(QDialog):
+    """Configuration dialog for integrator."""
+
+    def __init__(self, properties: dict, parent=None):
+        super().__init__(parent)
+        self._properties = properties.copy()
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        self.setWindowTitle("Integrator Configuration")
+        self.setMinimumWidth(250)
+
+        layout = QVBoxLayout(self)
+
+        group = QGroupBox("Integrator Settings")
+        form = QFormLayout(group)
+
+        self.gain_spin = QDoubleSpinBox()
+        self.gain_spin.setRange(-10000, 10000)
+        self.gain_spin.setDecimals(4)
+        self.gain_spin.setValue(self._properties.get("gain", 1.0))
+        form.addRow("Gain:", self.gain_spin)
+
+        self.initial_spin = QDoubleSpinBox()
+        self.initial_spin.setRange(-10000, 10000)
+        self.initial_spin.setDecimals(4)
+        self.initial_spin.setValue(self._properties.get("initial_value", 0.0))
+        form.addRow("Initial:", self.initial_spin)
+
+        self.min_spin = QDoubleSpinBox()
+        self.min_spin.setRange(-100000, 100000)
+        self.min_spin.setValue(self._properties.get("limit_min", -1000.0))
+        form.addRow("Min Limit:", self.min_spin)
+
+        self.max_spin = QDoubleSpinBox()
+        self.max_spin.setRange(-100000, 100000)
+        self.max_spin.setValue(self._properties.get("limit_max", 1000.0))
+        form.addRow("Max Limit:", self.max_spin)
+
+        layout.addWidget(group)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_config(self) -> dict:
+        return {
+            "gain": self.gain_spin.value(),
+            "initial_value": self.initial_spin.value(),
+            "limit_min": self.min_spin.value(),
+            "limit_max": self.max_spin.value(),
+        }
+
+
+# --- Derivative Block ---
+
+def create_derivative_config(
+    block_id: str,
+    label: str = "Der",
+    gain: float = 1.0,
+    filter_coeff: float = 100.0,
+) -> BlockConfig:
+    """Create configuration for a derivative block."""
+    return BlockConfig(
+        block_type="derivative",
+        block_id=block_id,
+        label=label,
+        width=60,
+        height=50,
+        input_ports=[
+            PortConfig(
+                port_id="in",
+                label="in",
+                kind=PortKind.INPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        output_ports=[
+            PortConfig(
+                port_id="out",
+                label="out",
+                kind=PortKind.OUTPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        properties={
+            "gain": gain,
+            "filter_coeff": filter_coeff,  # N in s*K/(1+s/N)
+        },
+    )
+
+
+class DerivativeBlock(BlockBase):
+    """
+    Derivative block (s).
+
+    Differentiates input with filtering: y = K*s/(1 + s/N) * u
+    """
+
+    def __init__(
+        self,
+        block_id: str,
+        label: str = "Der",
+        gain: float = 1.0,
+        filter_coeff: float = 100.0,
+    ):
+        config = create_derivative_config(block_id, label, gain, filter_coeff)
+        super().__init__(config)
+
+    def get_icon_color(self) -> QColor:
+        return QColor("#EC4899")  # Pink
+
+    def paint(self, painter: QPainter) -> None:
+        """Paint derivative block."""
+        rect = self.rect
+
+        painter.setPen(QPen(self.get_border_color(), 2 if self._selected else 1))
+        painter.setBrush(QBrush(self.get_background_color()))
+        painter.drawRoundedRect(rect, 4, 4)
+
+        # Draw derivative symbol: s
+        painter.setFont(QFont("Times New Roman", 14, QFont.Bold))
+        painter.setPen(QPen(QColor("#EC4899")))
+        painter.drawText(rect, Qt.AlignCenter, "s")
+
+        # Draw ports
+        for port in self.all_ports:
+            port.paint(painter)
+
+    def get_config_dialog(self, parent: QWidget) -> Optional[QDialog]:
+        return DerivativeConfigDialog(self.config.properties, parent)
+
+
+class DerivativeConfigDialog(QDialog):
+    """Configuration dialog for derivative."""
+
+    def __init__(self, properties: dict, parent=None):
+        super().__init__(parent)
+        self._properties = properties.copy()
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        self.setWindowTitle("Derivative Configuration")
+        self.setMinimumWidth(250)
+
+        layout = QVBoxLayout(self)
+
+        group = QGroupBox("Derivative Settings")
+        form = QFormLayout(group)
+
+        self.gain_spin = QDoubleSpinBox()
+        self.gain_spin.setRange(-10000, 10000)
+        self.gain_spin.setDecimals(4)
+        self.gain_spin.setValue(self._properties.get("gain", 1.0))
+        form.addRow("Gain (K):", self.gain_spin)
+
+        self.filter_spin = QDoubleSpinBox()
+        self.filter_spin.setRange(1, 10000)
+        self.filter_spin.setDecimals(1)
+        self.filter_spin.setValue(self._properties.get("filter_coeff", 100.0))
+        form.addRow("Filter (N):", self.filter_spin)
+
+        layout.addWidget(group)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_config(self) -> dict:
+        return {
+            "gain": self.gain_spin.value(),
+            "filter_coeff": self.filter_spin.value(),
+        }
+
+
+# --- Saturation Block ---
+
+def create_saturation_config(
+    block_id: str,
+    label: str = "Sat",
+    lower: float = -1.0,
+    upper: float = 1.0,
+) -> BlockConfig:
+    """Create configuration for a saturation block."""
+    return BlockConfig(
+        block_type="saturation",
+        block_id=block_id,
+        label=label,
+        width=60,
+        height=50,
+        input_ports=[
+            PortConfig(
+                port_id="in",
+                label="in",
+                kind=PortKind.INPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        output_ports=[
+            PortConfig(
+                port_id="out",
+                label="out",
+                kind=PortKind.OUTPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        properties={
+            "lower": lower,
+            "upper": upper,
+        },
+    )
+
+
+class SaturationBlock(BlockBase):
+    """
+    Saturation/Limiter block.
+
+    Limits output to [lower, upper] range.
+    """
+
+    def __init__(
+        self,
+        block_id: str,
+        label: str = "Sat",
+        lower: float = -1.0,
+        upper: float = 1.0,
+    ):
+        config = create_saturation_config(block_id, label, lower, upper)
+        super().__init__(config)
+
+    def get_icon_color(self) -> QColor:
+        return QColor("#EF4444")  # Red
+
+    def paint(self, painter: QPainter) -> None:
+        """Paint saturation block with characteristic."""
+        rect = self.rect
+
+        painter.setPen(QPen(self.get_border_color(), 2 if self._selected else 1))
+        painter.setBrush(QBrush(self.get_background_color()))
+        painter.drawRoundedRect(rect, 4, 4)
+
+        # Draw saturation characteristic (S-curve with flat ends)
+        painter.setPen(QPen(QColor("#EF4444"), 2))
+
+        cx = rect.x() + rect.width() / 2
+        cy = rect.y() + rect.height() / 2
+        w = 20
+        h = 12
+
+        # Lower flat, slope, upper flat
+        painter.drawLine(int(cx - w), int(cy + h), int(cx - w/2), int(cy + h))  # Lower flat
+        painter.drawLine(int(cx - w/2), int(cy + h), int(cx + w/2), int(cy - h))  # Slope
+        painter.drawLine(int(cx + w/2), int(cy - h), int(cx + w), int(cy - h))  # Upper flat
+
+        # Draw ports
+        for port in self.all_ports:
+            port.paint(painter)
+
+    def get_config_dialog(self, parent: QWidget) -> Optional[QDialog]:
+        return SaturationConfigDialog(self.config.properties, parent)
+
+
+class SaturationConfigDialog(QDialog):
+    """Configuration dialog for saturation."""
+
+    def __init__(self, properties: dict, parent=None):
+        super().__init__(parent)
+        self._properties = properties.copy()
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        self.setWindowTitle("Saturation Configuration")
+        self.setMinimumWidth(220)
+
+        layout = QVBoxLayout(self)
+
+        group = QGroupBox("Limits")
+        form = QFormLayout(group)
+
+        self.lower_spin = QDoubleSpinBox()
+        self.lower_spin.setRange(-100000, 100000)
+        self.lower_spin.setDecimals(3)
+        self.lower_spin.setValue(self._properties.get("lower", -1.0))
+        form.addRow("Lower:", self.lower_spin)
+
+        self.upper_spin = QDoubleSpinBox()
+        self.upper_spin.setRange(-100000, 100000)
+        self.upper_spin.setDecimals(3)
+        self.upper_spin.setValue(self._properties.get("upper", 1.0))
+        form.addRow("Upper:", self.upper_spin)
+
+        layout.addWidget(group)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_config(self) -> dict:
+        return {
+            "lower": self.lower_spin.value(),
+            "upper": self.upper_spin.value(),
+        }
+
+
+# --- Low-Pass Filter Block ---
+
+def create_filter_config(
+    block_id: str,
+    label: str = "LPF",
+    cutoff_freq: float = 10.0,
+) -> BlockConfig:
+    """Create configuration for a low-pass filter block."""
+    return BlockConfig(
+        block_type="filter",
+        block_id=block_id,
+        label=label,
+        width=70,
+        height=50,
+        input_ports=[
+            PortConfig(
+                port_id="in",
+                label="in",
+                kind=PortKind.INPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        output_ports=[
+            PortConfig(
+                port_id="out",
+                label="out",
+                kind=PortKind.OUTPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        properties={
+            "cutoff_freq": cutoff_freq,
+            "filter_type": "lowpass",  # lowpass, highpass, bandpass
+            "order": 1,
+        },
+    )
+
+
+class FilterBlock(BlockBase):
+    """
+    Low-pass filter block.
+
+    First-order low-pass: H(s) = wc / (s + wc)
+    """
+
+    def __init__(
+        self,
+        block_id: str,
+        label: str = "LPF",
+        cutoff_freq: float = 10.0,
+    ):
+        config = create_filter_config(block_id, label, cutoff_freq)
+        super().__init__(config)
+
+    def get_icon_color(self) -> QColor:
+        return QColor("#A855F7")  # Purple
+
+    def paint_content(self, painter: QPainter, rect: QRectF) -> None:
+        """Paint filter-specific content."""
+        cutoff = self.config.properties.get("cutoff_freq", 10.0)
+
+        painter.setFont(QFont("Consolas", 8))
+        painter.setPen(QPen(QColor("#A855F7")))
+
+        text_rect = QRectF(rect.x() + 8, rect.bottom() - 18, rect.width() - 16, 14)
+        painter.drawText(text_rect, Qt.AlignCenter, f"fc={cutoff:.1f}Hz")
+
+    def get_config_dialog(self, parent: QWidget) -> Optional[QDialog]:
+        return FilterConfigDialog(self.config.properties, parent)
+
+
+class FilterConfigDialog(QDialog):
+    """Configuration dialog for filter."""
+
+    def __init__(self, properties: dict, parent=None):
+        super().__init__(parent)
+        self._properties = properties.copy()
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        self.setWindowTitle("Filter Configuration")
+        self.setMinimumWidth(250)
+
+        layout = QVBoxLayout(self)
+
+        group = QGroupBox("Filter Settings")
+        form = QFormLayout(group)
+
+        self.type_combo = QComboBox()
+        self.type_combo.addItems(["lowpass", "highpass"])
+        self.type_combo.setCurrentText(self._properties.get("filter_type", "lowpass"))
+        form.addRow("Type:", self.type_combo)
+
+        self.cutoff_spin = QDoubleSpinBox()
+        self.cutoff_spin.setRange(0.001, 10000)
+        self.cutoff_spin.setDecimals(3)
+        self.cutoff_spin.setValue(self._properties.get("cutoff_freq", 10.0))
+        self.cutoff_spin.setSuffix(" Hz")
+        form.addRow("Cutoff:", self.cutoff_spin)
+
+        self.order_spin = QSpinBox()
+        self.order_spin.setRange(1, 4)
+        self.order_spin.setValue(self._properties.get("order", 1))
+        form.addRow("Order:", self.order_spin)
+
+        layout.addWidget(group)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_config(self) -> dict:
+        return {
+            "filter_type": self.type_combo.currentText(),
+            "cutoff_freq": self.cutoff_spin.value(),
+            "order": self.order_spin.value(),
+        }
+
+
+# --- Delay Block ---
+
+def create_delay_config(
+    block_id: str,
+    label: str = "Delay",
+    delay_time: float = 0.1,
+) -> BlockConfig:
+    """Create configuration for a delay block."""
+    return BlockConfig(
+        block_type="delay",
+        block_id=block_id,
+        label=label,
+        width=70,
+        height=50,
+        input_ports=[
+            PortConfig(
+                port_id="in",
+                label="in",
+                kind=PortKind.INPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        output_ports=[
+            PortConfig(
+                port_id="out",
+                label="out",
+                kind=PortKind.OUTPUT,
+                port_type=PortType.SIGNAL,
+                position_ratio=0.5,
+            ),
+        ],
+        properties={
+            "delay_time": delay_time,
+        },
+    )
+
+
+class DelayBlock(BlockBase):
+    """
+    Time delay block.
+
+    Delays input by specified time: y(t) = u(t - T)
+    """
+
+    def __init__(
+        self,
+        block_id: str,
+        label: str = "Delay",
+        delay_time: float = 0.1,
+    ):
+        config = create_delay_config(block_id, label, delay_time)
+        super().__init__(config)
+
+    def get_icon_color(self) -> QColor:
+        return QColor("#F97316")  # Orange
+
+    def paint_content(self, painter: QPainter, rect: QRectF) -> None:
+        """Paint delay-specific content."""
+        delay = self.config.properties.get("delay_time", 0.1)
+
+        painter.setFont(QFont("Consolas", 8))
+        painter.setPen(QPen(QColor("#F97316")))
+
+        text_rect = QRectF(rect.x() + 8, rect.bottom() - 18, rect.width() - 16, 14)
+        if delay < 0.001:
+            text = f"T={delay*1000000:.0f}us"
+        elif delay < 1:
+            text = f"T={delay*1000:.1f}ms"
+        else:
+            text = f"T={delay:.3f}s"
+        painter.drawText(text_rect, Qt.AlignCenter, text)
+
+    def get_config_dialog(self, parent: QWidget) -> Optional[QDialog]:
+        return DelayConfigDialog(self.config.properties, parent)
+
+
+class DelayConfigDialog(QDialog):
+    """Configuration dialog for delay."""
+
+    def __init__(self, properties: dict, parent=None):
+        super().__init__(parent)
+        self._properties = properties.copy()
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        self.setWindowTitle("Delay Configuration")
+        self.setMinimumWidth(220)
+
+        layout = QVBoxLayout(self)
+
+        group = QGroupBox("Delay Settings")
+        form = QFormLayout(group)
+
+        self.delay_spin = QDoubleSpinBox()
+        self.delay_spin.setRange(0.0001, 100)
+        self.delay_spin.setDecimals(4)
+        self.delay_spin.setValue(self._properties.get("delay_time", 0.1))
+        self.delay_spin.setSuffix(" s")
+        form.addRow("Delay:", self.delay_spin)
+
+        layout.addWidget(group)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_config(self) -> dict:
+        return {
+            "delay_time": self.delay_spin.value(),
+        }

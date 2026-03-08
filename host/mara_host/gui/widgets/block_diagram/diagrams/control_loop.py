@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QLabel,
     QPushButton,
+    QCheckBox,
     QFrame,
     QMessageBox,
 )
@@ -19,7 +20,17 @@ from ..core.canvas import DiagramCanvas
 from ..core.models import DiagramState
 from ..blocks.pid import PIDBlock
 from ..blocks.observer import ObserverBlock
-from ..blocks.signal import SignalSourceBlock, SignalSinkBlock, SumBlock, GainBlock
+from ..blocks.signal import (
+    SignalSourceBlock,
+    SignalSinkBlock,
+    SumBlock,
+    GainBlock,
+    IntegratorBlock,
+    DerivativeBlock,
+    SaturationBlock,
+    FilterBlock,
+    DelayBlock,
+)
 from ..blocks.service import MotorServiceBlock, ServoServiceBlock, GPIOServiceBlock
 from .palette import ComponentPalette
 
@@ -44,6 +55,7 @@ class ControlLoopDiagram(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._controller = None
+        self._auto_sync = False
         self._setup_ui()
         self._connect_signals()
 
@@ -77,6 +89,13 @@ class ControlLoopDiagram(QWidget):
         toolbar_layout.addWidget(self.add_observer_btn)
 
         # Sync button
+        # Auto-sync checkbox
+        self.auto_sync_check = QCheckBox("Auto")
+        self.auto_sync_check.setToolTip("Automatically sync to robot when diagram changes")
+        self.auto_sync_check.setStyleSheet("color: #FAFAFA;")
+        self.auto_sync_check.stateChanged.connect(self._on_auto_sync_changed)
+        toolbar_layout.addWidget(self.auto_sync_check)
+
         self.sync_btn = QPushButton("Sync to Robot")
         self.sync_btn.setObjectName("primary")
         self.sync_btn.clicked.connect(self._sync_to_robot)
@@ -117,13 +136,26 @@ class ControlLoopDiagram(QWidget):
 
     def _connect_signals(self) -> None:
         """Connect internal signals."""
-        self.canvas.diagram_changed.connect(self.diagram_changed.emit)
+        self.canvas.diagram_changed.connect(self._on_diagram_changed)
         self.canvas.block_configured.connect(self._on_block_configured)
         self.canvas.block_double_clicked.connect(self._on_block_double_clicked)
+
+    def _on_diagram_changed(self) -> None:
+        """Handle diagram change - trigger auto-sync if enabled."""
+        self.diagram_changed.emit()
+        if self._auto_sync and self._controller:
+            self._sync_to_robot(silent=True)
 
     def set_controller(self, controller) -> None:
         """Set the robot controller for syncing."""
         self._controller = controller
+
+    def _on_auto_sync_changed(self, state: int) -> None:
+        """Handle auto-sync checkbox change."""
+        self._auto_sync = state == Qt.Checked.value
+        if self._auto_sync and self._controller:
+            # Perform initial sync when enabling auto-sync
+            self._sync_to_robot(silent=True)
 
     def _quick_add(self, block_type: str) -> None:
         """Quick add a block to center of canvas."""
@@ -150,49 +182,120 @@ class ControlLoopDiagram(QWidget):
         if reply == QMessageBox.Yes:
             self.canvas.clear()
 
-    def _sync_to_robot(self) -> None:
-        """Sync control configuration to robot."""
+    def _sync_to_robot(self, silent: bool = False) -> None:
+        """
+        Sync control configuration to robot.
+
+        Args:
+            silent: If True, don't show message boxes (for auto-sync)
+        """
         if not self._controller:
-            QMessageBox.warning(
-                self,
-                "Not Connected",
-                "Connect to a robot first to sync control configuration.",
-            )
+            if not silent:
+                QMessageBox.warning(
+                    self,
+                    "Not Connected",
+                    "Connect to a robot first to sync control configuration.",
+                )
             return
 
-        # Sync each controller block
-        for block in self.canvas.get_blocks():
-            if block.block_type == "pid":
-                props = block.config.properties
-                slot = props.get("slot", 0)
-                config = {
-                    "kp": props.get("kp", 1.0),
-                    "ki": props.get("ki", 0.0),
-                    "kd": props.get("kd", 0.0),
-                    "output_min": props.get("output_min", -1.0),
-                    "output_max": props.get("output_max", 1.0),
-                }
-                self._controller.controller_config(slot, config)
-                self.controller_sync_requested.emit(block.block_id, config)
+        from ..core.block_mapping import map_diagram_to_firmware
 
-            elif block.block_type == "observer":
-                props = block.config.properties
-                slot = props.get("slot", 0)
-                # Sync observer matrices
-                if "L" in props:
-                    self._controller.observer_set_param_array(slot, "L", props["L"])
-                if "A" in props:
-                    self._controller.observer_set_param_array(slot, "A", props["A"])
-                if "B" in props:
-                    self._controller.observer_set_param_array(slot, "B", props["B"])
-                if "C" in props:
-                    self._controller.observer_set_param_array(slot, "C", props["C"])
+        # Get diagram state and map to firmware configs
+        state = self.get_state()
+        state_dict = state.to_dict() if hasattr(state, 'to_dict') else {
+            "blocks": [{"block_type": b.block_type, "properties": b.config.properties}
+                       for b in self.canvas.get_blocks()]
+        }
 
-        QMessageBox.information(
-            self,
-            "Sync Complete",
-            "Control configuration synced to robot.",
-        )
+        controller_configs, observer_configs, warnings = map_diagram_to_firmware(state_dict)
+
+        # Show warnings if any (skip in silent mode)
+        if warnings and not silent:
+            warning_text = "\n".join(f"- {w}" for w in warnings)
+            QMessageBox.warning(
+                self,
+                "Mapping Warnings",
+                f"Some blocks have limited firmware support:\n\n{warning_text}",
+            )
+
+        # Sync controller slots
+        synced_controllers = 0
+        for config in controller_configs:
+            slot = config["slot"]
+            try:
+                if config["controller_type"] == "PID":
+                    self._controller.controller_config(slot, {
+                        "type": "PID",
+                        "kp": config["kp"],
+                        "ki": config["ki"],
+                        "kd": config["kd"],
+                        "output_min": config["out_min"],
+                        "output_max": config["out_max"],
+                    })
+                else:  # STATE_SPACE
+                    self._controller.controller_config(slot, {
+                        "type": "STATE_SPACE",
+                        "num_states": config["num_states"],
+                        "num_inputs": config["num_inputs"],
+                    })
+                    # Upload matrices
+                    if config.get("A"):
+                        self._controller.controller_set_param_array(slot, "A", config["A"])
+                    if config.get("B"):
+                        self._controller.controller_set_param_array(slot, "B", config["B"])
+                    if config.get("C"):
+                        self._controller.controller_set_param_array(slot, "C", config["C"])
+                    if config.get("K"):
+                        self._controller.controller_set_param_array(slot, "K", config["K"])
+
+                synced_controllers += 1
+                self.controller_sync_requested.emit(f"slot_{slot}", config)
+
+            except Exception as e:
+                if not silent:
+                    QMessageBox.warning(
+                        self,
+                        "Sync Error",
+                        f"Failed to sync controller slot {slot}: {e}",
+                    )
+
+        # Sync observer slots
+        synced_observers = 0
+        for config in observer_configs:
+            slot = config["slot"]
+            try:
+                self._controller.observer_config(slot, {
+                    "num_states": config["num_states"],
+                    "num_inputs": config["num_inputs"],
+                    "num_outputs": config["num_outputs"],
+                    "rate_hz": config["rate_hz"],
+                })
+                # Upload matrices
+                if config.get("A"):
+                    self._controller.observer_set_param_array(slot, "A", config["A"])
+                if config.get("B"):
+                    self._controller.observer_set_param_array(slot, "B", config["B"])
+                if config.get("C"):
+                    self._controller.observer_set_param_array(slot, "C", config["C"])
+                if config.get("L"):
+                    self._controller.observer_set_param_array(slot, "L", config["L"])
+
+                synced_observers += 1
+
+            except Exception as e:
+                if not silent:
+                    QMessageBox.warning(
+                        self,
+                        "Sync Error",
+                        f"Failed to sync observer slot {slot}: {e}",
+                    )
+
+        if not silent:
+            QMessageBox.information(
+                self,
+                "Sync Complete",
+                f"Synced {synced_controllers} controller(s) and {synced_observers} observer(s) to robot.",
+            )
 
     def _canvas_drag_enter(self, event) -> None:
         """Handle drag enter on canvas."""
@@ -247,6 +350,21 @@ class ControlLoopDiagram(QWidget):
         elif component_type == "gpio_service":
             block = GPIOServiceBlock(block_id)
 
+        elif component_type == "integrator":
+            block = IntegratorBlock(block_id)
+
+        elif component_type == "derivative":
+            block = DerivativeBlock(block_id)
+
+        elif component_type == "saturation":
+            block = SaturationBlock(block_id)
+
+        elif component_type == "filter":
+            block = FilterBlock(block_id)
+
+        elif component_type == "delay":
+            block = DelayBlock(block_id)
+
         if block:
             block.position = pos
             self.canvas.add_block(block)
@@ -256,12 +374,17 @@ class ControlLoopDiagram(QWidget):
         block = self.canvas.get_block(block_id)
         if block:
             dialog = block.get_config_dialog(self)
-            if dialog and dialog.exec():
-                if hasattr(dialog, "get_config"):
-                    config = dialog.get_config()
-                    block.apply_config(config)
-                    self.block_configured.emit(block_id, config)
-                    self.canvas.update()
+            if dialog:
+                # Pass controller for live tuning if available
+                if hasattr(dialog, "set_controller") and self._controller:
+                    dialog.set_controller(self._controller)
+
+                if dialog.exec():
+                    if hasattr(dialog, "get_config"):
+                        config = dialog.get_config()
+                        block.apply_config(config)
+                        self.block_configured.emit(block_id, config)
+                        self.canvas.update()
 
     def _on_block_configured(self, block_id: str, config: dict) -> None:
         """Handle block configuration change."""

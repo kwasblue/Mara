@@ -1,61 +1,67 @@
 # MQTT Multi-Node Guide
 
+<div align="center">
+
 **Control multiple ESP32 nodes over MQTT**
 
----
+*Fleet-wide robot coordination*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## Overview
 
 MARA supports controlling multiple ESP32 nodes over MQTT, enabling fleet-wide robot coordination. This guide covers the MQTT transport layer, multi-node discovery, and coordination patterns.
 
+---
+
 ## Architecture
 
 ```
-┌────────────────────────────────────┐
-│               HOST                 │
-│  (Linux / Mac / SBC / PC)          │
-│                                    │
-│  ┌──────────────┐   ┌────────────┐ │
-│  │ NodeManager  │   │ Video Mux  │ │
-│  │  + Router    │   │ Recorder   │ │
-│  └──────┬───────┘   └─────┬──────┘ │
-│         │ Control Plane   │        │
-│         │ (MQTT)          │        │
-│    ┌────▼─────┐           │        │
-│    │  MQTT    │           │        │
-│    │  Broker  │           │        │
-│    └────┬─────┘           │        │
-└─────────┼─────────────────┼────────┘
-          │                 │
-     Wi-Fi / Ethernet LAN   │
-          │                 │
-    ┌─────┴─────┐     ┌─────┴─────┐
-    │           │     │           │
-┌───▼───────┐ ┌─▼─────────┐ ┌─────▼─────┐
-│  NODE 0   │ │  NODE 1   │ │  NODE N   │
-│  (ESP32)  │ │  (ESP32)  │ │  (ESP32)  │
-│           │ │           │ │           │
-│ Control   │ │ Control   │ │ Control   │
-│ App       │ │ App       │ │ App       │
-│    │      │ │    │      │ │    │      │
-│ MQTT      │ │ MQTT      │ │ MQTT      │
-│ Transport │ │ Transport │ │ Transport │
-│    │      │ │    │      │ │    │      │
-│ Motors/   │ │ Motors/   │ │ Motors/   │
-│ Sensors   │ │ Sensors   │ │ Sensors   │
-└───────────┘ └───────────┘ └───────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                                   HOST                                      │
+│                        (Linux / Mac / SBC / PC)                             │
+│                                                                             │
+│    ┌──────────────────┐               ┌──────────────────┐                 │
+│    │   NodeManager    │               │    Video Mux     │                 │
+│    │    + Router      │               │    Recorder      │                 │
+│    └────────┬─────────┘               └────────┬─────────┘                 │
+│             │  Control Plane                   │                            │
+│             │  (MQTT)                          │                            │
+│        ┌────▼──────────────────────────────────┘                           │
+│        │           MQTT Broker                                              │
+│        └────┬─────────────────┬─────────────────┬───────────               │
+└─────────────┼─────────────────┼─────────────────┼───────────────────────────┘
+              │                 │                 │
+         Wi-Fi / Ethernet LAN   │                 │
+              │                 │                 │
+    ┌─────────▼───────┐ ┌───────▼─────────┐ ┌─────▼───────────┐
+    │     NODE 0      │ │     NODE 1      │ │     NODE N      │
+    │     (ESP32)     │ │     (ESP32)     │ │     (ESP32)     │
+    │                 │ │                 │ │                 │
+    │  Control App    │ │  Control App    │ │  Control App    │
+    │       │         │ │       │         │ │       │         │
+    │  MQTT Transport │ │  MQTT Transport │ │  MQTT Transport │
+    │       │         │ │       │         │ │       │         │
+    │  Motors/Sensors │ │  Motors/Sensors │ │  Motors/Sensors │
+    └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
+
+---
 
 ## MQTT Topics
 
 | Topic | Direction | Description |
-|-------|-----------|-------------|
+|:------|:----------|:------------|
 | `mara/fleet/discover` | Host → All | Discovery request |
 | `mara/fleet/discover_response` | Node → Host | Discovery response with node info |
 | `mara/{node_id}/cmd` | Host → Node | Commands (binary framed) |
 | `mara/{node_id}/ack` | Node → Host | Command acknowledgments |
 | `mara/{node_id}/telemetry` | Node → Host | Telemetry data |
 | `mara/{node_id}/state` | Node → Host | Node state changes |
+
+---
 
 ## Quick Start
 
@@ -64,7 +70,7 @@ MARA supports controlling multiple ESP32 nodes over MQTT, enabling fleet-wide ro
 The easiest way is using the MARA CLI:
 
 ```bash
-# Start broker (runs in background, listens on all interfaces)
+# Start broker (runs in background)
 mara mqtt start
 
 # Check status
@@ -141,6 +147,8 @@ asyncio.run(main())
 python -m mara_host.examples.applications.mqtt_nodes --broker 10.0.0.59
 ```
 
+---
+
 ## NodeManager API
 
 ### Initialization
@@ -152,10 +160,10 @@ manager = NodeManager(
     bus=EventBus(),
     broker_host="10.0.0.59",
     broker_port=1883,
-    fallback_broker=None,      # Optional fallback broker
-    username=None,             # MQTT auth (optional)
+    fallback_broker=None,       # Optional fallback broker
+    username=None,              # MQTT auth (optional)
     password=None,
-    heartbeat_timeout_s=5.0,   # Node offline detection
+    heartbeat_timeout_s=5.0,    # Node offline detection
     require_version_match=True, # Enforce protocol version
 )
 ```
@@ -210,6 +218,8 @@ bus.subscribe("node.added", lambda d: print(f"Added: {d['node_id']}"))
 bus.subscribe("node.removed", lambda d: print(f"Removed: {d['node_id']}"))
 ```
 
+---
+
 ## NodeProxy API
 
 Each discovered node gets a `NodeProxy` wrapper:
@@ -223,7 +233,7 @@ node.node_id            # "node0"
 node.info               # NodeInfo from discovery
 node.status             # NodeStatus (last_seen, latency, etc.)
 
-# Access the underlying client
+# Access the underlying client (commands flow through commander)
 node.client.arm()
 node.client.set_vel(vx=0.1, omega=0.0)
 node.client.send_reliable("CMD_GPIO_WRITE", {"channel": 0, "value": 1})
@@ -231,6 +241,8 @@ node.client.send_reliable("CMD_GPIO_WRITE", {"channel": 0, "value": 1})
 # Send with automatic ACK handling
 success, error = await node.send_reliable("CMD_ARM")
 ```
+
+---
 
 ## Testing with Mock Nodes
 
@@ -256,6 +268,8 @@ python -m mara_host.tools.mock_node \
     --firmware "1.0.0-mock" \
     --board "mock-esp32"
 ```
+
+---
 
 ## Protocol Details
 
@@ -303,6 +317,8 @@ After discovery, each node performs a version handshake:
 }
 ```
 
+---
+
 ## Broker Failover
 
 NodeManager supports automatic failover to a backup broker:
@@ -312,12 +328,14 @@ manager = NodeManager(
     bus=bus,
     broker_host="192.168.1.100",     # Primary broker
     broker_port=1883,
-    fallback_broker="192.168.1.1",   # Fallback (e.g., node0's built-in broker)
+    fallback_broker="192.168.1.1",   # Fallback
     fallback_port=1883,
 )
 ```
 
 When the primary broker becomes unreachable, NodeManager automatically reconnects all nodes to the fallback broker.
+
+---
 
 ## ESP32 Firmware Setup
 
@@ -358,6 +376,8 @@ Edit `firmware/mcu/include/config/WifiSecrets.h`:
 cd firmware/mcu && pio run -e esp32_usb -t upload
 ```
 
+---
+
 ## Troubleshooting
 
 ### No nodes discovered
@@ -375,7 +395,7 @@ cd firmware/mcu && pio run -e esp32_usb -t upload
 
 ### Commands not acknowledged
 
-1. Ensure ACK format includes `seq`, `src`, `ok` fields:
+Ensure ACK format includes required fields:
 ```json
 {"type": "ACK", "cmd": "CMD_STOP", "seq": 1, "src": "mcu", "ok": true}
 ```
@@ -385,10 +405,20 @@ cd firmware/mcu && pio run -e esp32_usb -t upload
 If you see repeated connect/disconnect messages:
 1. Check for duplicate client IDs
 2. Verify broker allows multiple connections
-3. Ensure discovery stops after initial scan (default behavior)
+3. Ensure discovery stops after initial scan
+
+---
 
 ## See Also
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Overall system architecture
-- [ADDING_COMMANDS.md](ADDING_COMMANDS.md) - Adding new commands
-- [README.md](../README.md) - Quick start guide
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Overall system architecture
+- [ADDING_COMMANDS.md](./ADDING_COMMANDS.md) - Adding new commands
+- [GETTING_STARTED.md](./GETTING_STARTED.md) - Quick start guide
+
+---
+
+<div align="center">
+
+*Fleet control with MQTT enables multi-robot coordination*
+
+</div>

@@ -243,6 +243,7 @@ def paint_preview_connection(
     start: QPointF,
     end: QPointF,
     port_type: PortType,
+    valid: bool | None = None,
 ) -> None:
     """
     Paint a preview connection during drag.
@@ -252,9 +253,24 @@ def paint_preview_connection(
         start: Start point
         end: Current mouse position
         port_type: Type of the source port
+        valid: Connection validity state
+            - None: No target (use source port color, dashed)
+            - True: Valid target (green, solid)
+            - False: Invalid target (red, dashed)
     """
-    color = QColor(PORT_TYPE_COLORS.get(port_type, "#9CA3AF"))
-    color.setAlpha(180)
+    if valid is True:
+        # Valid connection target - green solid line
+        color = QColor("#22C55E")  # Green
+        line_style = Qt.SolidLine
+    elif valid is False:
+        # Invalid connection target - red dashed line
+        color = QColor("#EF4444")  # Red
+        line_style = Qt.DashLine
+    else:
+        # No target - use port type color, dashed
+        color = QColor(PORT_TYPE_COLORS.get(port_type, "#9CA3AF"))
+        color.setAlpha(180)
+        line_style = Qt.DashLine
 
     path = QPainterPath()
     path.moveTo(start)
@@ -267,11 +283,14 @@ def paint_preview_connection(
 
     path.cubicTo(ctrl1, ctrl2, end)
 
-    painter.setPen(QPen(color, 2, Qt.DashLine, Qt.RoundCap))
+    painter.setPen(QPen(color, 2, line_style, Qt.RoundCap))
     painter.setBrush(Qt.NoBrush)
     painter.drawPath(path)
 
-    # Draw circle at end
+    # Draw circle at end - filled for valid, hollow for invalid/none
     painter.setPen(QPen(color, 2))
-    painter.setBrush(Qt.NoBrush)
+    if valid is True:
+        painter.setBrush(QBrush(color))
+    else:
+        painter.setBrush(Qt.NoBrush)
     painter.drawEllipse(end, 4, 4)

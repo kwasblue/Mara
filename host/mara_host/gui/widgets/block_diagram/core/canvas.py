@@ -79,6 +79,8 @@ class DiagramCanvas(QWidget):
         # Connection drawing
         self._connect_from_port: Optional[Port] = None
         self._connect_preview_end: Optional[QPointF] = None
+        self._connect_target_port: Optional[Port] = None  # Port under cursor during drag
+        self._connect_valid: Optional[bool] = None  # Validity: None=no target, True=valid, False=invalid
 
         # Widget setup
         self.setMinimumSize(400, 300)
@@ -368,6 +370,7 @@ class DiagramCanvas(QWidget):
                 self._connect_from_port.position,
                 self._connect_preview_end,
                 self._connect_from_port.port_type,
+                self._connect_valid,
             )
 
         # Draw blocks
@@ -379,13 +382,22 @@ class DiagramCanvas(QWidget):
         if event.button() == Qt.LeftButton:
             scene_pos = self.canvas_to_scene(event.position())
 
-            # Check for port click (start connection)
+            # Check for port click
             port = self._find_port_at(scene_pos)
-            if port and port.is_output:
-                self._drag_mode = "connect"
-                self._connect_from_port = port
-                self._connect_preview_end = scene_pos
-                return
+            if port:
+                if port.is_output:
+                    # Output port - start connection drag
+                    self._drag_mode = "connect"
+                    self._connect_from_port = port
+                    self._connect_preview_end = scene_pos
+                    return
+                else:
+                    # Input port - check if block handles port click (e.g., ESP32 pin info)
+                    block = self._blocks.get(port.parent_block_id)
+                    if block and hasattr(block, 'handle_port_click'):
+                        global_pos = self.mapToGlobal(event.position().toPoint())
+                        if block.handle_port_click(port, global_pos):
+                            return
 
             # Check for block click
             block = self._find_block_at(scene_pos)
@@ -424,6 +436,16 @@ class DiagramCanvas(QWidget):
             self._drag_start = event.position()
 
         elif event.button() == Qt.RightButton:
+            # Check if right-clicking on a port (show pin info for output ports)
+            scene_pos = self.canvas_to_scene(event.position())
+            port = self._find_port_at(scene_pos)
+            if port:
+                block = self._blocks.get(port.parent_block_id)
+                if block and hasattr(block, 'handle_port_click'):
+                    global_pos = self.mapToGlobal(event.position().toPoint())
+                    if block.handle_port_click(port, global_pos):
+                        return
+
             # Context menu
             self._show_context_menu(event.position())
 
@@ -454,6 +476,10 @@ class DiagramCanvas(QWidget):
         elif self._drag_mode == "connect":
             # Update connection preview
             self._connect_preview_end = scene_pos
+
+            # Check for valid target port under cursor
+            target_port = self._find_port_at(scene_pos)
+            self._update_connect_target(target_port)
             self.update()
 
         else:
@@ -487,8 +513,15 @@ class DiagramCanvas(QWidget):
                         target_port.config.port_id,
                     )
 
+                # Clear connection drawing state
+                if self._connect_target_port:
+                    self._connect_target_port.set_hovered(False)
+                    self._connect_target_port.set_connect_valid(None)
                 self._connect_from_port = None
                 self._connect_preview_end = None
+                self._connect_target_port = None
+                self._connect_valid = None
+                self.setCursor(Qt.ArrowCursor)
                 self.update()
 
         self._drag_mode = None
@@ -539,9 +572,15 @@ class DiagramCanvas(QWidget):
         elif event.key() == Qt.Key_Escape:
             # Cancel connection drawing
             if self._drag_mode == "connect":
+                if self._connect_target_port:
+                    self._connect_target_port.set_hovered(False)
+                    self._connect_target_port.set_connect_valid(None)
                 self._connect_from_port = None
                 self._connect_preview_end = None
+                self._connect_target_port = None
+                self._connect_valid = None
                 self._drag_mode = None
+                self.setCursor(Qt.ArrowCursor)
                 self.update()
 
         elif event.key() == Qt.Key_F:
@@ -619,6 +658,58 @@ class DiagramCanvas(QWidget):
                     self.setCursor(Qt.PointingHandCursor)
 
         self.update()
+
+    def _update_connect_target(self, target_port: Optional[Port]) -> None:
+        """
+        Update connection target during drag.
+
+        Checks validity and updates visual feedback.
+
+        Args:
+            target_port: Port currently under cursor (or None)
+        """
+        # Clear previous target hover state
+        if self._connect_target_port and self._connect_target_port != target_port:
+            self._connect_target_port.set_hovered(False)
+            self._connect_target_port.set_connect_valid(None)
+
+        self._connect_target_port = target_port
+
+        if target_port is None:
+            # No target - preview line uses source port color
+            self._connect_valid = None
+            self.setCursor(Qt.CrossCursor)
+            return
+
+        # Highlight the target port
+        target_port.set_hovered(True)
+
+        # Check validity:
+        # 1. Must be an INPUT port (we're dragging from OUTPUT)
+        # 2. Must be on a different block
+        # 3. Port types must be compatible
+        if not target_port.is_input:
+            self._connect_valid = False
+            target_port.set_connect_valid(False)
+            self.setCursor(Qt.ForbiddenCursor)
+            return
+
+        if target_port.parent_block_id == self._connect_from_port.parent_block_id:
+            self._connect_valid = False
+            target_port.set_connect_valid(False)
+            self.setCursor(Qt.ForbiddenCursor)
+            return
+
+        if not can_connect(self._connect_from_port.port_type, target_port.port_type):
+            self._connect_valid = False
+            target_port.set_connect_valid(False)
+            self.setCursor(Qt.ForbiddenCursor)
+            return
+
+        # Valid connection target
+        self._connect_valid = True
+        target_port.set_connect_valid(True)
+        self.setCursor(Qt.PointingHandCursor)
 
     def _open_block_config(self, block: BlockBase) -> None:
         """Open configuration dialog for a block."""

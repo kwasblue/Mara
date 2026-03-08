@@ -468,6 +468,27 @@ class RobotController:
         """Reset a controller slot."""
         self.send_command("CMD_CTRL_SLOT_RESET", {"slot": slot})
 
+    def controller_set_param(self, slot: int, key: str, value: float) -> None:
+        """
+        Set a single controller parameter (hot-swap capable).
+
+        This is more efficient than full reconfiguration for live tuning.
+        Supports: kp, ki, kd, out_min, out_max, i_min, i_max
+        """
+        self.send_command("CMD_CTRL_SLOT_SET_PARAM", {
+            "slot": slot,
+            "key": key,
+            "value": value,
+        })
+
+    def controller_set_param_array(self, slot: int, key: str, values: list) -> None:
+        """Set controller matrix parameters (for state-space)."""
+        self.send_command("CMD_CTRL_SLOT_SET_PARAM_ARRAY", {
+            "slot": slot,
+            "key": key,
+            "values": values,
+        })
+
     # ==================== Observer Slot Control ====================
 
     def observer_config(self, slot: int, config: dict) -> None:
@@ -482,8 +503,20 @@ class RobotController:
         """Reset an observer slot."""
         self.send_command("CMD_OBSERVER_RESET", {"slot": slot})
 
+    def observer_set_param(self, slot: int, key: str, value: float) -> None:
+        """
+        Set a single observer parameter (hot-swap capable).
+
+        Supports observer gain tuning at runtime.
+        """
+        self.send_command("CMD_OBSERVER_SET_PARAM", {
+            "slot": slot,
+            "key": key,
+            "value": value,
+        })
+
     def observer_set_param_array(self, slot: int, key: str, values: list) -> None:
-        """Set observer matrix parameters."""
+        """Set observer matrix parameters (A, B, C, L matrices)."""
         self.send_command("CMD_OBSERVER_SET_PARAM_ARRAY", {
             "slot": slot,
             "key": key,

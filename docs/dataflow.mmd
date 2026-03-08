@@ -11,50 +11,50 @@
 }}%%
 
 flowchart LR
-    subgraph CMD["<b>📤 COMMAND FLOW</b>  Host → MCU"]
+    subgraph CMD["<b>COMMAND FLOW</b>  Host → MCU"]
         direction LR
-        C1["<b>👤 User</b><br/>set_velocity()"]
-        C2["<b>🔷 API</b><br/>DiffDrive"]
-        C3["<b>📡 Client</b><br/>send_binary()"]
-        C4["<b>📦 Frame</b><br/>[0xAA]..."]
-        C5["<b>🔌 Transport</b>"]
+        C1["<b>User</b><br/>set_velocity()"]
+        C2["<b>API</b><br/>validates"]
+        C3["<b>Service</b><br/>ServiceResult"]
+        C4["<b>Commander</b><br/>single chokepoint"]
+        C5["<b>Transport</b>"]
     end
 
     subgraph WIRE1[" "]
         W1["⚡"]
     end
 
-    subgraph MCU_CMD["<b>🔧 MCU</b>"]
+    subgraph MCU_CMD["<b>MCU</b>"]
         direction LR
-        M1["<b>📥 Recv</b>"]
-        M2["<b>🔀 Route</b>"]
-        M3["<b>📋 Handler</b>"]
-        M4["<b>🎯 Intent</b>"]
-        M5["<b>⚡ Control</b><br/>100Hz"]
-        M6["<b>⚙️ Motor</b>"]
+        M1["<b>Recv</b>"]
+        M2["<b>Route</b>"]
+        M3["<b>Handler</b>"]
+        M4["<b>Intent</b>"]
+        M5["<b>Control</b><br/>100Hz"]
+        M6["<b>Motor</b>"]
     end
 
     C1 --> C2 --> C3 --> C4 --> C5 --> WIRE1 --> M1 --> M2 --> M3 --> M4 --> M5 --> M6
 
-    subgraph SENSOR["<b>📊 TELEMETRY FLOW</b>  MCU → Host"]
+    subgraph SENSOR["<b>TELEMETRY FLOW</b>  MCU → Host"]
         direction LR
-        T1["<b>📡 Sensors</b><br/>IMU, Encoder"]
-        T2["<b>📦 Pack</b><br/>Sections"]
-        T3["<b>🏷️ IDs</b><br/>0x01, 0x04"]
-        T4["<b>📤 Frame</b>"]
+        T1["<b>Sensors</b><br/>IMU, Encoder"]
+        T2["<b>Pack</b><br/>Sections"]
+        T3["<b>IDs</b><br/>0x01, 0x04"]
+        T4["<b>Frame</b>"]
     end
 
     subgraph WIRE2[" "]
         W2["⚡"]
     end
 
-    subgraph PARSE["<b>🐍 Host Parse</b>"]
+    subgraph PARSE["<b>Host Parse</b>"]
         direction LR
-        H1["<b>📥 Recv</b>"]
-        H2["<b>🔍 Parser</b><br/>by section"]
-        H3["<b>📬 EventBus</b><br/>publish()"]
-        H4["<b>🔔 Callback</b><br/>on('imu')"]
-        H5["<b>📊 Module</b>"]
+        H1["<b>Recv</b>"]
+        H2["<b>Parser</b><br/>by section"]
+        H3["<b>EventBus</b><br/>publish()"]
+        H4["<b>Callback</b><br/>on('imu')"]
+        H5["<b>Module</b>"]
     end
 
     T1 --> T2 --> T3 --> T4 --> WIRE2 --> H1 --> H2 --> H3 --> H4 --> H5
@@ -68,6 +68,7 @@ flowchart LR
     style WIRE2 fill:#fef3c7,stroke:#f59e0b,stroke-width:1px,color:#92400e
 
     style C1 fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    style C4 fill:#c7d2fe,stroke:#6366f1,color:#3730a3,stroke-width:2px
     style M5 fill:#bbf7d0,stroke:#22c55e,color:#166534,stroke-width:2px
     style M6 fill:#d1fae5,stroke:#10b981,color:#065f46
     style T1 fill:#ffedd5,stroke:#f97316,color:#c2410c

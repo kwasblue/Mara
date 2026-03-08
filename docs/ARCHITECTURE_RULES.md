@@ -1,45 +1,56 @@
 # MARA Architecture Rules
 
-This document defines the architectural constraints and coupling rules for the MARA platform. These rules are enforced by architecture tests and code review.
+<div align="center">
 
----
+**Architectural constraints and coupling rules**
+
+*Enforced by tests and code review*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## Core Principles
 
-1. **Single Source of Truth**: `platform_schema.py` owns all protocol definitions
-2. **Layer Isolation**: Lower layers must not depend on higher layers
-3. **Explicit Boundaries**: Public APIs are defined via `__all__` exports
-4. **Intent-Based Control**: Commands set intents, control loop consumes them
+| # | Principle | Description |
+|:--|:----------|:------------|
+| 1 | **Single Source of Truth** | `tools/schema/` owns all protocol definitions |
+| 2 | **Layer Isolation** | Lower layers must not depend on higher layers |
+| 3 | **Single Chokepoint** | ALL commands flow through `ReliableCommander` |
+| 4 | **ServiceResult Pattern** | Services return results, APIs raise exceptions |
+| 5 | **Intent-Based Control** | Commands set intents, control loop consumes them |
 
 ---
 
 ## Host Python Layer Hierarchy
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  1. api/           Public user-facing API (TOP)                 │
-├─────────────────────────────────────────────────────────────────┤
-│  2. runtime/       Runtime orchestration                        │
-├─────────────────────────────────────────────────────────────────┤
-│  3. command/       Client and command handling                  │
-├─────────────────────────────────────────────────────────────────┤
-│  4. motor/, sensor/, hw/    Host modules (domain logic)         │
-├─────────────────────────────────────────────────────────────────┤
-│  5. core/          Core infrastructure (events, protocol)       │
-├─────────────────────────────────────────────────────────────────┤
-│  6. transport/     Transport layer (BOTTOM)                     │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  1. api/              Public user-facing API (TOP)                           │
+│                       → Validation, exceptions                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  2. services/control/ Business logic layer                                   │
+│                       → State tracking, ServiceResult                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  3. command/          Client and commander                                   │
+│                       → All commands flow through ReliableCommander         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  4. core/             Core infrastructure                                    │
+│                       → EventBus, protocol, modules                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  5. transport/        Transport layer (BOTTOM)                               │
+│                       → Raw bytes, connection lifecycle                     │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Layer Rules
+### Layer Import Rules
 
-| Layer | May Import From | Must Not Import From |
-|-------|-----------------|----------------------|
-| `api/` | All lower layers | - |
-| `runtime/` | command, motor, sensor, hw, core, transport | api |
-| `command/` | core, transport | api, runtime, motor, sensor, hw |
-| `motor/`, `sensor/`, `hw/` | core, transport | api, runtime, command |
-| `core/` | transport | api, runtime, command, motor, sensor, hw |
+| Layer | May Import From | Must NOT Import From |
+|:------|:----------------|:---------------------|
+| `api/` | services, core | command, transport |
+| `services/control/` | command, core | api, runtime |
+| `command/` | core, transport | api, services |
+| `core/` | transport | api, services, command |
 | `transport/` | (none from mara_host) | All mara_host modules |
 
 ### Enforcement
@@ -51,9 +62,68 @@ These rules are enforced by `tests/test_architecture.py`:
 
 ---
 
+## Command Flow Rules
+
+### Rule 1: All Commands Through Commander
+
+Every command—reliable or streaming—flows through `ReliableCommander`:
+
+```python
+# CORRECT - all commands through commander
+await self.commander.send()                            # Reliable
+await self.commander.send_fire_and_forget(binary=True) # Streaming binary
+await self.commander.send_fire_and_forget(binary=False) # Streaming JSON
+
+# WRONG - bypassing commander
+await self._transport.send_bytes(encoded_cmd)  # Breaks event emission
+```
+
+### Rule 2: API Routes Through Services
+
+API layer validates and delegates to services:
+
+```python
+# CORRECT
+class GPIO:
+    async def write(self, channel: int, value: int) -> None:
+        if not self.is_registered(channel):
+            raise ValueError(f"Channel {channel} not registered")
+        result = await self._service.write(channel, value)
+        if not result.ok:
+            raise RuntimeError(result.error)
+
+# WRONG - API calling client directly
+class GPIO:
+    async def write(self, channel: int, value: int) -> None:
+        await self._client.cmd_gpio_write(channel=channel, value=value)
+```
+
+### Rule 3: Services Return ServiceResult
+
+Services never raise exceptions; they return `ServiceResult`:
+
+```python
+# CORRECT
+class MotionService:
+    async def set_velocity(self, vx: float, omega: float) -> ServiceResult:
+        ok, error = await self.client.send_stream(...)
+        if ok:
+            return ServiceResult.success(data={"vx": vx, "omega": omega})
+        else:
+            return ServiceResult.failure(error=error or "Failed")
+
+# WRONG - service raising exceptions
+class MotionService:
+    async def set_velocity(self, vx: float, omega: float) -> None:
+        if error:
+            raise RuntimeError("Failed")  # ← Should return ServiceResult
+```
+
+---
+
 ## MCU Firmware Coupling Rules
 
-These rules are documented in `include/core/ServiceContext.h` and govern how firmware components interact.
+These rules govern how firmware components interact.
 
 ### Data Flow
 
@@ -78,7 +148,7 @@ intents->setVelocityIntent(vx, omega, now_ms);
 dcMotor->setSpeed(0, speed);
 ```
 
-### Rule 2: Control Loop → Actuators (consume intents, write signals)
+### Rule 2: Control Loop → Actuators
 
 The control loop:
 - Consumes intents at deterministic rate (100Hz)
@@ -90,7 +160,6 @@ The control loop:
 // Control loop consumes intents
 VelocityIntent vel;
 if (intents->consumeVelocityIntent(vel)) {
-    // Apply to motion controller
     motion->setVelocity(vel.vx, vel.omega);
 }
 ```
@@ -107,23 +176,11 @@ Telemetry:
 SignalSnapshot snaps[16];
 size_t n = signals.snapshot(snaps, 16);
 
-// WRONG - telemetry should not modify signals
-signals.set(SIGNAL_ID, value);  // Don't do this from telemetry
+// WRONG - telemetry modifying signals
+signals.set(SIGNAL_ID, value);  // Don't do this
 ```
 
-### Rule 4: Sensors → Signals (write measurements)
-
-Sensor managers:
-- Write measurement signals to SignalBus
-- Use consistent signal naming conventions
-- Do NOT apply control logic
-
-```cpp
-// Sensor writes measurement
-signals.set(SIG_WHEEL_VEL_LEFT, measuredVelocity);
-```
-
-### Rule 5: Safety → Mode (gate all operations)
+### Rule 4: Safety → Mode (gate all operations)
 
 ModeManager is the single source of truth for robot state:
 - All safety checks go through ModeManager
@@ -139,12 +196,12 @@ if (mode.canMove()) {
 
 ---
 
-## ServiceContext Tiers
+## ServiceContext Tiers (MCU)
 
 Services in ServiceContext are organized by initialization order:
 
 | Tier | Category | Dependencies | Examples |
-|------|----------|--------------|----------|
+|:-----|:---------|:-------------|:---------|
 | 0 | HAL | None | IGpio, IPwm, II2c |
 | 1 | Core | HAL | EventBus, ModeManager, IntentBuffer |
 | 2 | Motors | Core + HAL | DcMotorManager, ServoManager |
@@ -152,16 +209,13 @@ Services in ServiceContext are organized by initialization order:
 | 4 | Communication | Core | Transport, CommandRegistry |
 | 5 | Orchestration | All | ControlModule, MCUHost |
 
-### Rule: Initialize in tier order
+**Rule: Initialize in tier order**
 
 ```cpp
-// CORRECT - initialize in tier order
+// CORRECT
 initHal();           // Tier 0
 initCore();          // Tier 1
 initMotors();        // Tier 2
-initSensors();       // Tier 3
-initCommunication(); // Tier 4
-initOrchestration(); // Tier 5
 
 // WRONG - violates initialization order
 initMotors();        // Tier 2 - depends on uninitialized HAL
@@ -170,49 +224,36 @@ initHal();           // Tier 0 - too late!
 
 ---
 
-## Module Naming Conventions
+## Naming Conventions
 
 | Suffix | Responsibility | Example |
-|--------|----------------|---------|
-| `Manager` | Owns hardware lifecycle and state | `DcMotorManager`, `EncoderManager` |
-| `Handler` | Processes commands, no business logic | `MotionHandler`, `SafetyHandler` |
+|:-------|:---------------|:--------|
+| `Service` | Business logic + state tracking | `MotionService`, `GpioService` |
+| `Manager` | Hardware lifecycle and state (MCU) | `DcMotorManager`, `EncoderManager` |
+| `Handler` | Command processing, no business logic | `MotionHandler`, `SafetyHandler` |
 | `Module` | Runtime lifecycle (setup/loop) | `TelemetryModule`, `ControlModule` |
 | `Registry` | Registration and lookup only | `HandlerRegistry`, `SensorRegistry` |
 | `Controller` | Control algorithms | `MotionController`, `PIDController` |
-
-### Rule: Names match responsibility
-
-```cpp
-// CORRECT - Manager owns hardware
-class DcMotorManager {
-    bool attach(uint8_t id, int pin, ...);  // Hardware lifecycle
-    bool setSpeed(uint8_t id, float speed); // Hardware state
-};
-
-// WRONG - Handler should not own business logic
-class MotionHandler {
-    void computePID(...);  // This belongs in Controller
-};
-```
+| `Commander` | Command dispatch and tracking | `ReliableCommander` |
 
 ---
 
 ## Generated vs Manual Code
 
 | Category | Edit? | Location | Generator |
-|----------|-------|----------|-----------|
-| Protocol definitions | Yes | `platform_schema.py` | - |
+|:---------|:------|:---------|:----------|
+| Protocol definitions | Yes | `tools/schema/` | - |
 | Command definitions | No | `config/command_defs.py` | `gen_commands.py` |
 | Binary commands | No | `command/binary_commands.py` | `gen_binary_commands.py` |
 | Telemetry sections | No | `telemetry/telemetry_sections.py` | `gen_telemetry.py` |
 | C++ headers | No | `firmware/mcu/include/config/*.h` | Various generators |
 
-### Rule: Never edit generated files
+**Rule: Never edit generated files**
 
 ```bash
 # CORRECT - edit source, regenerate
-vim host/mara_host/tools/platform_schema.py
-make generate
+vim host/mara_host/tools/schema/commands/_motion.py
+mara generate all
 
 # WRONG - editing generated file
 vim host/mara_host/config/command_defs.py  # Will be overwritten!
@@ -225,7 +266,7 @@ vim host/mara_host/config/command_defs.py  # Will be overwritten!
 ### Forbidden in Control Loop
 
 | Operation | Why Forbidden | Alternative |
-|-----------|---------------|-------------|
+|:----------|:--------------|:------------|
 | `new`/`delete` | Heap fragmentation | Pre-allocate at setup |
 | `std::vector::push_back` | May reallocate | Fixed-size arrays |
 | `std::string` | Heap-backed | `const char*` literals |
@@ -249,15 +290,20 @@ RT_UNSAFE void sendTelemetry();
 ### SignalBus Access
 
 | Method | Thread Safety | Use Case |
-|--------|--------------|----------|
+|:-------|:--------------|:---------|
 | `get()`, `set()` | Safe (spinlock) | Single-signal access |
 | `snapshot()` | Safe (spinlock) | Bulk read for telemetry |
 | `all()` | NOT SAFE | Setup-time only |
 | `define()`, `clear()` | NOT SAFE | Setup-time only |
 
-### ModeManager Transitions
+### Transport Layer
 
-All state transitions use `portENTER_CRITICAL()` for atomicity.
+```python
+# Transport uses asyncio.Lock for coordination
+async def send_bytes(self, data: bytes) -> None:
+    async with self._async_lock:  # No thread overhead for async callers
+        await loop.run_in_executor(self._write_executor, self._send_bytes_sync, data)
+```
 
 ---
 
@@ -266,9 +312,18 @@ All state transitions use `portENTER_CRITICAL()` for atomicity.
 Before adding new code, verify:
 
 - [ ] Layer imports follow hierarchy (use `test_architecture.py`)
-- [ ] Internal modules define `__all__`
+- [ ] API validates and routes to services
+- [ ] Services return `ServiceResult`, not exceptions
+- [ ] Commands flow through `ReliableCommander`
+- [ ] Generated files are not manually edited
 - [ ] Command handlers only set intents, not direct actuation
 - [ ] Control loop code is RT_SAFE (no allocation)
-- [ ] ServiceContext access follows tier dependencies
-- [ ] Naming follows Manager/Handler/Module/Registry conventions
-- [ ] Generated files are not manually edited
+- [ ] Naming follows conventions
+
+---
+
+<div align="center">
+
+*These rules ensure consistency across the codebase*
+
+</div>

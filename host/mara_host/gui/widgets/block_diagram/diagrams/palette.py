@@ -15,6 +15,12 @@ from PySide6.QtWidgets import (
 
 from ..blocks.sensor import SENSOR_TYPES
 
+# Try to import generated palette entries (from mara generate control)
+try:
+    from ._generated_palette import GENERATED_CONTROL_COMPONENTS
+except ImportError:
+    GENERATED_CONTROL_COMPONENTS = []
+
 
 def _build_hardware_components() -> list[dict]:
     """Build hardware component list, auto-including sensors from SENSOR_TYPES."""
@@ -61,44 +67,85 @@ def _build_hardware_components() -> list[dict]:
 # Component definitions for palette (sensors auto-generated from SENSOR_TYPES)
 HARDWARE_COMPONENTS = _build_hardware_components()
 
-CONTROL_COMPONENTS = [
-    {
-        "type": "pid",
-        "label": "PID",
-        "description": "PID controller",
-        "color": "#3B82F6",
-    },
-    {
-        "type": "observer",
-        "label": "Observer",
-        "description": "State observer",
-        "color": "#22C55E",
-    },
-    {
-        "type": "signal_source",
-        "label": "Signal",
-        "description": "Signal source",
-        "color": "#3B82F6",
-    },
-    {
-        "type": "signal_sink",
-        "label": "Output",
-        "description": "Signal sink/output",
-        "color": "#F59E0B",
-    },
-    {
-        "type": "sum",
-        "label": "Sum",
-        "description": "Summing junction",
-        "color": "#71717A",
-    },
-    {
-        "type": "gain",
-        "label": "Gain",
-        "description": "Scalar gain",
-        "color": "#8B5CF6",
-    },
-]
+# Use generated control components if available, otherwise fallback to manual list
+if GENERATED_CONTROL_COMPONENTS:
+    CONTROL_COMPONENTS = GENERATED_CONTROL_COMPONENTS
+else:
+    # Fallback manual list (used when generation hasn't been run)
+    CONTROL_COMPONENTS = [
+        # Controllers
+        {
+            "type": "pid",
+            "label": "PID",
+            "description": "PID controller",
+            "color": "#3B82F6",
+        },
+        {
+            "type": "observer",
+            "label": "Observer",
+            "description": "State observer",
+            "color": "#22C55E",
+        },
+        # Signals
+        {
+            "type": "signal_source",
+            "label": "Signal",
+            "description": "Signal source",
+            "color": "#3B82F6",
+        },
+        {
+            "type": "signal_sink",
+            "label": "Output",
+            "description": "Signal sink/output",
+            "color": "#F59E0B",
+        },
+        # Math operations
+        {
+            "type": "sum",
+            "label": "Sum",
+            "description": "Summing junction",
+            "color": "#71717A",
+        },
+        {
+            "type": "gain",
+            "label": "Gain",
+            "description": "Scalar gain",
+            "color": "#8B5CF6",
+        },
+        # Dynamic blocks
+        {
+            "type": "integrator",
+            "label": "Integrator",
+            "description": "Integration (1/s)",
+            "color": "#14B8A6",
+        },
+        {
+            "type": "derivative",
+            "label": "Derivative",
+            "description": "Differentiation (s)",
+            "color": "#EC4899",
+        },
+        # Nonlinear blocks
+        {
+            "type": "saturation",
+            "label": "Saturation",
+            "description": "Output limiter",
+            "color": "#EF4444",
+        },
+        # Filters
+        {
+            "type": "filter",
+            "label": "Filter",
+            "description": "Low-pass filter",
+            "color": "#A855F7",
+        },
+        {
+            "type": "delay",
+            "label": "Delay",
+            "description": "Time delay",
+            "color": "#F97316",
+        },
+    ]
 
 SERVICE_COMPONENTS = [
     {
@@ -280,9 +327,11 @@ class ComponentPalette(QWidget):
 
         if self._palette_type in ("control", "all"):
             self._add_component_group(scroll_layout, "Control", CONTROL_COMPONENTS)
-
-        if self._palette_type == "all":
             self._add_component_group(scroll_layout, "Services", SERVICE_COMPONENTS)
+
+        if self._palette_type == "all" and self._palette_type != "control":
+            # Already added above for control type
+            pass
 
         scroll_layout.addStretch()
         scroll.setWidget(scroll_content)

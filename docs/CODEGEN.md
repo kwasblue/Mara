@@ -1,8 +1,14 @@
-# Code Generation Ownership
+# Code Generation
 
-This document defines the canonical sources, generated outputs, and ownership rules for all code generation in the MARA platform.
+<div align="center">
 
----
+**Canonical sources, generators, and generated outputs**
+
+*Never edit generated files—edit the source, then regenerate*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## Golden Rule
 
@@ -10,72 +16,72 @@ This document defines the canonical sources, generated outputs, and ownership ru
 
 ---
 
-## Source → Output Map
+## Source to Output Map
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│              mara_host/tools/schema/ (CANONICAL SOURCE PACKAGE)          │
-│                                                                          │
-│  schema/                                                                 │
-│  ├── commands/           # Command definitions by domain                 │
-│  │   ├── _safety.py      # Safety/state machine (9 commands)            │
-│  │   ├── _rates.py       # Loop rates (4 commands)                      │
-│  │   ├── _control.py     # Signal bus, slots (13 commands)              │
-│  │   ├── _motion.py      # Velocity commands (2 commands)               │
-│  │   ├── _gpio.py        # LED, GPIO, PWM (7 commands)                  │
-│  │   ├── _servo.py       # Servo (3 commands)                           │
-│  │   ├── _stepper.py     # Stepper (3 commands)                         │
-│  │   ├── _sensors.py     # Encoder, ultrasonic (5 commands)             │
-│  │   ├── _dc_motor.py    # DC motor + PID (5 commands)                  │
-│  │   ├── _observer.py    # Luenberger observer (6 commands)             │
-│  │   ├── _telemetry.py   # Telemetry config (2 commands)                │
-│  │   └── _camera.py      # ESP32-CAM (20 commands)                      │
-│  ├── binary.py           # BINARY_COMMANDS                              │
-│  ├── telemetry.py        # TELEMETRY_SECTIONS                           │
-│  ├── version.py          # VERSION, CAPABILITIES                        │
-│  ├── can.py              # CAN_* definitions                            │
-│  ├── gpio_channels.py    # GPIO_CHANNELS                                │
-│  └── pins.py             # PINS (from pins.json)                        │
-└─────────────────────────────────────────┬───────────────────────────────┘
-                                          │
-                                          ▼
-                            ┌─────────────────────────┐
-                            │    generate_all.py      │
-                            │                         │
-                            │  Runs all generators:   │
-                            │  - gen_commands.py      │
-                            │  - gen_binary_commands  │
-                            │  - gen_telemetry.py     │
-                            │  - generate_pins.py     │
-                            │  - gpio_mapping_gen.py  │
-                            │  - gen_can.py           │
-                            └─────────────────────────┘
-                                          │
-                   ┌──────────────────────┴──────────────────────┐
-                   │                                             │
-                   ▼                                             ▼
-┌──────────────────────────────┐           ┌──────────────────────────────┐
-│     PYTHON (Host) OUTPUT     │           │      C++ (MCU) OUTPUT        │
-├──────────────────────────────┤           ├──────────────────────────────┤
-│                              │           │                              │
-│  host/mara_host/config/      │           │  firmware/mcu/include/       │
-│   ├── command_defs.py        │           │   └── config/                │
-│   ├── client_commands.py     │           │       ├── CommandDefs.h      │
-│   ├── version.py             │           │       ├── Version.h          │
-│   ├── pin_config.py          │           │       ├── PinConfig.h        │
-│   └── gpio_channels.py       │           │       ├── GpioChannelDefs.h  │
-│                              │           │       └── CanDefs.h          │
-│  host/mara_host/command/     │           │                              │
-│   ├── binary_commands.py     │           │   └── command/               │
-│   └── json_to_binary.py      │           │       └── BinaryCommands.h   │
-│                              │           │                              │
-│  host/mara_host/telemetry/   │           │   └── telemetry/             │
-│   └── telemetry_sections.py  │           │       └── TelemetrySections.h│
-│                              │           │                              │
-│  host/mara_host/transport/   │           │                              │
-│   └── can_defs_generated.py  │           │                              │
-│                              │           │                              │
-└──────────────────────────────┘           └──────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              mara_host/tools/schema/ (CANONICAL SOURCE PACKAGE)              │
+│                                                                              │
+│  schema/                                                                     │
+│  ├── commands/           # Command definitions by domain                     │
+│  │   ├── _safety.py      # Safety/state machine (9 commands)                │
+│  │   ├── _rates.py       # Loop rates (4 commands)                          │
+│  │   ├── _control.py     # Signal bus, slots (13 commands)                  │
+│  │   ├── _motion.py      # Velocity commands (2 commands)                   │
+│  │   ├── _gpio.py        # LED, GPIO, PWM (7 commands)                      │
+│  │   ├── _servo.py       # Servo (3 commands)                               │
+│  │   ├── _stepper.py     # Stepper (3 commands)                             │
+│  │   ├── _sensors.py     # Encoder, ultrasonic (5 commands)                 │
+│  │   ├── _dc_motor.py    # DC motor + PID (5 commands)                      │
+│  │   ├── _observer.py    # Luenberger observer (6 commands)                 │
+│  │   ├── _telemetry.py   # Telemetry config (2 commands)                    │
+│  │   └── _camera.py      # ESP32-CAM (20 commands)                          │
+│  ├── binary.py           # BINARY_COMMANDS                                   │
+│  ├── telemetry.py        # TELEMETRY_SECTIONS                                │
+│  ├── version.py          # VERSION, CAPABILITIES                             │
+│  ├── can.py              # CAN_* definitions                                 │
+│  ├── gpio_channels.py    # GPIO_CHANNELS                                     │
+│  └── pins.py             # PINS (from pins.json)                             │
+└───────────────────────────────────┬──────────────────────────────────────────┘
+                                    │
+                                    ▼
+                      ┌─────────────────────────────┐
+                      │      generate_all.py        │
+                      │                             │
+                      │  Runs all generators:       │
+                      │  • gen_commands.py          │
+                      │  • gen_binary_commands.py   │
+                      │  • gen_telemetry.py         │
+                      │  • generate_pins.py         │
+                      │  • gpio_mapping_gen.py      │
+                      │  • gen_can.py               │
+                      └─────────────────────────────┘
+                                    │
+                 ┌──────────────────┴──────────────────┐
+                 │                                     │
+                 ▼                                     ▼
+┌────────────────────────────────┐   ┌────────────────────────────────┐
+│      PYTHON (Host) OUTPUT      │   │       C++ (MCU) OUTPUT         │
+├────────────────────────────────┤   ├────────────────────────────────┤
+│                                │   │                                │
+│  host/mara_host/config/        │   │  firmware/mcu/include/         │
+│   ├── command_defs.py          │   │   └── config/                  │
+│   ├── client_commands.py       │   │       ├── CommandDefs.h        │
+│   ├── version.py               │   │       ├── Version.h            │
+│   ├── pin_config.py            │   │       ├── PinConfig.h          │
+│   └── gpio_channels.py         │   │       ├── GpioChannelDefs.h    │
+│                                │   │       └── CanDefs.h            │
+│  host/mara_host/command/       │   │                                │
+│   ├── binary_commands.py       │   │   └── command/                 │
+│   └── json_to_binary.py        │   │       └── BinaryCommands.h     │
+│                                │   │                                │
+│  host/mara_host/telemetry/     │   │   └── telemetry/               │
+│   └── telemetry_sections.py    │   │       └── TelemetrySections.h  │
+│                                │   │                                │
+│  host/mara_host/transport/     │   │                                │
+│   └── can_defs_generated.py    │   │                                │
+│                                │   │                                │
+└────────────────────────────────┘   └────────────────────────────────┘
 ```
 
 ---
@@ -98,7 +104,7 @@ from mara_host.tools.schema import COMMANDS, PINS, VERSION
 Commands are organized by domain for maintainability. Each domain file defines a `*_COMMANDS` dict that gets merged into the main `COMMANDS` dict.
 
 | Domain File | Commands | Description |
-|-------------|----------|-------------|
+|:------------|:---------|:------------|
 | `_safety.py` | 9 | Identity, heartbeat, arm/disarm, e-stop |
 | `_rates.py` | 4 | Loop rate configuration |
 | `_control.py` | 13 | Signal bus, slot configuration |
@@ -124,7 +130,7 @@ Commands are organized by domain for maintainability. Each domain file defines a
 ### Other Schema Files
 
 | File | Contains | Edit when... |
-|------|----------|--------------|
+|:-----|:---------|:-------------|
 | `binary.py` | `BINARY_COMMANDS` | Adding high-rate streaming commands |
 | `telemetry.py` | `TELEMETRY_SECTIONS` | Adding new telemetry packet types |
 | `version.py` | `VERSION`, `CAPABILITIES` | Bumping version, adding capability flags |
@@ -138,7 +144,7 @@ Commands are organized by domain for maintainability. Each domain file defines a
 
 **Owns**:
 - Physical GPIO pin assignments
-- Pin name → GPIO number mapping
+- Pin name to GPIO number mapping
 
 **Edit this file when**:
 - Changing hardware pin assignments
@@ -151,7 +157,7 @@ Commands are organized by domain for maintainability. Each domain file defines a
 ### Host Python Files
 
 | File | Generator | Content |
-|------|-----------|---------|
+|:-----|:----------|:--------|
 | `config/command_defs.py` | `gen_commands.py` | `CommandDef` dataclasses |
 | `config/client_commands.py` | `gen_commands.py` | `MaraCommandsMixin` with `cmd_*()` methods |
 | `config/version.py` | `gen_commands.py` | Protocol version constants |
@@ -165,7 +171,7 @@ Commands are organized by domain for maintainability. Each domain file defines a
 ### MCU C++ Files
 
 | File | Generator | Content |
-|------|-----------|---------|
+|:-----|:----------|:--------|
 | `config/CommandDefs.h` | `gen_commands.py` | `CmdType` enum, string converters |
 | `config/Version.h` | `gen_commands.py` | Version namespace with constants |
 | `config/PinConfig.h` | `generate_pins.py` | Pin macro definitions |
@@ -178,10 +184,10 @@ Commands are organized by domain for maintainability. Each domain file defines a
 
 ## Regeneration
 
-### Manual Regeneration
+### Commands
 
 ```bash
-# From repository root
+# Full regeneration (recommended)
 make generate
 
 # Or via CLI
@@ -348,7 +354,7 @@ ls host/mara_host/config/        # Should exist
 ## Summary
 
 | Source | Edit? | Regenerate After? |
-|--------|-------|-------------------|
+|:-------|:------|:------------------|
 | `schema/commands/_*.py` | Yes | Yes |
 | `schema/binary.py` | Yes | Yes |
 | `schema/telemetry.py` | Yes | Yes |
@@ -362,3 +368,11 @@ ls host/mara_host/config/        # Should exist
 | `command/BinaryCommands.h` | No | - |
 | `telemetry/telemetry_sections.py` | No | - |
 | `telemetry/TelemetrySections.h` | No | - |
+
+---
+
+<div align="center">
+
+*Single source of truth ensures host and firmware stay in sync*
+
+</div>

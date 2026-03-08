@@ -11,15 +11,15 @@
 }}%%
 
 flowchart LR
-    subgraph SOURCE["<b>📋 Single Source of Truth</b>"]
+    subgraph SOURCE["<b>Single Source of Truth</b>"]
         direction TB
-        SCHEMA["<b>platform_schema.py</b><br/>━━━━━━━━━━━━━━━━━<br/>COMMANDS<br/>BINARY_COMMANDS<br/>TELEMETRY_SECTIONS<br/>GPIO_CHANNELS<br/>VERSION"]
+        SCHEMA["<b>tools/schema/</b><br/>━━━━━━━━━━━━━━━━━<br/>commands/_motion.py<br/>commands/_gpio.py<br/>commands/_servo.py<br/>binary.py<br/>telemetry.py<br/>version.py"]
         PINS["<b>pins.json</b><br/>━━━━━━━━━<br/>Pin mappings"]
     end
 
-    subgraph GEN["<b>⚙️ Generators</b>"]
+    subgraph GEN["<b>Generators</b>"]
         direction TB
-        GENALL["<b>generate_all.py</b>"]
+        GENALL["<b>mara generate all</b>"]
         G1["gen_commands"]
         G2["gen_binary_commands"]
         G3["gen_telemetry"]
@@ -27,14 +27,14 @@ flowchart LR
         G5["gpio_mapping_gen"]
     end
 
-    subgraph PYOUT["<b>🐍 Python Output</b><br/><i>robot_host/</i>"]
+    subgraph PYOUT["<b>Python Output</b><br/><i>mara_host/</i>"]
         direction TB
-        PY1["<b>config/</b><br/>command_defs.py<br/>version.py<br/>pin_config.py<br/>gpio_channels.py"]
-        PY2["<b>command/</b><br/>client_commands.py<br/>binary_commands.py<br/>json_to_binary.py"]
+        PY1["<b>config/</b><br/>command_defs.py<br/>client_commands.py<br/>version.py<br/>pin_config.py"]
+        PY2["<b>command/</b><br/>binary_commands.py<br/>json_to_binary.py"]
         PY3["<b>telemetry/</b><br/>telemetry_sections.py"]
     end
 
-    subgraph CPPOUT["<b>⚡ C++ Output</b><br/><i>include/</i>"]
+    subgraph CPPOUT["<b>C++ Output</b><br/><i>include/</i>"]
         direction TB
         CPP1["<b>config/</b><br/>CommandDefs.h<br/>Version.h<br/>PinConfig.h<br/>GpioChannelDefs.h"]
         CPP2["<b>command/</b><br/>BinaryCommands.h"]

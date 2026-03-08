@@ -1,11 +1,19 @@
 # Extensibility Guide
 
-This guide explains how to extend the MARA system. Every extension point requires **only 1 file**.
+<div align="center">
+
+**Every extension point requires only 1 file**
+
+*Auto-discovery patterns for MARA*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## Quick Reference
 
 | To Add | Create File | Convention |
-|--------|-------------|------------|
+|:-------|:------------|:-----------|
 | CLI command | `cli/commands/mycommand.py` | Has `register()` function |
 | GUI panel | `gui/panels/mypanel.py` | Has `PANEL_META` dict |
 | Widget | `gui/widgets/controls/mywidget.py` | Add to `_EXPORTS` |
@@ -13,7 +21,7 @@ This guide explains how to extend the MARA system. Every extension point require
 | Workflow | `workflows/calibration/myworkflow.py` | Add to `_EXPORTS` |
 | Hardware | `tools/schema/hardware/_sensors.py` | Add to `SENSOR_HARDWARE` |
 | Command schema | `tools/schema/commands/_mydomain.py` | Has `*_COMMANDS` dict |
-| Service | `services/myservice/` | Add to `_EXPORTS` |
+| Service | `services/control/myservice.py` | Add to exports |
 
 ---
 
@@ -136,6 +144,40 @@ MYFEATURE_COMMANDS: dict[str, dict] = {
 
 ---
 
+## Services
+
+Create a service in `services/control/`:
+
+```python
+# services/control/my_service.py
+from mara_host.core.result import ServiceResult
+
+class MyService:
+    def __init__(self, client):
+        self.client = client
+
+    async def my_operation(self, param: int) -> ServiceResult:
+        ok, error = await self.client.send_reliable(
+            "CMD_MY_THING",
+            {"param": param},
+        )
+        if ok:
+            return ServiceResult.success(data={"param": param})
+        return ServiceResult.failure(error=error or "Failed")
+```
+
+Import pattern makes services available at the top level:
+
+```python
+# Import directly
+from mara_host.services import StateService, MotorService
+
+# Or from subpackage
+from mara_host.services.control import StateService
+```
+
+---
+
 ## Widgets
 
 Create a widget file and add to `_EXPORTS` in the subpackage:
@@ -193,26 +235,10 @@ _EXPORTS = {
 
 ---
 
-## Services
-
-Import pattern makes services available at the top level:
-
-```python
-# Import directly
-from mara_host.services import StateService, MotorService
-
-# Or from subpackage
-from mara_host.services.control import StateService
-```
-
-To add a new service, create a package in `services/` and add to the `_EXPORTS` dict in `services/__init__.py`.
-
----
-
 ## Auto-Discovery Patterns Used
 
 | Extension | Pattern | How It Works |
-|-----------|---------|--------------|
+|:----------|:--------|:-------------|
 | CLI Commands | Scan + register() | `cli/main.py` scans `commands/` for modules with `register()` |
 | GUI Panels | Scan + PANEL_META | `main_window.py` scans `panels/` for modules with `PANEL_META` |
 | Widgets | Lazy import | `__getattr__` loads from `_EXPORTS` dict on first access |
@@ -224,12 +250,12 @@ To add a new service, create a package in `services/` and add to the `_EXPORTS` 
 
 ---
 
-## Order Values
+## Panel Order Values
 
 Panel `order` values control sidebar position (lower = higher):
 
 | Order | Panel |
-|-------|-------|
+|:------|:------|
 | 10 | Dashboard |
 | 20 | Control |
 | 30 | Camera |
@@ -250,8 +276,18 @@ Use values between existing panels to insert new ones.
 
 ## Benefits
 
-1. **No registration files to edit** - Just create your file
-2. **No imports to add** - Auto-discovered
-3. **No lists to update** - Auto-merged
-4. **Consistent pattern** - Same approach everywhere
-5. **Self-documenting** - Metadata in the file itself
+| Benefit | Description |
+|:--------|:------------|
+| **No registration files** | Just create your file |
+| **No imports to add** | Auto-discovered |
+| **No lists to update** | Auto-merged |
+| **Consistent pattern** | Same approach everywhere |
+| **Self-documenting** | Metadata in the file itself |
+
+---
+
+<div align="center">
+
+*Create one file, get discovered automatically*
+
+</div>

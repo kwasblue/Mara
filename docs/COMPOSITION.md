@@ -1,22 +1,29 @@
 # Composition & Dependency Guide
 
-This document defines the composition model (Robot vs Runtime vs Services)
-and dependency rules for mara_host. For system architecture, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+<div align="center">
 
-**Related:** [ADR-001: Architectural Consolidation](./ADR-001-consolidation.md)
+**How components fit together in MARA**
+
+*Robot vs Runtime vs Services*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## Core Abstractions
 
-mara_host uses three core abstractions for different use cases:
+MARA uses three core abstractions for different use cases:
 
-### Robot (robot.py)
+---
+
+### Robot (`robot.py`)
 
 The **canonical entry point** for connecting to a robot.
 
 **Owns:**
 - Transport initialization (serial, WiFi, CAN)
 - EventBus instance
-- Command client facade
+- Client and services composition
 
 **Use when:**
 - Direct robot control without control loop
@@ -28,14 +35,19 @@ The **canonical entry point** for connecting to a robot.
 async with Robot("/dev/ttyUSB0") as robot:
     await robot.arm()
     await robot.motion.set_velocity(0.1, 0.0)
+    await asyncio.sleep(2.0)
+    await robot.motion.stop()
+    await robot.disarm()
 ```
 
-### Runtime (runtime/runtime.py)
+---
+
+### Runtime (`runtime/runtime.py`)
 
 **Optional** control loop framework that wraps Robot.
 
 **Owns:**
-- Fixed-rate tick loop (tick_hz)
+- Fixed-rate tick loop (`tick_hz`)
 - Module lifecycle management
 - Telemetry aggregation and callbacks
 
@@ -57,33 +69,60 @@ runtime.start()
 
 **Important:** Runtime is optional. Simple robot control does not require it.
 
-### Services (services/)
+---
 
-**Business logic** extracted from CLI commands.
+### Services (`services/`)
 
-**Owns:**
-- Pin management (PinService)
-- Build orchestration (FirmwareBuildService)
-- Code generation (CodeGeneratorService)
-- Recording/replay (RecordingService)
-- Testing (TestService)
+**Business logic** layer between API and Client.
 
-**Use when:**
-- Building CLI commands
-- REST/gRPC APIs
-- Operations not requiring real-time control
-- Reusable business logic
+**Control Services** (`services/control/`):
+- GpioService, MotionService, ServoService
+- MotorService, StateService
+- Track hardware state, return `ServiceResult`
+
+**Other Services:**
+- PinService: GPIO pin management, conflict detection
+- TestService: Robot self-test suite
+- RecordingService: Session recording and replay
+- CodeGeneratorService: Firmware build orchestration
 
 ```python
-from mara_host.services.pins import PinService
+from mara_host.services.control import MotionService
 
-service = PinService()
-conflicts = service.detect_conflicts()
-rec = service.recommend_motor_pins("LEFT")
+# Services return ServiceResult, not exceptions
+result = await motion_service.set_velocity(0.5, 0.0)
+if result.ok:
+    print(f"Velocity set: {result.data}")
+else:
+    print(f"Error: {result.error}")
 ```
 
-**Key principle:** Services do NOT require a robot connection.
-They operate on configuration, files, and external resources.
+**Key principle:** Control services require a client connection. Other services (pins, testing) do NOT require a robot connection—they operate on configuration, files, and external resources.
+
+---
+
+## Layer Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  User Application                                                │
+├─────────────────────────────────────────────────────────────────┤
+│  API Layer (api/)                                               │
+│  └── Validation, exceptions, user-facing interface              │
+├─────────────────────────────────────────────────────────────────┤
+│  Services Layer (services/control/)                             │
+│  └── Business logic, state tracking, ServiceResult              │
+├─────────────────────────────────────────────────────────────────┤
+│  Client Layer (command/client.py)                               │
+│  └── Routing, handshake, connection management                  │
+├─────────────────────────────────────────────────────────────────┤
+│  Commander Layer (command/coms/reliable_commander.py)           │
+│  └── ALL commands (reliable & streaming), events, metrics       │
+├─────────────────────────────────────────────────────────────────┤
+│  Transport Layer (transport/)                                   │
+│  └── Raw bytes, connection lifecycle, frame buffering           │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -92,18 +131,20 @@ They operate on configuration, files, and external resources.
 These rules define what each package may and must not import from.
 
 | Package | May depend on | Must NOT depend on |
-|---------|---------------|-------------------|
+|:--------|:--------------|:-------------------|
+| `api/` | `services/`, `core/` | `command/`, `transport/` |
+| `services/control/` | `command/`, `core/` | `api/`, `runtime/` |
 | `cli/` | `services/` | `tools/` (for business logic) |
-| `services/` | `tools/`, `config/` | `cli/`, `runtime/` |
 | `runtime/` | `robot.py` | - |
-| `robot.py` | `transport/`, `core/` | `runtime/` |
+| `robot.py` | `transport/`, `command/`, `services/`, `core/` | `runtime/` |
+| `command/` | `core/`, `transport/` | `api/`, `services/` |
 | `tools/` | (none) | anything |
-| `research/` | `services/`, `robot/` | should not own core workflows |
 
 ### Rationale
 
+- **api → services:** API validates and delegates to services
+- **services → command:** Services call client for hardware operations
 - **cli → services:** CLI provides UX; services provide logic
-- **services → tools:** Services can use pure data/I/O utilities
 - **runtime → robot:** Runtime wraps Robot, not the other way
 - **robot.py → not runtime:** Robot should work without runtime overhead
 - **tools → nothing:** Tools are leaf nodes (pure data and I/O)
@@ -112,11 +153,20 @@ These rules define what each package may and must not import from.
 
 ## Canonical Paths
 
-These are the standard ways to implement common patterns.
+Standard ways to implement common patterns.
+
+### Adding a new API method
+
+1. Add service method in `services/control/*_service.py`
+2. Service method returns `ServiceResult`
+3. Add API method in `api/*.py` that:
+   - Validates inputs
+   - Calls service method
+   - Raises exception if `not result.ok`
 
 ### Adding a new CLI command
 
-1. Add business logic to appropriate service (e.g., `services/pins/PinService`)
+1. Add business logic to appropriate service
 2. Service methods return **data structures**, not formatted output
 3. Add CLI handler in `cli/commands/` that:
    - Calls service methods
@@ -124,65 +174,84 @@ These are the standard ways to implement common patterns.
    - Owns Rich formatting and interactive UX
    - Returns exit codes
 
-### Adding a new pin business rule
+### Adding a new hardware component
 
-1. Add method to `PinService` (e.g., `detect_conflicts()`)
-2. Method returns data structure (e.g., `list[PinConflict]`)
-3. Update CLI `cmd_conflicts()` to call new method
-4. CLI formats the result for display
-
-### Adding a new camera config field
-
-1. Add field to `CameraConfig` in `camera/models.py`
-2. Add to `from_dict()` and `to_dict()` methods
-3. Update firmware if needed
-4. All other camera files import from `models.py`
-
-### Adding a new model/dataclass
-
-- If firmware-related: `camera/models.py` or appropriate `models.py`
-- If service-related: Define in the service module
-- If shared across modules: Consider `core/` or dedicated `models/` package
+1. Define in `tools/schema/hardware/_sensors.py`
+2. Run `mara generate all`
+3. Add service in `services/control/`
+4. Add API class in `api/`
 
 ---
 
 ## Module Ownership
 
-### camera/
+### services/control/
 
-| File | Owns |
-|------|------|
-| `models.py` | All camera types (FrameSize, CaptureMode, CameraConfig, etc.) |
-| `control.py` | HTTP API client for ESP32-CAM |
-| `module.py` | High-level CameraModule with threading |
-| `presets.py` | Preset configurations |
-| `__init__.py` | Clean exports (no aliases) |
+| Service | Owns |
+|:--------|:-----|
+| `gpio_service.py` | GPIO channel state, digital I/O |
+| `motion_service.py` | Velocity commands, motion limits |
+| `servo_service.py` | Servo channel state, angle/duty commands |
+| `motor_service.py` | DC motor configuration, PID tuning |
+| `state_service.py` | Robot state machine (arm/disarm/activate) |
 
-### services/pins/
+### api/
 
-| Layer | Owns |
-|-------|------|
-| `tools/pins.py` | Data (ESP32_PINS), I/O (load/save), utilities (cap_str) |
-| `services/pins/PinService` | Validation, conflict detection, recommendations |
-| `cli/commands/pins/` | Rich formatting, interactive wizards, argparse |
+| API | Owns |
+|:----|:-----|
+| `gpio.py` | User-facing GPIO class with validation |
+| `servo.py` | User-facing Servo class with validation |
+| `pwm.py` | User-facing PWM class with validation |
+| `dc_motor.py` | User-facing DCMotor class with validation |
 
-### tools/
+### command/
 
-Tools are **pure utilities** with no business logic:
-
-- Data structures and constants
-- File I/O operations
-- Format conversions
-- Code generation templates
-
-Tools should NOT contain:
-- Validation rules (→ services)
-- Command handlers (→ cli)
-- Interactive prompts (→ cli)
+| Component | Owns |
+|:----------|:-----|
+| `client.py` | MaraClient coordinator, routing |
+| `coms/reliable_commander.py` | Command dispatch, ACKs, retries, events |
+| `coms/connection_monitor.py` | Health monitoring, heartbeat |
 
 ---
 
 ## Anti-Patterns (Do NOT Do)
+
+### API calling client directly
+
+```python
+# BAD - API bypasses service layer
+class GPIO:
+    async def write(self, channel, value):
+        await self._robot.client.cmd_gpio_write(channel=channel, value=value)
+```
+
+```python
+# GOOD - API routes through service
+class GPIO:
+    async def write(self, channel, value):
+        result = await self._service.write(channel, value)
+        if not result.ok:
+            raise RuntimeError(result.error)
+```
+
+### Service raising exceptions
+
+```python
+# BAD - service raises instead of returning result
+class GpioService:
+    async def write(self, channel, value):
+        if error:
+            raise RuntimeError("Failed")  # ← Should return ServiceResult
+```
+
+```python
+# GOOD - service returns ServiceResult
+class GpioService:
+    async def write(self, channel, value):
+        if error:
+            return ServiceResult.failure(error="Failed")
+        return ServiceResult.success(data={"channel": channel})
+```
 
 ### Put business logic in CLI handlers
 
@@ -204,46 +273,6 @@ def cmd_validate(args):
         print_error(c.message)  # CLI owns formatting
 ```
 
-### Duplicate models across files
-
-```python
-# BAD - same enum in two files
-# camera/models.py
-class FrameSize(IntEnum): ...
-
-# camera/control.py
-class FrameSize(IntEnum): ...  # Different values!
-```
-
-```python
-# GOOD - single source of truth
-# camera/models.py
-class FrameSize(IntEnum): ...
-
-# camera/control.py
-from .models import FrameSize  # Import canonical version
-```
-
-### Bypass services from CLI
-
-```python
-# BAD - CLI using tools directly for business logic
-from mara_host.tools.pins import ESP32_PINS, FLASH_PINS
-
-def cmd_validate(args):
-    for gpio in pins.values():
-        if gpio in FLASH_PINS:  # Duplicated validation logic
-            ...
-```
-
-```python
-# GOOD - CLI uses service
-from mara_host.services.pins import PinService
-
-def cmd_validate(args):
-    conflicts = PinService().detect_conflicts()
-```
-
 ### Make Runtime mandatory
 
 ```python
@@ -259,20 +288,6 @@ async with Robot("/dev/ttyUSB0") as robot:
     await robot.arm()
 ```
 
-### Return formatted strings from services
-
-```python
-# BAD - service returns formatted output
-def validate(self) -> str:
-    return "✓ All pins valid"  # Coupling to display format
-```
-
-```python
-# GOOD - service returns data structure
-def validate(self) -> list[PinConflict]:
-    return conflicts  # CLI formats as needed
-```
-
 ---
 
 ## Testing Guidelines
@@ -282,13 +297,31 @@ def validate(self) -> list[PinConflict]:
 Services should be testable without CLI or robot connection:
 
 ```python
-def test_detect_conflicts_i2c_incomplete():
-    service = PinService()
-    service.assign("I2C_SDA", 21)
-    # Missing I2C_SCL
+def test_motion_service_clamps_velocity():
+    mock_client = Mock()
+    service = MotionService(mock_client)
 
-    conflicts = service.detect_conflicts()
-    assert any(c.conflict_type == "i2c_incomplete" for c in conflicts)
+    await service.set_velocity(vx=10.0, omega=0.0)  # Exceeds limit
+
+    # Verify clamping
+    mock_client.send_stream.assert_called_with(
+        "CMD_SET_VEL",
+        {"vx": 1.0, "omega": 0.0},  # Clamped to limit
+        request_ack=False,
+        binary=True,
+    )
+```
+
+### Unit Testing API
+
+API tests verify validation and exception raising:
+
+```python
+async def test_gpio_write_unregistered_raises():
+    api = GPIO(mock_service)
+
+    with pytest.raises(ValueError, match="not registered"):
+        await api.write(channel=99, value=1)
 ```
 
 ### Integration Testing CLI
@@ -304,8 +337,22 @@ def test_cmd_validate_returns_error_on_flash_pin(tmp_path):
 
 ---
 
-## References
+## Summary
 
-- [ADR-001: Architectural Consolidation Decisions](./ADR-001-consolidation.md)
-- ESP32 Technical Reference Manual
-- ESP32-CAM firmware framesize_t definition
+| Abstraction | Purpose | When to Use |
+|:------------|:--------|:------------|
+| **Robot** | Connection facade | Direct control, scripts |
+| **Runtime** | Tick loop framework | Fixed-rate control |
+| **Services** | Business logic | Reusable operations |
+| **API** | User-facing interface | External consumers |
+| **Commander** | Command dispatch | Internal (all commands) |
+
+**Golden rule:** API validates → Services process → Client routes → Commander dispatches.
+
+---
+
+<div align="center">
+
+*See [ARCHITECTURE.md](./ARCHITECTURE.md) for system architecture*
+
+</div>

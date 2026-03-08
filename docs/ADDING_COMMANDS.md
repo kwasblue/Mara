@@ -1,15 +1,41 @@
-# Adding Commands - Complete Workflow
+# Adding Commands
+
+<div align="center">
+
+**Complete workflow for adding new commands**
+
+*From schema definition to hardware implementation*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## Overview
 
-This document describes how to add new commands to the robot platform. The build system owns all command definitions through the `mara_host/tools/schema/` package, ensuring consistency between the C++ firmware (ESP32) and Python host.
+The build system owns all command definitions through the `mara_host/tools/schema/` package, ensuring consistency between the C++ firmware (ESP32) and Python host.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            COMMAND FLOW                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. Define in Schema       →  2. Generate Code      →  3. Implement Handler │
+│     tools/schema/commands/     mara generate all        firmware/mcu/       │
+│                                                                             │
+│  ┌───────────────────┐      ┌──────────────────┐      ┌──────────────────┐ │
+│  │ _motion.py        │  →   │ CommandDefs.h    │  →   │ MotionHandler.h  │ │
+│  │ CMD_SET_VEL: {...}│      │ command_defs.py  │      │ handle(...)      │ │
+│  └───────────────────┘      │ client_commands.py│     └──────────────────┘ │
+│                             └──────────────────┘                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## What Build World Owns
 
 | Data | Schema Location | C++ Output | Python Output |
-|------|-----------------|------------|---------------|
+|:-----|:----------------|:-----------|:--------------|
 | Commands | `schema/commands/` | `CommandDefs.h` | `command_defs.py`, `client_commands.py` |
 | Binary Commands | `schema/binary.py` | `BinaryCommands.h` | `binary_commands.py`, `json_to_binary.py` |
 | Telemetry Sections | `schema/telemetry.py` | `TelemetrySections.h` | `telemetry_sections.py` |
@@ -103,19 +129,7 @@ __all__ = [
 
 ### For Binary Commands (high-rate streaming)
 
-Add to the appropriate domain file in `commands/`, then add encoding spec in `schema/binary.py`:
-
-```python
-# In appropriate domain file (e.g., _motion.py)
-"CMD_MY_BINARY_CMD": {
-    "kind": "cmd",
-    "direction": "host->mcu",
-    "description": "High-rate streaming command.",
-    "payload": {
-        "value": {"type": "float", "required": True},
-    },
-},
-```
+Add to the appropriate domain file, then add encoding spec in `schema/binary.py`:
 
 ```python
 # In schema/binary.py - BINARY_COMMANDS dict
@@ -132,7 +146,7 @@ Add to the appropriate domain file in `commands/`, then add encoding spec in `sc
 ### Opcode Ranges (Convention)
 
 | Range | Purpose |
-|-------|---------|
+|:------|:--------|
 | `0x10-0x1F` | Motion/velocity commands |
 | `0x20-0x2F` | Safety/heartbeat commands |
 | `0x30-0x3F` | Sensor commands |
@@ -141,7 +155,7 @@ Add to the appropriate domain file in `commands/`, then add encoding spec in `sc
 ### Type Mappings
 
 | Schema Type | C++ Type | Python Type | Struct Format |
-|-------------|----------|-------------|---------------|
+|:------------|:---------|:------------|:--------------|
 | `int` | `int` | `int` | - |
 | `float` | `float` | `float` | - |
 | `string` | `const char*` | `str` | - |
@@ -158,7 +172,7 @@ Add to the appropriate domain file in `commands/`, then add encoding spec in `sc
 ```bash
 cd /path/to/Host
 source .venv/bin/activate
-python mara_host/tools/generate_all.py
+mara generate all
 ```
 
 This generates:
@@ -167,7 +181,7 @@ This generates:
 - `client_commands.py` - Python async method `cmd_my_new_command()`
 - `BinaryCommands.h` - C++ opcode, struct, decode (if binary)
 - `binary_commands.py` - Python Opcode, encoder (if binary)
-- `json_to_binary.py` - JSON→binary mapping (if binary)
+- `json_to_binary.py` - JSON to binary mapping (if binary)
 
 ---
 
@@ -176,7 +190,7 @@ This generates:
 ### Choose the Appropriate Handler
 
 | Domain | Handler File | Location |
-|--------|--------------|----------|
+|:-------|:-------------|:---------|
 | Safety/Mode | `SafetyHandler.h` | `include/command/handlers/` |
 | Motion/Velocity | `MotionHandler.h` | `include/command/handlers/` |
 | GPIO/PWM | `GpioHandler.h` | `include/command/handlers/` |
@@ -222,7 +236,7 @@ void handle(const JsonDocument& doc, CommandContext& ctx) override {
 ### Run All Tests
 
 ```bash
-# From the repository root
+# From repository root
 cd /path/to/mara
 
 # 1. Run all tests (MCU + Host)
@@ -237,25 +251,46 @@ make test-host
 # 4. Flash firmware for HIL tests
 make flash-mcu
 
-# 5. HIL Tests (TCP + serial, with defaults)
+# 5. HIL Tests
 make test-hil
-
-# Override defaults if needed
-MCU_PORT=/dev/ttyUSB0 ROBOT_HOST=192.168.1.100 make test-hil
 ```
 
 ### Test Coverage
 
 | Test Suite | Command | Tests | What It Verifies |
-|------------|---------|-------|------------------|
-| Native | `pio test -e native` | 37 | Protocol, EventBus, Safety, Handlers (on Mac) |
-| ESP32 On-Device | `pio test -e esp32_test` | 31 | Same tests on actual ESP32 (catches platform bugs) |
-| Python Host | `pytest tests/` | 80 | Client, encoders, protocol, control design |
+|:-----------|:--------|:------|:-----------------|
+| Native | `pio test -e native` | 37 | Protocol, EventBus, Safety, Handlers |
+| ESP32 On-Device | `pio test -e esp32_test` | 31 | Same tests on actual ESP32 |
+| Python Host | `pytest tests/` | 80+ | Client, encoders, protocol |
 | HIL | `pytest --run-hil` | 46 | Full system over TCP to real ESP32 |
 
 ---
 
-## Step 5: Add Tests
+## Step 5: Add Service Method (Optional)
+
+For commonly used commands, add a service method:
+
+```python
+# services/control/my_service.py
+from mara_host.core.result import ServiceResult
+
+class MyService:
+    async def my_operation(self, param: int) -> ServiceResult:
+        """Perform my operation."""
+        ok, error = await self.client.send_reliable(
+            "CMD_MY_NEW_COMMAND",
+            {"param1": param, "param2": 3.14},
+        )
+
+        if ok:
+            return ServiceResult.success(data={"param": param})
+        else:
+            return ServiceResult.failure(error=error or "Failed")
+```
+
+---
+
+## Step 6: Add Tests
 
 ### Python HIL Test
 
@@ -296,42 +331,24 @@ RUN_TEST(test_my_new_command);
 
 ---
 
-## Step 6: Test from Python Host
+## Step 7: Use from Python Host
 
 ```python
-# Using generated client method (recommended)
+# Using generated client method (via commander)
 await client.cmd_my_new_command(param1=42, param2=3.14)
 
-# Or using low-level API
-await client.send_json_cmd("CMD_MY_NEW_COMMAND", {
-    "param1": 42,
-    "param2": 3.14
-})
+# Using service method
+result = await my_service.my_operation(param=42)
+if result.ok:
+    print(f"Success: {result.data}")
 
-# For binary commands (high-rate)
-await client.send_binary({"type": "CMD_MY_BINARY_CMD", "value": 1.5})
+# For binary streaming (high-rate, goes through commander)
+await client.send_stream(
+    "CMD_SET_VEL",
+    {"vx": 0.5, "omega": 0.0},
+    binary=True,  # Uses binary encoding
+)
 ```
-
----
-
-## Cross-Platform Test Runner
-
-Tests use `test/test_runner.h` for cross-platform compatibility:
-
-```cpp
-#include "../test_runner.h"
-
-void run_tests() {
-    RUN_TEST(test_foo);
-    RUN_TEST(test_bar);
-}
-
-TEST_RUNNER(run_tests)
-```
-
-This macro expands to:
-- `main()` on native (Mac/Linux)
-- `setup()`/`loop()` on ESP32
 
 ---
 
@@ -342,8 +359,8 @@ This macro expands to:
 1. Add to appropriate domain file in `schema/commands/`
 2. Run `mara generate all`
 3. Implement handler in appropriate `*Handler.h`
-4. Run tests: `pio test -e native && pio test -e esp32_test`
-5. Flash and run HIL: `pio run -e esp32_usb -t upload && pytest --run-hil`
+4. Run tests: `pio test -e native && pytest tests/`
+5. Flash and run HIL: `pio run -t upload && pytest --run-hil`
 
 ### Adding a Binary Command (High-Rate Streaming)
 
@@ -355,27 +372,17 @@ This macro expands to:
 
 ### Adding a Telemetry Section
 
-Telemetry sections define the binary format for sensor data sent from MCU to Host.
-
 1. Add to `TELEMETRY_SECTIONS` in `schema/telemetry.py`
 2. Run `mara generate all`
 3. Add parser in `binary_parser.py` using the generated section ID constant
 4. Add model in `telemetry/models.py` if needed
 
-```python
-# In schema/telemetry.py - TELEMETRY_SECTIONS dict
-"TELEM_MY_SENSOR": {
-    "id": 0x07,  # Pick next available ID
-    "description": "My sensor data",
-    "format": "sensor_id(u8) value(f32) ts_ms(u32)",
-    "size": 9,  # Fixed size, or None for variable
-},
-```
+---
 
-### Command Domain Files
+## Command Domain Quick Reference
 
 | Domain | File | Example Commands |
-|--------|------|------------------|
+|:-------|:-----|:-----------------|
 | Safety | `_safety.py` | `CMD_IDENTITY`, `CMD_ARM`, `CMD_ESTOP` |
 | Rates | `_rates.py` | `CMD_CTRL_SET_RATE`, `CMD_GET_RATES` |
 | Control | `_control.py` | `CMD_SIGNAL_DEFINE`, `CMD_SLOT_*` |
@@ -389,90 +396,23 @@ Telemetry sections define the binary format for sensor data sent from MCU to Hos
 | Telemetry | `_telemetry.py` | `CMD_TELEM_SET_INTERVAL` |
 | Camera | `_camera.py` | `CMD_CAM_*` |
 
-### File Locations
+---
+
+## File Locations
 
 | File | Purpose |
-|------|---------|
+|:-----|:--------|
 | `host/mara_host/tools/schema/` | Single source of truth (package) |
 | `host/mara_host/tools/schema/commands/` | Command definitions by domain |
 | `host/mara_host/tools/generate_all.py` | Run all generators |
-| `host/mara_host/control/` | Control design tools (LQR, pole placement) |
-| `host/mara_host/telemetry/telemetry_sections.py` | Generated telemetry section IDs |
-| `firmware/mcu/include/telemetry/TelemetrySections.h` | Generated C++ section IDs |
+| `host/mara_host/services/control/` | Service layer with business logic |
 | `firmware/mcu/include/command/handlers/` | Command handlers |
-| `firmware/mcu/test/test_runner.h` | Cross-platform test macro |
 | `host/tests/test_hil_send_commands.py` | HIL tests |
 
 ---
 
-## Control System Design Tools
+<div align="center">
 
-The `mara_host.control` module provides scipy-based tools for designing state-space controllers and observers, with helpers to upload configurations to the MCU.
+*All commands flow through ReliableCommander for consistent event emission and metrics*
 
-### Quick Example
-
-```python
-import numpy as np
-from mara_host.control import (
-    StateSpaceModel, lqr, observer_gains, configure_state_feedback
-)
-
-# Define system (mass-spring-damper)
-A = np.array([[0, 1], [-10, -0.5]])
-B = np.array([[0], [1]])
-C = np.array([[1, 0]])
-model = StateSpaceModel(A, B, C)
-
-# Check system properties
-assert model.is_controllable()
-assert model.is_observable()
-
-# Design LQR controller
-Q = np.diag([100, 1])  # State cost
-R = np.array([[1]])    # Control cost
-K, S, E = lqr(A, B, Q, R)
-
-# Design observer (5x faster than controller)
-obs_poles = [-25, -30]
-L = observer_gains(A, C, obs_poles)
-
-# Upload to MCU
-signals = {
-    "state": [10, 11],      # State estimate signals
-    "ref": [12, 13],        # Reference signals
-    "control": [20],        # Control output
-    "measurement": [30],    # Position measurement
-}
-
-result = await configure_state_feedback(
-    client, model, K,
-    L=L,
-    use_observer=True,
-    signals=signals,
-    controller_rate_hz=100,
-    observer_rate_hz=200,
-)
-```
-
-### Available Functions
-
-| Function | Description |
-|----------|-------------|
-| `StateSpaceModel(A, B, C, D)` | Create state-space model with validation |
-| `lqr(A, B, Q, R)` | Continuous-time LQR gain design |
-| `lqr_discrete(A, B, Q, R)` | Discrete-time LQR gain design |
-| `pole_placement(A, B, poles)` | Place closed-loop poles |
-| `observer_gains(A, C, poles)` | Design observer (Luenberger) gains |
-| `lqe(A, C, Q, R)` | Kalman filter gain design |
-| `discretize(model, dt, method)` | Discretize continuous-time model |
-| `check_stability(A, B, K)` | Verify closed-loop stability |
-| `reference_gain(A, B, C, K)` | Compute reference gain Kr |
-| `upload_controller(client, config)` | Upload controller to MCU |
-| `upload_observer(client, config)` | Upload observer to MCU |
-| `configure_state_feedback(...)` | High-level setup helper |
-
-### Run Examples
-
-```bash
-python -m mara_host.control.examples
-```
+</div>

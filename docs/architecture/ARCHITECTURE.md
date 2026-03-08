@@ -1,175 +1,261 @@
 # MARA Architecture
 
-> Modular Asynchronous Robotics Architecture
+<div align="center">
 
-This document describes the architecture of the mara_host Python package and its relationship with the ESP32 MCU firmware.
+**Modular Asynchronous Robotics Architecture**
+
+*Complete system architecture for ESP32-based robotics*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    USER APPLICATION                      │
-├─────────────────────────────────────────────────────────┤
-│  Public API (api/)                                       │
-│  ├─ GPIO, PWM, Encoder, IMU, Stepper, Servo, DCMotor    │
-│  └─ DifferentialDrive, VelocityController               │
-├─────────────────────────────────────────────────────────┤
-│  Runtime + BaseModule                                    │
-│  └─ Lifecycle management, event subscriptions, ticking  │
-├─────────────────────────────────────────────────────────┤
-│  Robot + HostModules (hw/, motor/, sensor/)             │
-│  └─ CommandHostModule, EventHostModule                  │
-├─────────────────────────────────────────────────────────┤
-│  MaraClient (command/)                            │
-│  ├─ ReliableCommander (retries/acking)                  │
-│  ├─ ConnectionMonitor (health)                          │
-│  └─ RobotCommandsMixin (generated cmd_* methods)        │
-├─────────────────────────────────────────────────────────┤
-│  EventBus (core/)                                        │
-│  └─ Pub/sub for telemetry, connection, events           │
-├─────────────────────────────────────────────────────────┤
-│  Telemetry (telemetry/)                                 │
-│  └─ binary_parser: raw bytes → TelemetryPacket          │
-├─────────────────────────────────────────────────────────┤
-│  Protocol (core/protocol.py)                            │
-│  └─ Frame encoding, CRC16, message types                │
-├─────────────────────────────────────────────────────────┤
-│  Transport Layer (transport/)                           │
-│  ├─ SerialTransport (USB)                               │
-│  ├─ AsyncTcpTransport (WiFi)                            │
-│  └─ CANTransport (CAN bus)                              │
-└─────────────────────────────────────────────────────────┘
-                         ↓
-              ESP32 MCU Firmware (C++)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            USER APPLICATION                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Public API (api/)                                                           │
+│  ├── GPIO, PWM, Servo, DCMotor, Encoder                                     │
+│  └── Validates inputs → routes to Services → raises exceptions              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Services Layer (services/control/)                                          │
+│  ├── GpioService, MotionService, ServoService, MotorService, StateService   │
+│  └── Business logic → state tracking → returns ServiceResult                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Client Layer (command/client.py)                                            │
+│  ├── MaraClient: coordinator, handshake, routing                            │
+│  └── Routes to ReliableCommander (single chokepoint)                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Commander Layer (command/coms/reliable_commander.py)                        │
+│  ├── ALL commands flow here (reliable & streaming)                          │
+│  ├── Reliable: ACK tracking, retries, sequence numbers                      │
+│  └── Streaming: fire-and-forget, optional binary (binary=True)              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  EventBus (core/)                                                            │
+│  └── Pub/sub for telemetry, connection, debugging events                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Protocol (core/protocol.py)                                                 │
+│  └── Frame encoding, CRC16, message types                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Transport Layer (transport/)                                                │
+│  ├── SerialTransport (USB)     │  AsyncTcpTransport (WiFi)                  │
+│  └── CANTransport (CAN bus)    │  MqttTransport (Fleet)                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+                          ESP32 MCU Firmware (C++)
 ```
 
-## Package Responsibilities
+---
 
-| Package | Responsibility |
-|---------|----------------|
-| `robot.py` | Main entry point; lazy transport/client setup |
-| `core/` | EventBus, protocol encoding, module interfaces |
-| `command/` | MaraClient, reliable delivery, connection monitoring |
-| `transport/` | Physical layer implementations (serial, TCP, CAN, BLE) |
-| `telemetry/` | Binary parsing and telemetry models |
-| `api/` | Public user-facing classes (Stepper, Servo, IMU, etc.) |
-| `hw/` | GPIO/PWM HostModules |
-| `motor/` | Motion control HostModules |
-| `sensor/` | Sensor HostModules (IMU, Encoder) |
-| `runtime/` | Execution loop and module lifecycle |
-| `config/` | Configuration loading + generated code |
-| `services/` | **Business logic layer** (extracted from CLI) |
-| `tools/` | Code generators |
-| `cli/` | Command-line interface (argument parsing, display) |
-| `logger/` | Structured event logging (JSONL) |
-| `research/` | Recording, replay, simulation, analysis |
+## Layer Responsibilities
 
-### Services Layer
+### API Layer (`api/`)
 
-The `services/` package contains business logic extracted from CLI commands,
-making it reusable from scripts, APIs, notebooks, and tests:
-
-| Service | Purpose |
-|---------|---------|
-| `services/pins/` | GPIO pin management, conflict detection |
-| `services/testing/` | Robot self-test suite |
-| `services/transport/` | Connection and robot control (TODO) |
-| `services/build/` | Firmware build orchestration (TODO) |
-| `services/recording/` | Session recording and replay (TODO) |
-
-### Generated Code
-
-See [`mara_host/GENERATED_FILES.md`](mara_host/GENERATED_FILES.md) for the complete list of auto-generated files.
-
-**Key principle**: Never edit generated files directly. Edit `tools/platform_schema.py` and run `mara generate all`.
-
-## Composition Root
-
-The **composition root** is the `Robot` class, which orchestrates creation of all dependencies:
+User-facing interface that validates inputs and raises exceptions.
 
 ```python
-robot = Robot("/dev/ttyUSB0")  # Nothing created yet (lazy)
+class GPIO:
+    async def write(self, channel: int, value: int) -> None:
+        """Write a digital value to a channel."""
+        if not self.is_registered(channel):
+            raise ValueError(f"Channel {channel} is not registered")
 
-await robot.connect()
-# Creates:
-#   1. SerialTransport (or AsyncTcpTransport)
-#   2. EventBus
-#   3. MaraClient(transport, bus)
-#   4. Performs version handshake
+        result = await self._service.write(channel, value)
 
-# HostModules created lazily on first access:
-robot.gpio   # → GpioHostModule
-robot.motion # → MotionHostModule
+        if not result.ok:
+            raise RuntimeError(result.error)
 ```
 
-**Key principle**: `Robot` is the facade. `MaraClient` is the protocol engine. `Runtime` is the execution loop.
+| Does | Does NOT |
+|:-----|:---------|
+| Validate user inputs | Implement business logic |
+| Raise exceptions | Format wire protocol |
+| Route to services | Manage state |
 
-## Event Flow
+---
 
-### Incoming (MCU → Host)
+### Services Layer (`services/control/`)
 
-```
-Transport receives frame
-    ↓
-MaraClient._on_frame(body)
-    ├─ MSG_TELEMETRY_BIN → parse_telemetry_bin() → TelemetryPacket
-    ├─ MSG_CMD_JSON → parse JSON → extract topic
-    └─ MSG_HEARTBEAT/PONG → connection.on_message_received()
-    ↓
-EventBus.publish(topic, data)
-    ↓
-├─ User callbacks: robot.on("telemetry.imu", handler)
-├─ BaseModule.on_<topic>() methods (auto-wired)
-├─ Sensor API subscriptions (IMU, Encoder cache data)
-└─ HostModule transforms (ImuHostModule → ImuState)
-```
-
-### Outgoing (Host → MCU)
-
-```
-User: await robot.motion.set_velocity(0.5, 0.0)
-    ↓
-MotionHostModule.set_velocity()
-    ↓
-MaraClient.cmd_set_vel(vx, omega)  # generated method
-    ↓
-ReliableCommander.send_reliable()
-    ├─ Track sequence number
-    ├─ Encode to MSG_CMD_JSON or MSG_CMD_BIN
-    └─ transport.send_bytes()
-    ↓
-Wait for ACK (future) or retry on timeout
-```
-
-## Transport Layer
-
-All transports implement `AsyncBaseTransport`:
+Business logic that tracks state and returns `ServiceResult`.
 
 ```python
-class AsyncBaseTransport:
-    def set_frame_handler(callback): ...  # Register incoming frame callback
-    async def send_bytes(data): ...       # Send raw bytes
-    def start(): ...                      # Open connection
-    def stop(): ...                       # Close connection
+class GpioService:
+    async def write(self, channel: int, value: int) -> ServiceResult:
+        """Write a digital value to a GPIO channel."""
+        value = 1 if value else 0
+
+        ok, error = await self.client.send_reliable(
+            "CMD_GPIO_WRITE",
+            {"channel": channel, "value": value},
+        )
+
+        if ok:
+            self._channels[channel].value = value
+            return ServiceResult.success(data={"channel": channel, "value": value})
+        else:
+            return ServiceResult.failure(error=error or "Failed")
 ```
 
-**Frame format** (all transports):
-```
-[HEADER 0xAA][len_hi][len_lo][msg_type][payload...][crc_hi][crc_lo]
-```
+| Does | Does NOT |
+|:-----|:---------|
+| Business logic | Raise exceptions |
+| State tracking | Parse arguments |
+| Call client methods | Format for display |
 
-**Message types** (`core/protocol.py`):
+---
+
+### Client Layer (`command/client.py`)
+
+Coordinator that routes commands to the commander.
+
 ```python
-MSG_HEARTBEAT        = 0x01
-MSG_PING             = 0x02
-MSG_PONG             = 0x03
-MSG_VERSION_REQUEST  = 0x04
-MSG_VERSION_RESPONSE = 0x05
-MSG_WHOAMI           = 0x10
-MSG_TELEMETRY_BIN    = 0x30
-MSG_CMD_JSON         = 0x50
-MSG_CMD_BIN          = 0x51
+class MaraClient:
+    async def send_stream(
+        self,
+        cmd_type: str,
+        payload: dict,
+        request_ack: bool = False,
+        binary: bool = False,
+    ):
+        """Send a command (streaming or reliable)."""
+        if request_ack:
+            return await self.send_reliable(cmd_type, payload)
+
+        # ALL commands flow through commander
+        await self.commander.send_fire_and_forget(cmd_type, payload, binary=binary)
+        return True, None
 ```
+
+| Does | Does NOT |
+|:-----|:---------|
+| Route commands | Know about specific hardware |
+| Manage connection | Implement business logic |
+| Coordinate subsystems | Track domain state |
+
+---
+
+### Commander Layer (`command/coms/reliable_commander.py`)
+
+**Single chokepoint** for ALL commands—enables debugging and metrics.
+
+```python
+class ReliableCommander:
+    async def send_fire_and_forget(
+        self,
+        cmd_type: str,
+        payload: dict,
+        binary: bool = False,
+    ) -> None:
+        """Fire-and-forget send (streaming path)."""
+        sent_ns = time.monotonic_ns()
+
+        if binary and self.send_binary_func:
+            await self.send_binary_func(cmd_type, payload)
+            self.commands_sent_binary += 1
+        else:
+            await self.send_func(cmd_type, payload, None)
+
+        self.commands_sent += 1
+        self._emit("cmd.sent", cmd_type=cmd_type, binary=binary, sent_ns=sent_ns)
+```
+
+| Path | Use Case | Wire Size |
+|:-----|:---------|:----------|
+| `send()` (reliable) | Setup, config, critical commands | ~50 bytes (JSON) |
+| `send_fire_and_forget(binary=False)` | General streaming | ~50 bytes (JSON) |
+| `send_fire_and_forget(binary=True)` | High-rate control (50+ Hz) | ~9 bytes (binary) |
+
+---
+
+### Transport Layer (`transport/`)
+
+Raw byte I/O with async coordination.
+
+```python
+class StreamTransport:
+    async def send_bytes(self, data: bytes) -> None:
+        """Send bytes with asyncio coordination."""
+        loop = self._cached_loop or asyncio.get_running_loop()
+        async with self._async_lock:
+            await loop.run_in_executor(self._write_executor, self._send_bytes_sync, data)
+```
+
+| Does | Does NOT |
+|:-----|:---------|
+| Raw byte I/O | Parse commands |
+| Connection lifecycle | Know about JSON/binary |
+| Frame buffering | Business logic |
+
+---
+
+## Command Flow
+
+### Standard Command (GPIO Write)
+
+```
+User: await gpio.write(0, 1)
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  API Layer: gpio.write()                                    │
+│  • Validate: is_registered(0)? ✓                           │
+│  • Call: self._service.write(0, 1)                         │
+└─────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Service Layer: GpioService.write()                         │
+│  • Normalize: value = 1                                     │
+│  • Call: client.send_reliable("CMD_GPIO_WRITE", {...})     │
+│  • Track: ch.value = 1                                      │
+│  • Return: ServiceResult.success()                          │
+└─────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Commander: ReliableCommander.send()                        │
+│  • Encode: JSON                                             │
+│  • Track: seq=42, pending[42]=Future                       │
+│  • Emit: "cmd.sent" event                                  │
+│  • Send: transport.send_bytes(frame)                       │
+│  • Wait: await future (for ACK)                            │
+└─────────────────────────────────────────────────────────────┘
+         │
+         ▼
+   Transport → MCU → ACK → Resolve Future
+```
+
+### High-Rate Streaming (50+ Hz)
+
+```
+User: await motion.set_velocity(0.5, 0.0, binary=True)
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Service Layer: MotionService.set_velocity()                │
+│  • Clamp: vx = clamp(0.5, -1.0, 1.0)                       │
+│  • Call: client.send_stream(..., binary=True)              │
+│  • Track: _last_velocity = Velocity(0.5, 0.0)              │
+└─────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Commander: send_fire_and_forget(binary=True)               │
+│  • Encode: struct.pack("<Bff", OPCODE, 0.5, 0.0)           │
+│  • Emit: "cmd.sent" event (for debugging)                  │
+│  • Stats: commands_sent_binary += 1                        │
+│  • Send: transport.send_bytes(frame)                       │
+│  • No wait (fire-and-forget)                               │
+└─────────────────────────────────────────────────────────────┘
+         │
+         ▼
+   9 bytes payload → ~15 bytes on wire (vs ~50 bytes JSON)
+```
+
+---
 
 ## Telemetry Flow
 
@@ -177,247 +263,174 @@ MSG_CMD_BIN          = 0x51
 MSG_TELEMETRY_BIN payload
     ↓
 parse_telemetry_bin(bytes)
-    ├─ Header: version, seq, ts_ms, section_count
-    └─ Sections: section_id, length, data
+    ├── Header: version, seq, ts_ms, section_count
+    └── Sections: section_id, length, data
     ↓
 TelemetryPacket (dataclass)
-    ├─ imu: ImuTelemetry
-    ├─ encoder0: EncoderTelemetry
-    ├─ stepper0: StepperTelemetry
-    └─ ... (optional fields)
+    ├── imu: ImuTelemetry
+    ├── encoder0: EncoderTelemetry
+    └── ... (optional fields)
     ↓
 EventBus.publish("telemetry", packet)
 EventBus.publish("telemetry.imu", imu_data)
 ```
 
 **Telemetry sections** (`TELEM_*` constants):
-- `0x00` IMU
-- `0x01` Ultrasonic
-- `0x03` Encoder0
-- `0x04` Stepper0
-- `0x10` Control Signals
-- `0x11` Control Observers
 
-## Module Lifecycle
+| ID | Section | Data |
+|:---|:--------|:-----|
+| `0x00` | IMU | Accelerometer, gyroscope |
+| `0x01` | Ultrasonic | Distance readings |
+| `0x03` | Encoder0 | Position, velocity |
+| `0x04` | Stepper0 | Position, state |
+| `0x10` | Control Signals | Signal bus snapshot |
+| `0x11` | Control Observers | Observer state |
 
-### BaseModule
+---
+
+## Package Responsibilities
+
+| Package | Responsibility |
+|:--------|:---------------|
+| `robot.py` | Main entry point; lazy transport/client setup |
+| `api/` | Public user-facing classes with validation |
+| `services/control/` | Business logic and state tracking |
+| `command/` | Client coordination and reliable delivery |
+| `core/` | EventBus, protocol encoding, module interfaces |
+| `transport/` | Physical layer implementations |
+| `telemetry/` | Binary parsing and telemetry models |
+| `config/` | Configuration loading + generated code |
+| `tools/` | Code generators |
+| `cli/` | Command-line interface |
+
+---
+
+## Key Design Patterns
+
+### 1. Single Chokepoint
+
+All commands flow through `ReliableCommander`, enabling:
+- Unified event emission for debugging
+- Consistent metrics collection
+- Single place to add logging/tracing
+
+### 2. ServiceResult Pattern
+
+Services return results instead of raising exceptions:
 
 ```python
-class MyModule(BaseModule):
-    name = "my_module"
+@dataclass
+class ServiceResult:
+    ok: bool
+    data: Optional[dict] = None
+    error: Optional[str] = None
 
-    def topics(self) -> list[str]:
-        return ["telemetry.imu"]  # Auto-wire on_telemetry_imu()
+    @classmethod
+    def success(cls, data=None) -> "ServiceResult":
+        return cls(ok=True, data=data)
 
-    async def start(self) -> None: ...
-    async def on_tick(self, dt: float) -> None: ...
-    def on_telemetry_imu(self, data: dict) -> None: ...  # Auto-called
-    async def stop(self) -> None: ...
+    @classmethod
+    def failure(cls, error: str) -> "ServiceResult":
+        return cls(ok=False, error=error)
 ```
 
-### Runtime Execution
+### 3. Lazy Initialization
 
-```python
-runtime = Runtime(robot, tick_hz=50.0)
-runtime.add_module(MyModule())
+Robot doesn't create transport/client until `connect()`. Services created on first access.
 
-await runtime.run()
-# 1. Attach modules
-# 2. Start modules
-# 3. Loop: call on_tick, dispatch events
-# 4. Stop modules on exit
+### 4. Binary Optimization
+
+High-rate commands use binary encoding:
+- JSON: ~50 bytes, good for setup/config
+- Binary: ~9 bytes, 5x smaller, use for streaming
+
+---
+
+## Frame Protocol
+
+All transports use the same frame format:
+
+```
+┌────────┬────────┬────────┬──────────┬─────────────┬──────────────┐
+│ HEADER │ LEN_HI │ LEN_LO │ MSG_TYPE │   PAYLOAD   │   CRC16      │
+│  0xAA  │   1B   │   1B   │    1B    │   N bytes   │    2B        │
+└────────┴────────┴────────┴──────────┴─────────────┴──────────────┘
 ```
 
-### MCU Module Registration (Firmware)
+**Message types** (`core/protocol.py`):
 
-The ESP32 firmware has two module registration patterns:
+| Type | ID | Description |
+|:-----|:---|:------------|
+| `MSG_HEARTBEAT` | `0x01` | Keep-alive |
+| `MSG_PING` | `0x02` | Latency check |
+| `MSG_PONG` | `0x03` | Ping response |
+| `MSG_VERSION_REQUEST` | `0x04` | Request firmware info |
+| `MSG_VERSION_RESPONSE` | `0x05` | Firmware info response |
+| `MSG_TELEMETRY_BIN` | `0x30` | Binary telemetry |
+| `MSG_CMD_JSON` | `0x50` | JSON command |
+| `MSG_CMD_BIN` | `0x51` | Binary command |
 
-**1. Self-Registration (Preferred)**
-
-Uses `REGISTER_MODULE` macro for automatic registration:
-
-```cpp
-class StatusLedModule : public IModule {
-public:
-    StatusLedModule() = default;  // Requires default constructor
-
-    void init(mcu::ServiceContext& ctx) override {
-        bus_ = ctx.bus;  // Get dependencies from context
-    }
-
-    void loop(uint32_t now_ms) override { ... }
-    const char* name() const override { return "StatusLed"; }
-
-private:
-    EventBus* bus_ = nullptr;
-};
-
-REGISTER_MODULE(StatusLedModule);  // Auto-registers before main()
-```
-
-**2. Manual Registration (Legacy)**
-
-For modules with constructor dependencies:
-
-```cpp
-// In ServiceStorage.h
-HeartbeatModule heartbeat{bus};  // Takes EventBus& in constructor
-
-// In Runtime.cpp - must explicitly wire
-if (ctx_.host && ctx_.heartbeat) {
-    ctx_.host->addModule(ctx_.heartbeat);
-}
-```
-
-**Important**: If a module is instantiated but not registered, its `loop()` will never be called. This was the cause of the HeartbeatModule bug.
+---
 
 ## Generated vs Hand-Written Code
 
-### Generated Files
-
-All generators are in `tools/` and output to `config/` or `command/`:
+### Generated Files (DO NOT EDIT)
 
 | Generator | Output | Purpose |
-|-----------|--------|---------|
-| `gen_commands.py` | `config/client_commands.py` | `RobotCommandsMixin` with `cmd_*()` methods |
+|:----------|:-------|:--------|
+| `gen_commands.py` | `config/client_commands.py` | `cmd_*()` methods |
 | `gen_commands.py` | `config/command_defs.py` | `CommandDef` dataclasses |
-| `gen_binary_commands.py` | `command/json_to_binary.py` | High-rate binary encoding |
-| `gen_telemetry.py` | `telemetry/telemetry_sections.py` | Section ID constants |
-| `gen_version.py` | `config/version.py` | Protocol/schema versions |
-| `gen_can.py` | `transport/can_defs_generated.py` | CAN message definitions |
+| `gen_binary_commands.py` | `command/json_to_binary.py` | Binary encoding |
+| `gen_telemetry.py` | `telemetry/telemetry_sections.py` | Section IDs |
 
-**Run all generators:**
+**Regenerate after editing schema:**
 ```bash
 mara generate all
-# or
-python -m mara_host.tools.generate_all
 ```
 
 ### Source of Truth
 
-`tools/platform_schema.py` defines all commands, their payloads, and directions. Generators read this schema.
+`tools/schema/` package defines all commands, payloads, and directions.
 
-### Pattern
-
-```python
-# Hand-written base class
-class MaraClient(RobotCommandsMixin):
-    async def send_reliable(self, cmd, payload, wait_for_ack=True): ...
-
-# Generated mixin (don't edit!)
-class RobotCommandsMixin:
-    async def cmd_arm(self) -> None:
-        await self.send_json_cmd('CMD_ARM', {})
-
-    async def cmd_set_vel(self, vx: float, omega: float) -> None:
-        await self.send_json_cmd('CMD_SET_VEL', {'vx': vx, 'omega': omega})
-```
-
-## Key Design Patterns
-
-### 1. Lazy Initialization
-Robot doesn't create transport/client until `connect()`. HostModules created on first property access.
-
-### 2. Two-Tier API
-- **Public API** (`api/`): User-friendly, state tracking, validation
-- **HostModules** (`hw/`, `motor/`, `sensor/`): Thin wrappers around client
-
-### 3. EventBus
-Simple synchronous pub/sub. Topics use dot notation (`telemetry.imu`).
-
-### 4. Reliable Commands
-`ReliableCommander` tracks sequence numbers, implements retries, returns futures for acking.
-
-### 5. Binary Optimization
-High-rate commands (SET_VEL) can be encoded as 9-byte binary instead of ~50-byte JSON.
-
-## Connection Management
-
-### Handshake
-```
-1. Send MSG_VERSION_REQUEST
-2. Receive MSG_VERSION_RESPONSE with firmware/protocol versions
-3. Verify protocol version matches
-4. Start heartbeat loop
-5. Start connection monitor
-```
-
-### Health Monitoring
-```python
-ConnectionMonitor:
-    - on_message_received() updates last_message_time
-    - check() runs every 0.1s
-    - If no message for 1.0s: publish "connection.lost"
-    - On recovery: publish "connection.restored"
-```
-
-## CLI Architecture
-
-Entry point: `mara_host/cli/main.py`
-
-Commands are registered by modules in `cli/commands/`:
-```
-mara
-├── run shell|serial|tcp|can
-├── build compile|upload|clean
-├── generate all|commands|pins|telemetry
-├── pins pinout|list|free|assign
-├── test all|connection|ping|motors
-├── record <session>
-├── config show|validate
-└── logs view|tail
-```
+---
 
 ## File Reference
 
 ```
 mara_host/
-├── robot.py              # Robot facade
-├── core/
-│   ├── event_bus.py      # Pub/sub
-│   ├── base_module.py    # Module interface
-│   └── protocol.py       # Frame encoding
+├── robot.py                    # Robot facade
+├── api/                        # Public API (validation, exceptions)
+│   ├── gpio.py
+│   ├── servo.py
+│   └── dc_motor.py
+├── services/control/           # Business logic (ServiceResult)
+│   ├── gpio_service.py
+│   ├── motion_service.py
+│   └── state_service.py
 ├── command/
-│   ├── client.py         # MaraClient
+│   ├── client.py               # MaraClient (coordinator)
 │   └── coms/
-│       ├── connection_monitor.py
-│       └── reliable_commander.py
+│       ├── reliable_commander.py  # Single chokepoint
+│       └── connection_monitor.py
+├── core/
+│   ├── event_bus.py            # Pub/sub
+│   ├── protocol.py             # Frame encoding
+│   └── result.py               # ServiceResult
 ├── transport/
 │   ├── serial_transport.py
 │   ├── tcp_transport.py
-│   └── can_transport.py
+│   └── stream_transport.py     # Base with asyncio.Lock
 ├── telemetry/
 │   ├── binary_parser.py
 │   └── models.py
-├── api/                  # Public user API
-├── hw/                   # GPIO/PWM modules
-├── motor/                # Motion modules
-├── sensor/               # Sensor modules
-├── runtime/runtime.py    # Execution loop
-├── config/               # Config + generated
-├── tools/                # Generators
-├── cli/                  # CLI commands
-└── research/             # Recording/replay/analysis
+├── config/                     # Generated code
+└── tools/                      # Generators
 ```
 
-## Architectural Decisions
+---
 
-### Why EventBus instead of direct callbacks?
-- Decouples producers from consumers
-- Easy to add logging/recording as subscribers
-- Supports multiple listeners per topic
+<div align="center">
 
-### Why generated command methods?
-- 50+ commands would be tedious to maintain
-- Schema is source of truth for both host and MCU
-- Ensures consistency between Python and C++
+*This is the canonical architecture reference. Update it when making architectural changes.*
 
-### Why lazy initialization?
-- Faster startup
-- Resources allocated only when needed
-- Easier testing (can inspect Robot without connecting)
-
-### Why two-tier API?
-- HostModules are internal, can change freely
-- Public API is stable, user-facing contract
-- Clear separation of concerns
+</div>

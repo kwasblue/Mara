@@ -89,11 +89,27 @@ class PIDConfigDialog(QDialog):
 
     Provides intuitive controls for PID gains with real-time
     slider feedback and advanced options.
+
+    Signals:
+        live_update(int, dict): Emitted when Live Tune is enabled and a
+                                parameter changes. Args: (slot, {param: value})
     """
 
-    def __init__(self, properties: dict, parent=None):
+    live_update = Signal(int, dict)  # slot, {param: value}
+
+    def __init__(self, properties: dict, parent=None, controller=None):
+        """
+        Initialize PID config dialog.
+
+        Args:
+            properties: Current block properties
+            parent: Parent widget
+            controller: RobotController for live tuning (optional)
+        """
         super().__init__(parent)
         self._properties = properties.copy()
+        self._controller = controller
+        self._live_tune = False
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -143,6 +159,23 @@ class PIDConfigDialog(QDialog):
 
         layout.addWidget(info_group)
 
+        # Live Tune toggle
+        live_layout = QHBoxLayout()
+        self.live_tune_check = QCheckBox("Live Tune")
+        self.live_tune_check.setToolTip(
+            "When enabled, gain changes are sent to the robot immediately.\n"
+            "The robot must be connected and the controller slot configured."
+        )
+        self.live_tune_check.stateChanged.connect(self._on_live_tune_changed)
+        live_layout.addWidget(self.live_tune_check)
+
+        self.live_status = QLabel("")
+        self.live_status.setStyleSheet("color: #71717A; font-size: 11px;")
+        live_layout.addWidget(self.live_status)
+        live_layout.addStretch()
+
+        layout.addLayout(live_layout)
+
         # PID Gains
         gains_group = QGroupBox("PID Gains")
         gains_layout = QVBoxLayout(gains_group)
@@ -153,6 +186,7 @@ class PIDConfigDialog(QDialog):
         kp_label.setMinimumWidth(120)
         kp_layout.addWidget(kp_label)
         self.kp_slider = GainSlider(-100, 100, self._properties.get("kp", 1.0))
+        self.kp_slider.value_changed.connect(lambda v: self._on_gain_changed("kp", v))
         kp_layout.addWidget(self.kp_slider)
         gains_layout.addLayout(kp_layout)
 
@@ -162,6 +196,7 @@ class PIDConfigDialog(QDialog):
         ki_label.setMinimumWidth(120)
         ki_layout.addWidget(ki_label)
         self.ki_slider = GainSlider(-100, 100, self._properties.get("ki", 0.0))
+        self.ki_slider.value_changed.connect(lambda v: self._on_gain_changed("ki", v))
         ki_layout.addWidget(self.ki_slider)
         gains_layout.addLayout(ki_layout)
 
@@ -171,6 +206,7 @@ class PIDConfigDialog(QDialog):
         kd_label.setMinimumWidth(120)
         kd_layout.addWidget(kd_label)
         self.kd_slider = GainSlider(-100, 100, self._properties.get("kd", 0.0))
+        self.kd_slider.value_changed.connect(lambda v: self._on_gain_changed("kd", v))
         kd_layout.addWidget(self.kd_slider)
         gains_layout.addLayout(kd_layout)
 
@@ -246,6 +282,41 @@ class PIDConfigDialog(QDialog):
         layout.addWidget(signal_group)
 
         layout.addStretch()
+
+    def _on_live_tune_changed(self, state: int) -> None:
+        """Handle live tune checkbox change."""
+        self._live_tune = state == Qt.Checked.value
+        if self._live_tune:
+            if self._controller and self._controller.is_connected:
+                self.live_status.setText("Connected - changes sent immediately")
+                self.live_status.setStyleSheet("color: #22C55E; font-size: 11px;")
+            else:
+                self.live_status.setText("Not connected - changes will be local only")
+                self.live_status.setStyleSheet("color: #F59E0B; font-size: 11px;")
+        else:
+            self.live_status.setText("")
+
+    def _on_gain_changed(self, param: str, value: float) -> None:
+        """Handle gain slider change - send update if live tuning."""
+        if not self._live_tune:
+            return
+
+        slot = self.slot_spin.value()
+
+        # Emit signal for external handling
+        self.live_update.emit(slot, {param: value})
+
+        # Direct controller update if available
+        if self._controller and self._controller.is_connected:
+            # Use single-param update for efficiency (hot-swap)
+            self._controller.controller_set_param(slot, param, value)
+
+    def set_controller(self, controller) -> None:
+        """Set the robot controller for live tuning."""
+        self._controller = controller
+        # Update status if live tune is already enabled
+        if self._live_tune:
+            self._on_live_tune_changed(Qt.Checked.value)
 
     def get_config(self) -> dict:
         """Get configuration from dialog."""

@@ -1,270 +1,358 @@
 # MARA Layer Boundaries
 
-This document clarifies the architectural boundaries between CLI, Services, and Client layers.
+<div align="center">
+
+*Architectural boundaries between API, Services, Client, and Transport*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## Layer Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         User / Application                           │
-└─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                              CLI Layer                               │
-│  cli/commands/{test,run,calibrate,pins}/                            │
-│  - Argument parsing                                                  │
-│  - User interaction (prompts, tables, progress)                      │
-│  - Output formatting (rich console)                                  │
-│  - Orchestrates services                                             │
-└─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                           Service Layer                              │
-│  services/{pins,testing,recording,codegen}/                          │
-│  - Business logic                                                    │
-│  - Stateful operations                                               │
-│  - Validation and conflict detection                                 │
-│  - Persistence (file I/O)                                            │
-│  - Creates and manages clients                                       │
-└─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                           Command Layer                              │
-│  command/{client,factory,interfaces}/                                │
-│  - MaraClient - connection lifecycle                                 │
-│  - Protocol handling (JSON commands, ACK/retry)                      │
-│  - Transport abstraction                                             │
-│  - Event bus for telemetry                                           │
-└─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                          Transport Layer                             │
-│  transport/{serial,tcp,can,mqtt,bluetooth}/                          │
-│  - Raw byte I/O                                                      │
-│  - Connection management                                             │
-│  - Frame protocol (STX/ETX)                                          │
-└─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                           MCU Firmware                               │
-│  firmware/mcu/ (C++)                                                 │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          User / Application                             │
+└───────────────────────────────────┬─────────────────────────────────────┘
+                                    │
+                                    ▼
+╔═════════════════════════════════════════════════════════════════════════╗
+║                              API Layer                                  ║
+║  api/{gpio,servo,pwm,motor,encoder}.py                                 ║
+║  ─────────────────────────────────────                                  ║
+║  • User-facing interface                                                ║
+║  • Validates inputs, raises exceptions                                  ║
+║  • Routes to Service layer                                              ║
+╚═════════════════════════════════════════════════════════════════════════╝
+                                    │
+                                    ▼
+╔═════════════════════════════════════════════════════════════════════════╗
+║                            Service Layer                                ║
+║  services/control/{gpio,motion,servo,motor,state}_service.py           ║
+║  ─────────────────────────────────────────────────────────              ║
+║  • Business logic                                                       ║
+║  • State tracking                                                       ║
+║  • Returns ServiceResult                                                ║
+║  • Calls client.send_reliable() or client.send_stream()                ║
+╚═════════════════════════════════════════════════════════════════════════╝
+                                    │
+                                    ▼
+╔═════════════════════════════════════════════════════════════════════════╗
+║                            Client Layer                                 ║
+║  command/client.py + command/coms/reliable_commander.py                ║
+║  ───────────────────────────────────────────────────────                ║
+║  • MaraClient: coordinator, routing, handshake                         ║
+║  • ReliableCommander: ALL commands flow through here                   ║
+║  • Protocol encoding (JSON or binary)                                   ║
+║  • Event emission for debugging                                         ║
+╚═════════════════════════════════════════════════════════════════════════╝
+                                    │
+                                    ▼
+╔═════════════════════════════════════════════════════════════════════════╗
+║                           Transport Layer                               ║
+║  transport/{serial,tcp,bluetooth,mqtt,can}_transport.py                ║
+║  ───────────────────────────────────────────────────────                ║
+║  • Raw byte I/O                                                         ║
+║  • Connection management                                                ║
+║  • Frame buffering                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            MCU Firmware                                 │
+│  firmware/mcu/ (C++)                                                    │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
 
 ## Layer Responsibilities
 
-### CLI Layer (`cli/commands/`)
+### API Layer
 
-**What it does:**
-- Parses command-line arguments
-- Displays output (tables, progress bars, prompts)
-- Handles user interaction (confirmations, wizards)
-- Orchestrates calls to services
-- Returns exit codes
-
-**What it does NOT do:**
-- Business logic
-- Direct hardware communication
-- File I/O (delegates to services)
-- State management
-
-**Example:**
 ```python
-# cli/commands/pins/assign.py
-def cmd_assign(args):
-    service = PinService()  # Create service
+# api/gpio.py
+class GPIO:
+    async def write(self, channel: int, value: int) -> None:
+        """
+        Write a digital value to a channel.
 
-    # CLI handles user interaction
-    if info.warning and not args.force:
-        print_warning(info.warning)
-        if not confirm("Continue?"):
-            return 0
+        Raises:
+            ValueError: If channel is not registered
+            RuntimeError: If write fails
+        """
+        # ✅ Validation in API
+        if not self.is_registered(channel):
+            raise ValueError(f"Channel {channel} is not registered")
 
-    # Delegate to service
-    success, message = service.assign(args.name, args.gpio)
+        # ✅ Delegate to Service
+        result = await self._service.write(channel, value)
 
-    # CLI handles output
-    if success:
-        print_success(message)
-    else:
-        print_error(message)
+        # ✅ Convert result to exception
+        if not result.ok:
+            raise RuntimeError(result.error)
 ```
 
-### Service Layer (`services/`)
+| Does | Does NOT |
+|:-----|:---------|
+| Validate user inputs | Implement business logic |
+| Raise exceptions | Format output |
+| Route to services | Manage state |
+| Provide clean interface | Access transport directly |
 
-**What it does:**
-- Implements business logic
-- Manages state and persistence
-- Validates inputs
-- Creates clients when hardware access needed
-- Encapsulates domain knowledge
+---
 
-**What it does NOT do:**
-- User interaction (prompts, formatting)
-- Argument parsing
-- Console output
+### Service Layer
 
-**Example:**
 ```python
-# services/pins/pin_service.py
-class PinService:
-    def assign(self, name: str, gpio: int) -> tuple[bool, str]:
-        # Validation
-        if self.is_flash_pin(gpio):
-            return False, f"GPIO {gpio} is a flash pin"
+# services/control/gpio_service.py
+class GpioService:
+    async def write(self, channel: int, value: int) -> ServiceResult:
+        """
+        Write a digital value to a GPIO channel.
 
-        # Conflict detection
-        if name in self._assignments:
-            return False, f"{name} already assigned"
+        Returns:
+            ServiceResult with success/failure
+        """
+        # ✅ Business logic
+        value = 1 if value else 0
 
-        # Persistence
-        self._assignments[name] = gpio
-        self._save()
+        # ✅ Call client
+        ok, error = await self.client.send_reliable(
+            "CMD_GPIO_WRITE",
+            {"channel": channel, "value": value},
+        )
 
-        return True, f"Assigned {name} to GPIO {gpio}"
+        # ✅ Track state
+        if ok:
+            ch = self._channels.get(channel)
+            if ch:
+                ch.value = value
+            return ServiceResult.success(data={"channel": channel, "value": value})
+        else:
+            return ServiceResult.failure(error=error or "Failed")
 ```
 
-### Command Layer (`command/`)
+| Does | Does NOT |
+|:-----|:---------|
+| Business logic | Raise exceptions (returns ServiceResult) |
+| State tracking | Format for display |
+| Call client methods | Parse arguments |
+| Validate domain rules | Handle user interaction |
 
-**What it does:**
-- Manages connection lifecycle
-- Sends commands with retry logic
-- Parses responses
-- Routes telemetry to event bus
-- Provides transport abstraction
+---
 
-**What it does NOT do:**
-- Business logic
-- User interaction
-- Domain-specific knowledge
+### Client Layer
 
-**Key classes:**
-- `MaraClient` - Main client interface
-- `MaraClientFactory` - Client creation
-- `IMaraClient` - Abstract interface
-- `ReliableCommander` - ACK/retry logic
-
-### Transport Layer (`transport/`)
-
-**What it does:**
-- Raw byte I/O
-- Connection/disconnection
-- Frame protocol (STX/ETX wrapping)
-- Transport-specific details
-
-**What it does NOT do:**
-- Command semantics
-- Parsing JSON
-- Business logic
-
-## When to Use Each Layer
-
-### CLI should call Services when:
-- The operation involves business logic
-- State needs to be managed
-- Validation is required
-- The operation might be reused outside CLI
-
-### CLI can call Client directly when:
-- Simple pass-through commands
-- Interactive shells where service layer adds no value
-- Real-time streaming
-
-### Services should create Clients when:
-- Hardware communication is needed
-- Multiple commands need coordination
-- Error handling needs business context
-
-## Anti-Patterns to Avoid
-
-### ❌ CLI doing business logic
 ```python
-# BAD: CLI contains validation logic
-def cmd_assign(args):
-    if args.gpio in FLASH_PINS:
-        print_error("Flash pin!")
-        return 1
-```
-
-### ❌ Service doing user interaction
-```python
-# BAD: Service prompts user
-class PinService:
-    def assign(self, name, gpio):
-        if self.is_boot_pin(gpio):
-            if input("Continue? ") != "y":  # BAD!
-                return False
-```
-
-### ❌ Client containing business logic
-```python
-# BAD: Client knows about pin constraints
+# command/client.py
 class MaraClient:
-    def set_gpio(self, pin, value):
-        if pin in self.BOOT_PINS:  # BAD!
+    async def send_stream(self, cmd_type: str, payload: dict,
+                          request_ack: bool = False, binary: bool = False):
+        """
+        Streaming-friendly send. All commands flow through ReliableCommander.
+        """
+        if request_ack:
+            return await self.send_reliable(cmd_type, payload)
+
+        # ✅ Route through commander (binary or JSON)
+        await self.commander.send_fire_and_forget(cmd_type, payload, binary=binary)
+        return True, None
+```
+
+| Does | Does NOT |
+|:-----|:---------|
+| Route commands | Know about specific hardware |
+| Manage connection | Implement business logic |
+| Handle protocol encoding | Track domain state |
+| Emit events for debugging | Format user output |
+
+---
+
+### Transport Layer
+
+```python
+# transport/stream_transport.py
+class StreamTransport:
+    async def send_bytes(self, data: bytes) -> None:
+        """Send bytes with asyncio coordination."""
+        async with self._async_lock:
+            await loop.run_in_executor(self._write_executor, self._send_bytes_sync, data)
+```
+
+| Does | Does NOT |
+|:-----|:---------|
+| Raw byte I/O | Parse commands |
+| Connection lifecycle | Know about JSON/binary |
+| Frame buffering | Track state |
+| Thread safety | Business logic |
+
+---
+
+## Data Flow Examples
+
+### GPIO Write
+
+```
+User: await gpio.write(0, 1)
+         │
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│  API Layer: gpio.write()                                │
+│  • Validate: is_registered(0)? ✓                       │
+│  • Call: self._service.write(0, 1)                     │
+└─────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│  Service Layer: GpioService.write()                     │
+│  • Normalize: value = 1                                 │
+│  • Call: client.send_reliable("CMD_GPIO_WRITE", {...}) │
+│  • Track: ch.value = 1                                  │
+│  • Return: ServiceResult.success()                      │
+└─────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│  Client Layer: MaraClient.send_reliable()               │
+│  • Route: commander.send("CMD_GPIO_WRITE", {...})      │
+└─────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│  Commander: ReliableCommander.send()                    │
+│  • Encode: JSON                                         │
+│  • Track: seq=42, pending[42]=Future                   │
+│  • Send: transport.send_bytes(frame)                   │
+│  • Wait: await future                                  │
+└─────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│  Transport: send_bytes()                                │
+│  • Serialize: async_lock                               │
+│  • Write: _send_bytes(data)                            │
+└─────────────────────────────────────────────────────────┘
+```
+
+### High-Rate Velocity Streaming
+
+```
+User: await motion.set_velocity(0.5, 0.0, binary=True)
+         │
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│  Service Layer: MotionService.set_velocity()            │
+│  • Clamp: vx = clamp(0.5, -1.0, 1.0)                   │
+│  • Call: client.send_stream(..., binary=True)          │
+│  • Track: _last_velocity = Velocity(0.5, 0.0)          │
+└─────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│  Commander: send_fire_and_forget(binary=True)           │
+│  • Encode: struct.pack("<Bff", OPCODE, 0.5, 0.0)       │
+│  • Emit: "cmd.sent" event                              │
+│  • Stats: commands_sent_binary += 1                    │
+│  • Send: transport.send_bytes(frame)                   │
+└─────────────────────────────────────────────────────────┘
+         │
+         ▼
+   9 bytes payload → ~15 bytes on wire
+   (vs ~50 bytes JSON)
+```
+
+---
+
+## Anti-Patterns
+
+### ❌ API doing business logic
+
+```python
+# BAD - validation logic in API
+class GPIO:
+    async def write(self, channel, value):
+        if channel in BOOT_PINS:  # ← Business logic!
             raise ValueError("Boot pin")
 ```
 
-## File Organization
+### ❌ Service raising exceptions
 
-```
-mara_host/
-├── cli/
-│   └── commands/
-│       ├── pins/           # Pin management CLI
-│       │   ├── _registry.py    # Argument registration
-│       │   ├── _common.py      # Shared CLI helpers
-│       │   ├── list.py         # List commands
-│       │   ├── assign.py       # Assignment commands
-│       │   └── wizard.py       # Interactive wizards
-│       ├── test/           # Hardware test CLI
-│       ├── run/            # Connection CLI
-│       └── calibrate/      # Calibration CLI
-│
-├── services/
-│   ├── pins/               # Pin business logic
-│   │   └── pin_service.py
-│   ├── testing/            # Test orchestration
-│   │   └── test_service.py
-│   ├── recording/          # Session recording
-│   │   └── recording_service.py
-│   └── codegen/            # Code generation
-│       └── generator_service.py
-│
-├── command/
-│   ├── client.py           # MaraClient
-│   ├── factory.py          # MaraClientFactory
-│   ├── interfaces.py       # IMaraClient
-│   └── coms/
-│       ├── reliable_commander.py
-│       └── connection_monitor.py
-│
-└── transport/
-    ├── serial_transport.py
-    ├── tcp_transport.py
-    ├── can_transport.py
-    └── mqtt/
+```python
+# BAD - service raises instead of returning result
+class GpioService:
+    async def write(self, channel, value):
+        if error:
+            raise RuntimeError("Failed")  # ← Should return ServiceResult
 ```
 
-## Testing Implications
+### ❌ Client containing domain logic
+
+```python
+# BAD - client knows about specific hardware
+class MaraClient:
+    async def set_gpio(self, pin, value):
+        if pin in self.FLASH_PINS:  # ← Domain knowledge!
+            raise ValueError("Flash pin")
+```
+
+### ❌ Transport parsing commands
+
+```python
+# BAD - transport understands protocol semantics
+class SerialTransport:
+    async def send_bytes(self, data):
+        cmd = json.loads(data)  # ← Should be opaque bytes
+        if cmd["type"] == "CMD_ARM":
+            ...
+```
+
+---
+
+## Testing Strategy
 
 | Layer | Test Type | Dependencies |
-|-------|-----------|--------------|
-| CLI | Integration | Mock services |
-| Service | Unit | Mock client/transport |
-| Command | Unit | Fake transport |
+|:------|:----------|:-------------|
+| API | Integration | Mock services |
+| Service | Unit | Mock client |
+| Client | Unit | Fake transport |
 | Transport | Integration | Hardware/simulator |
+
+```python
+# Service unit test (no hardware)
+async def test_motion_service_clamps_velocity():
+    mock_client = Mock()
+    service = MotionService(mock_client)
+
+    await service.set_velocity(vx=10.0, omega=0.0)  # Exceeds limit
+
+    # Verify clamping
+    mock_client.send_stream.assert_called_with(
+        "CMD_SET_VEL",
+        {"vx": 1.0, "omega": 0.0},  # Clamped to limit
+        request_ack=False,
+        binary=True,
+    )
+```
+
+---
 
 ## Summary
 
-1. **CLI** = presentation + user interaction
-2. **Service** = business logic + state
-3. **Command** = protocol + connection
-4. **Transport** = bytes + hardware
+```
+┌────────────┬──────────────────────────────────────────────────────────┐
+│   Layer    │                      Responsibility                      │
+├────────────┼──────────────────────────────────────────────────────────┤
+│    API     │  Validation, exceptions, user-facing interface          │
+├────────────┼──────────────────────────────────────────────────────────┤
+│  Service   │  Business logic, state tracking, ServiceResult          │
+├────────────┼──────────────────────────────────────────────────────────┤
+│  Client    │  Protocol encoding, routing, event emission             │
+├────────────┼──────────────────────────────────────────────────────────┤
+│ Commander  │  Single chokepoint for all commands                     │
+├────────────┼──────────────────────────────────────────────────────────┤
+│ Transport  │  Raw bytes, connection management                       │
+└────────────┴──────────────────────────────────────────────────────────┘
+```
 
-Keep each layer focused. When in doubt, push logic down to services.
+**Golden rule:** Keep each layer focused. When in doubt, push logic down to services.

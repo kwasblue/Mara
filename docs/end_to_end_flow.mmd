@@ -11,39 +11,39 @@
 }}%%
 
 flowchart LR
-    subgraph S1["<b>① DEFINE</b>"]
-        SCHEMA["<b>📝 platform_schema.py</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>COMMANDS = {<br/>  'CMD_MY_SENSOR': {...}<br/>}<br/><br/>TELEMETRY_SECTIONS = {<br/>  'TELEM_MY_SENSOR': {<br/>    'id': 0x20,<br/>    'format': 'id(u8) val(f32)'<br/>  }<br/>}"]
+    subgraph S1["<b>1. DEFINE</b>"]
+        SCHEMA["<b>schema/commands/_motion.py</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>MOTION_COMMANDS = {<br/>  'CMD_SET_VEL': {<br/>    'payload': {<br/>      'vx': {'type': 'float'},<br/>      'omega': {'type': 'float'}<br/>    }<br/>  }<br/>}"]
     end
 
-    subgraph S2["<b>② GENERATE</b>"]
+    subgraph S2["<b>2. GENERATE</b>"]
         direction TB
-        GEN["<b>⚙️ python generate_all.py</b>"]
+        GEN["<b>mara generate all</b>"]
         subgraph OUTS[" "]
             direction LR
-            PY["<b>🐍 Python</b><br/>telemetry_sections.py<br/>client_commands.py"]
-            CPP["<b>⚡ C++</b><br/>TelemetrySections.h<br/>CommandDefs.h"]
+            PY["<b>Python</b><br/>command_defs.py<br/>client_commands.py"]
+            CPP["<b>C++</b><br/>CommandDefs.h<br/>BinaryCommands.h"]
         end
         GEN --> OUTS
     end
 
-    subgraph S3["<b>③ MCU HANDLER</b>"]
-        MCU["<b>📄 MySensorHandler.h</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>class MySensorHandler<br/>  : public IStringHandler {<br/><br/>  void handle(...) {<br/>    float val = readSensor();<br/>    ctx.sendAck(cmd, val);<br/>  }<br/>};<br/><br/>REGISTER_HANDLER(...);"]
+    subgraph S3["<b>3. MCU HANDLER</b>"]
+        MCU["<b>MotionHandler.h</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>class MotionHandler<br/>  : public ICommandHandler {<br/><br/>  void handle(...) {<br/>    intents->setVelocity(<br/>      payload['vx'],<br/>      payload['omega']<br/>    );<br/>  }<br/>};"]
     end
 
-    subgraph S4["<b>④ HOST MODULE</b>"]
-        HOST["<b>📄 my_sensor.py</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>class MySensorModule(BaseModule):<br/>    name = 'my_sensor'<br/><br/>    def topics(self):<br/>        return ['telemetry.my_sensor']<br/><br/>    def on_telemetry_my_sensor(self, d):<br/>        self.value = d['value']<br/><br/>    async def read(self, id):<br/>        return await self._robot<br/>          .client.cmd_my_sensor(id)"]
+    subgraph S4["<b>4. HOST SERVICE</b>"]
+        HOST["<b>motion_service.py</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>class MotionService:<br/><br/>  async def set_velocity(<br/>      self, vx, omega, binary=True<br/>  ):<br/>    await self.client.send_stream(<br/>      'CMD_SET_VEL',<br/>      {'vx': vx, 'omega': omega},<br/>      binary=binary<br/>    )"]
     end
 
-    subgraph S5["<b>⑤ USE IT</b>"]
-        APP["<b>📄 my_app.py</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>from robot_host import Robot, Runtime<br/>from my_sensor import MySensorModule<br/><br/>async with Robot('/dev/tty') as robot:<br/>    sensor = MySensorModule()<br/>    runtime = Runtime(robot, tick_hz=50)<br/>    runtime.add_module(sensor)<br/><br/>    await robot.arm()<br/>    val = await sensor.read(0)<br/>    await runtime.run(duration=10)"]
+    subgraph S5["<b>5. USE IT</b>"]
+        APP["<b>my_app.py</b><br/>━━━━━━━━━━━━━━━━━━━━<br/>from mara_host import Robot<br/><br/>async with Robot('/dev/tty') as robot:<br/>    await robot.arm()<br/>    await robot.activate()<br/><br/>    # High-rate streaming (binary)<br/>    await robot.motion.set_velocity(<br/>      vx=0.5, omega=0.0<br/>    )<br/><br/>    await robot.motion.stop()"]
     end
 
-    subgraph S6["<b>⑥ RUNTIME</b>"]
+    subgraph S6["<b>6. RUNTIME</b>"]
         direction TB
         subgraph FLOWS[" "]
             direction LR
-            CMD_PATH["<b>Command →</b><br/>read(0) → Client<br/>→ Frame → MCU<br/>→ Handler → ACK"]
-            TELEM_PATH["<b>← Telemetry</b><br/>Sensor → Pack<br/>→ Frame → Parse<br/>→ EventBus → Module"]
+            CMD_PATH["<b>Command →</b><br/>API → Service<br/>→ Commander<br/>→ Transport → MCU"]
+            TELEM_PATH["<b>← Telemetry</b><br/>Sensor → Pack<br/>→ Frame → Parse<br/>→ EventBus"]
         end
     end
 

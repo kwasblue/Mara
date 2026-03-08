@@ -1,6 +1,14 @@
 # Extending MARA
 
-This guide covers how to extend the MARA platform with new transports, sensors, motors, and host modules.
+<div align="center">
+
+**Add new transports, sensors, motors, and modules**
+
+*Complete guide to platform extension*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 **Prerequisites:** Read [ADDING_COMMANDS.md](./ADDING_COMMANDS.md) first for command/protocol extension.
 
@@ -11,8 +19,8 @@ This guide covers how to extend the MARA platform with new transports, sensors, 
 1. [Adding a New Transport](#adding-a-new-transport)
 2. [Adding a New Sensor](#adding-a-new-sensor)
 3. [Adding a New Motor Type](#adding-a-new-motor-type)
-4. [Adding a Host Module](#adding-a-host-module)
-5. [Adding a Service](#adding-a-service)
+4. [Adding a Service](#adding-a-service)
+5. [Adding an API Class](#adding-an-api-class)
 
 ---
 
@@ -23,15 +31,16 @@ Transports handle communication between the Python host and ESP32 MCU.
 ### Existing Transports
 
 | Transport | File | Use Case |
-|-----------|------|----------|
+|:----------|:-----|:---------|
 | Serial | `serial_transport.py` | USB connection |
 | TCP | `tcp_transport.py` | WiFi connection |
 | CAN | `can_transport.py` | CAN bus |
 | Bluetooth | `bluetooth_transport.py` | Bluetooth Classic |
+| MQTT | `mqtt/` | Multi-node fleet control |
 
 ### Step 1: Create Transport Class
 
-Extend `AsyncBaseTransport` and implement the required methods:
+Extend `StreamTransport` (for byte-stream transports) or `AsyncBaseTransport`:
 
 ```python
 # transport/websocket_transport.py
@@ -39,9 +48,9 @@ Extend `AsyncBaseTransport` and implement the required methods:
 import asyncio
 from typing import Optional
 from mara_host.core import protocol
-from mara_host.transport.async_base_transport import AsyncBaseTransport
+from mara_host.transport.stream_transport import StreamTransport
 
-class WebSocketTransport(AsyncBaseTransport):
+class WebSocketTransport(StreamTransport):
     """
     WebSocket transport for browser-based control.
     """
@@ -51,67 +60,27 @@ class WebSocketTransport(AsyncBaseTransport):
         self.url = url
         self.reconnect_delay = reconnect_delay
         self._ws = None
-        self._running = False
-        self._task: Optional[asyncio.Task] = None
-        self._rx_buffer = bytearray()
 
     @property
     def is_connected(self) -> bool:
         return self._ws is not None
 
-    async def start(self) -> None:
-        """Start connection loop in background."""
-        if self._task is None:
-            self._running = True
-            self._task = asyncio.create_task(self._run())
-
-    async def stop(self) -> None:
-        """Stop connection and cleanup."""
-        self._running = False
-        if self._task:
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
-            self._task = None
-
-        if self._ws:
-            await self._ws.close()
-            self._ws = None
-
-    async def send_bytes(self, data: bytes) -> None:
-        """Send raw bytes over WebSocket."""
-        if not self._ws:
-            print("[WebSocketTransport] send_bytes called while not connected")
-            return
-        await self._ws.send(data)
-
-    async def _run(self) -> None:
-        """Main connection/read loop."""
+    async def _connect(self) -> None:
+        """Establish WebSocket connection."""
         import websockets
+        self._ws = await websockets.connect(self.url)
 
-        while self._running:
-            try:
-                print(f"[WebSocketTransport] Connecting to {self.url}...")
-                async with websockets.connect(self.url) as ws:
-                    self._ws = ws
-                    print("[WebSocketTransport] Connected")
-                    self._rx_buffer.clear()
+    def _send_bytes_sync(self, data: bytes) -> None:
+        """Synchronous send (called via executor)."""
+        if self._ws:
+            asyncio.run(self._ws.send(data))
 
-                    async for message in ws:
-                        if isinstance(message, bytes):
-                            self._rx_buffer.extend(message)
-                            # Parse frames using MARA protocol
-                            protocol.extract_frames(self._rx_buffer, self._handle_frame)
-
-            except Exception as e:
-                print(f"[WebSocketTransport] Error: {e}")
-                self._ws = None
-
-            if self._running:
-                print(f"[WebSocketTransport] Reconnecting in {self.reconnect_delay}s...")
-                await asyncio.sleep(self.reconnect_delay)
+    async def _read_loop(self) -> None:
+        """Background read loop."""
+        async for message in self._ws:
+            if isinstance(message, bytes):
+                self._rx_buffer.extend(message)
+                protocol.extract_frames(self._rx_buffer, self._handle_frame)
 ```
 
 ### Step 2: Register in `__init__.py`
@@ -129,28 +98,13 @@ __all__ = [
 
 ### Step 3: Add Factory Support (Optional)
 
-Update the client factory to support the new transport:
+Update the robot factory to support the new transport:
 
 ```python
-# command/factory.py
-
-def create_websocket_client(self, url: str, config: Optional[ClientConfig] = None):
+# In robot.py or factory method
+if uri.startswith("ws://"):
     from mara_host.transport.websocket_transport import WebSocketTransport
-    transport = WebSocketTransport(url)
-    return self._create_client(transport, config)
-```
-
-### Step 4: Add CLI Support (Optional)
-
-Add a new run subcommand:
-
-```python
-# cli/commands/run/websocket.py
-
-async def cmd_websocket(args: argparse.Namespace) -> int:
-    from mara_host.transport.websocket_transport import WebSocketTransport
-    transport = WebSocketTransport(args.url)
-    # ... standard connection flow
+    transport = WebSocketTransport(uri)
 ```
 
 ---
@@ -161,18 +115,18 @@ Adding a sensor requires changes on both MCU (C++) and Host (Python) sides.
 
 ### Existing Sensors
 
-| Sensor | MCU Manager | Host Module |
-|--------|-------------|-------------|
-| Encoder | `EncoderManager` | `EncoderHostModule` |
-| IMU | `ImuManager` | `ImuHostModule` |
-| Ultrasonic | `UltrasonicManager` | `UltrasonicHostModule` |
+| Sensor | MCU Manager | Host Service |
+|:-------|:------------|:-------------|
+| Encoder | `EncoderManager` | Via telemetry |
+| IMU | `ImuManager` | Via telemetry |
+| Ultrasonic | `UltrasonicManager` | Via telemetry |
 
 ### Step 1: Define Commands in Schema
 
-Edit `host/mara_host/tools/schema/commands/_sensors.py` (or create a new `_lidar.py` domain file):
+Edit `host/mara_host/tools/schema/commands/_sensors.py`:
 
 ```python
-# In SENSOR_COMMANDS dict (or new LIDAR_COMMANDS dict)
+# In SENSOR_COMMANDS dict
 "CMD_LIDAR_ATTACH": {
     "kind": "cmd",
     "direction": "host->mcu",
@@ -191,17 +145,6 @@ Edit `host/mara_host/tools/schema/commands/_sensors.py` (or create a new `_lidar
         "sensor_id": {"type": "int", "required": True},
     },
 },
-```
-
-If creating a new domain file, register it in `schema/commands/__init__.py`:
-
-```python
-from ._lidar import LIDAR_COMMANDS
-
-COMMANDS: dict[str, dict] = {
-    # ... existing domains ...
-    **LIDAR_COMMANDS,
-}
 ```
 
 ### Step 2: Add Telemetry Section (If Streaming)
@@ -255,134 +198,111 @@ private:
 Add to `SensorHandler.h` or create a new `LidarHandler.h`:
 
 ```cpp
-// In SensorHandler.h or new LidarHandler.h
-
-bool canHandle(CmdType cmd) const override {
-    switch (cmd) {
-        // ... existing cases
-        case CmdType::LIDAR_ATTACH:
-        case CmdType::LIDAR_READ:
-            return true;
-        default:
-            return false;
-    }
-}
-
 void handleLidarAttach(JsonVariantConst payload, CommandContext& ctx) {
     int sensorId = payload["sensor_id"] | 0;
     int rxPin = payload["rx_pin"] | 0;
     int txPin = payload["tx_pin"] | 0;
 
     bool ok = lidar_.attach(sensorId, rxPin, txPin);
-
-    JsonDocument resp;
-    resp["sensor_id"] = sensorId;
-    ctx.sendAck("CMD_LIDAR_ATTACH", ok, resp);
-}
-
-void handleLidarRead(JsonVariantConst payload, CommandContext& ctx) {
-    int sensorId = payload["sensor_id"] | 0;
-
-    int16_t distMm = lidar_.readDistanceMm(sensorId);
-    uint8_t quality = lidar_.getQuality(sensorId);
-
-    JsonDocument resp;
-    resp["sensor_id"] = sensorId;
-    resp["distance_mm"] = distMm;
-    resp["quality"] = quality;
-    ctx.sendAck("CMD_LIDAR_READ", true, resp);
+    ctx.sendAck("CMD_LIDAR_ATTACH", ok);
 }
 ```
 
-### Step 6: Create Host Module
+### Step 6: Create Service
 
 ```python
-# host/mara_host/sensor/lidar.py
+# host/mara_host/services/control/lidar_service.py
 
-from dataclasses import dataclass
-from mara_host.command.client import MaraClient
-from mara_host.core.event_bus import EventBus
-from mara_host.core.host_module import CommandHostModule
+from mara_host.core.result import ServiceResult
 
+class LidarService:
+    """Service for LiDAR sensor operations."""
 
-@dataclass
-class LidarDefaults:
-    sensor_id: int = 0
-    rx_pin: int = 16
-    tx_pin: int = 17
-
-
-class LidarHostModule(CommandHostModule):
-    """
-    Host-side wrapper for LiDAR sensor commands.
-    """
-
-    module_name = "lidar"
-
-    def __init__(
-        self,
-        bus: EventBus,
-        client: MaraClient,
-        defaults: LidarDefaults | None = None,
-    ) -> None:
-        super().__init__(bus, client)
-        self._defaults = defaults or LidarDefaults()
+    def __init__(self, client):
+        self.client = client
 
     async def attach(
         self,
-        sensor_id: int | None = None,
-        rx_pin: int | None = None,
-        tx_pin: int | None = None,
-    ) -> None:
-        sid = sensor_id if sensor_id is not None else self._defaults.sensor_id
-        rx = rx_pin if rx_pin is not None else self._defaults.rx_pin
-        tx = tx_pin if tx_pin is not None else self._defaults.tx_pin
-
-        await self._client.cmd_lidar_attach(
-            sensor_id=sid,
-            rx_pin=rx,
-            tx_pin=tx,
+        sensor_id: int,
+        rx_pin: int,
+        tx_pin: int,
+    ) -> ServiceResult:
+        ok, error = await self.client.send_reliable(
+            "CMD_LIDAR_ATTACH",
+            {"sensor_id": sensor_id, "rx_pin": rx_pin, "tx_pin": tx_pin},
         )
+        if ok:
+            return ServiceResult.success(data={"sensor_id": sensor_id})
+        return ServiceResult.failure(error=error or "Failed to attach")
 
-    async def read(self, sensor_id: int | None = None) -> dict:
-        sid = sensor_id if sensor_id is not None else self._defaults.sensor_id
-        return await self._client.cmd_lidar_read(sensor_id=sid)
+    async def read(self, sensor_id: int) -> ServiceResult:
+        ok, error = await self.client.send_reliable(
+            "CMD_LIDAR_READ",
+            {"sensor_id": sensor_id},
+        )
+        if ok:
+            return ServiceResult.success()
+        return ServiceResult.failure(error=error or "Failed to read")
 ```
 
-### Step 7: Export Module
+### Step 7: Create API Class
 
 ```python
-# host/mara_host/sensor/__init__.py
+# host/mara_host/api/lidar.py
 
-from .lidar import LidarHostModule, LidarDefaults
+from typing import TYPE_CHECKING
 
-__all__ = [
-    # ... existing exports
-    "LidarHostModule",
-    "LidarDefaults",
-]
+if TYPE_CHECKING:
+    from mara_host.services.control.lidar_service import LidarService
+
+class Lidar:
+    """User-facing LiDAR API."""
+
+    def __init__(self, service: "LidarService"):
+        self._service = service
+        self._attached: dict[int, bool] = {}
+
+    async def attach(
+        self,
+        sensor_id: int,
+        rx_pin: int,
+        tx_pin: int,
+    ) -> None:
+        """Attach a LiDAR sensor."""
+        result = await self._service.attach(sensor_id, rx_pin, tx_pin)
+        if not result.ok:
+            raise RuntimeError(result.error)
+        self._attached[sensor_id] = True
+
+    async def read(self, sensor_id: int) -> dict:
+        """Read LiDAR distance."""
+        if sensor_id not in self._attached:
+            raise ValueError(f"Sensor {sensor_id} not attached")
+        result = await self._service.read(sensor_id)
+        if not result.ok:
+            raise RuntimeError(result.error)
+        return result.data
 ```
 
 ---
 
 ## Adding a New Motor Type
 
-Similar to sensors, motors require MCU driver + host module.
+Similar to sensors, motors require MCU driver + host service + API.
 
 ### Existing Motors
 
-| Motor | MCU Manager | Host Module |
-|-------|-------------|-------------|
-| DC Motor | `DcMotorManager` | Via `MotionHostModule` |
-| Stepper | `StepperManager` | `StepperHostModule` |
-| Servo | `ServoManager` | `ServoHostModule` |
+| Motor | MCU Manager | Host Service |
+|:------|:------------|:-------------|
+| DC Motor | `DcMotorManager` | `MotorService` |
+| Stepper | `StepperManager` | - |
+| Servo | `ServoManager` | `ServoService` |
 
 ### Step 1: Define Commands
 
 Create a new domain file `host/mara_host/tools/schema/commands/_brushless.py`:
 
 ```python
-# schema/commands/_brushless.py
 """Brushless motor (ESC) command definitions."""
 
 BRUSHLESS_COMMANDS: dict[str, dict] = {
@@ -434,8 +354,6 @@ public:
 
     bool attach(uint8_t id, uint8_t pwmPin, uint16_t minUs, uint16_t maxUs);
     void setThrottle(uint8_t id, float throttlePct);
-    void arm(uint8_t id);
-    void disarm(uint8_t id);
 
 private:
     struct Motor {
@@ -448,329 +366,36 @@ private:
 };
 ```
 
-### Step 3: Create Handler
-
-Create `BrushlessHandler.h` or add to existing motor handler:
-
-```cpp
-// firmware/mcu/include/command/handlers/BrushlessHandler.h
-
-#pragma once
-#include "command/ICommandHandler.h"
-#include "motor/BrushlessManager.h"
-
-class BrushlessHandler : public ICommandHandler {
-public:
-    BrushlessHandler(BrushlessManager& manager) : manager_(manager) {}
-
-    const char* name() const override { return "BrushlessHandler"; }
-
-    bool canHandle(CmdType cmd) const override {
-        switch (cmd) {
-            case CmdType::BRUSHLESS_ATTACH:
-            case CmdType::BRUSHLESS_SET_THROTTLE:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    void handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx) override {
-        switch (cmd) {
-            case CmdType::BRUSHLESS_ATTACH:    handleAttach(payload, ctx);    break;
-            case CmdType::BRUSHLESS_SET_THROTTLE: handleSetThrottle(payload, ctx); break;
-            default: break;
-        }
-    }
-
-private:
-    BrushlessManager& manager_;
-
-    void handleAttach(JsonVariantConst payload, CommandContext& ctx) {
-        int motorId = payload["motor_id"] | 0;
-        int pwmPin = payload["pwm_pin"] | 0;
-        int minUs = payload["min_us"] | 1000;
-        int maxUs = payload["max_us"] | 2000;
-
-        bool ok = manager_.attach(motorId, pwmPin, minUs, maxUs);
-
-        JsonDocument resp;
-        resp["motor_id"] = motorId;
-        ctx.sendAck("CMD_BRUSHLESS_ATTACH", ok, resp);
-    }
-
-    void handleSetThrottle(JsonVariantConst payload, CommandContext& ctx) {
-        int motorId = payload["motor_id"] | 0;
-        float throttle = payload["throttle_pct"] | 0.0f;
-
-        manager_.setThrottle(motorId, throttle);
-
-        JsonDocument resp;
-        resp["motor_id"] = motorId;
-        resp["throttle_pct"] = throttle;
-        ctx.sendAck("CMD_BRUSHLESS_SET_THROTTLE", true, resp);
-    }
-};
-```
-
-### Step 4: Create Host Module
-
-```python
-# host/mara_host/motor/brushless.py
-
-from mara_host.command.client import MaraClient
-from mara_host.core.event_bus import EventBus
-from mara_host.core.host_module import CommandHostModule
-
-
-class BrushlessHostModule(CommandHostModule):
-    """
-    Host-side wrapper for brushless motor (ESC) commands.
-    """
-
-    module_name = "brushless"
-
-    def __init__(self, bus: EventBus, client: MaraClient) -> None:
-        super().__init__(bus, client)
-
-    async def attach(
-        self,
-        motor_id: int,
-        pwm_pin: int,
-        min_us: int = 1000,
-        max_us: int = 2000,
-    ) -> None:
-        await self._client.cmd_brushless_attach(
-            motor_id=motor_id,
-            pwm_pin=pwm_pin,
-            min_us=min_us,
-            max_us=max_us,
-        )
-
-    async def set_throttle(self, motor_id: int, throttle_pct: float) -> None:
-        await self._client.cmd_brushless_set_throttle(
-            motor_id=motor_id,
-            throttle_pct=throttle_pct,
-        )
-
-    async def arm(self, motor_id: int) -> None:
-        """Arm ESC by setting minimum throttle."""
-        await self.set_throttle(motor_id, 0.0)
-
-    async def disarm(self, motor_id: int) -> None:
-        """Disarm ESC."""
-        await self.set_throttle(motor_id, 0.0)
-```
-
----
-
-## Adding a Host Module
-
-Host modules wrap MaraClient methods into clean, domain-specific APIs.
-
-### Module Types
-
-| Type | Base Class | Purpose |
-|------|------------|---------|
-| Command Module | `CommandHostModule` | Wraps robot commands |
-| Event Module | `EventHostModule` | Processes EventBus events |
-| Standalone Module | (none) | Independent functionality (e.g., CameraModule) |
-
-### Command Module Template
-
-```python
-# host/mara_host/my_domain/my_module.py
-
-from dataclasses import dataclass
-from typing import Optional
-from mara_host.command.client import MaraClient
-from mara_host.core.event_bus import EventBus
-from mara_host.core.host_module import CommandHostModule
-
-
-@dataclass
-class MyModuleConfig:
-    """Configuration with sensible defaults."""
-    default_id: int = 0
-    timeout_s: float = 1.0
-
-
-class MyHostModule(CommandHostModule):
-    """
-    Host-side module for [domain description].
-
-    Wraps CMD_MY_* commands for cleaner API.
-    """
-
-    module_name = "my_module"
-
-    def __init__(
-        self,
-        bus: EventBus,
-        client: MaraClient,
-        config: Optional[MyModuleConfig] = None,
-    ) -> None:
-        super().__init__(bus, client)
-        self._config = config or MyModuleConfig()
-
-    async def do_something(self, param: int) -> dict:
-        """
-        Perform an action.
-
-        Args:
-            param: Description of parameter
-
-        Returns:
-            Response from MCU
-        """
-        return await self._client.cmd_my_command(
-            id=self._config.default_id,
-            param=param,
-        )
-
-    async def get_status(self) -> dict:
-        """Get current status."""
-        return await self._client.cmd_my_status()
-```
-
-### Event Module Template
-
-```python
-# host/mara_host/my_domain/event_processor.py
-
-from typing import List
-from mara_host.core.event_bus import EventBus
-from mara_host.core.host_module import EventHostModule
-
-
-class MyEventProcessor(EventHostModule):
-    """
-    Processes events from EventBus.
-
-    Subscribes to raw events and publishes processed events.
-    """
-
-    module_name = "my_processor"
-
-    def __init__(self, bus: EventBus) -> None:
-        super().__init__(bus)
-        self._state = {}
-
-    def subscriptions(self) -> List[str]:
-        """Topics this module subscribes to."""
-        return [
-            "telemetry.raw",
-            "sensor.my_sensor",
-        ]
-
-    def _on_telemetry_raw(self, msg: dict) -> None:
-        """Handle raw telemetry events."""
-        # Process and republish
-        processed = self._process(msg)
-        self._bus.publish("telemetry.processed", processed)
-
-    def _on_sensor_my_sensor(self, msg: dict) -> None:
-        """Handle sensor events."""
-        self._state["last_reading"] = msg
-        self._bus.publish("sensor.my_sensor.processed", msg)
-
-    def _process(self, msg: dict) -> dict:
-        """Transform raw message."""
-        return {"value": msg.get("raw_value", 0) * 2}
-```
-
-### Standalone Module Template
-
-For modules that don't need robot commands or event bus:
-
-```python
-# host/mara_host/my_domain/standalone.py
-
-import threading
-from typing import Callable, Optional
-
-
-class MyStandaloneModule:
-    """
-    Standalone module with threading support.
-
-    Similar to CameraModule - manages its own lifecycle.
-    """
-
-    def __init__(
-        self,
-        url: str,
-        callback: Optional[Callable[[dict], None]] = None,
-    ) -> None:
-        self.url = url
-        self._callback = callback
-        self._running = False
-        self._thread: Optional[threading.Thread] = None
-
-    @property
-    def is_running(self) -> bool:
-        return self._running
-
-    def start(self) -> None:
-        """Start background processing."""
-        if self._running:
-            return
-
-        self._running = True
-        self._thread = threading.Thread(
-            target=self._run_loop,
-            daemon=True,
-        )
-        self._thread.start()
-
-    def stop(self) -> None:
-        """Stop background processing."""
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=2.0)
-            self._thread = None
-
-    def _run_loop(self) -> None:
-        """Main processing loop."""
-        while self._running:
-            data = self._fetch_data()
-            if data and self._callback:
-                self._callback(data)
-
-    def _fetch_data(self) -> Optional[dict]:
-        """Fetch data from source."""
-        # Implementation here
-        pass
-```
+### Step 3: Create Service and API
+
+Follow the same pattern as the sensor example above:
+1. Service with `ServiceResult` returns
+2. API with validation and exceptions
 
 ---
 
 ## Adding a Service
 
-Services contain business logic separate from CLI presentation.
+Services contain business logic separate from API presentation.
 
 ### Service Guidelines
 
-1. **No CLI dependencies** - Services return data, not formatted output
-2. **No robot connection required** - Operate on config, files, APIs
+1. **Return `ServiceResult`** - Never raise exceptions
+2. **No CLI dependencies** - Services return data, not formatted output
 3. **Testable in isolation** - Unit tests without hardware
 
 ### Service Template
 
 ```python
-# host/mara_host/services/my_service/my_service.py
+# host/mara_host/services/control/my_service.py
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING
 
+from mara_host.core.result import ServiceResult
 
-@dataclass
-class MyResult:
-    """Result data structure."""
-    success: bool
-    message: str
-    data: Optional[dict] = None
+if TYPE_CHECKING:
+    from mara_host.command.client import MaraClient
 
 
 class MyService:
@@ -780,77 +405,91 @@ class MyService:
     Business logic extracted from CLI commands.
     """
 
-    def __init__(self, config_path: Optional[Path] = None) -> None:
-        self._config_path = config_path or Path("config.json")
+    def __init__(self, client: "MaraClient") -> None:
+        self.client = client
+        self._state: dict = {}
 
-    def validate(self) -> List[str]:
+    async def my_operation(self, param: int) -> ServiceResult:
         """
-        Validate configuration.
-
-        Returns:
-            List of validation errors (empty if valid)
-        """
-        errors = []
-
-        if not self._config_path.exists():
-            errors.append(f"Config not found: {self._config_path}")
-
-        # Add more validation...
-
-        return errors
-
-    def process(self, input_data: dict) -> MyResult:
-        """
-        Process input data.
+        Perform an operation.
 
         Args:
-            input_data: Data to process
+            param: Description of parameter
 
         Returns:
-            MyResult with success status and data
+            ServiceResult with success/failure
         """
-        try:
-            result = self._do_processing(input_data)
-            return MyResult(success=True, message="OK", data=result)
-        except Exception as e:
-            return MyResult(success=False, message=str(e))
+        ok, error = await self.client.send_reliable(
+            "CMD_MY_COMMAND",
+            {"param": param},
+        )
 
-    def _do_processing(self, data: dict) -> dict:
-        """Internal processing logic."""
-        # Implementation here
-        return {"processed": True}
+        if ok:
+            self._state["last_param"] = param
+            return ServiceResult.success(data={"param": param})
+        else:
+            return ServiceResult.failure(error=error or "Failed")
 ```
 
-### Service Directory Structure
+---
 
-```
-services/
-├── __init__.py
-├── my_service/
-│   ├── __init__.py
-│   ├── my_service.py      # Main service class
-│   ├── models.py          # Data structures
-│   └── utils.py           # Helper functions
-```
+## Adding an API Class
 
-### Using Service in CLI
+API classes provide user-facing interfaces with validation.
+
+### API Guidelines
+
+1. **Validate inputs** - Check before calling service
+2. **Raise exceptions** - Convert `ServiceResult.failure` to exceptions
+3. **Track local state** - Know what's been configured
+
+### API Template
 
 ```python
-# cli/commands/my_command.py
+# host/mara_host/api/my_device.py
 
-from mara_host.services.my_service import MyService
+from typing import TYPE_CHECKING
 
-def cmd_validate(args: argparse.Namespace) -> int:
-    service = MyService()
-    errors = service.validate()
+if TYPE_CHECKING:
+    from mara_host.services.control.my_service import MyService
 
-    if errors:
-        for error in errors:
-            console.print(f"[red]✗[/red] {error}")
-        return 1
 
-    console.print("[green]✓[/green] Validation passed")
-    return 0
+class MyDevice:
+    """
+    User-facing API for [device description].
+
+    Validates inputs and raises exceptions on errors.
+    """
+
+    def __init__(self, service: "MyService") -> None:
+        self._service = service
+        self._configured: set[int] = set()
+
+    async def configure(self, device_id: int, param: int) -> None:
+        """
+        Configure a device.
+
+        Args:
+            device_id: Device identifier (0-3)
+            param: Configuration parameter
+
+        Raises:
+            ValueError: If device_id is out of range
+            RuntimeError: If configuration fails
+        """
+        if not 0 <= device_id <= 3:
+            raise ValueError(f"device_id must be 0-3, got {device_id}")
+
+        result = await self._service.configure(device_id, param)
+
+        if not result.ok:
+            raise RuntimeError(result.error)
+
+        self._configured.add(device_id)
+
+    def is_configured(self, device_id: int) -> bool:
+        """Check if a device is configured."""
+        return device_id in self._configured
 ```
 
 ---
@@ -860,41 +499,35 @@ def cmd_validate(args: argparse.Namespace) -> int:
 ### File Locations
 
 | Component | Host Location | MCU Location |
-|-----------|---------------|--------------|
+|:----------|:--------------|:-------------|
 | Transport | `transport/*.py` | `transport/*.h` |
-| Sensor | `sensor/*.py` | `sensor/*.h`, `handlers/SensorHandler.h` |
-| Motor | `motor/*.py` | `motor/*.h`, `handlers/*MotorHandler.h` |
-| Host Module | `{domain}/*.py` | N/A |
-| Service | `services/{name}/*.py` | N/A |
+| Sensor | `services/control/*.py`, `api/*.py` | `sensor/*.h`, `handlers/*.h` |
+| Motor | `services/control/*.py`, `api/*.py` | `motor/*.h`, `handlers/*.h` |
+| Service | `services/control/*.py` | N/A |
+| API | `api/*.py` | N/A |
 
 ### Common Imports
 
 ```python
-# For command modules
-from mara_host.command.client import MaraClient
-from mara_host.core.event_bus import EventBus
-from mara_host.core.host_module import CommandHostModule, EventHostModule
-
-# For transports
-from mara_host.transport.async_base_transport import AsyncBaseTransport
-from mara_host.core import protocol
-
 # For services
-from dataclasses import dataclass
-from pathlib import Path
+from mara_host.core.result import ServiceResult
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mara_host.command.client import MaraClient
+
+# For API classes
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mara_host.services.control.my_service import MyService
 ```
 
-### Regenerate After Changes
+### Layer Flow
 
-```bash
-# After editing any schema file (commands/, telemetry.py, binary.py, etc.)
-mara generate all
-
-# Build firmware
-make build-mcu
-
-# Run tests
-make test
+```
+User → API (validate, exceptions) → Service (logic, ServiceResult)
+     → Client (routing) → Commander (dispatch) → Transport (bytes)
 ```
 
 ---
@@ -905,3 +538,11 @@ make test
 - [CODEGEN.md](./CODEGEN.md) - Code generation system
 - [COMPOSITION.md](./COMPOSITION.md) - Architecture patterns
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System overview
+
+---
+
+<div align="center">
+
+*API validates → Service processes → Commander dispatches*
+
+</div>

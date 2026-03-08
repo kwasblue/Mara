@@ -3,13 +3,14 @@
 
 from typing import Optional
 
-from PySide6.QtCore import Qt, QRectF
+from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QPainterPath
 from PySide6.QtWidgets import QDialog, QWidget
 
 from ..core.block import BlockBase
 from ..core.models import BlockConfig, PortConfig, PortKind, PortType
 from ..core.port import Port
+from ..core.esp32_pinout import get_pin_info, PIN_CATEGORY_COLORS
 
 
 # ESP32 DevKit GPIO layout (simplified for diagram)
@@ -122,13 +123,20 @@ class ESP32Block(BlockBase):
         # Left side labels
         for port in self._input_ports:
             gpio_str = port.config.port_id.replace("GPIO", "")
-            assigned = self._pin_assignments.get(int(gpio_str))
+            try:
+                gpio_num = int(gpio_str)
+                assigned = self._pin_assignments.get(gpio_num)
+            except ValueError:
+                assigned = None
+                gpio_num = None
 
             if assigned:
                 painter.setPen(QPen(QColor("#22C55E")))  # Green for assigned
                 text = f"{gpio_str}:{assigned[:6]}"
             else:
-                painter.setPen(QPen(QColor("#71717A")))
+                # Use ESP32 pinout color based on pin category
+                color = self._get_gpio_label_color(gpio_num)
+                painter.setPen(QPen(color))
                 text = gpio_str
 
             text_rect = QRectF(
@@ -142,13 +150,20 @@ class ESP32Block(BlockBase):
         # Right side labels
         for port in self._output_ports:
             gpio_str = port.config.port_id.replace("GPIO", "")
-            assigned = self._pin_assignments.get(int(gpio_str))
+            try:
+                gpio_num = int(gpio_str)
+                assigned = self._pin_assignments.get(gpio_num)
+            except ValueError:
+                assigned = None
+                gpio_num = None
 
             if assigned:
                 painter.setPen(QPen(QColor("#22C55E")))
                 text = f"{assigned[:6]}:{gpio_str}"
             else:
-                painter.setPen(QPen(QColor("#71717A")))
+                # Use ESP32 pinout color based on pin category
+                color = self._get_gpio_label_color(gpio_num)
+                painter.setPen(QPen(color))
                 text = gpio_str
 
             text_rect = QRectF(
@@ -159,6 +174,78 @@ class ESP32Block(BlockBase):
             )
             painter.drawText(text_rect, Qt.AlignRight | Qt.AlignVCenter, text)
 
+    def _get_gpio_label_color(self, gpio: Optional[int]) -> QColor:
+        """Get color for GPIO label based on pin category."""
+        if gpio is None:
+            return QColor("#71717A")
+
+        pin_info = get_pin_info(gpio)
+        if not pin_info:
+            return QColor("#71717A")
+
+        # Use category colors for visual feedback
+        category = pin_info.color_category
+        color_hex = PIN_CATEGORY_COLORS.get(category)
+        if color_hex:
+            return QColor(color_hex)
+
+        return QColor("#71717A")
+
     def get_config_dialog(self, parent: QWidget) -> Optional[QDialog]:
         """ESP32 has no additional config dialog for now."""
+        return None
+
+    def handle_port_click(self, port: Port, global_pos: QPointF) -> bool:
+        """
+        Handle click on a GPIO port - show pin info popup.
+
+        Args:
+            port: The port that was clicked
+            global_pos: Global position for popup placement
+
+        Returns:
+            True if handled, False otherwise
+        """
+        # Extract GPIO number from port ID (e.g., "GPIO23" -> 23)
+        port_id = port.config.port_id
+        if port_id.startswith("GPIO"):
+            try:
+                gpio = int(port_id[4:])
+                self._show_pin_info(gpio, global_pos)
+                return True
+            except ValueError:
+                pass
+        return False
+
+    def _show_pin_info(self, gpio: int, pos: QPointF) -> None:
+        """Show pin info dialog for a GPIO."""
+        from ..dialogs.pin_info import PinInfoDialog
+
+        # Create and show dialog
+        dialog = PinInfoDialog(gpio)
+        dialog.move(int(pos.x()), int(pos.y()))
+        dialog.exec()
+
+    def get_port_color(self, port: Port) -> Optional[QColor]:
+        """
+        Get custom color for a port based on ESP32 pinout info.
+
+        Returns:
+            QColor if custom color should be used, None for default
+        """
+        port_id = port.config.port_id
+        if not port_id.startswith("GPIO"):
+            return None
+
+        try:
+            gpio = int(port_id[4:])
+            pin_info = get_pin_info(gpio)
+            if pin_info:
+                category = pin_info.color_category
+                color_hex = PIN_CATEGORY_COLORS.get(category)
+                if color_hex:
+                    return QColor(color_hex)
+        except ValueError:
+            pass
+
         return None

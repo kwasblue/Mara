@@ -31,7 +31,14 @@ class ReliableCommander:
     """
     Tracks pending commands and handles retries on timeout.
 
-    Adds optional event emission so you can pipe events to your JSONL flight recorder:
+    All outgoing commands flow through this class, providing a single
+    chokepoint for debugging and event logging.
+
+    Supports two modes:
+    - Reliable: Full tracking with ACK, retries, and timeout handling
+    - Streaming: Fire-and-forget with optional binary encoding for low latency
+
+    Event emission for JSONL flight recorder:
         on_event("cmd.sent", {...})
         on_event("cmd.retry", {...})
         on_event("cmd.ack", {...})
@@ -47,18 +54,23 @@ class ReliableCommander:
         send_func: Callable[[str, Dict[str, Any], Optional[int]], Awaitable[int]],
         timeout_s: float = 0.25,
         max_retries: int = 3,
-        on_event: Optional[Callable[[Dict[str, Any]], None]] = None
+        on_event: Optional[Callable[[Dict[str, Any]], None]] = None,
+        send_binary_func: Optional[Callable[[str, Dict[str, Any]], Awaitable[None]]] = None,
     ):
         """
         Args:
             send_func:
-                Async function that sends command and returns sequence number.
+                Async function that sends JSON command and returns sequence number.
                 Signature: async send_func(cmd_type, payload, seq_override) -> seq
             timeout_s: Time to wait for ack before retry
             max_retries: Number of retries before giving up
             on_event: Optional callback for structured events (JSONL-friendly)
+            send_binary_func:
+                Optional async function for binary-encoded commands (streaming).
+                Signature: async send_binary_func(cmd_type, payload) -> None
         """
         self.send_func = send_func
+        self.send_binary_func = send_binary_func
         self.timeout_s = float(timeout_s)
         self.max_retries = int(max_retries)
         self._on_event = on_event
@@ -68,6 +80,7 @@ class ReliableCommander:
 
         # Stats
         self.commands_sent = 0
+        self.commands_sent_binary = 0
         self.acks_received = 0
         self.timeouts = 0
         self.retries = 0
@@ -143,17 +156,50 @@ class ReliableCommander:
         self,
         cmd_type: str,
         payload: Optional[Dict[str, Any]] = None,
-    ) -> int:
-        """Send without tracking. Use for heartbeats etc."""
-        # Avoid dict copy for efficiency - safe for fire-and-forget (no retry/tracking)
+        binary: bool = False,
+    ) -> Optional[int]:
+        """
+        Send without tracking. Use for streaming commands.
+
+        Args:
+            cmd_type: Command type (e.g., "CMD_SET_VEL")
+            payload: Command payload dict
+            binary: If True, use binary encoding (lower latency, smaller wire size)
+
+        Returns:
+            Sequence number (JSON path) or None (binary path)
+        """
+        sent_ns = time.monotonic_ns()
+
+        if binary and self.send_binary_func is not None:
+            # Binary path: lower latency, no sequence number
+            await self.send_binary_func(cmd_type, payload or {})
+            self.commands_sent += 1
+            self.commands_sent_binary += 1
+            self._emit(
+                "cmd.sent",
+                cmd_type=cmd_type,
+                wait_for_ack=False,
+                binary=True,
+                sent_ns=sent_ns,
+            )
+            return None
+
+        # JSON path: has sequence number
         if payload is None:
             payload = {"wantAck": False}
         elif "wantAck" not in payload:
-            payload["wantAck"] = False  # Mutate in place
-        sent_ns = time.monotonic_ns()
+            payload["wantAck"] = False
         seq = await self.send_func(cmd_type, payload, None)
         self.commands_sent += 1
-        self._emit("cmd.sent", seq=seq, cmd_type=cmd_type, wait_for_ack=False, sent_ns=sent_ns)
+        self._emit(
+            "cmd.sent",
+            seq=seq,
+            cmd_type=cmd_type,
+            wait_for_ack=False,
+            binary=False,
+            sent_ns=sent_ns,
+        )
         return seq
 
     def on_ack(self, seq: int, ok: bool, error: Optional[str] = None) -> None:
@@ -303,6 +349,7 @@ class ReliableCommander:
     def stats(self) -> Dict[str, int]:
         return {
             "commands_sent": self.commands_sent,
+            "commands_sent_binary": self.commands_sent_binary,
             "acks_received": self.acks_received,
             "timeouts": self.timeouts,
             "retries": self.retries,

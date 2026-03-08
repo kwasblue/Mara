@@ -13,27 +13,27 @@ flowchart LR
     subgraph SYSTEM[" "]
         direction TB
 
-        subgraph HOST["🐍 <b>PYTHON HOST</b>"]
+        subgraph HOST["<b>PYTHON HOST</b>"]
             direction LR
-            H1["<b>👤 App</b><br/>Robot()"]
-            H2["<b>📦 API</b><br/>GPIO•PWM•Servo<br/>DiffDrive•Encoder"]
-            H3["<b>🤖 Core</b><br/>Robot•Runtime<br/>BaseModule"]
-            H4["<b>📡 Client</b><br/>send_json()<br/>send_binary()"]
-            H5["<b>📦 Protocol</b><br/>[0xAA][LEN]<br/>[TYPE][CRC]"]
-            H6["<b>🔌 Transport</b><br/>Serial•WiFi•BT"]
+            H1["<b>App</b><br/>Robot()"]
+            H2["<b>API</b><br/>GPIO•Servo<br/>validate"]
+            H3["<b>Services</b><br/>ServiceResult<br/>state track"]
+            H4["<b>Commander</b><br/>all commands<br/>events"]
+            H5["<b>Protocol</b><br/>[0xAA][LEN]<br/>[TYPE][CRC]"]
+            H6["<b>Transport</b><br/>Serial•WiFi•BT"]
 
             H1 --> H2 --> H3 --> H4 --> H5 --> H6
         end
 
         WIRE["<b>⚡ USB  •  TCP:3333  •  Bluetooth ⚡</b>"]
 
-        subgraph MCU["🔧 <b>ESP32 MCU</b>"]
+        subgraph MCU["<b>ESP32 MCU</b>"]
             direction LR
-            M1["<b>📡 Transport</b><br/>UART•WiFi•BLE"]
-            M2["<b>📋 Handlers</b><br/>Safety•Motion<br/>GPIO•Servo"]
-            M3["<b>🎯 Intents</b><br/>Velocity<br/>Servo•Signal"]
-            M4["<b>⚡ Control</b><br/>100Hz RT_SAFE<br/>SignalBus•PID"]
-            M5["<b>⚙️ Hardware</b><br/>Motors•Encoders<br/>IMU•Sonar"]
+            M1["<b>Transport</b><br/>UART•WiFi•BLE"]
+            M2["<b>Handlers</b><br/>Safety•Motion<br/>GPIO•Servo"]
+            M3["<b>Intents</b><br/>Velocity<br/>Servo•Signal"]
+            M4["<b>Control</b><br/>100Hz RT_SAFE<br/>SignalBus•PID"]
+            M5["<b>Hardware</b><br/>Motors•Encoders<br/>IMU•Sonar"]
 
             M1 --> M2 --> M3 --> M4 --> M5
         end
@@ -47,7 +47,7 @@ flowchart LR
     style SYSTEM fill:#ffffff,stroke:#e2e8f0,stroke-width:1px
 
     style H1 fill:#dbeafe,stroke:#3b82f6,color:#1e40af
-    style H4 fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    style H4 fill:#c7d2fe,stroke:#6366f1,color:#3730a3,stroke-width:2px
     style H6 fill:#93c5fd,stroke:#3b82f6,color:#1e40af
     style M1 fill:#6ee7b7,stroke:#10b981,color:#065f46
     style M4 fill:#4ade80,stroke:#22c55e,color:#166534,stroke-width:2px

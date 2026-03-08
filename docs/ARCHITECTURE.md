@@ -1,382 +1,280 @@
 # MARA Host Architecture
 
-**Modular Asynchronous Robotics Architecture - Python Host Component**
+<div align="center">
 
----
+**Modular Asynchronous Robotics Architecture**
+
+*Python Host Component*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+</div>
 
 ## Overview
 
-The MARA Host library (`mara_host`) is a **platform** providing composable building blocks for controlling ESP32-based robots. The design prioritizes flexibility and extensibility over opinionated abstractions.
+MARA Host (`mara_host`) is a **platform** providing composable building blocks for controlling ESP32-based robots. The design prioritizes clarity, performance, and extensibility.
 
-## Host vs MCU Control Model
+---
 
-The MARA system supports two control architectures:
-
-### Option A: Host Streaming (Teleoperation/Research)
+## System Diagram
 
 ```
-┌─────────────────┐      50Hz       ┌─────────────────┐
-│  Python Host    │ ──SET_VEL────►  │      MCU        │
-│  (controller)   │                 │  (motor driver) │
-└─────────────────┘                 └─────────────────┘
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                           USER APPLICATION                                 ┃
+┃                      (scripts, notebooks, CLI)                            ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃                                                                            ┃
+┃  ╔═══════════════════════════════════════════════════════════════════╗    ┃
+┃  ║                         Robot                                      ║    ┃
+┃  ║              (main entry point, context manager)                   ║    ┃
+┃  ║  ┌─────────┬─────────┬──────────┬──────────┬─────────┬─────────┐  ║    ┃
+┃  ║  │  .gpio  │  .pwm   │ .motion  │  .servo  │ .client │  .bus   │  ║    ┃
+┃  ║  └─────────┴─────────┴──────────┴──────────┴─────────┴─────────┘  ║    ┃
+┃  ╚═══════════════════════════════════════════════════════════════════╝    ┃
+┃                                   │                                        ┃
+┃  ╔════════════════════════════════╧════════════════════════════════╗      ┃
+┃  ║                    API Layer  (api/)                             ║      ┃
+┃  ║      User-facing interfaces with validation & exceptions        ║      ┃
+┃  ║  ┌──────────┬──────────┬──────────┬──────────┬──────────┐       ║      ┃
+┃  ║  │   GPIO   │   PWM    │  Servo   │  Motor   │ Encoder  │       ║      ┃
+┃  ║  └──────────┴──────────┴──────────┴──────────┴──────────┘       ║      ┃
+┃  ╚════════════════════════════════╤════════════════════════════════╝      ┃
+┃                                   │                                        ┃
+┃  ╔════════════════════════════════╧════════════════════════════════╗      ┃
+┃  ║                  Service Layer  (services/)                      ║      ┃
+┃  ║       State tracking, limits, validation, returns ServiceResult  ║      ┃
+┃  ║  ┌──────────┬──────────┬──────────┬──────────┬──────────┐       ║      ┃
+┃  ║  │  GPIO    │  Motion  │  Servo   │  Motor   │  State   │       ║      ┃
+┃  ║  │ Service  │ Service  │ Service  │ Service  │ Service  │       ║      ┃
+┃  ║  └──────────┴──────────┴──────────┴──────────┴──────────┘       ║      ┃
+┃  ╚════════════════════════════════╤════════════════════════════════╝      ┃
+┃                                   │                                        ┃
+┃  ╔════════════════════════════════╧════════════════════════════════╗      ┃
+┃  ║                      MaraClient  (command/)                      ║      ┃
+┃  ║           Coordinator: routing, handshake, telemetry             ║      ┃
+┃  ╠══════════════════════════════════════════════════════════════════╣      ┃
+┃  ║  ┌────────────────────────────────────────────────────────────┐  ║      ┃
+┃  ║  │              ReliableCommander                              │  ║      ┃
+┃  ║  │    ╭─────────────────────────────────────────────────────╮  │  ║      ┃
+┃  ║  │    │  ALL commands flow through here (single chokepoint) │  │  ║      ┃
+┃  ║  │    │                                                     │  │  ║      ┃
+┃  ║  │    │  • Reliable: tracking, ACK, retries                 │  │  ║      ┃
+┃  ║  │    │  • Streaming: fire-and-forget (binary=True/False)   │  │  ║      ┃
+┃  ║  │    │  • Event emission for debugging                     │  │  ║      ┃
+┃  ║  │    ╰─────────────────────────────────────────────────────╯  │  ║      ┃
+┃  ║  └────────────────────────────────────────────────────────────┘  ║      ┃
+┃  ╚════════════════════════════════╤════════════════════════════════╝      ┃
+┃                                   │                                        ┃
+┃  ╔════════════════════════════════╧════════════════════════════════╗      ┃
+┃  ║                    Protocol  (core/protocol.py)                  ║      ┃
+┃  ║           Frame encoding, CRC16-CCITT, binary/JSON               ║      ┃
+┃  ╚════════════════════════════════╤════════════════════════════════╝      ┃
+┃                                   │                                        ┃
+┃  ╔════════════════════════════════╧════════════════════════════════╗      ┃
+┃  ║                  Transport Layer  (transport/)                   ║      ┃
+┃  ║  ┌──────────┬──────────┬──────────┬──────────┬──────────┐       ║      ┃
+┃  ║  │  Serial  │   TCP    │Bluetooth │   MQTT   │   CAN    │       ║      ┃
+┃  ║  └──────────┴──────────┴──────────┴──────────┴──────────┘       ║      ┃
+┃  ╚════════════════════════════════╤════════════════════════════════╝      ┃
+┃                                   │                                        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┿━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+                                    │
+                              ══════╧══════
+                                   MCU
+                              ESP32 Firmware
 ```
 
-Use when:
-- Teleoperation (joystick control)
-- Research/prototyping (iterate in Python)
-- ML controllers (neural net on host)
+---
+
+## Command Flow
+
+All commands flow through **ReliableCommander** - the single chokepoint for debugging and event logging.
+
+### Two Paths, One Entry Point
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                         │
+│    robot.motion.set_velocity(0.5, 0.0, binary=True)                    │
+│                            │                                            │
+│                            ▼                                            │
+│    ┌─────────────────────────────────────────────────────────────────┐ │
+│    │  MotionService.set_velocity()                                    │ │
+│    │  • Apply limits/clamping                                        │ │
+│    │  • Track last_velocity state                                    │ │
+│    └───────────────────────────┬─────────────────────────────────────┘ │
+│                                │                                        │
+│                                ▼                                        │
+│    ┌─────────────────────────────────────────────────────────────────┐ │
+│    │  MaraClient.send_stream(binary=True)                            │ │
+│    └───────────────────────────┬─────────────────────────────────────┘ │
+│                                │                                        │
+│                                ▼                                        │
+│    ╔═════════════════════════════════════════════════════════════════╗ │
+│    ║          ReliableCommander.send_fire_and_forget()               ║ │
+│    ║                                                                  ║ │
+│    ║   binary=False              │              binary=True          ║ │
+│    ║   ┌─────────────────┐       │       ┌─────────────────┐         ║ │
+│    ║   │   JSON Path     │       │       │  Binary Path    │         ║ │
+│    ║   │  ~50 bytes      │       │       │   9 bytes       │         ║ │
+│    ║   └────────┬────────┘       │       └────────┬────────┘         ║ │
+│    ║            │                │                │                   ║ │
+│    ║            └────────────────┼────────────────┘                   ║ │
+│    ║                             │                                    ║ │
+│    ║              _emit("cmd.sent", ...)  ← Event for debugging      ║ │
+│    ║              commands_sent += 1                                  ║ │
+│    ╚═════════════════════════════╤═══════════════════════════════════╝ │
+│                                  │                                      │
+│                                  ▼                                      │
+│    ┌─────────────────────────────────────────────────────────────────┐ │
+│    │  Protocol.encode()  →  Transport.send_bytes()                   │ │
+│    └─────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Command Methods
+
+| Method | Path | Use Case |
+|:-------|:-----|:---------|
+| `send_reliable()` | Commander → track + ACK | Config, safety commands |
+| `send_stream(binary=False)` | Commander → JSON fire-and-forget | Standard streaming |
+| `send_stream(binary=True)` | Commander → binary fire-and-forget | High-rate (50+ Hz) |
+
+---
+
+## Layer Responsibilities
+
+### API Layer (`api/`)
+
+**Purpose:** User-facing interface with validation and clear exceptions.
 
 ```python
-# Host streams velocity commands at 50Hz
-async def teleop_loop(client, joystick):
-    while True:
-        vx = joystick.get_axis(1) * MAX_VEL
-        omega = joystick.get_axis(0) * MAX_OMEGA
-        await client.send_vel_binary(vx, omega)
-        await asyncio.sleep(0.02)  # 50Hz
+class GPIO:
+    async def write(self, channel: int, value: int) -> None:
+        if not self.is_registered(channel):
+            raise ValueError(f"Channel {channel} is not registered")
+        result = await self._service.write(channel, value)
+        if not result.ok:
+            raise RuntimeError(result.error)
 ```
 
-### Option B: MCU Control (Autonomous/Low-Latency)
+**Key principle:** API validates, Service executes, Client sends.
 
-```
-┌─────────────────┐    on change    ┌─────────────────┐
-│  Python Host    │ ──SET_SIGNAL──► │      MCU        │
-│  (supervisor)   │                 │ (FreeRTOS ctrl) │
-└─────────────────┘                 └─────────────────┘
-```
+---
 
-Use when:
-- Autonomous navigation
-- Low-latency requirements
-- Disconnection tolerance needed
+### Service Layer (`services/`)
+
+**Purpose:** Business logic, state tracking, returns `ServiceResult`.
 
 ```python
-# Host sets references, MCU runs 100Hz control loop
-async def nav_loop(client, path_planner):
-    # Configure MCU controller once
-    await client.send_json("CMD_CTRL_SLOT_CONFIG", {...})
-    await client.send_json("CMD_CTRL_SLOT_ENABLE", {"slot": 0, "enable": True})
+class MotionService:
+    async def set_velocity(self, vx: float, omega: float, binary: bool = True):
+        # Apply limits
+        vx = clamp(vx, -self._limit, self._limit)
 
-    while not at_goal:
-        target_vel = path_planner.compute_velocity()
-        await client.send_signal_binary(SIG_VX_REF, target_vel)
-        await asyncio.sleep(0.1)  # 10Hz is fine - MCU handles timing
+        # Send through unified path
+        await self.client.send_stream("CMD_SET_VEL", {"vx": vx, "omega": omega}, binary=binary)
+
+        # Track state
+        self._last_velocity = Velocity(vx, omega)
 ```
 
-### Key Methods
+---
 
-| Method | Use Case | Protocol |
-|--------|----------|----------|
-| `send_vel_binary(vx, omega)` | Host streaming | Binary, 9 bytes |
-| `send_signal_binary(id, val)` | MCU control | Binary, 7 bytes |
-| `send_json(cmd, payload)` | Configuration | JSON, ~50 bytes |
-| `send_reliable(cmd, payload)` | Config with ACK | JSON + retry |
+### MaraClient (`command/client.py`)
 
-## Layer Diagram
+**Purpose:** Coordinator/facade that ties everything together.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      User Application                            │
-│                  (examples, custom robots)                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                        Robot                             │    │
-│  │     (main entry point, exposes HostModules as props)     │    │
-│  │  ┌────────┬────────┬─────────┬─────────┬─────────┐      │    │
-│  │  │ .gpio  │ .pwm   │ .motion │ .client │  .bus   │      │    │
-│  │  └────────┴────────┴─────────┴─────────┴─────────┘      │    │
-│  └───────────────────────────┬─────────────────────────────┘    │
-│                              │                                   │
-│  ┌───────────────────────────┴───────────────────────────┐      │
-│  │                    HostModules                         │      │
-│  │     (hw/, motor/, sensor/, module/ - building blocks)  │      │
-│  ├──────────┬──────────┬──────────┬──────────┬───────────┤      │
-│  │ GpioHost │ PwmHost  │ Motion   │ Encoder  │ Telemetry │      │
-│  │ Module   │ Module   │ HostMod  │ HostMod  │ HostMod   │      │
-│  ├──────────┴──────────┴──────────┴──────────┴───────────┤      │
-│  │              CameraHostModule (module/camera/)         │      │
-│  │      ESP32-CAM streaming, presets, ML preprocessing    │      │
-│  └───────────────────────────────────────────────────────┘      │
-│                              │                                   │
-│  ┌───────────────────────────┴───────────────────────────┐      │
-│  │              MaraClient + EventBus               │      │
-│  │         (command handling, pub/sub messaging)          │      │
-│  └─────────────────────────┬─────────────────────────────┘      │
-│                            │                                     │
-│  ┌─────────────────────────┴─────────────────────────────┐      │
-│  │                    Transport Layer                     │      │
-│  ├─────────────┬─────────────┬─────────────┬─────────────┤      │
-│  │   Serial    │    TCP      │  Bluetooth  │   Stream    │      │
-│  │  Transport  │  Transport  │  Transport  │  Transport  │      │
-│  └─────────────┴─────────────┴─────────────┴─────────────┘      │
-│                            │                                     │
-│  ┌─────────────────────────┴─────────────────────────────┐      │
-│  │                    Protocol Layer                      │      │
-│  │               (frame encoding/decoding)                │      │
-│  └───────────────────────────────────────────────────────┘      │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Responsibilities:**
+- Transport lifecycle (start/stop)
+- Version handshake
+- Heartbeat loop
+- Frame dispatch
+- Routes to ReliableCommander
 
-## Design Philosophy
+**Lazy initialization:** Logs are loaded on first access for faster startup.
 
-The library is a **platform**, not a product:
-
-- **Building blocks** - HostModules are composable primitives
-- **Direct access** - Robot exposes HostModules as lazy properties
-- **No lock-in** - Import HostModules directly for custom setups
-- **Extensible** - Easy to add new modules following the pattern
-
-## Core Components
-
-### Robot
-
-Main entry point exposing HostModules as lazy properties:
-
-```python
-from mara_host import Robot
-
-async with Robot("/dev/ttyUSB0") as robot:
-    # HostModules via properties
-    await robot.gpio.write(0, 1)
-    await robot.pwm.set(0, duty=0.5)
-    await robot.motion.set_velocity(0.3, 0.0)
-
-    # Direct client access for advanced use
-    await robot.client.cmd_some_command(param=1)
-
-    # EventBus for pub/sub
-    robot.on("telemetry.imu", handler)
-```
-
-### HostModules
-
-Building blocks that wrap client commands. Each takes `(bus, client)`:
-
-```python
-from mara_host.hw.gpio import GpioHostModule
-from mara_host.motor.motion import MotionHostModule
-
-# Use directly with your own infrastructure
-gpio = GpioHostModule(my_bus, my_client)
-await gpio.write(channel=0, value=1)
-```
-
-### CameraHostModule
-
-Standalone module for ESP32-CAM integration (doesn't require MaraClient):
-
-```python
-from mara_host.core.event_bus import EventBus
-from mara_host.camera import CameraHostModule
-
-bus = EventBus()
-camera = CameraHostModule(bus, cameras={0: "http://10.0.0.66"})
-
-# Subscribe to frames
-bus.subscribe("camera.frame.0", on_frame)
-bus.subscribe("camera.ml_frame.0", on_ml_frame)
-
-# Control via commands
-bus.publish("cmd.camera", {
-    "cmd": "CMD_CAM_START_CAPTURE",
-    "camera_id": 0,
-    "mode": "streaming",
-})
-```
-
-Features:
-- MJPEG streaming (~15 FPS) via port 81
-- ML preprocessing (224x224, ImageNet normalized, CHW format)
-- 9 presets (streaming, night, ml_inference, surveillance, etc.)
-- Multi-camera support
-- Recording to video/images
-
-See `mara_host/module/camera/README.md` for full documentation.
-
-### MaraClient
-
-Low-level interface for robot communication:
-
-```python
-class MaraClient:
-    def __init__(self, transport, bus=None, ...):
-        self.transport = transport
-        self.bus = bus or EventBus()
-        self.connection = ConnectionMonitor(...)
-        self.commander = ReliableCommander(...)
-
-    async def start(self):
-        # 1. Start transport
-        # 2. Perform version handshake
-        # 3. Start heartbeat loop
-        # 4. Start connection monitor
-
-    async def stop(self):
-        # 1. Cancel heartbeat
-        # 2. Stop monitors
-        # 3. Close transport
-```
-
-### EventBus
-
-Decoupled pub/sub messaging:
-
-```python
-class EventBus:
-    def subscribe(self, topic: str, handler: Callable):
-        self._handlers[topic].append(handler)
-
-    def publish(self, topic: str, data: Any):
-        for handler in self._handlers.get(topic, []):
-            handler(data)
-```
-
-Common topics:
-- `telemetry.*` - Sensor data
-- `cmd.*` - Command ACKs
-- `cmd.camera` - Camera commands
-- `camera.frame.<id>` - Camera frames (BGR)
-- `camera.ml_frame.<id>` - ML-ready frames (224x224, CHW)
-- `connection.*` - Connection events
-- `heartbeat` - Keep-alive
+---
 
 ### ReliableCommander
 
-Guaranteed delivery with retries:
+**Purpose:** Single chokepoint for all outgoing commands.
 
 ```python
 class ReliableCommander:
-    async def send(self, cmd_type, payload, wait_for_ack=True):
-        seq = await self.send_func(cmd_type, payload)
-        if wait_for_ack:
-            future = self._pending[seq].future
-            return await future  # (ok, error)
-        return True, None
+    async def send_fire_and_forget(self, cmd_type: str, payload: dict, binary: bool = False):
+        """All streaming commands flow through here."""
+        if binary and self.send_binary_func:
+            await self.send_binary_func(cmd_type, payload)
+        else:
+            await self.send_func(cmd_type, payload, None)
 
-    def on_ack(self, seq, ok, error):
-        cmd = self._pending.pop(seq)
-        cmd.future.set_result((ok, error))
+        self.commands_sent += 1
+        self._emit("cmd.sent", ...)  # For debugging
 ```
+
+**Stats available:**
+- `commands_sent`
+- `commands_sent_binary`
+- `acks_received`
+- `timeouts`
+- `retries`
+
+---
 
 ### Transport Layer
 
-Abstract interface for communication:
+**Optimizations in `StreamTransport`:**
 
 ```python
-class HasSendBytes(Protocol):
-    async def send_bytes(self, data: bytes) -> None: ...
-    def set_frame_handler(self, handler: Callable[[bytes], None]) -> None: ...
-    def start(self) -> object: ...
-    def stop(self) -> object: ...
+class StreamTransport:
+    def __init__(self):
+        # asyncio.Lock for async coordination (no thread overhead)
+        self._async_lock = asyncio.Lock()
+
+        # Dedicated executor (single thread, reused)
+        self._write_executor = ThreadPoolExecutor(max_workers=1)
+
+        # Cached loop reference
+        self._cached_loop = None
+
+    async def send_bytes(self, data: bytes):
+        async with self._async_lock:  # Serialize async callers
+            await self._cached_loop.run_in_executor(
+                self._write_executor,
+                self._send_bytes_sync,
+                data
+            )
 ```
 
-Implementations:
-- `SerialTransport` - USB/UART serial
-- `AsyncTcpTransport` - WiFi TCP with auto-reconnect
-- `BluetoothTransport` - Bluetooth Classic
-- `MQTTTransport` - MQTT pub/sub (multi-node capable)
+---
 
-### MQTT Multi-Node Architecture
+## EventBus
 
-For controlling multiple ESP32 nodes over MQTT:
+Simple pub/sub with async support.
 
-```
-┌────────────────────────────────────────────────────────────┐
-│                          HOST                               │
-│  ┌─────────────┐                                           │
-│  │NodeManager  │ ── manages multiple NodeProxy instances   │
-│  └──────┬──────┘                                           │
-│         │                                                   │
-│  ┌──────┴──────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │ NodeProxy   │  │ NodeProxy    │  │ NodeProxy    │       │
-│  │ (node0)     │  │ (node1)      │  │ (node2)      │       │
-│  │  └─Client   │  │  └─Client    │  │  └─Client    │       │
-│  │  └─Transport│  │  └─Transport │  │  └─Transport │       │
-│  └─────────────┘  └──────────────┘  └──────────────┘       │
-│         │                │                 │                │
-│    ┌────┴────────────────┴─────────────────┴────┐          │
-│    │              MQTT Broker                    │          │
-│    │           (mosquitto:1883)                  │          │
-│    └────────────────────┬───────────────────────┘          │
-└─────────────────────────┼──────────────────────────────────┘
-                          │
-                     Wi-Fi LAN
-                          │
-      ┌───────────────────┼───────────────────┐
-      │                   │                   │
-┌─────▼─────┐      ┌──────▼──────┐     ┌──────▼──────┐
-│  ESP32    │      │   ESP32     │     │   ESP32     │
-│  node0    │      │   node1     │     │   node2     │
-│           │      │             │     │             │
-│ mara/node0│      │ mara/node1  │     │ mara/node2  │
-│ /cmd /ack │      │ /cmd /ack   │     │ /cmd /ack   │
-└───────────┘      └─────────────┘     └─────────────┘
+```python
+class EventBus:
+    def publish(self, topic: str, data: Any) -> None:
+        """Synchronous dispatch (fast)."""
+
+    async def publish_async(self, topic: str, data: Any) -> None:
+        """Async dispatch - awaits async handlers."""
 ```
 
-**Key Components:**
+**Common topics:**
 
-| Component | Role |
-|-----------|------|
-| `NodeManager` | Orchestrates discovery, health monitoring, broadcast |
-| `NodeProxy` | Per-node wrapper with transport + client |
-| `NodeDiscovery` | Fleet-wide discovery via `mara/fleet/discover` |
-| `MQTTTransport` | MQTT-based transport implementing `HasSendBytes` |
+| Topic | Description |
+|:------|:------------|
+| `telemetry` | All telemetry packets |
+| `telemetry.imu` | IMU data |
+| `telemetry.encoder0` | Encoder data |
+| `cmd.sent` | Command sent events |
+| `connection.lost` | Disconnection |
+| `connection.restored` | Reconnection |
 
-**MQTT Topics:**
-
-| Topic | Direction | Description |
-|-------|-----------|-------------|
-| `mara/fleet/discover` | Host → All | Discovery request |
-| `mara/fleet/discover_response` | Node → Host | Node info response |
-| `mara/{node_id}/cmd` | Host → Node | Commands (binary framed) |
-| `mara/{node_id}/ack` | Node → Host | Command ACKs |
-| `mara/{node_id}/telemetry` | Node → Host | Telemetry data |
-
-See [MQTT.md](MQTT.md) for detailed multi-node documentation.
-
-## Message Flow
-
-### Command with ACK
-
-```
-MaraClient                ReliableCommander              Transport
-      │                                │                            │
-      │ send_reliable("CMD_ARM", {})   │                            │
-      ├───────────────────────────────►│                            │
-      │                                │   send_bytes(frame)        │
-      │                                ├───────────────────────────►│
-      │                                │                            │
-      │                                │   (pending[seq] = Future)  │
-      │                                │                            │
-      │                                │◄────── ACK frame ──────────│
-      │                                │                            │
-      │                                │   on_ack(seq, ok, error)   │
-      │                                │   future.set_result(...)   │
-      │                                │                            │
-      │◄───────────── (ok, error) ─────┤                            │
-      │                                │                            │
-```
-
-### Telemetry Flow
-
-```
-Transport              EventBus              TelemetryHostModule
-    │                      │                         │
-    │ frame received       │                         │
-    ├─────────────────────►│                         │
-    │ publish("telemetry.raw", data)                 │
-    │                      ├────────────────────────►│
-    │                      │                         │ parse(data)
-    │                      │                         │
-    │                      │◄────────────────────────┤
-    │                      │ publish("telemetry.imu", imu)
-    │                      │                         │
-    │                      │◄────────────────────────┤
-    │                      │ publish("telemetry.encoder0", enc)
-    │                      │                         │
-```
+---
 
 ## Protocol
 
@@ -384,262 +282,141 @@ Transport              EventBus              TelemetryHostModule
 
 ```
 ┌────────┬────────┬────────┬──────────┬─────────────┬──────────────┐
-│ HEADER │ LEN_HI │ LEN_LO │ MSG_TYPE │   PAYLOAD   │  CRC16       │
-│  0xAA  │   1B   │   1B   │    1B    │   N bytes   │   2B         │
+│ HEADER │ LEN_HI │ LEN_LO │ MSG_TYPE │   PAYLOAD   │    CRC16     │
+│  0xAA  │   1B   │   1B   │    1B    │   N bytes   │     2B       │
 └────────┴────────┴────────┴──────────┴─────────────┴──────────────┘
-
-CRC16-CCITT (polynomial 0x1021, initial 0xFFFF) calculated over:
-LEN_HI + LEN_LO + MSG_TYPE + PAYLOAD
 ```
 
-### Optimized Parsing
+**CRC16-CCITT** (polynomial 0x1021, initial 0xFFFF) over: `LEN_HI + LEN_LO + MSG_TYPE + PAYLOAD`
+
+### Message Types
+
+| Type | ID | Description |
+|:-----|:---|:------------|
+| `MSG_HEARTBEAT` | 0x01 | Keep-alive |
+| `MSG_PING` | 0x02 | Ping request |
+| `MSG_PONG` | 0x03 | Ping response |
+| `MSG_VERSION_REQUEST` | 0x04 | Request firmware info |
+| `MSG_VERSION_RESPONSE` | 0x05 | Firmware info response |
+| `MSG_TELEMETRY_BIN` | 0x30 | Binary telemetry |
+| `MSG_CMD_JSON` | 0x50 | JSON command |
+| `MSG_CMD_BIN` | 0x51 | Binary command |
+
+### Wire Size Comparison
+
+| Encoding | SET_VEL Payload | Total Frame |
+|:---------|:----------------|:------------|
+| JSON | ~50 bytes | ~56 bytes |
+| Binary | 9 bytes | ~15 bytes |
+
+---
+
+## Performance Optimizations
+
+### Startup Time
+
+| Optimization | Impact |
+|:-------------|:-------|
+| Lazy yaml import | 50-100ms saved |
+| Lazy MaraLogBundle | 50-100ms saved |
+| Lazy HostModule creation | Resources on-demand |
+
+### Runtime
+
+| Optimization | Impact |
+|:-------------|:-------|
+| Binary encoding | 73% wire size reduction |
+| asyncio.Lock | No thread spawn overhead |
+| Cached executor | Thread reuse |
+| Cached event loop | Avoid lookup per call |
+
+---
+
+## Example Usage
+
+### Basic Control
 
 ```python
-_HEADER_BYTE = bytes([HEADER])
+from mara_host import Robot
 
-def extract_frames(buffer, on_frame):
-    i = 0
-    n = len(buffer)
+async with Robot("/dev/ttyUSB0") as robot:
+    await robot.arm()
+    await robot.activate()
 
-    while i + MIN_FRAME_HEADER <= n:
-        # Vectorized header search (faster than byte-by-byte)
-        if buffer[i] != HEADER:
-            idx = buffer.find(_HEADER_BYTE, i)
-            if idx == -1:
-                break
-            i = idx
+    # High-rate velocity streaming (50+ Hz)
+    for _ in range(100):
+        await robot.motion.set_velocity(0.3, 0.0, binary=True)
+        await asyncio.sleep(0.02)
 
-        # Parse frame...
+    await robot.deactivate()
+    await robot.disarm()
 ```
 
-## Control Design Module
-
-Scipy-based tools for designing state-space controllers and observers.
-
-### Components
-
-```
-mara_host/control/
-├── state_space.py   # StateSpaceModel class, discretization
-├── design.py        # LQR, pole placement, observer gains
-├── upload.py        # MCU upload helpers
-└── examples.py      # Usage examples
-```
-
-### Design Workflow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Control Design Flow                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌─────────────────┐      ┌─────────────────┐               │
-│  │  StateSpaceModel │─────►│   lqr() / PP    │               │
-│  │  (A, B, C, D)    │      │  (gain design)  │               │
-│  └─────────────────┘      └────────┬────────┘               │
-│                                    │                         │
-│                                    ▼                         │
-│                           ┌─────────────────┐               │
-│                           │  check_stability │               │
-│                           │  (validation)    │               │
-│                           └────────┬────────┘               │
-│                                    │                         │
-│                                    ▼                         │
-│  ┌─────────────────┐      ┌─────────────────┐               │
-│  │   observer_gains │─────►│ configure_state │               │
-│  │   (L matrix)     │      │  _feedback()    │               │
-│  └─────────────────┘      └────────┬────────┘               │
-│                                    │                         │
-│                                    ▼                         │
-│                           ┌─────────────────┐               │
-│                           │  MCU Upload     │               │
-│                           │ (K, Kr, Ki, L)  │               │
-│                           └─────────────────┘               │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Example Usage
+### Telemetry
 
 ```python
-from mara_host.control import (
-    StateSpaceModel, lqr, observer_gains, configure_state_feedback
-)
-import numpy as np
+async with Robot("/dev/ttyUSB0") as robot:
+    @robot.on("telemetry.imu")
+    def on_imu(data):
+        print(f"Accel: {data['ax']:.2f}, {data['ay']:.2f}")
 
-# Define system
-A = np.array([[0, 1], [-10, -0.5]])
-B = np.array([[0], [1]])
-C = np.array([[1, 0]])
-model = StateSpaceModel(A, B, C)
-
-# Design LQR controller
-K, S, E = lqr(A, B, Q=np.diag([100, 1]), R=np.array([[1]]))
-
-# Design observer
-L = observer_gains(A, C, poles=[-25, -30])
-
-# Upload to MCU
-result = await configure_state_feedback(
-    client, model, K,
-    L=L,
-    use_observer=True,
-    signals={"state": [10, 11], "control": [20], "measurement": [30]},
-)
+    await robot.arm()
+    await asyncio.sleep(10)
+    await robot.disarm()
 ```
 
 ---
 
-## Research Module
-
-### Simulation Architecture
+## File Structure
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    SimulationRunner                          │
-│              (coordinates simulation loop)                   │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌─────────────────┐      ┌─────────────────┐               │
-│  │  DiffDriveRobot │◄────►│   Controller    │               │
-│  │   (physics)     │      │  (user-defined) │               │
-│  └────────┬────────┘      └─────────────────┘               │
-│           │                                                  │
-│  ┌────────┴────────┐                                        │
-│  │                 │                                        │
-│  ▼                 ▼                                        │
-│ ┌─────────┐  ┌──────────┐  ┌────────────┐                   │
-│ │ DCMotor │  │ DCMotor  │  │ NoiseModels│                   │
-│ │  Left   │  │  Right   │  │(IMU,Enc,US)│                   │
-│ └─────────┘  └──────────┘  └────────────┘                   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+mara_host/
+├── robot.py                    # Robot facade
+├── api/                        # User-facing API
+│   ├── gpio.py
+│   ├── servo.py
+│   └── ...
+├── services/                   # Business logic
+│   └── control/
+│       ├── gpio_service.py
+│       ├── motion_service.py
+│       └── ...
+├── command/                    # Protocol handling
+│   ├── client.py              # MaraClient
+│   ├── coms/
+│   │   ├── reliable_commander.py
+│   │   └── connection_monitor.py
+│   └── binary_mixin.py
+├── core/                       # Infrastructure
+│   ├── protocol.py
+│   ├── event_bus.py
+│   └── settings.py
+├── transport/                  # Physical layer
+│   ├── serial_transport.py
+│   ├── tcp_transport.py
+│   ├── stream_transport.py
+│   └── mqtt/
+└── telemetry/                  # Sensor data
+    ├── binary_parser.py
+    └── models.py
 ```
 
-### Config Loading
+---
 
-```yaml
-# robot_config.yaml
-name: my_robot
-type: diff_drive
+## Related Documentation
 
-drive:
-  wheel_radius: 0.05
-  wheel_base: 0.2
+| Document | Description |
+|:---------|:------------|
+| [GETTING_STARTED.md](GETTING_STARTED.md) | Quick start guide |
+| [ADDING_COMMANDS.md](ADDING_COMMANDS.md) | Adding new commands |
+| [EXTENDING.md](EXTENDING.md) | Adding sensors, motors, transports |
+| [MQTT.md](MQTT.md) | Multi-node control |
+| [CODEGEN.md](CODEGEN.md) | Code generation system |
 
-noise:
-  imu:
-    accel_std: 0.01
-    gyro_std: 0.001
-```
+---
 
-```python
-robot = load_robot("robot_config.yaml")
-```
+<div align="center">
 
-## Optimization Techniques
+*MARA Host v1.0*
 
-### Lazy Dict Copying
-
-```python
-# Before: Copy on every update (150 objects/sec at 50Hz)
-spec.latest_payload = dict(payload)
-
-# After: Store reference, copy only when consumed
-spec.latest_payload = payload
-spec._payload_dirty = True
-
-def _get_payload(spec):
-    if spec._payload_dirty:
-        result = dict(spec.latest_payload)
-        spec._payload_dirty = False
-        return result
-    return spec.latest_payload
-```
-
-### Bounded Pending Commands
-
-```python
-MAX_PENDING_AGE_S = 30.0
-
-async def _update(self):
-    for seq, cmd in list(self._pending.items()):
-        age = (now - cmd.first_sent_ns) / 1e9
-        if age > MAX_PENDING_AGE_S:
-            # Force evict stale commands (memory leak prevention)
-            self._pending.pop(seq)
-            cmd.future.set_result((False, "STALE"))
-```
-
-## Extending the Library
-
-### Adding a New Module
-
-```python
-# mara_host/my_module/manager.py
-from mara_host.command.client import MaraClient
-from mara_host.core.event_bus import EventBus
-
-class MyModuleHostModule:
-    def __init__(self, bus: EventBus, client: MaraClient):
-        self._bus = bus
-        self._client = client
-        bus.subscribe("telemetry.my_sensor", self._on_data)
-
-    async def send_command(self, param: float):
-        await self._client.cmd_my_command(param=param)
-
-    def _on_data(self, data):
-        # Process incoming data
-        self._bus.publish("my_module.processed", processed_data)
-```
-
-### Adding a New Transport
-
-```python
-class MyTransport:
-    def __init__(self, ...):
-        self._frame_handler = lambda x: None
-
-    def set_frame_handler(self, handler):
-        self._frame_handler = handler
-
-    async def start(self):
-        # Initialize connection
-        pass
-
-    async def stop(self):
-        # Close connection
-        pass
-
-    async def send_bytes(self, data: bytes):
-        # Send data
-        pass
-
-    def _on_receive(self, data: bytes):
-        # Called when data received
-        extract_frames(self._buffer, self._frame_handler)
-```
-
-## Testing
-
-```bash
-# Run all tests
-pytest tests/ -v
-
-# Run with coverage
-pytest tests/ --cov=mara_host
-
-# Run specific test
-pytest tests/test_protocol.py -v
-```
-
-Test structure:
-```
-tests/
-├── test_protocol.py      # Frame encoding/decoding
-├── test_event_bus.py     # Pub/sub system
-├── test_client.py        # MaraClient
-├── test_commander.py     # ReliableCommander
-└── test_hil/             # Hardware-in-loop tests
-```
+</div>

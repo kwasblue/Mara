@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes how to add new commands to the robot platform. The build system owns all command definitions through `platform_schema.py`, ensuring consistency between the C++ firmware (ESP32) and Python host.
+This document describes how to add new commands to the robot platform. The build system owns all command definitions through the `mara_host/tools/schema/` package, ensuring consistency between the C++ firmware (ESP32) and Python host.
 
 ---
 
@@ -10,40 +10,103 @@ This document describes how to add new commands to the robot platform. The build
 
 | Data | Schema Location | C++ Output | Python Output |
 |------|-----------------|------------|---------------|
-| Commands | `COMMANDS` dict | `CommandDefs.h` | `command_defs.py`, `client_commands.py` |
-| Binary Commands | `BINARY_COMMANDS` dict | `BinaryCommands.h` | `binary_commands.py`, `json_to_binary.py` |
-| Telemetry Sections | `TELEMETRY_SECTIONS` dict | `TelemetrySections.h` | `telemetry_sections.py` |
-| Version | `VERSION` dict | `Version.h` | `version.py` |
+| Commands | `schema/commands/` | `CommandDefs.h` | `command_defs.py`, `client_commands.py` |
+| Binary Commands | `schema/binary.py` | `BinaryCommands.h` | `binary_commands.py`, `json_to_binary.py` |
+| Telemetry Sections | `schema/telemetry.py` | `TelemetrySections.h` | `telemetry_sections.py` |
+| Version | `schema/version.py` | `Version.h` | `version.py` |
 | Pins | `pins.json` | `PinConfig.h` | `pin_config.py` |
-| GPIO Channels | `GPIO_CHANNELS` | `GpioChannelDefs.h` | `gpio_channels.py` |
+| GPIO Channels | `schema/gpio_channels.py` | `GpioChannelDefs.h` | `gpio_channels.py` |
+
+---
+
+## Schema Structure
+
+Commands are organized by domain in `mara_host/tools/schema/commands/`:
+
+```
+schema/commands/
+├── __init__.py         # Merges all domains into COMMANDS dict
+├── _safety.py          # Safety/state machine (9 commands)
+├── _rates.py           # Loop rate configuration (4 commands)
+├── _control.py         # Signal bus, slots (13 commands)
+├── _motion.py          # SET_MODE, SET_VEL (2 commands)
+├── _gpio.py            # LED, GPIO, PWM (7 commands)
+├── _servo.py           # Servo commands (3 commands)
+├── _stepper.py         # Stepper commands (3 commands)
+├── _sensors.py         # Ultrasonic, encoder (5 commands)
+├── _dc_motor.py        # DC motor + PID (5 commands)
+├── _observer.py        # Luenberger observer (6 commands)
+├── _telemetry.py       # Telemetry config (2 commands)
+└── _camera.py          # ESP32-CAM over HTTP (20 commands)
+```
 
 ---
 
 ## Step 1: Define Command in Schema
 
-Edit `mara_host/tools/platform_schema.py`
+Choose the appropriate domain file and add your command.
 
 ### For JSON Commands (setup/config)
 
+**Example: Adding a new sensor command**
+
+Edit `mara_host/tools/schema/commands/_sensors.py`:
+
 ```python
-# In COMMANDS dict
-"CMD_MY_NEW_COMMAND": {
+# In SENSOR_COMMANDS dict
+"CMD_MY_NEW_SENSOR": {
     "kind": "cmd",
     "direction": "host->mcu",
     "description": "Description of what this command does.",
     "payload": {
-        "param1": {"type": "int", "required": True, "description": "..."},
-        "param2": {"type": "float", "required": False, "default": 0.0},
+        "sensor_id": {"type": "int", "required": True, "description": "..."},
+        "threshold": {"type": "float", "required": False, "default": 0.0},
     },
 },
 ```
 
-### For Binary Commands (high-rate streaming)
+### Adding a New Domain
 
-Add to both `COMMANDS` (for documentation) and `BINARY_COMMANDS` (for encoding):
+If your commands don't fit existing domains, create a new module:
 
 ```python
-# In COMMANDS dict
+# mara_host/tools/schema/commands/_my_domain.py
+"""My domain command definitions."""
+
+MY_DOMAIN_COMMANDS: dict[str, dict] = {
+    "CMD_MY_COMMAND": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "...",
+        "payload": {...},
+    },
+}
+```
+
+Then register in `__init__.py`:
+
+```python
+# mara_host/tools/schema/commands/__init__.py
+from ._my_domain import MY_DOMAIN_COMMANDS
+
+COMMANDS: dict[str, dict] = {
+    # ... existing domains ...
+    **MY_DOMAIN_COMMANDS,
+}
+
+__all__ = [
+    "COMMANDS",
+    # ... existing exports ...
+    "MY_DOMAIN_COMMANDS",
+]
+```
+
+### For Binary Commands (high-rate streaming)
+
+Add to the appropriate domain file in `commands/`, then add encoding spec in `schema/binary.py`:
+
+```python
+# In appropriate domain file (e.g., _motion.py)
 "CMD_MY_BINARY_CMD": {
     "kind": "cmd",
     "direction": "host->mcu",
@@ -52,8 +115,10 @@ Add to both `COMMANDS` (for documentation) and `BINARY_COMMANDS` (for encoding):
         "value": {"type": "float", "required": True},
     },
 },
+```
 
-# In BINARY_COMMANDS dict
+```python
+# In schema/binary.py - BINARY_COMMANDS dict
 "MY_BINARY_CMD": {
     "opcode": 0x22,  # Pick next available opcode
     "json_cmd": "CMD_MY_BINARY_CMD",  # Links to JSON command
@@ -274,17 +339,17 @@ This macro expands to:
 
 ### Adding a JSON Command (Setup/Config)
 
-1. Add to `COMMANDS` in `platform_schema.py`
-2. Run `python generate_all.py`
+1. Add to appropriate domain file in `schema/commands/`
+2. Run `mara generate all`
 3. Implement handler in appropriate `*Handler.h`
 4. Run tests: `pio test -e native && pio test -e esp32_test`
 5. Flash and run HIL: `pio run -e esp32_usb -t upload && pytest --run-hil`
 
 ### Adding a Binary Command (High-Rate Streaming)
 
-1. Add to `COMMANDS` in `platform_schema.py`
-2. Add to `BINARY_COMMANDS` in `platform_schema.py`
-3. Run `python generate_all.py`
+1. Add JSON definition to `schema/commands/` (appropriate domain file)
+2. Add binary spec to `schema/binary.py`
+3. Run `mara generate all`
 4. Implement handler (receives via `onBinaryCommand`)
 5. Run all tests
 
@@ -292,13 +357,13 @@ This macro expands to:
 
 Telemetry sections define the binary format for sensor data sent from MCU to Host.
 
-1. Add to `TELEMETRY_SECTIONS` in `platform_schema.py`
-2. Run `python generate_all.py`
+1. Add to `TELEMETRY_SECTIONS` in `schema/telemetry.py`
+2. Run `mara generate all`
 3. Add parser in `binary_parser.py` using the generated section ID constant
 4. Add model in `telemetry/models.py` if needed
 
 ```python
-# In TELEMETRY_SECTIONS
+# In schema/telemetry.py - TELEMETRY_SECTIONS dict
 "TELEM_MY_SENSOR": {
     "id": 0x07,  # Pick next available ID
     "description": "My sensor data",
@@ -307,11 +372,29 @@ Telemetry sections define the binary format for sensor data sent from MCU to Hos
 },
 ```
 
+### Command Domain Files
+
+| Domain | File | Example Commands |
+|--------|------|------------------|
+| Safety | `_safety.py` | `CMD_IDENTITY`, `CMD_ARM`, `CMD_ESTOP` |
+| Rates | `_rates.py` | `CMD_CTRL_SET_RATE`, `CMD_GET_RATES` |
+| Control | `_control.py` | `CMD_SIGNAL_DEFINE`, `CMD_SLOT_*` |
+| Motion | `_motion.py` | `CMD_SET_MODE`, `CMD_SET_VEL` |
+| GPIO | `_gpio.py` | `CMD_LED_SET`, `CMD_PWM_SET` |
+| Servo | `_servo.py` | `CMD_SERVO_ATTACH`, `CMD_SERVO_SET` |
+| Stepper | `_stepper.py` | `CMD_STEPPER_*` |
+| Sensors | `_sensors.py` | `CMD_ENCODER_*`, `CMD_ULTRASONIC_*` |
+| DC Motor | `_dc_motor.py` | `CMD_DC_SET_SPEED`, `CMD_DC_VEL_PID_*` |
+| Observer | `_observer.py` | `CMD_OBSERVER_CONFIG`, `CMD_OBSERVER_*` |
+| Telemetry | `_telemetry.py` | `CMD_TELEM_SET_INTERVAL` |
+| Camera | `_camera.py` | `CMD_CAM_*` |
+
 ### File Locations
 
 | File | Purpose |
 |------|---------|
-| `host/mara_host/tools/platform_schema.py` | Single source of truth |
+| `host/mara_host/tools/schema/` | Single source of truth (package) |
+| `host/mara_host/tools/schema/commands/` | Command definitions by domain |
 | `host/mara_host/tools/generate_all.py` | Run all generators |
 | `host/mara_host/control/` | Control design tools (LQR, pole placement) |
 | `host/mara_host/telemetry/telemetry_sections.py` | Generated telemetry section IDs |

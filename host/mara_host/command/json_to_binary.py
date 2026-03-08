@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-# Generated from BINARY_COMMANDS in platform_schema.py
+# Generated from BINARY_COMMANDS in schema.py
 """
 JSON-to-Binary command encoder.
 

@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-07 17:54:34
-Total Files: 518
-Total Lines of Code: 53,570
+Generated: 2026-03-07 18:53:13
+Total Files: 564
+Total Lines of Code: 52,849
 ================================================================================
 
 
@@ -195,9 +195,22 @@ HOST (Python)
       |-- is_moving(self)
       `-- __repr__(self)
 
-  host/mara_host/benchmarks/commands/send_all.py (802 lines)
-    [Class] CmdResult
-    [Class] RunContext
+  host/mara_host/benchmarks/commands/send_all/__init__.py (32 lines)
+
+  host/mara_host/benchmarks/commands/send_all/__main__.py (3 lines)
+
+  host/mara_host/benchmarks/commands/send_all/cli.py (75 lines)
+    [Fn] build_argparser()
+    [Fn] list_commands()
+    [Fn] main()
+
+  host/mara_host/benchmarks/commands/send_all/client.py (66 lines)
+
+  host/mara_host/benchmarks/commands/send_all/commands.py (197 lines)
+    [Fn] get_command_category(cmd)
+    [Fn] filter_commands(cmds, only, skip, category)
+
+  host/mara_host/benchmarks/commands/send_all/helpers.py (204 lines)
     [Fn] parse_hostport(s)
     [Fn] load_payloads(path)
     [Fn] ensure_artifacts_dir()
@@ -209,16 +222,17 @@ HOST (Python)
     [Fn] _send_reliable_supports_timeout(client)
     [Fn] ack_is_ok(ack)
     [Fn] should_skip_cmd(cmd)
-    [Fn] build_argparser()
-    [Fn] get_command_category(cmd)
-    [Fn] filter_commands(cmds, only, skip, category)
-    [Fn] list_commands()
+    [Fn] payload_items(spec)
+
+  host/mara_host/benchmarks/commands/send_all/run.py (316 lines)
     [Fn] reorder_state_machine_aware(cmds)
     [Fn] _allowed_motion_cmd(c)
-    [Fn] _payload_items(spec)
     [Fn] _per_cmd_timeout(args, cmd)
     [Fn] _extra_delay_ms(args, cmd)
-    [Fn] main()
+
+  host/mara_host/benchmarks/commands/send_all/types.py (20 lines)
+    [Class] CmdResult
+    [Class] RunContext
 
   host/mara_host/benchmarks/latency/basic_latency.py (66 lines)
     [Class] PingLatencyMeasurer
@@ -530,24 +544,6 @@ HOST (Python)
     [Fn] init_config(path)
     [Fn] apply_defaults(parser_defaults)
 
-  host/mara_host/cli/commands/build.py (486 lines)
-    [Fn] register(subparsers)
-    [Fn] add_common_args(parser)
-    [Fn] add_feature_args(parser)
-    [Fn] _get_features(args)
-    [Fn] cmd_compile(args)
-    [Fn] _build_with_progress(env, features)
-    [Fn] cmd_upload(args)
-    [Fn] cmd_clean(args)
-    [Fn] cmd_test(args)
-    [Fn] cmd_features(args)
-    [Fn] _show_size_summary(env)
-    [Fn] _make_bar(percentage, width)
-    [Fn] _get_firmware_size(env)
-    [Fn] cmd_size(args)
-    [Fn] cmd_watch(args)
-    [Fn] _get_latest_mtime(dirs)
-
   host/mara_host/cli/commands/calibrate/__init__.py (2 lines)
 
   host/mara_host/cli/commands/calibrate/_common.py (24 lines)
@@ -612,19 +608,6 @@ HOST (Python)
     [Fn] cmd_telemetry(args)
     [Fn] cmd_binary(args)
     [Fn] cmd_gpio(args)
-
-  host/mara_host/cli/commands/logs.py (443 lines)
-    [Fn] register(subparsers)
-    [Fn] _find_sessions(log_dir)
-    [Fn] cmd_list(args)
-    [Fn] _format_size(size_bytes)
-    [Fn] cmd_show(args)
-    [Fn] cmd_tail(args)
-    [Fn] _print_event(event)
-    [Fn] cmd_search(args)
-    [Fn] cmd_stats(args)
-    [Fn] cmd_delete(args)
-    [Fn] cmd_export(args)
 
   host/mara_host/cli/commands/monitor.py (194 lines)
     [Class] MonitorState
@@ -821,7 +804,7 @@ HOST (Python)
     [Fn] cmd_version(args)
     [Fn] main(argv)
 
-  host/mara_host/command/__init__.py (50 lines)
+  host/mara_host/command/__init__.py (29 lines)
     [Fn] __getattr__(name)
 
   host/mara_host/command/binary_commands.py (26 lines)
@@ -833,7 +816,12 @@ HOST (Python)
       |-- encode_heartbeat(self)
       `-- encode_stop(self)
 
-  host/mara_host/command/client.py (415 lines)
+  host/mara_host/command/binary_mixin.py (35 lines)
+    [Class] BinaryCommandsMixin
+      |-- _init_binary_encoder(self)
+      `-- set_prefer_binary(self, prefer)
+
+  host/mara_host/command/client.py (387 lines)
     [Class] HasSendBytes
       |-- set_frame_handler(self, handler)
       |-- start(self)
@@ -846,7 +834,6 @@ HOST (Python)
       |-- _on_frame(self, body)
       |-- _handle_json_payload(self, payload)
       |-- _next_seq(self)
-      |-- set_prefer_binary(self, prefer)
       |-- is_connected(self)
       |-- version_verified(self)
       |-- firmware_version(self)
@@ -891,7 +878,7 @@ HOST (Python)
       |-- clear_pending(self)
       `-- stats(self)
 
-  host/mara_host/command/factory.py (145 lines)
+  host/mara_host/command/factory.py (144 lines)
     [Class] ClientConfig
     [Class] MaraClientFactory
       |-- __init__(self, bus)
@@ -1363,24 +1350,40 @@ HOST (Python)
     [Fn] analyze_session(jsonl_path)
     [Fn] compare_sessions(paths)
 
-  host/mara_host/research/plotting.py (463 lines)
+  host/mara_host/research/plotting/__init__.py (30 lines)
+
+  host/mara_host/research/plotting/config.py (40 lines)
     [Fn] apply_style()
     [Fn] create_figure(rows, cols, figsize, sharex, sharey)
-    [Fn] plot_time_series(times, values, label, ax, title, xlabel, ylabel, color, alpha, linestyle)
-    [Fn] plot_multi_series(times, series, ax, title, xlabel, ylabel, colors)
-    [Fn] plot_telemetry_dashboard(df, columns, figsize, title)
+
+  host/mara_host/research/plotting/control.py (115 lines)
     [Fn] plot_setpoint_vs_actual(times, setpoint, actual, ax, title, ylabel, show_error)
     [Fn] plot_control_loop(times, setpoint, actual, control_effort, figsize, title)
     [Fn] plot_step_response(times, response, setpoint, metrics, ax, title)
-    [Fn] plot_trajectory_2d(x, y, ax, title, show_start_end, color_by_time)
-    [Fn] plot_pose_trajectory(x, y, theta, ax, arrow_spacing, title)
-    [Fn] plot_fft(data, sample_rate_hz, ax, title, max_freq_hz, log_scale)
-    [Fn] plot_psd(data, sample_rate_hz, ax, title, max_freq_hz)
-    [Fn] plot_bode(freqs, magnitude_db, phase_deg, figsize, title)
+
+  host/mara_host/research/plotting/distribution.py (80 lines)
     [Fn] plot_histogram(data, ax, title, xlabel, bins, show_stats)
     [Fn] plot_latency_cdf(latencies_ms, ax, title, percentiles)
     [Fn] plot_latency_stats(stats, ax, title)
+
+  host/mara_host/research/plotting/frequency.py (75 lines)
+    [Fn] plot_fft(data, sample_rate_hz, ax, title, max_freq_hz, log_scale)
+    [Fn] plot_psd(data, sample_rate_hz, ax, title, max_freq_hz)
+    [Fn] plot_bode(freqs, magnitude_db, phase_deg, figsize, title)
+
+  host/mara_host/research/plotting/imu.py (40 lines)
     [Fn] plot_imu_data(times, accel, gyro, figsize, title)
+
+  host/mara_host/research/plotting/timeseries.py (75 lines)
+    [Fn] plot_time_series(times, values, label, ax, title, xlabel, ylabel, color, alpha, linestyle)
+    [Fn] plot_multi_series(times, series, ax, title, xlabel, ylabel, colors)
+    [Fn] plot_telemetry_dashboard(df, columns, figsize, title)
+
+  host/mara_host/research/plotting/trajectory.py (64 lines)
+    [Fn] plot_trajectory_2d(x, y, ax, title, show_start_end, color_by_time)
+    [Fn] plot_pose_trajectory(x, y, theta, ax, arrow_spacing, title)
+
+  host/mara_host/research/plotting/utils.py (15 lines)
     [Fn] save_figure(fig, path, dpi, tight)
     [Fn] show()
 
@@ -1513,9 +1516,6 @@ HOST (Python)
     [Fn] robot_from_config(config)
     [Fn] _robot_from_dict(config)
 
-  host/mara_host/runners/__init__.py (46 lines)
-    [Fn] __getattr__(name)
-
   host/mara_host/runtime/__init__.py (7 lines)
 
   host/mara_host/runtime/robot_runtime.py (82 lines)
@@ -1583,10 +1583,26 @@ HOST (Python)
 
   host/mara_host/services/pins/__init__.py (14 lines)
 
-  host/mara_host/services/pins/pin_service.py (491 lines)
+  host/mara_host/services/pins/conflicts.py (126 lines)
+    [Fn] detect_conflicts(assignments)
+    [Fn] check_i2c_conflicts(assignments)
+    [Fn] check_uart_conflicts(assignments)
+    [Fn] check_adc2_conflicts(assignments)
+
+  host/mara_host/services/pins/groups.py (45 lines)
+
+  host/mara_host/services/pins/models.py (19 lines)
     [Class] PinConflict
     [Class] PinRecommendation
     [Class] GroupRecommendation
+
+  host/mara_host/services/pins/recommendations.py (157 lines)
+    [Fn] suggest_pins(use_case, assigned, count)
+    [Fn] recommend_group_pins(group_type, prefix, assigned)
+    [Fn] _cap_to_use_case(cap)
+    [Fn] get_use_case_notes(use_case)
+
+  host/mara_host/services/pins/service.py (187 lines)
     [Class] PinService
       |-- __init__(self, pins_json_path)
       |-- get_all_pins(self)
@@ -1610,9 +1626,6 @@ HOST (Python)
       |-- remove(self, name)
       |-- clear_all(self)
       |-- detect_conflicts(self)
-      |-- _check_i2c_conflicts(self, assignments)
-      |-- _check_uart_conflicts(self, assignments)
-      |-- _check_adc2_conflicts(self, assignments)
       |-- suggest_pins(self, use_case, count)
       |-- recommend_motor_pins(self, motor_id)
       |-- recommend_encoder_pins(self, encoder_id)
@@ -1621,8 +1634,6 @@ HOST (Python)
       |-- recommend_uart_pins(self, uart_num)
       |-- recommend_stepper_pins(self, stepper_id)
       |-- recommend_servo_pins(self, servo_id)
-      |-- _recommend_group_pins(self, group_type, prefix)
-      |-- _cap_to_use_case(self, cap)
       |-- generate_pinout_diagram(self)
       `-- validate(self)
 
@@ -1817,9 +1828,49 @@ HOST (Python)
     [Fn] fmt_label(gpio, max_len)
     [Fn] pin_marker(gpio)
 
-  host/mara_host/tools/platform_schema.py (1616 lines)
+  host/mara_host/tools/schema/__init__.py (56 lines)
+
+  host/mara_host/tools/schema/binary.py (46 lines)
+
+  host/mara_host/tools/schema/can.py (118 lines)
+
+  host/mara_host/tools/schema/commands/__init__.py (41 lines)
+
+  host/mara_host/tools/schema/commands/_camera.py (401 lines)
+
+  host/mara_host/tools/schema/commands/_control.py (284 lines)
+
+  host/mara_host/tools/schema/commands/_dc_motor.py (94 lines)
+
+  host/mara_host/tools/schema/commands/_gpio.py (64 lines)
+
+  host/mara_host/tools/schema/commands/_motion.py (29 lines)
+
+  host/mara_host/tools/schema/commands/_observer.py (154 lines)
+
+  host/mara_host/tools/schema/commands/_rates.py (50 lines)
+
+  host/mara_host/tools/schema/commands/_safety.py (56 lines)
+
+  host/mara_host/tools/schema/commands/_sensors.py (72 lines)
+
+  host/mara_host/tools/schema/commands/_servo.py (36 lines)
+
+  host/mara_host/tools/schema/commands/_stepper.py (37 lines)
+
+  host/mara_host/tools/schema/commands/_telemetry.py (27 lines)
+
+  host/mara_host/tools/schema/gpio_channels.py (73 lines)
+    [Fn] validate_gpio_channels()
+
+  host/mara_host/tools/schema/paths.py (11 lines)
+
+  host/mara_host/tools/schema/pins.py (18 lines)
     [Fn] _load_pins(path)
-    [Fn] validate_schema()
+
+  host/mara_host/tools/schema/telemetry.py (57 lines)
+
+  host/mara_host/tools/schema/version.py (20 lines)
 
   host/mara_host/transport/__init__.py (44 lines)
 
@@ -2619,7 +2670,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/command/handlers/AllHandlers.h (12 lines)
 
-  firmware/mcu/include/command/handlers/ControlHandler.h (299 lines)
+  firmware/mcu/include/command/handlers/ControlHandler.h (63 lines)
     [Class] ControlHandler
     [Fn] setControlModule(ControlModule* cm)
     [Fn] name()
@@ -2639,7 +2690,7 @@ FIRMWARE/MCU (C++)
     [Fn] handleSlotGetParam(JsonVariantConst payload, CommandContext& ctx)
     [Fn] handleSlotStatus(JsonVariantConst payload, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/DcMotorHandler.h (115 lines)
+  firmware/mcu/include/command/handlers/DcMotorHandler.h (38 lines)
     [Class] DcMotorHandler
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
@@ -2650,7 +2701,7 @@ FIRMWARE/MCU (C++)
     [Fn] handleSetVelTarget(JsonVariantConst payload, CommandContext& ctx)
     [Fn] handleSetVelGains(JsonVariantConst payload, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/GpioHandler.h (139 lines)
+  firmware/mcu/include/command/handlers/GpioHandler.h (47 lines)
     [Class] GpioHandler
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
@@ -2670,14 +2721,14 @@ FIRMWARE/MCU (C++)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
     [Fn] handleGetIdentity(CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/MotionHandler.h (68 lines)
+  firmware/mcu/include/command/handlers/MotionHandler.h (27 lines)
     [Class] MotionHandler
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
     [Fn] executeSetVelocity(const mara::cmd::SetVelocityCmd& cmd, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/ObserverHandler.h (155 lines)
+  firmware/mcu/include/command/handlers/ObserverHandler.h (42 lines)
     [Class] ObserverHandler
     [Fn] setControlModule(ControlModule* cm)
     [Fn] name()
@@ -2690,7 +2741,7 @@ FIRMWARE/MCU (C++)
     [Fn] handleSetParamArray(JsonVariantConst payload, CommandContext& ctx)
     [Fn] handleStatus(JsonVariantConst payload, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/SafetyHandler.h (138 lines)
+  firmware/mcu/include/command/handlers/SafetyHandler.h (50 lines)
     [Class] SafetyHandler
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
@@ -2705,7 +2756,7 @@ FIRMWARE/MCU (C++)
     [Fn] handleStop(CommandContext& ctx)
     [Fn] handleSetMode(JsonVariantConst payload, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/SensorHandler.h (116 lines)
+  firmware/mcu/include/command/handlers/SensorHandler.h (41 lines)
     [Class] SensorHandler
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
@@ -2716,7 +2767,7 @@ FIRMWARE/MCU (C++)
     [Fn] handleEncoderRead(JsonVariantConst payload, CommandContext& ctx)
     [Fn] handleEncoderReset(JsonVariantConst payload, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/ServoHandler.h (99 lines)
+  firmware/mcu/include/command/handlers/ServoHandler.h (35 lines)
     [Class] ServoHandler
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
@@ -2725,7 +2776,7 @@ FIRMWARE/MCU (C++)
     [Fn] handleDetach(JsonVariantConst payload, CommandContext& ctx)
     [Fn] handleSetAngle(JsonVariantConst payload, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/StepperHandler.h (74 lines)
+  firmware/mcu/include/command/handlers/StepperHandler.h (35 lines)
     [Class] StepperHandler
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
@@ -2734,7 +2785,7 @@ FIRMWARE/MCU (C++)
     [Fn] handleMoveRel(JsonVariantConst payload, CommandContext& ctx)
     [Fn] handleStop(JsonVariantConst payload, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/TelemetryHandler.h (130 lines)
+  firmware/mcu/include/command/handlers/TelemetryHandler.h (47 lines)
     [Fn] clampHz(uint16_t& hz, uint16_t min_hz, uint16_t max_hz)
     [Class] TelemetryHandler
     [Fn] name()
@@ -2785,7 +2836,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/config/PinConfig.h (20 lines)
 
-  firmware/mcu/include/config/Version.h (16 lines)
+  firmware/mcu/include/config/Version.h (20 lines)
 
   firmware/mcu/include/config/WifiSecrets.h (6 lines)
 
@@ -3708,7 +3759,7 @@ FIRMWARE/MCU (C++)
     [Fn] loop()
     [Fn] sendBytes(const uint8_t*, size_t)
 
-  firmware/mcu/include/transport/WifiTransport.h (83 lines)
+  firmware/mcu/include/transport/WifiTransport.h (82 lines)
     [Class] WifiTransport
     [Fn] begin()
     [Fn] loop()
@@ -3748,6 +3799,26 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/command/decoders/ObserverDecoders.cpp (31 lines)
 
+  firmware/mcu/src/command/handlers/ControlHandler.cpp (245 lines)
+
+  firmware/mcu/src/command/handlers/DcMotorHandler.cpp (83 lines)
+
+  firmware/mcu/src/command/handlers/GpioHandler.cpp (101 lines)
+
+  firmware/mcu/src/command/handlers/MotionHandler.cpp (44 lines)
+
+  firmware/mcu/src/command/handlers/ObserverHandler.cpp (120 lines)
+
+  firmware/mcu/src/command/handlers/SafetyHandler.cpp (99 lines)
+
+  firmware/mcu/src/command/handlers/SensorHandler.cpp (81 lines)
+
+  firmware/mcu/src/command/handlers/ServoHandler.cpp (68 lines)
+
+  firmware/mcu/src/command/handlers/StepperHandler.cpp (43 lines)
+
+  firmware/mcu/src/command/handlers/TelemetryHandler.cpp (90 lines)
+
   firmware/mcu/src/config/DeviceManifest.cpp (79 lines)
     [Fn] buildManifest(const ServiceContext& ctx)
     [Fn] capBitToName(uint32_t bit)
@@ -3760,7 +3831,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/control/Observer.cpp (267 lines)
 
-  firmware/mcu/src/control/SignalBus.cpp (184 lines)
+  firmware/mcu/src/control/SignalBus.cpp (183 lines)
     [Fn] lock(lock_)
     [Fn] lock(lock_)
     [Fn] lock(lock_)
@@ -3866,7 +3937,7 @@ FIRMWARE/MCU (C++)
     [Class] SetupOtaModule
     [Fn] getSetupOtaModule()
 
-  firmware/mcu/src/setup/SetupSafety.cpp (56 lines)
+  firmware/mcu/src/setup/SetupSafety.cpp (55 lines)
     [Class] SetupSafetyModule
     [Fn] getSetupSafetyModule()
 
@@ -4237,19 +4308,6 @@ FIRMWARE/MCU (C++)
     [Fn] setup()
     [Fn] loop()
 
-  firmware/mcu/tools/check_layers.py (151 lines)
-    [Class] Violation
-    [Class] CheckResult
-      `-- passed(self)
-    [Fn] get_layer(file_path)
-    [Fn] extract_includes(file_path)
-    [Fn] get_included_layer(include_path)
-    [Fn] is_composition_root(rel_path)
-    [Fn] check_file(file_path, base_dir)
-    [Fn] check_directory(base_dir)
-    [Fn] print_report(result)
-    [Fn] main()
-
 
 --------------------------------------------------------------------------------
 FIRMWARE/CAM (C++)
@@ -4520,22 +4578,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     279
-  C++ Files:        239
-  Total Files:      518
+  Python Files:     315
+  C++ Files:        249
+  Total Files:      564
 
 DEFINITIONS
-  Classes:          544
+  Classes:          543
   Structs:          136
-  Functions:        1780
-  Methods:          967
+  Functions:        1752
+  Methods:          962
 
 LINES OF CODE
-  Python:           34,156
-  C++:              19,414
-  Total Code:       53,570
-  Blank Lines:      15,441
-  Comment Lines:    15,153
-  Total Lines:      84,164
+  Python:           33,368
+  C++:              19,481
+  Total Code:       52,849
+  Blank Lines:      15,217
+  Comment Lines:    15,063
+  Total Lines:      83,129
 
 ================================================================================

@@ -77,7 +77,7 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._capabilities: Optional[int] = None
         self._features: Optional[list] = None
         self._board: Optional[str] = None
-        self._robot_name: Optional[str] = None
+        self._platform_name: Optional[str] = None
         self._handshake_future: Optional[asyncio.Future] = None
         
         # logging
@@ -261,13 +261,13 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._capabilities = result.get("capabilities", 0)
         self._features = result.get("features", [])
         self._board = result.get("board", "unknown")
-        self._robot_name = result.get("name", "unknown")
+        self._platform_name = result.get("name", "unknown")
 
         print(f"[MaraClient] Firmware: {self._firmware_version}, "
             f"Protocol: {self._protocol_version}, "
             f"Schema: {self._schema_version}, "
             f"Board: {self._board}, "
-            f"Name: {self._robot_name}, "
+            f"Name: {self._platform_name}, "
             f"Features: {self._features}")
 
         if self._protocol_version != PROTOCOL_VERSION:
@@ -567,8 +567,8 @@ class BaseMaraClient(BinaryCommandsMixin):
         return self._board
     
     @property
-    def robot_name(self) -> Optional[str]:
-        return self._robot_name
+    def platform_name(self) -> Optional[str]:
+        return self._platform_name
     
     def get_stats(self) -> Dict[str, Any]:
         return {

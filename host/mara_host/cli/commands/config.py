@@ -138,7 +138,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         files = _find_config_files()
         if not files:
             print_warning("No configuration files found")
-            print_info("Create one with: mara config init <robot_name>")
+            print_info("Create one with: mara config init <platform_name>")
             return 0
 
     console.print()

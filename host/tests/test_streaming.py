@@ -92,18 +92,18 @@ async def test_streaming_does_not_starve_acked_commands():
     assert any(e.get("event") == "cmd.ack" and e.get("ok") is True for e in events)
 
 
-# Optional: only enable if you already have a robot_client fixture + HIL mark
+# Optional: only enable if you already have an mcu fixture + HIL mark
 @pytest.mark.hil
 @pytest.mark.asyncio
-async def test_hil_stream_cmd_set_vel_no_ack(active_robot):
-    robot_client = active_robot  # just alias for readability
+async def test_hil_stream_cmd_set_vel_no_ack(active_mcu):
+    client = active_mcu  # just alias for readability
 
     start = asyncio.get_event_loop().time()
     duration_s = 2.0  # Reduced duration for stability
     cmd_count = 0
 
     while asyncio.get_event_loop().time() - start < duration_s:
-        await robot_client.send_reliable(
+        await client.send_reliable(
             "CMD_SET_VEL",
             {"vx": 0.2, "omega": 0.0},
             wait_for_ack=False,

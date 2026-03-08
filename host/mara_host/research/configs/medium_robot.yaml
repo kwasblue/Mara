@@ -53,7 +53,7 @@ simulation:
   dt: 0.01
 
 metadata:
-  author: robot_host
+  author: mara_host
   version: "1.0"
   use_case: research_platform
   sensors:

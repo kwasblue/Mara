@@ -44,7 +44,7 @@ simulation:
   dt: 0.001                # High precision simulation
 
 metadata:
-  author: robot_host
+  author: mara_host
   version: "1.0"
   use_case: algorithm_development
   notes: Use this for testing control algorithms without noise

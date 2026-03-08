@@ -20,7 +20,7 @@ from .models import (
     ControlSlotsTelemetry,
 )
 
-# Section IDs (auto-generated from platform_schema.py)
+# Section IDs (auto-generated from schema/telemetry.py)
 from .telemetry_sections import (
     TELEM_IMU,
     TELEM_ULTRASONIC,

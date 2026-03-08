@@ -131,7 +131,7 @@ class TestServo:
         await hil.assert_ok("CMD_SERVO_DETACH", {"servo_id": 0})
 
     @pytest.mark.motion
-    async def test_set_angle(self, active_robot, hil):
+    async def test_set_angle(self, active_mcu, hil):
         await hil.assert_ok("CMD_SERVO_ATTACH", {"servo_id": 0, "channel": 0, "min_us": 1000, "max_us": 2000})
         await hil.assert_ok("CMD_SERVO_SET_ANGLE", {"servo_id": 0, "angle_deg": 90})
 
@@ -142,7 +142,7 @@ class TestStepper:
         await hil.assert_ok("CMD_STEPPER_STOP", {"motor_id": 0})
 
     @pytest.mark.motion
-    async def test_move_rel(self, active_robot, hil):
+    async def test_move_rel(self, active_mcu, hil):
         await hil.assert_ok("CMD_STEPPER_ENABLE", {"motor_id": 0, "enable": True})
         await hil.assert_ok("CMD_STEPPER_MOVE_REL", {"motor_id": 0, "steps": 50, "speed_steps_s": 1000.0})
 
@@ -162,14 +162,14 @@ class TestDCMotor:
         await hil.assert_ok("CMD_DC_SET_VEL_GAINS", {"motor_id": 0, "kp": 1.0, "ki": 0.1, "kd": 0.01})
 
     @pytest.mark.motion
-    async def test_set_speed(self, active_robot, hil):
+    async def test_set_speed(self, active_mcu, hil):
         await hil.assert_ok("CMD_DC_SET_SPEED", {"motor_id": 0, "speed": 0.1})
         await hil.assert_ok("CMD_DC_STOP", {"motor_id": 0})
 
 
 class TestMotion:
     @pytest.mark.motion
-    async def test_set_vel(self, active_robot, hil):
+    async def test_set_vel(self, active_mcu, hil):
         await hil.assert_ok("CMD_SET_VEL", {"vx": 0.0, "omega": 0.0})
 
 

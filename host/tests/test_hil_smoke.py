@@ -66,7 +66,7 @@ async def test_hil_handshake_and_basic_commands(request):
         # Handshake assertions
         assert client.version_verified is True
         assert client.protocol_version is not None
-        assert client.robot_name is not None
+        assert client.platform_name is not None
 
         # ---- Stabilize link before issuing safety-state commands ----
         # Encourage some inbound traffic early.
@@ -92,7 +92,7 @@ async def test_hil_handshake_and_basic_commands(request):
         ok, err = await client.set_vel(0.1, 0.0)
         assert ok, err
 
-        # IMPORTANT: this is the ROBOT command stop, not the lifecycle stop()
+        # IMPORTANT: this is the MCU command stop, not the lifecycle stop()
         # If you renamed it, use client.cmd_stop() instead.
         ok, err = await client.cmd_stop() if hasattr(client, "cmd_stop") else await client.send_reliable("CMD_STOP")
         assert ok, err
@@ -172,7 +172,7 @@ async def test_hil_handshake_and_basic_commands(request):
 
         assert client.version_verified is True
 
-        # Wait for heartbeats to transition robot DISCONNECTED → IDLE
+        # Wait for heartbeats to transition MCU DISCONNECTED → IDLE
         await asyncio.sleep(0.6)
 
         # Clear any E-stop
@@ -181,7 +181,7 @@ async def test_hil_handshake_and_basic_commands(request):
         
         # Now arm should work
         ok, err = await client.arm()
-        assert ok, f"arm failed: {err}, robot may still be in DISCONNECTED"
+        assert ok, f"arm failed: {err}, MCU may still be in DISCONNECTED"
 
         ok, err = await client.activate()
         assert ok, f"activate failed: {err}"

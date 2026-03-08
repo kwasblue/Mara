@@ -53,7 +53,7 @@ simulation:
   dt: 0.005                # Higher rate for heavy dynamics
 
 metadata:
-  author: robot_host
+  author: mara_host
   version: "1.0"
   use_case: outdoor_cargo
   sensors:

@@ -278,10 +278,10 @@ class Robot:
 
     @property
     def name(self) -> Optional[str]:
-        """Robot name from MCU identity."""
+        """Platform name from MCU identity."""
         if self._client is None:
             return None
-        return self._client.robot_name
+        return self._client.platform_name
 
     # -------------------------------------------------------------------------
     # HostModules (lazy-loaded)

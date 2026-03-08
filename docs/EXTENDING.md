@@ -169,10 +169,10 @@ Adding a sensor requires changes on both MCU (C++) and Host (Python) sides.
 
 ### Step 1: Define Commands in Schema
 
-Edit `host/mara_host/tools/platform_schema.py`:
+Edit `host/mara_host/tools/schema/commands/_sensors.py` (or create a new `_lidar.py` domain file):
 
 ```python
-# In COMMANDS dict
+# In SENSOR_COMMANDS dict (or new LIDAR_COMMANDS dict)
 "CMD_LIDAR_ATTACH": {
     "kind": "cmd",
     "direction": "host->mcu",
@@ -193,9 +193,20 @@ Edit `host/mara_host/tools/platform_schema.py`:
 },
 ```
 
+If creating a new domain file, register it in `schema/commands/__init__.py`:
+
+```python
+from ._lidar import LIDAR_COMMANDS
+
+COMMANDS: dict[str, dict] = {
+    # ... existing domains ...
+    **LIDAR_COMMANDS,
+}
+```
+
 ### Step 2: Add Telemetry Section (If Streaming)
 
-For high-rate sensor data, add a telemetry section:
+For high-rate sensor data, add a telemetry section in `host/mara_host/tools/schema/telemetry.py`:
 
 ```python
 # In TELEMETRY_SECTIONS dict
@@ -368,28 +379,45 @@ Similar to sensors, motors require MCU driver + host module.
 
 ### Step 1: Define Commands
 
+Create a new domain file `host/mara_host/tools/schema/commands/_brushless.py`:
+
 ```python
-# In COMMANDS dict
-"CMD_BRUSHLESS_ATTACH": {
-    "kind": "cmd",
-    "direction": "host->mcu",
-    "description": "Attach a brushless motor (ESC).",
-    "payload": {
-        "motor_id": {"type": "int", "required": True},
-        "pwm_pin": {"type": "int", "required": True},
-        "min_us": {"type": "int", "required": False, "default": 1000},
-        "max_us": {"type": "int", "required": False, "default": 2000},
+# schema/commands/_brushless.py
+"""Brushless motor (ESC) command definitions."""
+
+BRUSHLESS_COMMANDS: dict[str, dict] = {
+    "CMD_BRUSHLESS_ATTACH": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "Attach a brushless motor (ESC).",
+        "payload": {
+            "motor_id": {"type": "int", "required": True},
+            "pwm_pin": {"type": "int", "required": True},
+            "min_us": {"type": "int", "required": False, "default": 1000},
+            "max_us": {"type": "int", "required": False, "default": 2000},
+        },
     },
-},
-"CMD_BRUSHLESS_SET_THROTTLE": {
-    "kind": "cmd",
-    "direction": "host->mcu",
-    "description": "Set brushless motor throttle (0-100%).",
-    "payload": {
-        "motor_id": {"type": "int", "required": True},
-        "throttle_pct": {"type": "float", "required": True},
+    "CMD_BRUSHLESS_SET_THROTTLE": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "Set brushless motor throttle (0-100%).",
+        "payload": {
+            "motor_id": {"type": "int", "required": True},
+            "throttle_pct": {"type": "float", "required": True},
+        },
     },
-},
+}
+```
+
+Then register in `schema/commands/__init__.py`:
+
+```python
+from ._brushless import BRUSHLESS_COMMANDS
+
+COMMANDS: dict[str, dict] = {
+    # ... existing domains ...
+    **BRUSHLESS_COMMANDS,
+}
 ```
 
 ### Step 2: Create MCU Driver
@@ -859,7 +887,7 @@ from pathlib import Path
 ### Regenerate After Changes
 
 ```bash
-# After editing platform_schema.py
+# After editing any schema file (commands/, telemetry.py, binary.py, etc.)
 mara generate all
 
 # Build firmware

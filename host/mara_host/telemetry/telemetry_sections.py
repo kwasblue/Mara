@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-# Generated from TELEMETRY_SECTIONS in platform_schema.py
+# Generated from TELEMETRY_SECTIONS in schema.py
 """
 Binary telemetry section IDs.
 

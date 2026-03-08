@@ -299,18 +299,6 @@ class RobotCommandsMixin:
         payload['sensor_id'] = sensor_id
         await self.send_json_cmd('CMD_ULTRASONIC_READ', payload)
 
-    async def cmd_telem_set_interval(self, interval_ms: int = 100) -> None:
-        """Set telemetry publish interval in milliseconds (0 = disable). (CMD_TELEM_SET_INTERVAL)"""
-        payload: dict[str, Any] = {}
-        payload['interval_ms'] = interval_ms
-        await self.send_json_cmd('CMD_TELEM_SET_INTERVAL', payload)
-
-    async def cmd_set_log_level(self, level: str = 'info') -> None:
-        """Set MCU logging verbosity level. (CMD_SET_LOG_LEVEL)"""
-        payload: dict[str, Any] = {}
-        payload['level'] = level
-        await self.send_json_cmd('CMD_SET_LOG_LEVEL', payload)
-
     async def cmd_encoder_attach(self, encoder_id: int = 0, pin_a: int = 32, pin_b: int = 33) -> None:
         """Attach/configure a quadrature encoder with runtime pins. (CMD_ENCODER_ATTACH)"""
         payload: dict[str, Any] = {}
@@ -343,6 +331,29 @@ class RobotCommandsMixin:
         payload: dict[str, Any] = {}
         payload['motor_id'] = motor_id
         await self.send_json_cmd('CMD_DC_STOP', payload)
+
+    async def cmd_dc_vel_pid_enable(self, motor_id: int, enable: bool) -> None:
+        """Enable or disable closed-loop velocity PID control for a DC motor. (CMD_DC_VEL_PID_ENABLE)"""
+        payload: dict[str, Any] = {}
+        payload['motor_id'] = motor_id
+        payload['enable'] = enable
+        await self.send_json_cmd('CMD_DC_VEL_PID_ENABLE', payload)
+
+    async def cmd_dc_set_vel_target(self, motor_id: int, omega: float) -> None:
+        """Set desired angular velocity target for a DC motor's PID controller. (CMD_DC_SET_VEL_TARGET)"""
+        payload: dict[str, Any] = {}
+        payload['motor_id'] = motor_id
+        payload['omega'] = omega
+        await self.send_json_cmd('CMD_DC_SET_VEL_TARGET', payload)
+
+    async def cmd_dc_set_vel_gains(self, motor_id: int, kp: float, ki: float, kd: float) -> None:
+        """Configure PID gains for DC motor velocity control. (CMD_DC_SET_VEL_GAINS)"""
+        payload: dict[str, Any] = {}
+        payload['motor_id'] = motor_id
+        payload['kp'] = kp
+        payload['ki'] = ki
+        payload['kd'] = kd
+        await self.send_json_cmd('CMD_DC_SET_VEL_GAINS', payload)
 
     async def cmd_observer_config(self, slot: int, num_states: int, num_outputs: int, input_ids: Any, output_ids: Any, estimate_ids: Any, num_inputs: int = 1, rate_hz: int = 200) -> None:
         """Configure a Luenberger state observer. (CMD_OBSERVER_CONFIG)"""
@@ -392,28 +403,17 @@ class RobotCommandsMixin:
         payload['slot'] = slot
         await self.send_json_cmd('CMD_OBSERVER_STATUS', payload)
 
-    async def cmd_dc_vel_pid_enable(self, motor_id: int, enable: bool) -> None:
-        """Enable or disable closed-loop velocity PID control for a DC motor. (CMD_DC_VEL_PID_ENABLE)"""
+    async def cmd_telem_set_interval(self, interval_ms: int = 100) -> None:
+        """Set telemetry publish interval in milliseconds (0 = disable). (CMD_TELEM_SET_INTERVAL)"""
         payload: dict[str, Any] = {}
-        payload['motor_id'] = motor_id
-        payload['enable'] = enable
-        await self.send_json_cmd('CMD_DC_VEL_PID_ENABLE', payload)
+        payload['interval_ms'] = interval_ms
+        await self.send_json_cmd('CMD_TELEM_SET_INTERVAL', payload)
 
-    async def cmd_dc_set_vel_target(self, motor_id: int, omega: float) -> None:
-        """Set desired angular velocity target for a DC motor's PID controller. (CMD_DC_SET_VEL_TARGET)"""
+    async def cmd_set_log_level(self, level: str = 'info') -> None:
+        """Set MCU logging verbosity level. (CMD_SET_LOG_LEVEL)"""
         payload: dict[str, Any] = {}
-        payload['motor_id'] = motor_id
-        payload['omega'] = omega
-        await self.send_json_cmd('CMD_DC_SET_VEL_TARGET', payload)
-
-    async def cmd_dc_set_vel_gains(self, motor_id: int, kp: float, ki: float, kd: float) -> None:
-        """Configure PID gains for DC motor velocity control. (CMD_DC_SET_VEL_GAINS)"""
-        payload: dict[str, Any] = {}
-        payload['motor_id'] = motor_id
-        payload['kp'] = kp
-        payload['ki'] = ki
-        payload['kd'] = kd
-        await self.send_json_cmd('CMD_DC_SET_VEL_GAINS', payload)
+        payload['level'] = level
+        await self.send_json_cmd('CMD_SET_LOG_LEVEL', payload)
 
     async def cmd_cam_get_status(self, camera_id: int = 0) -> None:
         """Get camera device status (IP, RSSI, heap, uptime). (CMD_CAM_GET_STATUS)"""

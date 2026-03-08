@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-# Generated from VERSION in platform_schema.py
+# Generated from VERSION in schema.py
 
 PROTOCOL_VERSION = 1
 SCHEMA_VERSION = 1

@@ -1,5 +1,5 @@
 // AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-// Generated from CAN_MESSAGES in platform_schema.py
+// Generated from CAN_MESSAGES in schema.py
 //
 // CAN bus message definitions for hybrid real-time/protocol transport.
 

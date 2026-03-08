@@ -1,5 +1,5 @@
 // AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-// Generated from GPIO_CHANNELS in platform_schema.py
+// Generated from GPIO_CHANNELS in schema.py
 
 #pragma once
 #include <Arduino.h>

@@ -14,26 +14,46 @@ This document defines the canonical sources, generated outputs, and ownership ru
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    platform_schema.py (CANONICAL SOURCE)                 │
-│                    host/mara_host/tools/platform_schema.py              │
-└─────────────────────────────────────┬───────────────────────────────────┘
-                                      │
-                                      ▼
-                        ┌─────────────────────────┐
-                        │    generate_all.py      │
-                        │                         │
-                        │  Runs all generators:   │
-                        │  - gen_commands.py      │
-                        │  - gen_binary_commands  │
-                        │  - gen_telemetry.py     │
-                        │  - generate_pins.py     │
-                        │  - gpio_mapping_gen.py  │
-                        │  - gen_can.py           │
-                        └─────────────────────────┘
-                                      │
-               ┌──────────────────────┴──────────────────────┐
-               │                                             │
-               ▼                                             ▼
+│              mara_host/tools/schema/ (CANONICAL SOURCE PACKAGE)          │
+│                                                                          │
+│  schema/                                                                 │
+│  ├── commands/           # Command definitions by domain                 │
+│  │   ├── _safety.py      # Safety/state machine (9 commands)            │
+│  │   ├── _rates.py       # Loop rates (4 commands)                      │
+│  │   ├── _control.py     # Signal bus, slots (13 commands)              │
+│  │   ├── _motion.py      # Velocity commands (2 commands)               │
+│  │   ├── _gpio.py        # LED, GPIO, PWM (7 commands)                  │
+│  │   ├── _servo.py       # Servo (3 commands)                           │
+│  │   ├── _stepper.py     # Stepper (3 commands)                         │
+│  │   ├── _sensors.py     # Encoder, ultrasonic (5 commands)             │
+│  │   ├── _dc_motor.py    # DC motor + PID (5 commands)                  │
+│  │   ├── _observer.py    # Luenberger observer (6 commands)             │
+│  │   ├── _telemetry.py   # Telemetry config (2 commands)                │
+│  │   └── _camera.py      # ESP32-CAM (20 commands)                      │
+│  ├── binary.py           # BINARY_COMMANDS                              │
+│  ├── telemetry.py        # TELEMETRY_SECTIONS                           │
+│  ├── version.py          # VERSION, CAPABILITIES                        │
+│  ├── can.py              # CAN_* definitions                            │
+│  ├── gpio_channels.py    # GPIO_CHANNELS                                │
+│  └── pins.py             # PINS (from pins.json)                        │
+└─────────────────────────────────────────┬───────────────────────────────┘
+                                          │
+                                          ▼
+                            ┌─────────────────────────┐
+                            │    generate_all.py      │
+                            │                         │
+                            │  Runs all generators:   │
+                            │  - gen_commands.py      │
+                            │  - gen_binary_commands  │
+                            │  - gen_telemetry.py     │
+                            │  - generate_pins.py     │
+                            │  - gpio_mapping_gen.py  │
+                            │  - gen_can.py           │
+                            └─────────────────────────┘
+                                          │
+                   ┌──────────────────────┴──────────────────────┐
+                   │                                             │
+                   ▼                                             ▼
 ┌──────────────────────────────┐           ┌──────────────────────────────┐
 │     PYTHON (Host) OUTPUT     │           │      C++ (MCU) OUTPUT        │
 ├──────────────────────────────┤           ├──────────────────────────────┤
@@ -62,27 +82,55 @@ This document defines the canonical sources, generated outputs, and ownership ru
 
 ## Canonical Sources
 
-### platform_schema.py
+### schema/ Package
 
-**Location**: `host/mara_host/tools/platform_schema.py`
+**Location**: `host/mara_host/tools/schema/`
 
-**Owns**:
-| Section | Description |
-|---------|-------------|
-| `COMMANDS` | All JSON command definitions |
-| `BINARY_COMMANDS` | High-rate binary command specs |
-| `TELEMETRY_SECTIONS` | Telemetry section IDs and formats |
-| `VERSION` | Firmware/protocol version info |
-| `CAPABILITIES` | Device capability flags |
-| `GPIO_CHANNELS` | Logical GPIO channel mappings |
-| `CAN_*` | CAN bus message definitions |
+The schema package is the single source of truth for all platform definitions. It's organized as a Python package with domain-specific modules.
 
-**Edit this file when**:
-- Adding a new command
-- Adding a new telemetry section
-- Changing protocol version
-- Adding capability flags
-- Defining CAN messages
+**Top-level imports**:
+```python
+from mara_host.tools.schema import COMMANDS, PINS, VERSION
+```
+
+### commands/ Subpackage
+
+Commands are organized by domain for maintainability. Each domain file defines a `*_COMMANDS` dict that gets merged into the main `COMMANDS` dict.
+
+| Domain File | Commands | Description |
+|-------------|----------|-------------|
+| `_safety.py` | 9 | Identity, heartbeat, arm/disarm, e-stop |
+| `_rates.py` | 4 | Loop rate configuration |
+| `_control.py` | 13 | Signal bus, slot configuration |
+| `_motion.py` | 2 | SET_MODE, SET_VEL |
+| `_gpio.py` | 7 | LED, GPIO, PWM |
+| `_servo.py` | 3 | Servo commands |
+| `_stepper.py` | 3 | Stepper commands |
+| `_sensors.py` | 5 | Encoder, ultrasonic |
+| `_dc_motor.py` | 5 | DC motor + velocity PID |
+| `_observer.py` | 6 | Luenberger state observer |
+| `_telemetry.py` | 2 | Telemetry configuration |
+| `_camera.py` | 20 | ESP32-CAM over HTTP |
+
+**Edit these files when**:
+- Adding a new command (choose appropriate domain)
+- Modifying existing command payloads
+
+**Adding a new domain**:
+1. Create `_my_domain.py` with `MY_DOMAIN_COMMANDS` dict
+2. Register in `__init__.py`: `from ._my_domain import MY_DOMAIN_COMMANDS`
+3. Merge into `COMMANDS`: `**MY_DOMAIN_COMMANDS`
+
+### Other Schema Files
+
+| File | Contains | Edit when... |
+|------|----------|--------------|
+| `binary.py` | `BINARY_COMMANDS` | Adding high-rate streaming commands |
+| `telemetry.py` | `TELEMETRY_SECTIONS` | Adding new telemetry packet types |
+| `version.py` | `VERSION`, `CAPABILITIES` | Bumping version, adding capability flags |
+| `can.py` | `CAN_*` definitions | Adding CAN bus messages |
+| `gpio_channels.py` | `GPIO_CHANNELS` | Adding logical GPIO channels |
+| `pins.py` | `PINS` (loads `pins.json`) | - |
 
 ### pins.json
 
@@ -157,7 +205,12 @@ mara generate can        # CAN definitions
 ### When to Regenerate
 
 **Always regenerate after editing**:
-- `platform_schema.py`
+- Any file in `schema/commands/`
+- `schema/binary.py`
+- `schema/telemetry.py`
+- `schema/version.py`
+- `schema/can.py`
+- `schema/gpio_channels.py`
 - `pins.json`
 
 **Regenerate before**:
@@ -198,18 +251,19 @@ echo "OK: Generated files are up to date"
 
 ## Adding New Generated Artifacts
 
-1. **Add schema to `platform_schema.py`**
+1. **Add schema to appropriate file in `schema/`**
    ```python
-   NEW_THING = {
-       "item1": {...},
-       "item2": {...},
-   }
+   # For commands: schema/commands/_my_domain.py
+   MY_DOMAIN_COMMANDS = {...}
+
+   # For other definitions: schema/my_thing.py
+   MY_THING = {...}
    ```
 
 2. **Create generator in `host/mara_host/tools/`**
    ```python
-   # gen_new_thing.py
-   from platform_schema import NEW_THING, PY_CONFIG_DIR, CPP_CONFIG_DIR
+   # gen_my_thing.py
+   from mara_host.tools.schema import MY_THING, PY_CONFIG_DIR, CPP_CONFIG_DIR
 
    def generate_python(): ...
    def generate_cpp(): ...
@@ -218,16 +272,16 @@ echo "OK: Generated files are up to date"
 
 3. **Register in `generate_all.py`**
    ```python
-   import gen_new_thing
+   import gen_my_thing
    # ... in main():
-   gen_new_thing.main()
+   gen_my_thing.main()
    ```
 
 4. **Add CLI command** (optional)
    ```python
    # cli/commands/generate.py
-   def cmd_new_thing(args):
-       gen_new_thing.main()
+   def cmd_my_thing(args):
+       gen_my_thing.main()
    ```
 
 5. **Document in this file**
@@ -263,10 +317,10 @@ git diff  # See what changed
 
 ### "Import error in generated file"
 
-Check that `platform_schema.py` is valid Python:
+Check that schema files are valid Python:
 ```bash
 cd host/mara_host/tools
-python -c "import platform_schema; print('OK')"
+python -c "from schema import COMMANDS; print(f'{len(COMMANDS)} commands')"
 ```
 
 ### "C++ compile error in generated header"
@@ -295,7 +349,12 @@ ls host/mara_host/config/        # Should exist
 
 | Source | Edit? | Regenerate After? |
 |--------|-------|-------------------|
-| `platform_schema.py` | Yes | Yes |
+| `schema/commands/_*.py` | Yes | Yes |
+| `schema/binary.py` | Yes | Yes |
+| `schema/telemetry.py` | Yes | Yes |
+| `schema/version.py` | Yes | Yes |
+| `schema/can.py` | Yes | Yes |
+| `schema/gpio_channels.py` | Yes | Yes |
 | `pins.json` | Yes | Yes |
 | `config/*.py` | No | - |
 | `config/*.h` | No | - |

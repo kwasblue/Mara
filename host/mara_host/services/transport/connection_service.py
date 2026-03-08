@@ -55,7 +55,7 @@ class ConnectionInfo:
     firmware_version: Optional[str] = None
     protocol_version: Optional[int] = None
     board: Optional[str] = None
-    robot_name: Optional[str] = None
+    platform_name: Optional[str] = None
     features: list = None
     capabilities: int = 0
 
@@ -122,13 +122,13 @@ class ConnectionService:
             firmware_version=identity.get("firmware"),
             protocol_version=identity.get("protocol"),
             board=identity.get("board"),
-            robot_name=identity.get("name"),
+            platform_name=identity.get("name"),
             features=identity.get("features", []),
             capabilities=identity.get("capabilities", 0),
         )
 
     async def disconnect(self) -> None:
-        """Disconnect from the robot."""
+        """Disconnect from the MCU."""
         if self.client:
             await self.client.stop()
             self.client = None

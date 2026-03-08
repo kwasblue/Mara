@@ -17,11 +17,11 @@ python -m mara_host.tools.generate_all
 
 | File | Description |
 |------|-------------|
-| `config/client_commands.py` | `RobotCommandsMixin` with `cmd_*()` methods |
+| `config/client_commands.py` | `MaraCommandsMixin` with `cmd_*()` methods |
 | `config/command_defs.py` | `CommandDef` dataclasses |
 | `config/commands.json` | Command metadata JSON |
 
-**Source of truth:** `tools/platform_schema.py`
+**Source of truth:** `tools/schema/commands/` (12 domain files, 79 commands)
 
 ### gen_binary_commands.py → Binary Protocol
 
@@ -30,7 +30,7 @@ python -m mara_host.tools.generate_all
 | `command/binary_commands.py` | `Opcode` enum class |
 | `command/json_to_binary.py` | `JsonToBinaryEncoder` for high-rate commands |
 
-**Source of truth:** `tools/platform_schema.py`
+**Source of truth:** `tools/schema/binary.py`
 
 ### gen_telemetry.py → Telemetry Sections
 
@@ -38,7 +38,7 @@ python -m mara_host.tools.generate_all
 |------|-------------|
 | `telemetry/telemetry_sections.py` | `TELEM_*` section ID constants |
 
-**Source of truth:** `tools/platform_schema.py`
+**Source of truth:** `tools/schema/telemetry.py`
 
 ### gen_version.py → Version Constants
 
@@ -46,7 +46,7 @@ python -m mara_host.tools.generate_all
 |------|-------------|
 | `config/version.py` | `PROTOCOL_VERSION`, `SCHEMA_VERSION`, etc. |
 
-**Source of truth:** `tools/platform_schema.py`
+**Source of truth:** `tools/schema/version.py`
 
 ### gen_can.py → CAN Bus Definitions
 
@@ -54,7 +54,7 @@ python -m mara_host.tools.generate_all
 |------|-------------|
 | `transport/can_defs_generated.py` | CAN message IDs and structures |
 
-**Source of truth:** `tools/platform_schema.py`
+**Source of truth:** `tools/schema/can.py`
 
 ### generate_pins.py → Pin Configuration
 
@@ -72,7 +72,35 @@ python -m mara_host.tools.generate_all
 | `config/gpio_channels.py` | GPIO channel mappings |
 | `config/gpio_channels.json` | Channel metadata JSON |
 
-**Source of truth:** `config/pins.json`
+**Source of truth:** `tools/schema/gpio_channels.py`
+
+## Schema Package Structure
+
+The schema package (`tools/schema/`) is the single source of truth:
+
+```
+tools/schema/
+├── __init__.py         # Public exports
+├── commands/           # Command definitions by domain
+│   ├── _safety.py      # Safety/state machine (9 commands)
+│   ├── _rates.py       # Loop rates (4 commands)
+│   ├── _control.py     # Signal bus, slots (13 commands)
+│   ├── _motion.py      # Velocity commands (2 commands)
+│   ├── _gpio.py        # LED, GPIO, PWM (7 commands)
+│   ├── _servo.py       # Servo (3 commands)
+│   ├── _stepper.py     # Stepper (3 commands)
+│   ├── _sensors.py     # Encoder, ultrasonic (5 commands)
+│   ├── _dc_motor.py    # DC motor + PID (5 commands)
+│   ├── _observer.py    # Luenberger observer (6 commands)
+│   ├── _telemetry.py   # Telemetry config (2 commands)
+│   └── _camera.py      # ESP32-CAM (20 commands)
+├── binary.py           # BINARY_COMMANDS
+├── telemetry.py        # TELEMETRY_SECTIONS
+├── version.py          # VERSION, CAPABILITIES
+├── can.py              # CAN_* definitions
+├── gpio_channels.py    # GPIO_CHANNELS
+└── pins.py             # PINS (loads pins.json)
+```
 
 ## How to Identify Generated Files
 
@@ -89,15 +117,20 @@ Generated files contain one of these headers:
 ## When to Regenerate
 
 Regenerate after:
-- Editing `tools/platform_schema.py`
+- Editing any file in `tools/schema/commands/`
+- Editing `tools/schema/binary.py`
+- Editing `tools/schema/telemetry.py`
+- Editing `tools/schema/version.py`
+- Editing `tools/schema/can.py`
+- Editing `tools/schema/gpio_channels.py`
 - Adding/removing commands
 - Changing protocol version
 - Modifying pin assignments
-- Updating telemetry sections
 
 ## Adding New Generated Files
 
 1. Create generator in `tools/gen_*.py`
-2. Add to `tools/generate_all.py`
-3. Document in this file
-4. Add header comment to generated output
+2. Add source data to appropriate file in `tools/schema/`
+3. Add to `tools/generate_all.py`
+4. Document in this file
+5. Add header comment to generated output

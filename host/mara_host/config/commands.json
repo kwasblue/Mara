@@ -668,37 +668,6 @@
         }
       }
     },
-    "CMD_TELEM_SET_INTERVAL": {
-      "kind": "cmd",
-      "direction": "host->mcu",
-      "description": "Set telemetry publish interval in milliseconds (0 = disable).",
-      "payload": {
-        "interval_ms": {
-          "type": "int",
-          "required": true,
-          "default": 100
-        }
-      }
-    },
-    "CMD_SET_LOG_LEVEL": {
-      "kind": "cmd",
-      "direction": "host->mcu",
-      "description": "Set MCU logging verbosity level.",
-      "payload": {
-        "level": {
-          "type": "string",
-          "required": true,
-          "enum": [
-            "debug",
-            "info",
-            "warn",
-            "error",
-            "off"
-          ],
-          "default": "info"
-        }
-      }
-    },
     "CMD_ENCODER_ATTACH": {
       "kind": "cmd",
       "direction": "host->mcu",
@@ -773,6 +742,67 @@
           "type": "int",
           "required": true,
           "description": "Logical DC motor ID (0..3)."
+        }
+      }
+    },
+    "CMD_DC_VEL_PID_ENABLE": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Enable or disable closed-loop velocity PID control for a DC motor.",
+      "payload": {
+        "motor_id": {
+          "type": "int",
+          "required": true,
+          "description": "Logical DC motor ID (0..3)."
+        },
+        "enable": {
+          "type": "bool",
+          "required": true,
+          "description": "True to enable velocity PID, False to disable."
+        }
+      }
+    },
+    "CMD_DC_SET_VEL_TARGET": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Set desired angular velocity target for a DC motor's PID controller.",
+      "payload": {
+        "motor_id": {
+          "type": "int",
+          "required": true,
+          "description": "Logical DC motor ID (0..3)."
+        },
+        "omega": {
+          "type": "float",
+          "required": true,
+          "description": "Target angular velocity in rad/s (sign indicates direction)."
+        }
+      }
+    },
+    "CMD_DC_SET_VEL_GAINS": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Configure PID gains for DC motor velocity control.",
+      "payload": {
+        "motor_id": {
+          "type": "int",
+          "required": true,
+          "description": "Logical DC motor ID (0..3)."
+        },
+        "kp": {
+          "type": "float",
+          "required": true,
+          "description": "Proportional gain for velocity PID."
+        },
+        "ki": {
+          "type": "float",
+          "required": true,
+          "description": "Integral gain for velocity PID."
+        },
+        "kd": {
+          "type": "float",
+          "required": true,
+          "description": "Derivative gain for velocity PID."
         }
       }
     },
@@ -941,64 +971,34 @@
         }
       }
     },
-    "CMD_DC_VEL_PID_ENABLE": {
+    "CMD_TELEM_SET_INTERVAL": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Enable or disable closed-loop velocity PID control for a DC motor.",
+      "description": "Set telemetry publish interval in milliseconds (0 = disable).",
       "payload": {
-        "motor_id": {
+        "interval_ms": {
           "type": "int",
           "required": true,
-          "description": "Logical DC motor ID (0..3)."
-        },
-        "enable": {
-          "type": "bool",
-          "required": true,
-          "description": "True to enable velocity PID, False to disable."
+          "default": 100
         }
       }
     },
-    "CMD_DC_SET_VEL_TARGET": {
+    "CMD_SET_LOG_LEVEL": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Set desired angular velocity target for a DC motor's PID controller.",
+      "description": "Set MCU logging verbosity level.",
       "payload": {
-        "motor_id": {
-          "type": "int",
+        "level": {
+          "type": "string",
           "required": true,
-          "description": "Logical DC motor ID (0..3)."
-        },
-        "omega": {
-          "type": "float",
-          "required": true,
-          "description": "Target angular velocity in rad/s (sign indicates direction)."
-        }
-      }
-    },
-    "CMD_DC_SET_VEL_GAINS": {
-      "kind": "cmd",
-      "direction": "host->mcu",
-      "description": "Configure PID gains for DC motor velocity control.",
-      "payload": {
-        "motor_id": {
-          "type": "int",
-          "required": true,
-          "description": "Logical DC motor ID (0..3)."
-        },
-        "kp": {
-          "type": "float",
-          "required": true,
-          "description": "Proportional gain for velocity PID."
-        },
-        "ki": {
-          "type": "float",
-          "required": true,
-          "description": "Integral gain for velocity PID."
-        },
-        "kd": {
-          "type": "float",
-          "required": true,
-          "description": "Derivative gain for velocity PID."
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error",
+            "off"
+          ],
+          "default": "info"
         }
       }
     },

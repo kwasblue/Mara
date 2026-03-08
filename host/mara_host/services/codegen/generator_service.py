@@ -222,8 +222,8 @@ class CodeGeneratorService:
         return {gt: list(files) for gt, files in self._GENERATED_FILES.items()}
 
     def get_schema_path(self) -> Path:
-        """Get path to the platform schema (source of truth)."""
-        return self._tools_dir / "platform_schema.py"
+        """Get path to the platform schema package (source of truth)."""
+        return self._tools_dir / "schema"
 
     def set_progress_callback(
         self,

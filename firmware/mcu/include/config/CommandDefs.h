@@ -1,5 +1,5 @@
 // AUTO-GENERATED FILE — DO NOT EDIT BY HAND
-// Generated from COMMANDS in platform_schema.py
+// Generated from COMMANDS in schema.py
 
 #pragma once
 #include <string>

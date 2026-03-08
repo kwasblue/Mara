@@ -149,7 +149,7 @@ def _dump_snapshot(client, filepath: str, reason: str, recent: list[dict] | None
             "is_connected": bool(getattr(client, "is_connected", False)),
             "version_verified": getattr(client, "version_verified", None),
             "protocol_version": getattr(client, "protocol_version", None),
-            "robot_name": getattr(client, "robot_name", None),
+            "platform_name": getattr(client, "platform_name", None),
         },
     }
 
@@ -261,7 +261,7 @@ async def test_hil_mini_soak_link_stability(request):
             _log_cmd({"ts": _now_ts(), "dir": "rx", "cmd": name, "result": res, "dt_s": dt})
             return res
 
-    async def _robot_cmd_stop() -> tuple[bool, str | None]:
+    async def _mcu_cmd_stop() -> tuple[bool, str | None]:
         try:
             return await client.send_reliable("CMD_STOP", {}, wait_for_ack=True)
         except TypeError:
@@ -274,7 +274,7 @@ async def test_hil_mini_soak_link_stability(request):
     try:
         await call("client.start", client.start())
         started = True
-        # Ensure robot is in clean IDLE state (previous tests may have left it elsewhere)
+        # Ensure MCU is in clean IDLE state (previous tests may have left it elsewhere)
         await asyncio.sleep(0.3)
         try:
             await client.send_reliable("CMD_STOP", {})
@@ -292,7 +292,7 @@ async def test_hil_mini_soak_link_stability(request):
 
         assert client.version_verified is True
         assert client.protocol_version is not None
-        assert client.robot_name is not None
+        assert client.platform_name is not None
 
         await call("ping", client.send_ping())
         await _wait_until(lambda: client.is_connected, timeout_s=2.0)
@@ -367,7 +367,7 @@ async def test_hil_mini_soak_link_stability(request):
 
             await asyncio.sleep(0.02)
 
-        ok, err = await call("CMD_STOP", _robot_cmd_stop())
+        ok, err = await call("CMD_STOP", _mcu_cmd_stop())
         assert ok, err
 
         ok, err = await call("deactivate", client.deactivate())

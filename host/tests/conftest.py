@@ -27,8 +27,8 @@ def transport():
 
 def pytest_addoption(parser):
     parser.addoption("--mcu-port", action="store", default=os.getenv("MCU_PORT", ""))
-    parser.addoption("--robot-host", action="store", default=os.getenv("ROBOT_HOST", "10.0.0.60"))
-    parser.addoption("--robot-port", action="store", type=int, default=int(os.getenv("ROBOT_PORT", "3333")))
+    parser.addoption("--mara-host", action="store", default=os.getenv("MARA_HOST", "10.0.0.60"))
+    parser.addoption("--mara-port", action="store", type=int, default=int(os.getenv("MARA_PORT", "3333")))
     parser.addoption("--run-hil", action="store_true", default=False, help="Run HIL tests")
     parser.addoption("--hil-timeout", action="store", type=float, default=5.0, help="HIL command timeout")
 
@@ -52,12 +52,12 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(scope="session")
 def mara_host(request) -> str:
-    return request.config.getoption("--robot-host")
+    return request.config.getoption("--mara-host")
 
 
 @pytest.fixture(scope="session")
-def robot_port(request) -> int:
-    return request.config.getoption("--robot-port")
+def mara_port(request) -> int:
+    return request.config.getoption("--mara-port")
 
 
 @pytest.fixture(scope="session")
@@ -66,38 +66,38 @@ def hil_timeout(request) -> float:
 
 
 @pytest.fixture
-async def robot(request, mara_host, robot_port, hil_timeout, tmp_path):
+async def mcu(request, mara_host, mara_port, hil_timeout, tmp_path):
     """
     Connected MaraClient for HIL tests.
     Ensures safe state on setup and teardown.
     """
     from mara_host.transport.tcp_transport import AsyncTcpTransport
     from mara_host.command.client import MaraClient
-    
-    transport = AsyncTcpTransport(mara_host, robot_port)
+
+    transport = AsyncTcpTransport(mara_host, mara_port)
     client = MaraClient(
         transport,
         command_timeout_s=hil_timeout,
         handshake_timeout_s=hil_timeout * 2,
     )
-    
+
     # Attach event logging
     test_name = request.node.name
     log_path = tmp_path / f"hil_{test_name}.log"
     close_log = attach_bus_dump(client, str(log_path))
-    
+
     try:
         await client.start()
-        
+
         # Ensure clean starting state
         for cmd in ["CMD_CLEAR_ESTOP", "CMD_STOP", "CMD_DEACTIVATE", "CMD_DISARM"]:
             try:
                 await client.send_reliable(cmd)
             except Exception:
                 pass
-        
+
         yield client
-        
+
     finally:
         # Safe teardown
         for cmd in ["CMD_STOP", "CMD_DEACTIVATE", "CMD_DISARM"]:
@@ -105,74 +105,74 @@ async def robot(request, mara_host, robot_port, hil_timeout, tmp_path):
                 await client.send_reliable(cmd)
             except Exception:
                 pass
-        
+
         try:
             await client.stop()
         except Exception:
             pass
-        
+
         close_log()
 
 
 @pytest.fixture
-async def armed_robot(robot):
-    """Robot in ARMED state."""
-    ok, err = await robot.send_reliable("CMD_ARM")
+async def armed_mcu(mcu):
+    """MCU in ARMED state."""
+    ok, err = await mcu.send_reliable("CMD_ARM")
     assert ok, f"Failed to arm: {err}"
-    yield robot
+    yield mcu
 
 
 @pytest.fixture
-async def active_robot(armed_robot):
-    """Robot in ACTIVE state."""
-    ok, err = await armed_robot.send_reliable("CMD_ACTIVATE")
+async def active_mcu(armed_mcu):
+    """MCU in ACTIVE state."""
+    ok, err = await armed_mcu.send_reliable("CMD_ACTIVATE")
     assert ok, f"Failed to activate: {err}"
-    yield armed_robot
+    yield armed_mcu
 
 
 # ============== HIL Assertion Helper ==============
 
 @pytest.fixture
-def hil(robot):
+def hil(mcu):
     """Helper for cleaner HIL assertions."""
     class HIL:
-        def __init__(self, r):
-            self.robot = r
-        
+        def __init__(self, client):
+            self.client = client
+
         async def send(self, cmd, payload=None):
             """Send command and return response."""
-            ok, err = await self.robot.send_reliable(cmd, payload or {})
+            ok, err = await self.client.send_reliable(cmd, payload or {})
             return {"ok": ok, "error": err}
-        
+
         async def assert_ok(self, cmd, payload=None, msg=""):
-            ok, err = await self.robot.send_reliable(cmd, payload or {})
+            ok, err = await self.client.send_reliable(cmd, payload or {})
             assert ok, f"{cmd} failed: {err}. {msg}"
             return ok, err
-        
+
         async def assert_fails(self, cmd, payload=None, expected_error=None):
-            ok, err = await self.robot.send_reliable(cmd, payload or {})
+            ok, err = await self.client.send_reliable(cmd, payload or {})
             assert not ok, f"{cmd} should have failed"
             if expected_error:
                 assert expected_error in str(err)
             return ok, err
-        
+
         async def clear_signals(self):
             """Clear all signals from the signal bus."""
             try:
                 resp = await self.send("CMD_CTRL_SIGNALS_LIST", {})
                 if resp and resp.get("ok"):
                     # Get signals from response - adjust based on actual response format
-                    ok, err = await self.robot.send_reliable("CMD_CTRL_SIGNALS_LIST", {})
+                    ok, err = await self.client.send_reliable("CMD_CTRL_SIGNALS_LIST", {})
                     # For now just try to delete common test IDs
                     for sig_id in [100, 101, 102, 110, 200, 201, 202, 203, 300, 301, 302, 303, 310, 311]:
                         try:
-                            await self.robot.send_reliable("CMD_CTRL_SIGNAL_DELETE", {"id": sig_id})
+                            await self.client.send_reliable("CMD_CTRL_SIGNAL_DELETE", {"id": sig_id})
                         except:
                             pass
             except Exception:
                 pass
-    
-    return HIL(robot)
+
+    return HIL(mcu)
 
 
 # ============== Clear Signals Fixture ==============
@@ -228,7 +228,7 @@ def attach_bus_dump(client, path: str, cycle: int | None = None):
     if callable(wildcard):
         wildcard(lambda topic, obj: log(topic, obj))
     else:
-        for t in ["state.changed", "connection.lost", "connection.restored", 
+        for t in ["state.changed", "connection.lost", "connection.restored",
                   "telemetry", "telemetry.raw", "telemetry.binary"]:
             try:
                 sub(t, lambda obj, tt=t: log(tt, obj))

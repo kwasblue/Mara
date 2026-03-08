@@ -7,10 +7,7 @@ from mara_host.services.transport.connection_service import (
     ConnectionInfo,
     TransportType,
 )
-from mara_host.services.transport.robot_control import (
-    RobotControlService,
-    ServoConfig,
-)
+from mara_host.services.transport.robot_control import RobotControlService
 
 __all__ = [
     "ConnectionService",
@@ -18,5 +15,4 @@ __all__ = [
     "ConnectionInfo",
     "TransportType",
     "RobotControlService",
-    "ServoConfig",
 ]

@@ -49,6 +49,7 @@ def _discover_panels() -> list[dict]:
     """
     panels = []
     panels_dir = Path(__file__).parent / "panels"
+    print(f"[MainWindow] Discovering panels from: {panels_dir}")
 
     for item in sorted(panels_dir.iterdir()):
         # Skip __pycache__ and private files
@@ -103,6 +104,7 @@ def _discover_panels() -> list[dict]:
 
     # Sort by order
     panels.sort(key=lambda p: p["order"])
+    print(f"[MainWindow] Discovered {len(panels)} panels: {[p['id'] for p in panels]}")
     return panels
 
 
@@ -263,9 +265,11 @@ class MainWindow(QMainWindow):
                 panel = panel_class(self.signals, self.controller, self.settings)
                 self.panels[panel_id] = panel
                 self.content_stack.addWidget(panel)
+                print(f"[MainWindow] Created panel: {panel_id}")
             except Exception as e:
-                import warnings
-                warnings.warn(f"Failed to create panel '{panel_id}': {e}")
+                print(f"[MainWindow] ERROR creating panel '{panel_id}': {e}")
+                import traceback
+                traceback.print_exc()
 
         # Select initial panel
         last_panel = self.settings.get_last_panel()
@@ -460,8 +464,11 @@ class MainWindow(QMainWindow):
 
     def _on_log_message(self, timestamp: str, level: str, message: str) -> None:
         """Handle log message."""
+        print(f"[LOG] {timestamp} [{level}] {message}")  # Debug
         if "logs" in self.panels:
             self.panels["logs"].add_message(timestamp, level, message)
+        else:
+            print(f"[WARNING] logs panel not found in panels: {list(self.panels.keys())}")
 
     def _restore_window_state(self) -> None:
         """Restore window geometry and state."""

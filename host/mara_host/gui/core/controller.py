@@ -109,6 +109,7 @@ class RobotController:
         )
         self._loop_thread.start()
         self._running = True
+        print("[RobotController] Started async event loop")
 
     def stop(self) -> None:
         """Stop the controller and cleanup."""
@@ -161,21 +162,31 @@ class RobotController:
 
     def connect_serial(self, port: str, baudrate: int = 115200) -> None:
         """Connect via serial transport."""
+        self.signals.log_info(f"Connecting to serial port {port} at {baudrate} baud...")
         config = TransportConfig(
             transport_type="serial",
             port=port,
             baudrate=baudrate,
         )
-        self._schedule(self._connect_async(config))
+        try:
+            self._schedule(self._connect_async(config))
+        except RuntimeError as e:
+            self.signals.log_error(f"Failed to schedule connection: {e}")
+            self.signals.connection_error.emit(str(e))
 
     def connect_tcp(self, host: str, port: int = 3333) -> None:
         """Connect via TCP transport."""
+        self.signals.log_info(f"Connecting to TCP {host}:{port}...")
         config = TransportConfig(
             transport_type="tcp",
             host=host,
             tcp_port=port,
         )
-        self._schedule(self._connect_async(config))
+        try:
+            self._schedule(self._connect_async(config))
+        except RuntimeError as e:
+            self.signals.log_error(f"Failed to schedule connection: {e}")
+            self.signals.connection_error.emit(str(e))
 
     def disconnect(self) -> None:
         """Disconnect from robot."""
@@ -183,19 +194,27 @@ class RobotController:
 
     async def _connect_async(self, config: TransportConfig) -> None:
         """Internal async connection."""
-        from mara_host.services.transport import (
-            ConnectionService,
-            ConnectionConfig,
-            TransportType,
-        )
-        from mara_host.services.control import (
-            StateService,
-            MotionService,
-            MotorService,
-            ServoService,
-            GpioService,
-        )
-        from mara_host.services.telemetry import TelemetryService
+        print(f"[RobotController] _connect_async called: {config.transport_type} {config.port or config.host}")
+
+        try:
+            from mara_host.services.transport import (
+                ConnectionService,
+                ConnectionConfig,
+                TransportType,
+            )
+            from mara_host.services.control import (
+                StateService,
+                MotionService,
+                MotorService,
+                ServoService,
+                GpioService,
+            )
+            from mara_host.services.telemetry import TelemetryService
+        except ImportError as e:
+            print(f"[RobotController] Import error: {e}")
+            self.signals.log_error(f"Import error: {e}")
+            self.signals.connection_error.emit(f"Import error: {e}")
+            return
 
         # Wait for pending disconnect
         for _ in range(30):
@@ -243,18 +262,23 @@ class RobotController:
                 interval_ms=self._state.telemetry_interval_ms
             )
 
-            # Auto-attach servos
-            for servo_id in range(2):
+            # Auto-attach servos (use common ESP32 servo pins)
+            servo_pins = [13, 14]  # Default GPIO pins for servos
+            for servo_id, pin in enumerate(servo_pins):
                 try:
-                    await self._servo_service.attach(
+                    result = await self._servo_service.attach(
                         servo_id=servo_id,
-                        channel=servo_id,
+                        channel=pin,
                         min_us=500,
                         max_us=2500,
                         initial_angle=90,
                     )
-                except Exception:
-                    pass
+                    if result.ok:
+                        self._dev_log(f"Servo {servo_id} attached on GPIO {pin}")
+                    else:
+                        print(f"[RobotController] Servo {servo_id} attach failed: {result.error}")
+                except Exception as e:
+                    print(f"[RobotController] Servo {servo_id} attach error: {e}")
 
             # Update state
             self._state.connection_state = ConnectionState.CONNECTED
@@ -272,6 +296,9 @@ class RobotController:
             self.signals.log_info(f"Connected to robot (FW: {info.firmware_version})")
 
         except Exception as e:
+            print(f"[RobotController] Connection error: {e}")
+            import traceback
+            traceback.print_exc()
             self._state.connection_state = ConnectionState.ERROR
             self._state.last_error = str(e)
             self.signals.connection_changed.emit(False, "")
@@ -400,9 +427,16 @@ class RobotController:
 
     async def _servo_op(self, op: str, *args) -> None:
         if not self._servo_service:
+            print(f"[RobotController] Servo op {op} ignored - service not initialized")
             return
-        method = getattr(self._servo_service, op)
-        await method(*args)
+        self._dev_log(f"Servo: {op}({args})")
+        try:
+            method = getattr(self._servo_service, op)
+            result = await method(*args)
+            if hasattr(result, 'ok') and not result.ok:
+                print(f"[RobotController] Servo {op} failed: {result.error}")
+        except Exception as e:
+            print(f"[RobotController] Servo {op} error: {e}")
 
     # ==================== GPIO Control (Delegate to GpioService) ====================
 

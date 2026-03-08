@@ -46,7 +46,7 @@ class StreamTransport(BaseTransport, ABC):
 
     # ---- helpers ----
     def is_open(self) -> bool:
-        return bool(self._ser and self._ser.is_open)
+        return self._is_open
 
     # ---- sync lifecycle ----
     def start(self) -> None:

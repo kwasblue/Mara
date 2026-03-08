@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-07 18:53:13
-Total Files: 564
-Total Lines of Code: 52,849
+Generated: 2026-03-07 19:28:59
+Total Files: 565
+Total Lines of Code: 53,036
 ================================================================================
 
 
@@ -842,7 +842,7 @@ HOST (Python)
       |-- capabilities(self)
       |-- features(self)
       |-- board(self)
-      |-- robot_name(self)
+      |-- platform_name(self)
       `-- get_stats(self)
     [Class] MaraClient
 
@@ -1639,7 +1639,7 @@ HOST (Python)
 
   host/mara_host/services/recording/__init__.py (14 lines)
 
-  host/mara_host/services/recording/recording_service.py (200 lines)
+  host/mara_host/services/recording/recording_service.py (201 lines)
     [Class] RecordedEvent
     [Class] SessionInfo
     [Class] RecordingConfig
@@ -2146,11 +2146,11 @@ HOST (Python)
     [Fn] pytest_configure(config)
     [Fn] pytest_collection_modifyitems(config, items)
     [Fn] mara_host(request)
-    [Fn] robot_port(request)
+    [Fn] mara_port(request)
     [Fn] hil_timeout(request)
-    [Fn] hil(robot)
+    [Fn] hil(mcu)
     [Class] HIL
-      `-- __init__(self, r)
+      `-- __init__(self, client)
     [Fn] event_loop()
     [Fn] attach_bus_dump(client, path, cycle)
     [Fn] _ser(x)
@@ -2410,6 +2410,30 @@ HOST (Python)
   host/tests/test_reliable_commander_stats.py (70 lines)
     [Fn] _import_commander()
     [Fn] on_event(evt)
+
+  host/tests/test_schema.py (190 lines)
+    [Class] TestSchemaPackageStructure
+      |-- test_schema_package_exists(self)
+      |-- test_commands_importable(self)
+      `-- test_all_schema_exports_available(self)
+    [Class] TestCommandsDomainFiles
+      |-- test_commands_has_expected_count(self)
+      |-- test_individual_domain_exports(self)
+      |-- test_merged_commands_equals_sum_of_domains(self)
+      `-- test_no_duplicate_command_names(self)
+    [Class] TestCommandDefinitionFormat
+      |-- test_all_commands_have_required_fields(self)
+      |-- test_all_commands_have_valid_kind(self)
+      |-- test_all_commands_have_valid_direction(self)
+      `-- test_command_names_follow_convention(self)
+    [Class] TestSampleCommands
+      |-- test_identity_command_exists(self)
+      |-- test_heartbeat_command_exists(self)
+      |-- test_dc_motor_commands_exist(self)
+      `-- test_camera_commands_exist(self)
+    [Class] TestSchemaIntegration
+      |-- test_schema_exports_match_init_all(self)
+      `-- test_commands_package_exports_match_init_all(self)
 
   host/tests/test_session_replay.py (20 lines)
     [Fn] _import_replay()
@@ -2836,7 +2860,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/config/PinConfig.h (20 lines)
 
-  firmware/mcu/include/config/Version.h (20 lines)
+  firmware/mcu/include/config/Version.h (16 lines)
 
   firmware/mcu/include/config/WifiSecrets.h (6 lines)
 
@@ -4578,22 +4602,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     315
+  Python Files:     316
   C++ Files:        249
-  Total Files:      564
+  Total Files:      565
 
 DEFINITIONS
-  Classes:          543
+  Classes:          548
   Structs:          136
   Functions:        1752
-  Methods:          962
+  Methods:          979
 
 LINES OF CODE
-  Python:           33,368
-  C++:              19,481
-  Total Code:       52,849
-  Blank Lines:      15,217
-  Comment Lines:    15,063
-  Total Lines:      83,129
+  Python:           33,559
+  C++:              19,477
+  Total Code:       53,036
+  Blank Lines:      15,263
+  Comment Lines:    15,094
+  Total Lines:      83,393
 
 ================================================================================

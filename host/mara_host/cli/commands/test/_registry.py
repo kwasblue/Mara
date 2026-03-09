@@ -14,6 +14,7 @@ from .gpio import cmd_gpio
 from .latency import cmd_latency
 from .stepper import cmd_stepper
 from .commands import cmd_commands, DEFAULT_PAYLOADS
+from mara_host.cli.cli_config import get_serial_port as _get_port
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -32,7 +33,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
     # Common args
     def add_transport_args(p: argparse.ArgumentParser) -> None:
-        p.add_argument("-p", "--port", default="/dev/cu.usbserial-0001")
+        p.add_argument("-p", "--port", default=_get_port())
         p.add_argument("--tcp", metavar="HOST", help="Use TCP instead of serial")
 
     # all - run all tests

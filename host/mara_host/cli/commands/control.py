@@ -11,7 +11,6 @@ from mara_host.cli.console import (
     print_success,
     print_error,
 )
-from mara_host.cli.context import CLIContext, run_with_context
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -43,7 +42,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "signals",
         help="List all signals in the signal bus",
     )
-    add_port_arg(sig_list_p)
+    sig_list_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port (default: /dev/cu.usbserial-0001)",
+    )
     sig_list_p.set_defaults(func=cmd_signals_list)
 
     # signal define
@@ -65,7 +68,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         default=0.0,
         help="Initial value (default: 0.0)",
     )
-    add_port_arg(sig_def_p)
+    sig_def_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port",
+    )
     sig_def_p.set_defaults(func=cmd_signal_define)
 
     # signal set
@@ -75,7 +82,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     sig_set_p.add_argument("id", type=int, help="Signal ID")
     sig_set_p.add_argument("value", type=float, help="Value to set")
-    add_port_arg(sig_set_p)
+    sig_set_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port",
+    )
     sig_set_p.set_defaults(func=cmd_signal_set)
 
     # signal clear
@@ -83,7 +94,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "signal-clear",
         help="Clear all signals",
     )
-    add_port_arg(sig_clear_p)
+    sig_clear_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port",
+    )
     sig_clear_p.set_defaults(func=cmd_signals_clear)
 
     # ==================== Controller Slot Commands ====================
@@ -116,7 +131,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--rate-hz", type=int, default=100,
         help="Control rate in Hz (default: 100)",
     )
-    add_port_arg(ctrl_cfg_p)
+    ctrl_cfg_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port",
+    )
     ctrl_cfg_p.set_defaults(func=cmd_controller_config)
 
     # controller enable
@@ -130,7 +149,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Disable the slot (default: enable)",
     )
-    add_port_arg(ctrl_en_p)
+    ctrl_en_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port",
+    )
     ctrl_en_p.set_defaults(func=cmd_controller_enable)
 
     # controller set-param
@@ -141,7 +164,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     ctrl_param_p.add_argument("slot", type=int, help="Slot number (0-7)")
     ctrl_param_p.add_argument("key", help="Parameter key (e.g., kp, ki, kd)")
     ctrl_param_p.add_argument("value", type=float, help="Parameter value")
-    add_port_arg(ctrl_param_p)
+    ctrl_param_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port",
+    )
     ctrl_param_p.set_defaults(func=cmd_controller_param)
 
     # ==================== Observer Slot Commands ====================
@@ -162,7 +189,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--rate-hz", type=int, default=100,
         help="Update rate in Hz (default: 100)",
     )
-    add_port_arg(obs_cfg_p)
+    obs_cfg_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port",
+    )
     obs_cfg_p.set_defaults(func=cmd_observer_config)
 
     # observer enable
@@ -176,7 +207,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Disable the slot (default: enable)",
     )
-    add_port_arg(obs_en_p)
+    obs_en_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port",
+    )
     obs_en_p.set_defaults(func=cmd_observer_enable)
 
     # observer reset
@@ -185,7 +220,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Reset an observer slot",
     )
     obs_reset_p.add_argument("slot", type=int, help="Slot number (0-7)")
-    add_port_arg(obs_reset_p)
+    obs_reset_p.add_argument(
+        "-p", "--port",
+        default="/dev/cu.usbserial-0001",
+        help="Serial port",
+    )
     obs_reset_p.set_defaults(func=cmd_observer_reset)
 
     # Default

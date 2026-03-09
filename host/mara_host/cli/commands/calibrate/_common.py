@@ -5,6 +5,7 @@ import argparse
 from typing import TYPE_CHECKING
 
 from mara_host.cli.console import console
+from mara_host.cli.cli_config import get_serial_port as _get_port
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 
 def add_transport_args(p: argparse.ArgumentParser) -> None:
     """Add common transport arguments."""
-    p.add_argument("-p", "--port", default="/dev/cu.usbserial-0001")
+    p.add_argument("-p", "--port", default=_get_port())
     p.add_argument("--tcp", metavar="HOST", help="Use TCP instead of serial")
 
 

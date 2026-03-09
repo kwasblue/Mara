@@ -17,7 +17,11 @@ from mara_host.cli.console import (
     print_error,
     print_warning,
 )
+<<<<<<< HEAD
 from mara_host.cli.context import CLIContext, run_with_context
+=======
+from mara_host.cli.cli_config import get_serial_port as _get_port
+>>>>>>> 6ae4738 (	modified:   host/mara_host/cli/cli_config.py)
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -39,8 +43,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     def add_port_arg(parser):
         parser.add_argument(
             "-p", "--port",
-            default="/dev/cu.usbserial-0001",
-            help="Serial port (default: /dev/cu.usbserial-0001)",
+            default=_get_port(),
+            help="Serial port (default: %(default)s)",
         )
 
     # motor set <id> <speed>

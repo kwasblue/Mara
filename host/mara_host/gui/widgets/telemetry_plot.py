@@ -3,6 +3,7 @@
 Real-time telemetry plotting widget using pyqtgraph.
 """
 
+import sys
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Optional
@@ -13,6 +14,14 @@ from PySide6.QtCore import QTimer, QSize
 
 try:
     import pyqtgraph as pg
+    # Configure once globally. On Linux, OpenGL via Mesa/NVIDIA can segfault;
+    # software rendering is stable and fast enough for our telemetry rates.
+    pg.setConfigOptions(
+        antialias=True,
+        useOpenGL=False,
+        background="#111113",
+        foreground="#A1A1AA",
+    )
     HAS_PYQTGRAPH = True
 except ImportError:
     HAS_PYQTGRAPH = False
@@ -89,13 +98,6 @@ class TelemetryPlotWidget(QWidget):
             )
             layout.addWidget(label)
             return
-
-        # Configure pyqtgraph for dark theme
-        pg.setConfigOptions(
-            antialias=True,
-            background="#111113",
-            foreground="#A1A1AA",
-        )
 
         # Create plot widget
         self._plot_widget = pg.PlotWidget()
@@ -288,6 +290,18 @@ class TelemetryPlotWidget(QWidget):
         if hasattr(self, '_pause_btn'):
             self._pause_btn.setText(">" if paused else "||")
             self._pause_btn.setToolTip("Resume" if paused else "Pause")
+
+    def showEvent(self, event) -> None:
+        """Resume the update timer when the widget becomes visible."""
+        super().showEvent(event)
+        if hasattr(self, '_update_timer') and not self._paused:
+            self._update_timer.start(33)
+
+    def hideEvent(self, event) -> None:
+        """Stop the update timer when the widget is hidden to save CPU."""
+        super().hideEvent(event)
+        if hasattr(self, '_update_timer'):
+            self._update_timer.stop()
 
 
 class ImuPlotWidget(TelemetryPlotWidget):

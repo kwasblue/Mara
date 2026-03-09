@@ -13,6 +13,7 @@ from mara_host.cli.console import (
     print_success,
     print_error,
 )
+from mara_host.cli.cli_config import get_serial_port as _get_port
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -39,8 +40,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     sig_list_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
-        help="Serial port (default: /dev/cu.usbserial-0001)",
+        default=_get_port(),
+        help="Serial port (default: %(default)s)",
     )
     sig_list_p.set_defaults(func=cmd_signals_list)
 
@@ -65,7 +66,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     sig_def_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port",
     )
     sig_def_p.set_defaults(func=cmd_signal_define)
@@ -79,7 +80,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     sig_set_p.add_argument("value", type=float, help="Value to set")
     sig_set_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port",
     )
     sig_set_p.set_defaults(func=cmd_signal_set)
@@ -91,7 +92,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     sig_clear_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port",
     )
     sig_clear_p.set_defaults(func=cmd_signals_clear)
@@ -128,7 +129,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     ctrl_cfg_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port",
     )
     ctrl_cfg_p.set_defaults(func=cmd_controller_config)
@@ -146,7 +147,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     ctrl_en_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port",
     )
     ctrl_en_p.set_defaults(func=cmd_controller_enable)
@@ -161,7 +162,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     ctrl_param_p.add_argument("value", type=float, help="Parameter value")
     ctrl_param_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port",
     )
     ctrl_param_p.set_defaults(func=cmd_controller_param)
@@ -186,7 +187,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     obs_cfg_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port",
     )
     obs_cfg_p.set_defaults(func=cmd_observer_config)
@@ -204,7 +205,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     obs_en_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port",
     )
     obs_en_p.set_defaults(func=cmd_observer_enable)
@@ -217,7 +218,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     obs_reset_p.add_argument("slot", type=int, help="Slot number (0-7)")
     obs_reset_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port",
     )
     obs_reset_p.set_defaults(func=cmd_observer_reset)

@@ -116,28 +116,29 @@ class RobotController:
         if not self._running:
             return
 
-        # Schedule disconnect and wait
+        # Disconnect with a short timeout — we're on the Qt main thread and
+        # blocking too long will make the window appear frozen/unresponsive.
         if self._connection_service:
             try:
                 future = self._schedule(self._disconnect_async())
-                future.result(timeout=3.0)
+                future.result(timeout=1.5)
             except Exception:
                 pass
 
-        # Cancel pending tasks
-        if self._loop:
+        # Cancel any remaining tasks and stop the loop.
+        if self._loop and self._loop.is_running():
             try:
                 future = asyncio.run_coroutine_threadsafe(
                     self._cleanup_tasks(), self._loop
                 )
-                future.result(timeout=2.0)
+                future.result(timeout=1.0)
             except Exception:
                 pass
 
             self._loop.call_soon_threadsafe(self._loop.stop)
 
         if self._loop_thread:
-            self._loop_thread.join(timeout=2.0)
+            self._loop_thread.join(timeout=1.5)
 
         self._running = False
 

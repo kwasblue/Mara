@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QGridLayout,
     QGroupBox,
+    QWidget,
 )
 from PySide6.QtGui import QFont, QColor
 

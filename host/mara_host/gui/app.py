@@ -5,11 +5,18 @@ MARA GUI application entry point.
 Provides the main application class and run function.
 """
 
+import os
 import sys
 import logging
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+
+# On Linux, suppress the Wayland input method module which can hang on startup.
+# We do NOT force xcb — xcb requires libxcb-cursor0 which may not be installed.
+# Let Qt pick the best available platform (wayland or xcb) automatically.
+if sys.platform.startswith("linux"):
+    os.environ.setdefault("QT_IM_MODULE", "")
 
 from PySide6.QtWidgets import QApplication
 
@@ -197,6 +204,19 @@ class MaraApplication:
             def flush(self):
                 self.original.flush()
                 self.log_file.flush()
+
+            def fileno(self):
+                # Delegate to the original stream so Qt/C-level code
+                # that calls fileno() (e.g. for isatty checks) doesn't crash.
+                return self.original.fileno()
+
+            @property
+            def encoding(self):
+                return self.original.encoding
+
+            @property
+            def errors(self):
+                return self.original.errors
 
         sys.stdout = TeeWriter(sys.__stdout__, self._log_file)
         sys.stderr = TeeWriter(sys.__stderr__, self._log_file)

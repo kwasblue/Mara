@@ -78,9 +78,20 @@ def get(key: str, default: Any = None) -> Any:
     return value
 
 
+def _platform_serial_default() -> str:
+    """Return a sensible default serial port for the current OS."""
+    import sys
+    if sys.platform.startswith("linux"):
+        return "/dev/ttyUSB0"
+    elif sys.platform == "darwin":
+        return "/dev/cu.usbserial-0001"
+    else:
+        return "COM3"
+
+
 def get_serial_port() -> str:
-    """Get default serial port."""
-    return get("serial.port", "/dev/cu.usbserial-0001")
+    """Get default serial port (from config file, or platform default)."""
+    return get("serial.port", _platform_serial_default())
 
 
 def get_baudrate() -> int:
@@ -114,8 +125,11 @@ def create_default_config() -> str:
 # Save to ~/.mara.yaml
 
 # Serial connection defaults
+# Linux: /dev/ttyUSB0 or /dev/ttyACM0
+# macOS: /dev/cu.usbserial-XXXX
+# Windows: COM3
 serial:
-  port: /dev/cu.usbserial-0001
+  # port: /dev/ttyUSB0  # Uncomment and set your port
   baudrate: 115200
 
 # TCP/WiFi connection defaults

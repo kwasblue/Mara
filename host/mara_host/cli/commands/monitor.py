@@ -17,6 +17,7 @@ from mara_host.cli.console import (
     console,
     print_error,
 )
+from mara_host.cli.cli_config import get_serial_port as _get_port
 
 
 @dataclass
@@ -58,7 +59,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     monitor_parser.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port (for serial transport)",
     )
     monitor_parser.add_argument(

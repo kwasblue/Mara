@@ -9,6 +9,7 @@ from .tcp import cmd_tcp
 from .can import cmd_can
 from .mqtt import cmd_mqtt
 from .shell import cmd_shell
+from mara_host.cli.cli_config import get_serial_port as _get_port
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -32,8 +33,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     serial_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
-        help="Serial port (default: /dev/cu.usbserial-0001)",
+        default=_get_port(),
+        help="Serial port (default: %(default)s)",
     )
     serial_p.add_argument(
         "-b", "--baudrate",
@@ -144,7 +145,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     shell_p.add_argument(
         "-p", "--port",
-        default="/dev/cu.usbserial-0001",
+        default=_get_port(),
         help="Serial port (for serial transport)",
     )
     shell_p.add_argument(

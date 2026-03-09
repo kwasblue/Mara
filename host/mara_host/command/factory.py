@@ -8,6 +8,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Any, TYPE_CHECKING
 import logging
+import sys
+
+
+def _default_serial_port() -> str:
+    if sys.platform.startswith("linux"):
+        return "/dev/ttyUSB0"
+    elif sys.platform == "darwin":
+        return "/dev/cu.usbserial-0001"
+    return "COM3"
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -241,7 +250,7 @@ class MaraClientFactory:
 
         # Default: serial
         return self.create_serial_client(
-            port=getattr(args, "port", "/dev/cu.usbserial-0001"),
+            port=getattr(args, "port", None) or _default_serial_port(),
             baudrate=getattr(args, "baudrate", 115200),
             config=config,
             bus=bus,

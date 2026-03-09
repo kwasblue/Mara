@@ -13,6 +13,7 @@ from mara_host.cli.console import (
     print_info,
     print_warning,
 )
+from mara_host.cli.cli_config import get_serial_port as _get_port
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -269,7 +270,7 @@ robot:
 
 transport:
   type: serial
-  port: /dev/cu.usbserial-0001
+  port: {_get_port()}
   baudrate: 115200
 
 # Uncomment and configure as needed:
@@ -294,7 +295,7 @@ robot:
 
 transport:
   type: serial
-  port: /dev/cu.usbserial-0001
+  port: {_get_port()}
   baudrate: 115200
 
 pins:
@@ -364,7 +365,7 @@ transport:
 # Alternative: serial transport
 # transport:
 #   type: serial
-#   port: /dev/cu.usbserial-0001
+#   port: {_get_port()}
 #   baudrate: 115200
 
 pins:

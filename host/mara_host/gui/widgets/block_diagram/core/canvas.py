@@ -82,6 +82,9 @@ class DiagramCanvas(QWidget):
         self._connect_target_port: Optional[Port] = None  # Port under cursor during drag
         self._connect_valid: Optional[bool] = None  # Validity: None=no target, True=valid, False=invalid
 
+        # Drop preview (for palette drag-and-drop)
+        self._drop_preview_pos: Optional[QPointF] = None
+
         # Widget setup
         self.setMinimumSize(400, 300)
         self.setMouseTracking(True)
@@ -376,6 +379,22 @@ class DiagramCanvas(QWidget):
         # Draw blocks
         for block in self._blocks.values():
             block.paint(painter)
+
+        # Draw drop preview (dashed rectangle showing where block will be placed)
+        if self._drop_preview_pos:
+            from PySide6.QtGui import QPen, QBrush
+            preview_rect_size = 100  # Approximate block size
+            pen = QPen(QColor("#3B82F6"), 2, Qt.DashLine)
+            painter.setPen(pen)
+            painter.setBrush(QBrush(QColor(59, 130, 246, 30)))  # Semi-transparent blue
+            painter.drawRoundedRect(
+                int(self._drop_preview_pos.x()),
+                int(self._drop_preview_pos.y()),
+                preview_rect_size,
+                60,
+                8,
+                8,
+            )
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """Handle mouse press."""

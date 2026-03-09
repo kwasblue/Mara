@@ -21,7 +21,7 @@ class AsyncTcpTransport(AsyncBaseTransport):
         self,
         host: str,
         port: int,
-        reconnect_delay: float = 5.0,
+        reconnect_delay: float = 1.0,
     ) -> None:
         super().__init__()
         self.host = host
@@ -98,6 +98,43 @@ class AsyncTcpTransport(AsyncBaseTransport):
         await self.send_bytes(data)
 
     # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _configure_socket_keepalive(self) -> None:
+        """Configure TCP keepalive for connection stability over WiFi."""
+        import socket
+        import sys
+
+        if not self._writer:
+            return
+
+        try:
+            sock = self._writer.get_extra_info('socket')
+            if sock is None:
+                return
+
+            # Enable keepalive
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
+            # Platform-specific keepalive settings
+            if sys.platform == 'darwin':  # macOS
+                # TCP_KEEPALIVE = idle time before sending keepalive probes
+                TCP_KEEPALIVE = 0x10
+                sock.setsockopt(socket.IPPROTO_TCP, TCP_KEEPALIVE, 30)
+            elif sys.platform == 'linux':
+                # Idle time, interval between probes, max failed probes
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 30)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 10)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
+
+            # Disable Nagle's algorithm for lower latency
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+        except Exception as e:
+            print(f"[TcpTransport] Could not set socket options: {e}")
+
+    # ------------------------------------------------------------------
     # Internal async loop
     # ------------------------------------------------------------------
 
@@ -110,6 +147,9 @@ class AsyncTcpTransport(AsyncBaseTransport):
                     self.host, self.port
                 )
                 print("[TcpTransport] Connected")
+
+                # Enable TCP keepalive for connection stability
+                self._configure_socket_keepalive()
 
                 # Clear buffer on (re)connect
                 self._rx_buffer.clear()

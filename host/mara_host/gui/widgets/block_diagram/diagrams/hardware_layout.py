@@ -93,6 +93,8 @@ class HardwareLayoutDiagram(QWidget):
         self.canvas = DiagramCanvas()
         self.canvas.setAcceptDrops(True)
         self.canvas.dragEnterEvent = self._canvas_drag_enter
+        self.canvas.dragMoveEvent = self._canvas_drag_move
+        self.canvas.dragLeaveEvent = self._canvas_drag_leave
         self.canvas.dropEvent = self._canvas_drop
         splitter.addWidget(self.canvas)
 
@@ -149,6 +151,22 @@ class HardwareLayoutDiagram(QWidget):
         """Handle drag enter on canvas."""
         if event.mimeData().hasText():
             event.acceptProposedAction()
+            self.canvas._drop_preview_pos = self.canvas.canvas_to_scene(event.position())
+            self.canvas.update()
+
+    def _canvas_drag_move(self, event) -> None:
+        """Handle drag move over canvas - update preview position."""
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+            self.canvas._drop_preview_pos = self.canvas._grid.snap(
+                self.canvas.canvas_to_scene(event.position())
+            )
+            self.canvas.update()
+
+    def _canvas_drag_leave(self, event) -> None:
+        """Handle drag leave canvas - clear preview."""
+        self.canvas._drop_preview_pos = None
+        self.canvas.update()
 
     def _canvas_drop(self, event) -> None:
         """Handle drop on canvas."""
@@ -157,7 +175,9 @@ class HardwareLayoutDiagram(QWidget):
         pos = self.canvas._grid.snap(pos)
 
         self._create_block(component_type, pos)
+        self.canvas._drop_preview_pos = None
         event.acceptProposedAction()
+        self.canvas.update()
 
     def _create_block(self, component_type: str, pos: QPointF) -> None:
         """Create a block of the given type at the position."""

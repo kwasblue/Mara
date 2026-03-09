@@ -67,10 +67,10 @@ class ControlPanel(QWidget):
         self._last_vx = 0.0
         self._last_omega = 0.0
 
-        # Throttled slider timer (50ms = 20Hz max)
+        # Throttled slider timer (100ms = 10Hz max, gentler on WiFi)
         self._slider_timer = QTimer(self)
         self._slider_timer.timeout.connect(self._send_pending_slider_commands)
-        self._slider_timer.start(50)
+        self._slider_timer.start(100)
 
         # Pending values
         self._pending_motor_speeds: dict[int, float | None] = {}

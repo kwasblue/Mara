@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
     QMessageBox,
+    QMenu,
 )
 
 from ..core.canvas import DiagramCanvas
@@ -88,6 +89,17 @@ class ControlLoopDiagram(QWidget):
         self.add_observer_btn.clicked.connect(lambda: self._quick_add("observer"))
         toolbar_layout.addWidget(self.add_observer_btn)
 
+        # Examples dropdown
+        self.examples_btn = QPushButton("Examples")
+        self.examples_btn.setObjectName("secondary")
+        examples_menu = QMenu(self)
+        examples_menu.addAction("Basic PID Loop", self._load_basic_pid_example)
+        examples_menu.addAction("Servo Position Control", self._load_servo_example)
+        examples_menu.addAction("Motor with Encoder Feedback", self._load_encoder_feedback_example)
+        examples_menu.addAction("Cascaded PID", self._load_cascaded_pid_example)
+        self.examples_btn.setMenu(examples_menu)
+        toolbar_layout.addWidget(self.examples_btn)
+
         # Sync button
         # Auto-sync checkbox
         self.auto_sync_check = QCheckBox("Auto")
@@ -124,6 +136,8 @@ class ControlLoopDiagram(QWidget):
         self.canvas = DiagramCanvas()
         self.canvas.setAcceptDrops(True)
         self.canvas.dragEnterEvent = self._canvas_drag_enter
+        self.canvas.dragMoveEvent = self._canvas_drag_move
+        self.canvas.dragLeaveEvent = self._canvas_drag_leave
         self.canvas.dropEvent = self._canvas_drop
         splitter.addWidget(self.canvas)
 
@@ -301,6 +315,22 @@ class ControlLoopDiagram(QWidget):
         """Handle drag enter on canvas."""
         if event.mimeData().hasText():
             event.acceptProposedAction()
+            self.canvas._drop_preview_pos = self.canvas.canvas_to_scene(event.position())
+            self.canvas.update()
+
+    def _canvas_drag_move(self, event) -> None:
+        """Handle drag move over canvas - update preview position."""
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+            self.canvas._drop_preview_pos = self.canvas._grid.snap(
+                self.canvas.canvas_to_scene(event.position())
+            )
+            self.canvas.update()
+
+    def _canvas_drag_leave(self, event) -> None:
+        """Handle drag leave canvas - clear preview."""
+        self.canvas._drop_preview_pos = None
+        self.canvas.update()
 
     def _canvas_drop(self, event) -> None:
         """Handle drop on canvas."""
@@ -309,7 +339,9 @@ class ControlLoopDiagram(QWidget):
         pos = self.canvas._grid.snap(pos)
 
         self._create_block(component_type, pos)
+        self.canvas._drop_preview_pos = None
         event.acceptProposedAction()
+        self.canvas.update()
 
     def _create_block(self, component_type: str, pos: QPointF) -> None:
         """Create a block of the given type at the position."""
@@ -401,35 +433,186 @@ class ControlLoopDiagram(QWidget):
         self.canvas.clear()
         self.diagram_changed.emit()
 
-    def create_basic_pid_loop(self) -> None:
-        """Create a basic PID control loop as a starting point."""
-        # Signal source (reference)
-        ref = SignalSourceBlock("ref_0", "Ref", signal_id=0)
+    # ==================== Example Diagrams ====================
+
+    def _load_basic_pid_example(self) -> None:
+        """Load a basic PID control loop example."""
+        self.canvas.clear()
+
+        # Signal source (reference/setpoint)
+        ref = SignalSourceBlock("ref_0", "Setpoint", signal_id=0)
         ref.position = QPointF(50, 150)
         self.canvas.add_block(ref)
 
         # Sum block (error = ref - meas)
         sum_block = SumBlock("sum_0", signs=["+", "-"])
-        sum_block.position = QPointF(150, 150)
+        sum_block.position = QPointF(180, 150)
         self.canvas.add_block(sum_block)
 
         # PID controller
         pid = PIDBlock("pid_0", "PID", slot=0)
-        pid.position = QPointF(250, 140)
+        pid.position = QPointF(300, 140)
         self.canvas.add_block(pid)
 
-        # Motor service (plant)
+        # Motor service (plant/actuator)
         motor = MotorServiceBlock("motor_svc_0")
-        motor.position = QPointF(400, 120)
+        motor.position = QPointF(450, 120)
         self.canvas.add_block(motor)
 
-        # Connect ref -> sum
+        # Feedback signal (measurement)
+        feedback = SignalSourceBlock("feedback_0", "Encoder", signal_id=1)
+        feedback.position = QPointF(300, 280)
+        self.canvas.add_block(feedback)
+
+        # Connections
         self.canvas.add_connection("ref_0", "out", "sum_0", "in0")
-
-        # Connect sum -> pid (ref input, meas comes from feedback)
         self.canvas.add_connection("sum_0", "out", "pid_0", "ref")
-
-        # Connect pid -> motor
         self.canvas.add_connection("pid_0", "out", "motor_svc_0", "speed_0")
+        self.canvas.add_connection("feedback_0", "out", "sum_0", "in1")
 
         self.canvas.zoom_to_fit()
+        self.diagram_changed.emit()
+
+    def _load_servo_example(self) -> None:
+        """Load a servo position control example."""
+        self.canvas.clear()
+
+        # Position setpoint
+        ref = SignalSourceBlock("ref_0", "Position", signal_id=0)
+        ref.position = QPointF(50, 150)
+        self.canvas.add_block(ref)
+
+        # Gain block (scale to servo range)
+        gain = GainBlock("gain_0")
+        gain.position = QPointF(180, 150)
+        self.canvas.add_block(gain)
+
+        # Saturation (limit to 0-180 degrees)
+        sat = SaturationBlock("sat_0")
+        sat.position = QPointF(300, 150)
+        self.canvas.add_block(sat)
+
+        # Servo service
+        servo = ServoServiceBlock("servo_svc_0")
+        servo.position = QPointF(450, 130)
+        self.canvas.add_block(servo)
+
+        # Connections
+        self.canvas.add_connection("ref_0", "out", "gain_0", "in")
+        self.canvas.add_connection("gain_0", "out", "sat_0", "in")
+        self.canvas.add_connection("sat_0", "out", "servo_svc_0", "angle_0")
+
+        self.canvas.zoom_to_fit()
+        self.diagram_changed.emit()
+
+    def _load_encoder_feedback_example(self) -> None:
+        """Load motor with encoder feedback example."""
+        self.canvas.clear()
+
+        # Velocity setpoint
+        ref = SignalSourceBlock("ref_0", "Vel Ref", signal_id=0)
+        ref.position = QPointF(50, 150)
+        self.canvas.add_block(ref)
+
+        # Error summing junction
+        sum_block = SumBlock("sum_0", signs=["+", "-"])
+        sum_block.position = QPointF(180, 150)
+        self.canvas.add_block(sum_block)
+
+        # PID controller
+        pid = PIDBlock("pid_0", "Velocity PID", slot=0)
+        pid.position = QPointF(300, 140)
+        self.canvas.add_block(pid)
+
+        # Saturation (motor limits)
+        sat = SaturationBlock("sat_0")
+        sat.position = QPointF(430, 150)
+        self.canvas.add_block(sat)
+
+        # Motor service
+        motor = MotorServiceBlock("motor_svc_0")
+        motor.position = QPointF(560, 130)
+        self.canvas.add_block(motor)
+
+        # Low-pass filter on encoder feedback
+        filt = FilterBlock("filter_0")
+        filt.position = QPointF(300, 280)
+        self.canvas.add_block(filt)
+
+        # Encoder feedback
+        encoder = SignalSourceBlock("encoder_0", "Encoder", signal_id=1)
+        encoder.position = QPointF(450, 280)
+        self.canvas.add_block(encoder)
+
+        # Connections
+        self.canvas.add_connection("ref_0", "out", "sum_0", "in0")
+        self.canvas.add_connection("sum_0", "out", "pid_0", "ref")
+        self.canvas.add_connection("pid_0", "out", "sat_0", "in")
+        self.canvas.add_connection("sat_0", "out", "motor_svc_0", "speed_0")
+        self.canvas.add_connection("encoder_0", "out", "filter_0", "in")
+        self.canvas.add_connection("filter_0", "out", "sum_0", "in1")
+
+        self.canvas.zoom_to_fit()
+        self.diagram_changed.emit()
+
+    def _load_cascaded_pid_example(self) -> None:
+        """Load cascaded PID (position + velocity) example."""
+        self.canvas.clear()
+
+        # Position setpoint
+        pos_ref = SignalSourceBlock("pos_ref", "Pos Ref", signal_id=0)
+        pos_ref.position = QPointF(50, 100)
+        self.canvas.add_block(pos_ref)
+
+        # Position error
+        pos_sum = SumBlock("pos_sum", signs=["+", "-"])
+        pos_sum.position = QPointF(180, 100)
+        self.canvas.add_block(pos_sum)
+
+        # Position (outer) PID
+        pos_pid = PIDBlock("pos_pid", "Position PID", slot=0)
+        pos_pid.position = QPointF(300, 90)
+        self.canvas.add_block(pos_pid)
+
+        # Velocity error
+        vel_sum = SumBlock("vel_sum", signs=["+", "-"])
+        vel_sum.position = QPointF(430, 100)
+        self.canvas.add_block(vel_sum)
+
+        # Velocity (inner) PID
+        vel_pid = PIDBlock("vel_pid", "Velocity PID", slot=1)
+        vel_pid.position = QPointF(550, 90)
+        self.canvas.add_block(vel_pid)
+
+        # Motor output
+        motor = MotorServiceBlock("motor_svc_0")
+        motor.position = QPointF(700, 70)
+        self.canvas.add_block(motor)
+
+        # Position feedback
+        pos_fb = SignalSourceBlock("pos_fb", "Position", signal_id=1)
+        pos_fb.position = QPointF(180, 250)
+        self.canvas.add_block(pos_fb)
+
+        # Velocity feedback (derivative of position or direct encoder)
+        vel_fb = SignalSourceBlock("vel_fb", "Velocity", signal_id=2)
+        vel_fb.position = QPointF(430, 250)
+        self.canvas.add_block(vel_fb)
+
+        # Connections - outer loop
+        self.canvas.add_connection("pos_ref", "out", "pos_sum", "in0")
+        self.canvas.add_connection("pos_fb", "out", "pos_sum", "in1")
+        self.canvas.add_connection("pos_sum", "out", "pos_pid", "ref")
+
+        # Connections - inner loop
+        self.canvas.add_connection("pos_pid", "out", "vel_sum", "in0")
+        self.canvas.add_connection("vel_fb", "out", "vel_sum", "in1")
+        self.canvas.add_connection("vel_sum", "out", "vel_pid", "ref")
+        self.canvas.add_connection("vel_pid", "out", "motor_svc_0", "speed_0")
+
+        self.canvas.zoom_to_fit()
+        self.diagram_changed.emit()
+
+    def create_basic_pid_loop(self) -> None:
+        """Create a basic PID control loop as a starting point (legacy method)."""
+        self._load_basic_pid_example()

@@ -262,23 +262,26 @@ class RobotController:
                 interval_ms=self._state.telemetry_interval_ms
             )
 
-            # Auto-attach servos (use common ESP32 servo pins)
-            servo_pins = [13, 14]  # Default GPIO pins for servos
-            for servo_id, pin in enumerate(servo_pins):
+            # Subscribe to connection restored events (for auto-reconnect)
+            client.bus.subscribe("connection.restored", self._on_connection_restored)
+
+            # Auto-attach servo 0 if firmware supports servos
+            if "servo" in (info.features or []):
                 try:
                     result = await self._servo_service.attach(
-                        servo_id=servo_id,
-                        channel=pin,
+                        servo_id=0,
+                        channel=13,  # Common ESP32 servo pin
                         min_us=500,
                         max_us=2500,
                         initial_angle=90,
                     )
                     if result.ok:
-                        self._dev_log(f"Servo {servo_id} attached on GPIO {pin}")
+                        self._dev_log("Servo 0 attached on GPIO 13")
                     else:
-                        print(f"[RobotController] Servo {servo_id} attach failed: {result.error}")
+                        # Don't log attach failures - firmware may not have servo configured
+                        self._dev_log(f"Servo 0 attach: {result.error}")
                 except Exception as e:
-                    print(f"[RobotController] Servo {servo_id} attach error: {e}")
+                    self._dev_log(f"Servo 0 attach error: {e}")
 
             # Update state
             self._state.connection_state = ConnectionState.CONNECTED
@@ -414,8 +417,16 @@ class RobotController:
     async def _motor_op(self, op: str, *args) -> None:
         if not self._motor_service:
             return
-        method = getattr(self._motor_service, op)
-        await method(*args)
+        try:
+            method = getattr(self._motor_service, op)
+            result = await method(*args)
+            # Only log errors for reliable commands
+            if hasattr(result, 'ok') and not result.ok and not op.endswith("_fast"):
+                error = result.error or "unknown error"
+                if "not_armed" in error:
+                    self.signals.status_error.emit("Arm the robot first (Ctrl+Shift+A)")
+        except Exception:
+            pass  # Fire-and-forget, ignore errors
 
     # ==================== Servo Control (Delegate to ServoService) ====================
 
@@ -427,16 +438,19 @@ class RobotController:
 
     async def _servo_op(self, op: str, *args) -> None:
         if not self._servo_service:
-            print(f"[RobotController] Servo op {op} ignored - service not initialized")
             return
-        self._dev_log(f"Servo: {op}({args})")
         try:
             method = getattr(self._servo_service, op)
             result = await method(*args)
-            if hasattr(result, 'ok') and not result.ok:
-                print(f"[RobotController] Servo {op} failed: {result.error}")
-        except Exception as e:
-            print(f"[RobotController] Servo {op} error: {e}")
+            # Only log errors for reliable commands, not fire-and-forget
+            if hasattr(result, 'ok') and not result.ok and not op.endswith("_fast"):
+                error = result.error or "unknown error"
+                if "not_armed" in error:
+                    self.signals.status_error.emit("Arm the robot first (Ctrl+Shift+A)")
+                elif "unknown_servo_id" in error:
+                    self.signals.status_error.emit(f"Servo {args[0] if args else '?'} not configured")
+        except Exception:
+            pass  # Fire-and-forget, ignore errors
 
     # ==================== GPIO Control (Delegate to GpioService) ====================
 
@@ -460,6 +474,40 @@ class RobotController:
 
     def _on_imu_data(self, imu) -> None:
         self.signals.imu_data.emit(imu)
+
+    def _on_connection_restored(self, _data: dict) -> None:
+        """Handle connection restored after auto-reconnect."""
+        print("[RobotController] Connection restored, re-initializing...")
+        self.signals.log_info("Connection restored, re-initializing...")
+
+        # Schedule re-initialization
+        self._schedule(self._reinitialize_after_reconnect())
+
+    async def _reinitialize_after_reconnect(self) -> None:
+        """Re-initialize services after TCP reconnect."""
+        try:
+            # Re-attach servo if we have the service
+            if self._servo_service and "servo" in (self._state.capabilities.features or []):
+                result = await self._servo_service.attach(
+                    servo_id=0,
+                    channel=13,
+                    min_us=500,
+                    max_us=2500,
+                    initial_angle=90,
+                )
+                if result.ok:
+                    self._dev_log("Servo 0 re-attached after reconnect")
+
+            # Re-arm if we were armed before
+            if self._state_service and self._state.robot_state in ("ARMED", "ACTIVE"):
+                result = await self._state_service.arm()
+                if result.ok:
+                    self.signals.state_changed.emit("ARMED")
+                    self._dev_log("Re-armed after reconnect")
+
+            self.signals.log_info("Re-initialization complete")
+        except Exception as e:
+            print(f"[RobotController] Re-init error: {e}")
 
     # ==================== Signal Bus Control ====================
 

@@ -40,4 +40,4 @@ logs/
 
 # ---- Build artifacts ----
 dist/
-build/
+/build/

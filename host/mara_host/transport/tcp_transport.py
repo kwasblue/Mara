@@ -17,6 +17,9 @@ class AsyncTcpTransport(AsyncBaseTransport):
       - Calls frame handler with body (msg_type + payload)
     """
 
+    # Timeout for write operations (seconds)
+    WRITE_TIMEOUT = 0.5
+
     def __init__(
         self,
         host: str,
@@ -33,6 +36,9 @@ class AsyncTcpTransport(AsyncBaseTransport):
         self._running: bool = False
         self._task: Optional[asyncio.Task] = None
         self._rx_buffer = bytearray()
+
+        # Serialize concurrent sends to prevent interleaved writes
+        self._send_lock = asyncio.Lock()
 
     @property
     def is_connected(self) -> bool:
@@ -66,32 +72,74 @@ class AsyncTcpTransport(AsyncBaseTransport):
             self._writer = None
             self._reader = None
 
-    async def send_frame(self, msg_type: int, payload: bytes = b"") -> None:
+    async def _drain_with_timeout(self) -> bool:
+        """
+        Drain the write buffer with a timeout.
+
+        Returns True if drain succeeded, False if timed out or failed.
+        On timeout, does NOT close the connection - just skips this write.
+        The connection may still be usable for subsequent writes.
+        """
+        if not self._writer:
+            return False
+        try:
+            await asyncio.wait_for(self._writer.drain(), timeout=self.WRITE_TIMEOUT)
+            return True
+        except asyncio.TimeoutError:
+            # Don't close connection on timeout - just skip this drain
+            # The TCP stack will eventually flush or the connection will die
+            print("[TcpTransport] Write drain timeout (skipping)")
+            return False
+        except (ConnectionResetError, BrokenPipeError, OSError) as e:
+            # Connection is dead, let read loop handle reconnect
+            print(f"[TcpTransport] Connection error: {e}")
+            return False
+        except Exception as e:
+            print(f"[TcpTransport] Write error: {e}")
+            return False
+
+    async def send_frame(self, msg_type: int, payload: bytes = b"", drain: bool = False) -> None:
         """
         Encode a frame using your existing protocol and send it.
         Typically used if you want the transport to handle framing.
+
+        Args:
+            msg_type: Protocol message type
+            payload: Frame payload
+            drain: If True, wait for buffer to flush. If False, just buffer (default).
         """
         if not self._writer:
-            print("[TcpTransport] send_frame called while not connected")
             return
 
         frame = protocol.encode(msg_type, payload)
-        self._writer.write(frame)
-        await self._writer.drain()
+        async with self._send_lock:
+            if not self._writer:
+                return
+            self._writer.write(frame)
+            if drain:
+                await self._drain_with_timeout()
 
-    async def send_bytes(self, data: bytes) -> None:
+    async def send_bytes(self, data: bytes, drain: bool = False) -> None:
         """
         Send already-encoded bytes over the socket.
 
         This is what MaraClient expects to call, since it often
         builds the full frame itself (e.g. protocol.encode_json_cmd(...)).
+
+        Args:
+            data: Bytes to send
+            drain: If True, wait for buffer to flush (slower but confirms delivery).
+                   If False, just buffer the write (fast, like serial).
         """
         if not self._writer:
-            print("[TcpTransport] send_bytes called while not connected")
             return
 
-        self._writer.write(data)
-        await self._writer.drain()
+        async with self._send_lock:
+            if not self._writer:
+                return
+            self._writer.write(data)
+            if drain:
+                await self._drain_with_timeout()
 
     # Optional alias if you ever called `send()` elsewhere
     async def send(self, data: bytes) -> None:

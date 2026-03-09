@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-08 19:34:19
+Generated: 2026-03-08 22:09:16
 Total Files: 701
-Total Lines of Code: 77,278
+Total Lines of Code: 77,515
 ================================================================================
 
 
@@ -1437,7 +1437,7 @@ HOST (Python)
 
   host/mara_host/gui/core/__init__.py (15 lines)
 
-  host/mara_host/gui/core/controller.py (394 lines)
+  host/mara_host/gui/core/controller.py (427 lines)
     [Class] RobotController
       |-- __init__(self, signals, dev_mode)
       |-- state(self)
@@ -1466,6 +1466,7 @@ HOST (Python)
       |-- gpio_toggle(self, channel)
       |-- _on_state_changed(self, state)
       |-- _on_imu_data(self, imu)
+      |-- _on_connection_restored(self, _data)
       |-- signal_define(self, signal_id, name, kind, initial)
       |-- signal_delete(self, signal_id)
       |-- signal_set(self, signal_id, value)
@@ -2424,7 +2425,7 @@ HOST (Python)
       `-- get_slot_usage(self)
     [Fn] map_diagram_to_firmware(diagram_state)
 
-  host/mara_host/gui/widgets/block_diagram/core/canvas.py (483 lines)
+  host/mara_host/gui/widgets/block_diagram/core/canvas.py (498 lines)
     [Class] DiagramCanvas
       |-- __init__(self, parent)
       |-- add_block(self, block)
@@ -2531,7 +2532,7 @@ HOST (Python)
 
   host/mara_host/gui/widgets/block_diagram/diagrams/_generated_palette.py (29 lines)
 
-  host/mara_host/gui/widgets/block_diagram/diagrams/control_loop.py (303 lines)
+  host/mara_host/gui/widgets/block_diagram/diagrams/control_loop.py (422 lines)
     [Class] ControlLoopDiagram
       |-- __init__(self, parent)
       |-- _setup_ui(self)
@@ -2544,15 +2545,21 @@ HOST (Python)
       |-- _clear_diagram(self)
       |-- _sync_to_robot(self, silent)
       |-- _canvas_drag_enter(self, event)
+      |-- _canvas_drag_move(self, event)
+      |-- _canvas_drag_leave(self, event)
       |-- _canvas_drop(self, event)
       |-- _create_block(self, component_type, pos)
       |-- _on_block_double_clicked(self, block_id)
       |-- _on_block_configured(self, block_id, config)
       |-- get_state(self)
       |-- load_state(self, state)
+      |-- _load_basic_pid_example(self)
+      |-- _load_servo_example(self)
+      |-- _load_encoder_feedback_example(self)
+      |-- _load_cascaded_pid_example(self)
       `-- create_basic_pid_loop(self)
 
-  host/mara_host/gui/widgets/block_diagram/diagrams/hardware_layout.py (166 lines)
+  host/mara_host/gui/widgets/block_diagram/diagrams/hardware_layout.py (182 lines)
     [Class] HardwareLayoutDiagram
       |-- __init__(self, parent)
       |-- _setup_ui(self)
@@ -2562,6 +2569,8 @@ HOST (Python)
       |-- _zoom_to_fit(self)
       |-- _clear_diagram(self)
       |-- _canvas_drag_enter(self, event)
+      |-- _canvas_drag_move(self, event)
+      |-- _canvas_drag_leave(self, event)
       |-- _canvas_drop(self, event)
       |-- _create_block(self, component_type, pos)
       |-- _suggest_pins_for_block(self, block)
@@ -3440,7 +3449,7 @@ HOST (Python)
 
   host/mara_host/services/transport/__init__.py (14 lines)
 
-  host/mara_host/services/transport/connection_service.py (105 lines)
+  host/mara_host/services/transport/connection_service.py (115 lines)
     [Class] TransportType
     [Class] ConnectionConfig
     [Class] ConnectionInfo
@@ -3908,10 +3917,11 @@ HOST (Python)
       |-- _reader_loop(self)
       `-- _send_bytes_sync(self, data)
 
-  host/mara_host/transport/tcp_transport.py (88 lines)
+  host/mara_host/transport/tcp_transport.py (132 lines)
     [Class] AsyncTcpTransport
       |-- __init__(self, host, port, reconnect_delay)
-      `-- is_connected(self)
+      |-- is_connected(self)
+      `-- _configure_socket_keepalive(self)
 
   host/mara_host/vision/__init__.py (39 lines)
     [Fn] _check_vision_deps()
@@ -6632,14 +6642,14 @@ DEFINITIONS
   Classes:          803
   Structs:          136
   Functions:        1942
-  Methods:          2284
+  Methods:          2294
 
 LINES OF CODE
-  Python:           57,803
+  Python:           58,040
   C++:              19,475
-  Total Code:       77,278
-  Blank Lines:      22,153
-  Comment Lines:    22,679
-  Total Lines:      122,110
+  Total Code:       77,515
+  Blank Lines:      22,213
+  Comment Lines:    22,752
+  Total Lines:      122,480
 
 ================================================================================

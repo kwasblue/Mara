@@ -1,6 +1,15 @@
 # MARA Documentation
 
 **Modular Asynchronous Robotics Architecture**
+```
+ ███╗   ███╗ █████╗ ██████╗  █████╗
+ ████╗ ████║██╔══██╗██╔══██╗██╔══██╗
+ ██╔████╔██║███████║██████╔╝███████║
+ ██║╚██╔╝██║██╔══██║██╔══██╗██╔══██║
+ ██║ ╚═╝ ██║██║  ██║██║  ██║██║  ██║
+ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
+ Modular Asynchronous Robotics Architecture
+```
 
 ---
 

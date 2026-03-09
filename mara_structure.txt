@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-08 16:04:12
+Generated: 2026-03-08 19:34:19
 Total Files: 701
-Total Lines of Code: 77,180
+Total Lines of Code: 77,278
 ================================================================================
 
 
@@ -1420,17 +1420,24 @@ HOST (Python)
 
   host/mara_host/gui/__init__.py (5 lines)
 
-  host/mara_host/gui/app.py (98 lines)
+  host/mara_host/gui/app.py (159 lines)
     [Class] MaraApplication
       |-- __init__(self, port, host, tcp_port, dev)
       |-- run(self)
+      |-- _setup_file_logging(self)
+      |-- _cleanup_old_logs(self, keep)
+      |-- _setup_print_capture(self)
       `-- _setup_dev_logging(self)
+    [Class] TeeWriter
+      |-- __init__(self, original, log_file)
+      |-- write(self, s)
+      `-- flush(self)
     [Fn] run_app(port, host, tcp_port, dev)
     [Fn] main()
 
   host/mara_host/gui/core/__init__.py (15 lines)
 
-  host/mara_host/gui/core/controller.py (361 lines)
+  host/mara_host/gui/core/controller.py (394 lines)
     [Class] RobotController
       |-- __init__(self, signals, dev_mode)
       |-- state(self)
@@ -1557,7 +1564,7 @@ HOST (Python)
   host/mara_host/gui/core/theme.py (419 lines)
     [Fn] apply_theme(app)
 
-  host/mara_host/gui/main_window.py (312 lines)
+  host/mara_host/gui/main_window.py (319 lines)
     [Fn] _discover_panels()
     [Class] MainWindow
       |-- __init__(self, signals, controller, dev_mode)
@@ -3431,7 +3438,7 @@ HOST (Python)
     [Fn] on_imu(data)
     [Fn] on_ultrasonic(data)
 
-  host/mara_host/services/transport/__init__.py (18 lines)
+  host/mara_host/services/transport/__init__.py (14 lines)
 
   host/mara_host/services/transport/connection_service.py (105 lines)
     [Class] TransportType
@@ -3750,7 +3757,7 @@ HOST (Python)
     [Fn] encode_heartbeat(uptime_ms, state, load_pct, errors)
     [Fn] encode_encoder(counts, velocity, timestamp)
 
-  host/mara_host/transport/can_defs_generated.py (129 lines)
+  host/mara_host/transport/can_defs_generated.py (130 lines)
     [Class] MsgId
     [Class] NodeState
     [Class] SetVelMsg
@@ -6622,17 +6629,17 @@ FILES
   Total Files:      701
 
 DEFINITIONS
-  Classes:          802
+  Classes:          803
   Structs:          136
   Functions:        1942
-  Methods:          2278
+  Methods:          2284
 
 LINES OF CODE
-  Python:           57,705
+  Python:           57,803
   C++:              19,475
-  Total Code:       77,180
-  Blank Lines:      22,135
-  Comment Lines:    22,661
-  Total Lines:      121,976
+  Total Code:       77,278
+  Blank Lines:      22,153
+  Comment Lines:    22,679
+  Total Lines:      122,110
 
 ================================================================================

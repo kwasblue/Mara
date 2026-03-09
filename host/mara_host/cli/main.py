@@ -63,9 +63,9 @@ def _discover_commands(subparsers: argparse._SubParsersAction) -> list[str]:
                 module.register(subparsers)
                 registered.append(module_name)
 
-        except ImportError as e:
+        except Exception as e:
             # Log but don't fail - allows partial CLI functionality
-            console.print(f"[dim]Warning: Failed to load command '{module_name}': {e}[/dim]")
+            console.print(f"[yellow]Warning: Failed to load command '{module_name}': {e}[/yellow]")
 
     return registered
 
@@ -125,6 +125,13 @@ For more help on a specific command:
     )
     version_parser.set_defaults(func=cmd_version)
 
+    # Debug command (built-in) - helps diagnose import issues
+    debug_parser = subparsers.add_parser(
+        "debug",
+        help="Debug CLI import issues",
+    )
+    debug_parser.set_defaults(func=cmd_debug)
+
     return parser
 
 
@@ -136,6 +143,47 @@ def cmd_version(args: argparse.Namespace) -> int:
     console.print("[dim]Modular Asynchronous Robotics Architecture[/dim]")
     console.print()
     console.print("[dim]Python platform for controlling robots with ESP32 MCU firmware[/dim]")
+    return 0
+
+
+def cmd_debug(args: argparse.Namespace) -> int:
+    """Debug CLI import issues."""
+    console.print("[bold cyan]MARA CLI Debug Info[/bold cyan]")
+    console.print()
+
+    # Python info
+    console.print(f"[cyan]Python:[/cyan] {sys.version}")
+    console.print(f"[cyan]Platform:[/cyan] {sys.platform}")
+    console.print()
+
+    # Try to import key modules
+    console.print("[bold]Module Import Test:[/bold]")
+
+    modules_to_test = [
+        ("mara_host", "Core package"),
+        ("mara_host.cli.console", "CLI console"),
+        ("mara_host.tools.build_firmware", "Build firmware"),
+        ("mara_host.cli.commands.build", "Build command"),
+        ("mara_host.cli.commands.build._registry", "Build registry"),
+    ]
+
+    for module_name, description in modules_to_test:
+        try:
+            importlib.import_module(module_name)
+            console.print(f"  [green]✓[/green] {module_name}")
+        except Exception as e:
+            console.print(f"  [red]✗[/red] {module_name}: {e}")
+
+    console.print()
+
+    # Check for platformio
+    console.print("[bold]PlatformIO Check:[/bold]")
+    try:
+        import platformio
+        console.print(f"  [green]✓[/green] platformio installed (version {platformio.__version__})")
+    except ImportError:
+        console.print("  [yellow]![/yellow] platformio not installed (run: pip install platformio)")
+
     return 0
 
 

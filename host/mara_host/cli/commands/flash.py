@@ -210,7 +210,7 @@ def cmd_auto(args: argparse.Namespace) -> int:
     ) as progress:
         task = progress.add_task("Flashing...", total=None)
 
-        cmd = ["pio", "run", "-e", env, "-t", "upload", "--upload-port", port]
+        cmd = [sys.executable, "-m", "platformio", "run", "-e", env, "-t", "upload", "--upload-port", port]
         result = subprocess.run(cmd, cwd=MCU_PROJECT, capture_output=True, text=True)
 
     if result.returncode == 0:
@@ -287,7 +287,7 @@ def cmd_info(args: argparse.Namespace) -> int:
     else:
         # Try with pio
         result = subprocess.run(
-            ["pio", "device", "list", "--serial"],
+            [sys.executable, "-m", "platformio", "device", "list", "--serial"],
             capture_output=True,
             text=True,
         )
@@ -305,7 +305,8 @@ def _run_esptool(esptool_args: list[str], port: str) -> int:
     except FileNotFoundError:
         # Try via PlatformIO
         try:
-            cmd = ["pio", "run", "-t", "erase"] if "erase" in esptool_args else ["pio", "device", "list"]
+            pio_cmd = [sys.executable, "-m", "platformio"]
+            cmd = pio_cmd + ["run", "-t", "erase"] if "erase" in esptool_args else pio_cmd + ["device", "list"]
             result = subprocess.run(cmd, capture_output=True, text=True)
             return result.returncode
         except FileNotFoundError:

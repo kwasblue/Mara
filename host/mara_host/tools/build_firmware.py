@@ -131,7 +131,8 @@ def features_to_flags(features: dict[str, bool] | None) -> list[str]:
 def run_pio(args: list[str], verbose: bool = False,
             extra_flags: list[str] | None = None) -> int:
     """Run PlatformIO CLI command."""
-    cmd = ["pio"] + args
+    # Use Python -m platformio for cross-platform compatibility (Windows)
+    cmd = [sys.executable, "-m", "platformio"] + args
 
     # Set up environment with build flags
     env = os.environ.copy()

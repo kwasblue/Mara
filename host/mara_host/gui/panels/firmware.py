@@ -466,8 +466,8 @@ class FirmwarePanel(QWidget):
         self._set_building(True)
         self.progress_bar.setValue(0)
 
-        # Build command
-        cmd = ["pio", "run", "-e", env]
+        # Build command (use Python -m for cross-platform compatibility)
+        cmd = [sys.executable, "-m", "platformio", "run", "-e", env]
 
         if generate:
             # Run generators first
@@ -490,7 +490,7 @@ class FirmwarePanel(QWidget):
         self._log(f"Cleaning {env}...")
         self._set_building(True)
 
-        cmd = ["pio", "run", "-e", env, "-t", "clean"]
+        cmd = [sys.executable, "-m", "platformio", "run", "-e", env, "-t", "clean"]
         self._run_command(cmd, "Clean")
 
     def _on_upload(self) -> None:
@@ -513,7 +513,7 @@ class FirmwarePanel(QWidget):
         self._log(f"Uploading to {port}...")
         self._set_building(True)
 
-        cmd = ["pio", "run", "-e", env, "-t", "upload", "--upload-port", port]
+        cmd = [sys.executable, "-m", "platformio", "run", "-e", env, "-t", "upload", "--upload-port", port]
         self._run_command(cmd, "Upload")
 
     def _on_build_upload(self) -> None:
@@ -542,7 +542,7 @@ class FirmwarePanel(QWidget):
                 self._log(f"Generator error: {e}")
 
         # Build and upload in one command
-        cmd = ["pio", "run", "-e", env, "-t", "upload", "--upload-port", port]
+        cmd = [sys.executable, "-m", "platformio", "run", "-e", env, "-t", "upload", "--upload-port", port]
         self._run_command(cmd, "Build + Upload")
 
     def _on_cancel(self) -> None:

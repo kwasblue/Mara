@@ -5,7 +5,7 @@ IMU sensor service.
 Provides high-level control for IMU (accelerometer/gyroscope) sensors.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult

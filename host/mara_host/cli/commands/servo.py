@@ -19,7 +19,7 @@ from mara_host.cli.console import (
     print_error,
 )
 from mara_host.cli.context import CLIContext, run_with_context
-from mara_host.cli.cli_config import get_serial_port as _get_port
+from mara_host.cli.commands._common import add_port_arg, cmd_help
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -36,13 +36,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         title="servo commands",
         metavar="<subcommand>",
     )
-
-    def add_port_arg(parser):
-        parser.add_argument(
-            "-p", "--port",
-            default=_get_port(),
-            help="Serial port",
-        )
 
     # servo attach <id>
     attach_p = servo_sub.add_parser(
@@ -162,11 +155,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     center_p.set_defaults(func=cmd_servo_center)
 
     servo_parser.set_defaults(func=lambda args: cmd_help(servo_parser))
-
-
-def cmd_help(parser: argparse.ArgumentParser) -> int:
-    parser.print_help()
-    return 0
 
 
 @run_with_context

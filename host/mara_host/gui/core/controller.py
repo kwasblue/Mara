@@ -419,10 +419,24 @@ class RobotController:
     # ==================== Motor Control (Delegate to MotorService) ====================
 
     def set_motor_speed(self, motor_id: int, speed: float) -> None:
-        self._schedule(self._motor_op("set_speed_fast", motor_id, speed))
+        """Set motor speed (fire-and-forget for responsiveness)."""
+        self._schedule(self._motor_set_speed(motor_id, speed, request_ack=False))
 
     def stop_motor(self, motor_id: int) -> None:
         self._schedule(self._motor_op("stop", motor_id))
+
+    async def _motor_set_speed(self, motor_id: int, speed: float, request_ack: bool = True) -> None:
+        """Set motor speed with configurable ack mode."""
+        if not self._motor_service:
+            return
+        try:
+            result = await self._motor_service.set_speed(motor_id, speed, request_ack=request_ack)
+            if request_ack and hasattr(result, 'ok') and not result.ok:
+                error = result.error or "unknown error"
+                if "not_armed" in error:
+                    self.signals.status_error.emit("Arm the robot first (Ctrl+Shift+A)")
+        except Exception:
+            pass  # Fire-and-forget, ignore errors
 
     async def _motor_op(self, op: str, *args) -> None:
         if not self._motor_service:
@@ -430,8 +444,8 @@ class RobotController:
         try:
             method = getattr(self._motor_service, op)
             result = await method(*args)
-            # Only log errors for reliable commands
-            if hasattr(result, 'ok') and not result.ok and not op.endswith("_fast"):
+            # Log errors for reliable commands
+            if hasattr(result, 'ok') and not result.ok:
                 error = result.error or "unknown error"
                 if "not_armed" in error:
                     self.signals.status_error.emit("Arm the robot first (Ctrl+Shift+A)")
@@ -441,24 +455,25 @@ class RobotController:
     # ==================== Servo Control (Delegate to ServoService) ====================
 
     def set_servo_angle(self, servo_id: int, angle: float) -> None:
-        self._schedule(self._servo_op("set_angle_fast", servo_id, angle))
+        """Set servo angle (fire-and-forget for responsiveness)."""
+        self._schedule(self._servo_set_angle(servo_id, angle, request_ack=False))
 
     def set_servo_angle_reliable(self, servo_id: int, angle: float) -> None:
-        self._schedule(self._servo_op("set_angle", servo_id, angle))
+        """Set servo angle with acknowledgment."""
+        self._schedule(self._servo_set_angle(servo_id, angle, request_ack=True))
 
-    async def _servo_op(self, op: str, *args) -> None:
+    async def _servo_set_angle(self, servo_id: int, angle: float, request_ack: bool = True) -> None:
+        """Set servo angle with configurable ack mode."""
         if not self._servo_service:
             return
         try:
-            method = getattr(self._servo_service, op)
-            result = await method(*args)
-            # Only log errors for reliable commands, not fire-and-forget
-            if hasattr(result, 'ok') and not result.ok and not op.endswith("_fast"):
+            result = await self._servo_service.set_angle(servo_id, angle, request_ack=request_ack)
+            if request_ack and hasattr(result, 'ok') and not result.ok:
                 error = result.error or "unknown error"
                 if "not_armed" in error:
                     self.signals.status_error.emit("Arm the robot first (Ctrl+Shift+A)")
                 elif "unknown_servo_id" in error:
-                    self.signals.status_error.emit(f"Servo {args[0] if args else '?'} not configured")
+                    self.signals.status_error.emit(f"Servo {servo_id} not configured")
         except Exception:
             pass  # Fire-and-forget, ignore errors
 

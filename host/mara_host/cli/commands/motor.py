@@ -18,7 +18,7 @@ from mara_host.cli.console import (
     print_warning,
 )
 from mara_host.cli.context import CLIContext, run_with_context
-from mara_host.cli.cli_config import get_serial_port as _get_port
+from mara_host.cli.commands._common import add_port_arg, cmd_help
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -35,14 +35,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         title="motor commands",
         metavar="<subcommand>",
     )
-
-    # Common port argument
-    def add_port_arg(parser):
-        parser.add_argument(
-            "-p", "--port",
-            default=_get_port(),
-            help="Serial port (default: %(default)s)",
-        )
 
     # motor set <id> <speed>
     set_p = motor_sub.add_parser(
@@ -99,12 +91,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
     # Default handler
     motor_parser.set_defaults(func=lambda args: cmd_help(motor_parser))
-
-
-def cmd_help(parser: argparse.ArgumentParser) -> int:
-    """Show help."""
-    parser.print_help()
-    return 0
 
 
 @run_with_context

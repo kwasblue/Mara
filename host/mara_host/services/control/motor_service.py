@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
-from mara_host.core.utils import clamp
+from mara_host.core.utils import clamp as clamp_value
 from mara_host.services.control.service_base import ConfigurableService
 
 if TYPE_CHECKING:
@@ -77,8 +77,8 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
         """
         self._configs[motor_id] = MotorConfig(
             motor_id=motor_id,
-            min_speed=clamp(min_speed, -1.0, 0),
-            max_speed=clamp(max_speed, 0, 1.0),
+            min_speed=clamp_value(min_speed, -1.0, 0),
+            max_speed=clamp_value(max_speed, 0, 1.0),
             inverted=inverted,
         )
 
@@ -109,8 +109,7 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
 
         # Clamp to limits
         if clamp:
-            from mara_host.core.utils import clamp as clamp_fn
-            speed = clamp_fn(speed, config.min_speed, config.max_speed)
+            speed = clamp_value(speed, config.min_speed, config.max_speed)
 
         if request_ack:
             ok, error = await self.client.send_reliable(
@@ -130,16 +129,6 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
         state = self.get_state(motor_id)
         state.speed = speed
         return ServiceResult.success(data={"motor_id": motor_id, "speed": speed})
-
-    # Backwards compatibility alias
-    async def set_speed_fast(
-        self,
-        motor_id: int,
-        speed: float,
-        clamp: bool = True,
-    ) -> ServiceResult:
-        """Deprecated: Use set_speed(..., request_ack=False) instead."""
-        return await self.set_speed(motor_id, speed, clamp, request_ack=False)
 
     async def set_speed_percent(
         self,

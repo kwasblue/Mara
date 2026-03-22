@@ -5,7 +5,7 @@ Servo control service.
 Provides high-level control for servo motors with angle management.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 import asyncio
 
@@ -246,16 +246,6 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
         state = self.get_state(servo_id)
         state.angle = angle
         return ServiceResult.success(data={"servo_id": servo_id, "angle": angle})
-
-    # Backwards compatibility alias
-    async def set_angle_fast(
-        self,
-        servo_id: int,
-        angle: float,
-        clamp: bool = True,
-    ) -> ServiceResult:
-        """Deprecated: Use set_angle(..., request_ack=False) instead."""
-        return await self.set_angle(servo_id, angle, duration_ms=0, clamp=clamp, request_ack=False)
 
     async def center(self, servo_id: int, duration_ms: int = 0) -> ServiceResult:
         """

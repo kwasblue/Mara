@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-22 16:34:53
-Total Files: 718
-Total Lines of Code: 80,055
+Generated: 2026-03-22 16:58:42
+Total Files: 724
+Total Lines of Code: 80,798
 ================================================================================
 
 
@@ -1275,6 +1275,9 @@ HOST (Python)
     [Class] HostSettings
       `-- load(cls, profile)
 
+  host/mara_host/core/utils.py (4 lines)
+    [Fn] clamp(value, min_val, max_val)
+
   host/mara_host/examples/applications/camera_basic.py (24 lines)
     [Class] DummyModel
       `-- __call__(self, x)
@@ -1409,7 +1412,7 @@ HOST (Python)
 
   host/mara_host/gui/core/__init__.py (15 lines)
 
-  host/mara_host/gui/core/controller.py (430 lines)
+  host/mara_host/gui/core/controller.py (437 lines)
     [Class] RobotController
       |-- __init__(self, signals, dev_mode)
       |-- state(self)
@@ -2845,17 +2848,17 @@ HOST (Python)
 
   host/mara_host/mcp/__main__.py (3 lines)
 
-  host/mara_host/mcp/_generated_http.py (303 lines)
+  host/mara_host/mcp/_generated_http.py (306 lines)
     [Fn] create_generated_routes(runtime)
     [Fn] get_openai_function_schema()
 
-  host/mara_host/mcp/_generated_tools.py (299 lines)
+  host/mara_host/mcp/_generated_tools.py (308 lines)
     [Fn] get_tool_definitions()
 
   host/mara_host/mcp/http_server.py (84 lines)
     [Fn] create_http_app(runtime)
 
-  host/mara_host/mcp/runtime.py (350 lines)
+  host/mara_host/mcp/runtime.py (355 lines)
     [Class] EventType
     [Class] Event
       `-- to_dict(self)
@@ -2875,6 +2878,7 @@ HOST (Python)
       |-- __init__(self, port, host, tcp_port)
       |-- state(self)
       |-- is_connected(self)
+      |-- state_service(self)
       |-- servo_service(self)
       |-- motor_service(self)
       |-- gpio_service(self)
@@ -2894,7 +2898,7 @@ HOST (Python)
   host/mara_host/mcp/server.py (40 lines)
     [Fn] create_server(port, host, tcp_port)
 
-  host/mara_host/mcp/tool_schema.py (270 lines)
+  host/mara_host/mcp/tool_schema.py (273 lines)
     [Class] ToolParam
     [Class] ToolDef
     [Fn] get_tools_by_category(category)
@@ -3298,9 +3302,9 @@ HOST (Python)
       |-- _notify_progress(self, gen_type, message)
       `-- get_available_generators()
 
-  host/mara_host/services/control/__init__.py (110 lines)
+  host/mara_host/services/control/__init__.py (116 lines)
 
-  host/mara_host/services/control/controller_service.py (252 lines)
+  host/mara_host/services/control/controller_service.py (329 lines)
     [Class] SignalKind
     [Class] ControllerType
     [Class] ObserverType
@@ -3353,7 +3357,7 @@ HOST (Python)
       |-- _check_rate_limit(self)
       `-- compute_arcade_drive(self, throttle, steering, max_linear, max_angular)
 
-  host/mara_host/services/control/motor_service.py (143 lines)
+  host/mara_host/services/control/motor_service.py (145 lines)
     [Class] MotorConfig
     [Class] MotorState
     [Class] MotorService
@@ -3389,12 +3393,20 @@ HOST (Python)
       |-- clear_configs(self)
       `-- clear_states(self)
 
-  host/mara_host/services/control/servo_service.py (194 lines)
+  host/mara_host/services/control/servo_service.py (195 lines)
     [Class] ServoConfig
     [Class] ServoState
     [Class] ServoService
       |-- configure(self, servo_id, channel, min_angle, max_angle, min_us, max_us, inverted)
       `-- get_attached_servos(self)
+
+  host/mara_host/services/control/signal_service.py (119 lines)
+    [Class] SignalKind
+    [Class] Signal
+    [Class] SignalService
+      |-- __init__(self, client)
+      |-- signals(self)
+      `-- get_cached(self, signal_id)
 
   host/mara_host/services/control/state_service.py (120 lines)
     [Class] RobotState
@@ -4330,7 +4342,7 @@ HOST (Python)
     [Fn] test_event_bus_subscribe_publish()
     [Fn] handler(data)
 
-  host/tests/test_gui_panels.py (425 lines)
+  host/tests/test_gui_panels.py (429 lines)
     [Fn] mock_signals()
     [Fn] mock_controller()
     [Fn] mock_settings()
@@ -4418,8 +4430,42 @@ HOST (Python)
   host/tests/test_hil_smoke.py (122 lines)
     [Fn] _get_mcu_port(request)
 
+  host/tests/test_http_handlers.py (114 lines)
+    [Class] TestHttpHandlerPatterns
+      `-- mock_runtime(self)
+    [Class] TestHttpResponseFormats
+      |-- test_success_response_format(self)
+      `-- test_failure_response_format(self)
+
   host/tests/test_identity_handshake.py (33 lines)
     [Fn] _import_client()
+
+  host/tests/test_interface_convergence.py (130 lines)
+    [Class] TestStateServiceConvergence
+      |-- mock_client(self)
+      `-- state_service(self, mock_client)
+    [Class] TestCLIContextConvergence
+      |-- test_cli_context_has_state_service_property(self)
+      |-- test_cli_context_connect_uses_state_service(self)
+      `-- test_cli_context_disconnect_uses_state_service(self)
+    [Class] TestMcpRuntimeConvergence
+      |-- test_mcp_runtime_has_state_service_property(self)
+      `-- test_mcp_runtime_ensure_armed_uses_state_service(self)
+    [Class] TestHttpHandlerConvergence
+      |-- test_http_arm_handler_uses_state_service(self)
+      |-- test_http_disarm_handler_uses_state_service(self)
+      `-- test_http_stop_handler_uses_state_service(self)
+    [Class] TestMcpToolConvergence
+      |-- test_mcp_arm_tool_uses_state_service(self)
+      `-- test_mcp_disarm_tool_uses_state_service(self)
+    [Class] TestGuiControllerConvergence
+      |-- test_gui_controller_uses_state_service(self)
+      |-- test_gui_controller_has_signal_service(self)
+      `-- test_gui_controller_has_controller_service(self)
+    [Class] TestServiceContractConsistency
+      |-- test_state_service_arm_signature(self)
+      |-- test_state_service_arm_return_type(self)
+      `-- test_all_state_methods_return_service_result(self)
 
   host/tests/test_json_to_binary.py (106 lines)
     [Class] TestJsonToBinaryEncoder
@@ -4440,6 +4486,29 @@ HOST (Python)
   host/tests/test_jsonl_logger.py (26 lines)
     [Fn] _import_jsonl_logger()
     [Fn] test_jsonl_logger_writes_valid_json_lines(tmp_path)
+
+  host/tests/test_mcp_runtime.py (129 lines)
+    [Class] TestStateStore
+      |-- test_initial_state(self)
+      |-- test_next_seq(self)
+      |-- test_add_event(self)
+      |-- test_event_trimming(self)
+      |-- test_get_recent_events_filtered(self)
+      `-- test_command_stats_empty(self)
+    [Class] TestFreshValue
+      |-- test_freshness_states(self)
+      `-- test_to_dict(self)
+    [Class] TestMaraRuntime
+      |-- runtime(self)
+      |-- test_initial_state(self, runtime)
+      |-- mock_ctx(self)
+      |-- test_state_service_property(self, runtime, mock_ctx)
+      |-- test_state_service_property_not_connected(self, runtime)
+      |-- test_servo_service_property(self, runtime, mock_ctx)
+      |-- test_motor_service_property(self, runtime, mock_ctx)
+      |-- test_record_command(self, runtime)
+      |-- test_get_snapshot(self, runtime)
+      `-- test_get_freshness_report(self, runtime)
 
   host/tests/test_metrics_and_benchmarks_artifacts.py (20 lines)
     [Fn] test_basic_metrics_outputs(tmp_path)
@@ -4539,6 +4608,18 @@ HOST (Python)
   host/tests/test_session_replay.py (19 lines)
     [Fn] _import_replay()
     [Fn] test_session_replay_to_dataframe(tmp_path)
+
+  host/tests/test_signal_service.py (130 lines)
+    [Class] TestSignalService
+      |-- mock_client(self)
+      |-- signal_service(self, mock_client)
+      |-- test_initial_state(self, signal_service)
+      `-- test_get_cached(self, signal_service)
+    [Class] TestSignalDataclasses
+      |-- test_signal_creation(self)
+      |-- test_signal_defaults(self)
+      |-- test_signal_kind_values(self)
+      `-- test_signal_kind_from_string(self)
 
   host/tests/test_streaming.py (82 lines)
 
@@ -6740,22 +6821,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     469
+  Python Files:     475
   C++ Files:        249
-  Total Files:      718
+  Total Files:      724
 
 DEFINITIONS
-  Classes:          838
+  Classes:          855
   Structs:          136
-  Functions:        1906
-  Methods:          2367
+  Functions:        1907
+  Methods:          2418
 
 LINES OF CODE
-  Python:           60,580
+  Python:           61,323
   C++:              19,475
-  Total Code:       80,055
-  Blank Lines:      22,946
-  Comment Lines:    24,073
-  Total Lines:      127,074
+  Total Code:       80,798
+  Blank Lines:      23,219
+  Comment Lines:    24,353
+  Total Lines:      128,370
 
 ================================================================================

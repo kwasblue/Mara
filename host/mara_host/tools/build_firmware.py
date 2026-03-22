@@ -170,14 +170,26 @@ def build(env: str, verbose: bool = False,
 
 
 def upload(env: str, verbose: bool = False,
-           features: dict[str, bool] | None = None) -> int:
-    """Compile and upload firmware."""
+           features: dict[str, bool] | None = None,
+           port: str | None = None) -> int:
+    """Compile and upload firmware.
+
+    Args:
+        env: PlatformIO environment
+        verbose: Verbose output
+        features: Feature flags dict
+        port: Serial port for upload (auto-detect if None)
+    """
     print(f"[build_firmware] Uploading to environment: {env}")
+    if port:
+        print(f"[build_firmware] Upload port: {port}")
     if features:
         enabled = [k for k, v in features.items() if v]
         print(f"[build_firmware] Features: {', '.join(enabled)}")
 
     args = ["run", "-e", env, "-t", "upload"]
+    if port:
+        args.extend(["--upload-port", port])
     if verbose:
         args.append("-v")
 

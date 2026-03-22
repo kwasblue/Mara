@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from mara_host.services.control.pwm_service import PwmService
     from mara_host.services.control.controller_service import ControllerService
     from mara_host.services.control.pid_service import PidService
+    from mara_host.services.control.state_service import StateService
     from mara_host.services.transport.connection_service import ConnectionService
 
 
@@ -86,8 +87,10 @@ class CLIContext:
 
         self._connection: Optional["ConnectionService"] = None
         self._client: Optional["MaraClient"] = None
+        self._telemetry = None  # TelemetryService instance
 
         # Cached services (lazy-loaded)
+        self._state_service: Optional["StateService"] = None
         self._motor_service: Optional["MotorService"] = None
         self._servo_service: Optional["ServoService"] = None
         self._gpio_service: Optional["GpioService"] = None
@@ -124,6 +127,7 @@ class CLIContext:
             ConnectionConfig,
             TransportType,
         )
+        from mara_host.services.telemetry import TelemetryService
 
         if self.host:
             # TCP connection
@@ -144,14 +148,34 @@ class CLIContext:
         await self._connection.connect()
         self._client = self._connection.client
 
+        # Start telemetry (required for arm/actuator commands)
+        self._telemetry = TelemetryService(self._client)
+        await self._telemetry.start(interval_ms=100)
+
+        # Auto-arm for CLI commands
+        await self._client.arm()
+
     async def disconnect(self) -> None:
         """Disconnect from the robot."""
+        # Disarm before disconnecting
+        if self._client:
+            try:
+                await self._client.disarm()
+            except Exception:
+                pass  # Ignore errors on disarm
+
+        # Stop telemetry
+        if self._telemetry:
+            self._telemetry.stop()
+            self._telemetry = None
+
         if self._connection:
             await self._connection.disconnect()
             self._connection = None
             self._client = None
 
         # Clear cached services
+        self._state_service = None
         self._motor_service = None
         self._servo_service = None
         self._gpio_service = None
@@ -183,6 +207,14 @@ class CLIContext:
         return self._client is not None
 
     # ==================== Service Properties ====================
+
+    @property
+    def state_service(self) -> "StateService":
+        """Get or create StateService instance."""
+        if self._state_service is None:
+            from mara_host.services.control.state_service import StateService
+            self._state_service = StateService(self.client)
+        return self._state_service
 
     @property
     def motor_service(self) -> "MotorService":

@@ -4,6 +4,7 @@
 import argparse
 
 from mara_host.tools.build_firmware import ENVIRONMENTS, PRESETS
+from mara_host.cli.cli_config import get_serial_port as _get_port
 
 from ._common import add_common_args, add_feature_args
 from .compile import cmd_compile
@@ -45,6 +46,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     add_common_args(upload_p)
     add_feature_args(upload_p)
+    upload_p.add_argument(
+        "-p", "--port",
+        default=_get_port(),
+        help="Serial port for upload",
+    )
     upload_p.set_defaults(func=cmd_upload)
 
     # clean

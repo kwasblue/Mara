@@ -87,6 +87,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     set_p.add_argument("id", type=int, help="Servo ID (0-7)")
     set_p.add_argument("angle", type=float, help="Angle in degrees (0-180)")
     set_p.add_argument(
+        "--pin",
+        type=int,
+        help="GPIO pin (attaches servo if specified)",
+    )
+    set_p.add_argument(
         "--duration",
         type=int,
         default=0,
@@ -111,6 +116,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Sweep servo back and forth (demo)",
     )
     sweep_p.add_argument("id", type=int, help="Servo ID (0-7)")
+    sweep_p.add_argument(
+        "--pin",
+        type=int,
+        help="GPIO pin (attaches servo if specified)",
+    )
     sweep_p.add_argument(
         "--min",
         type=float,
@@ -138,6 +148,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Move servo to center position (90 degrees)",
     )
     center_p.add_argument("id", type=int, help="Servo ID (0-7)")
+    center_p.add_argument(
+        "--pin",
+        type=int,
+        help="GPIO pin (attaches servo if specified)",
+    )
     add_port_arg(center_p)
     center_p.set_defaults(func=cmd_servo_center)
 
@@ -190,6 +205,13 @@ async def cmd_servo_set(args: argparse.Namespace, ctx: CLIContext) -> int:
         print_error(f"Angle must be 0-180 degrees (got {args.angle})")
         return 1
 
+    # Attach servo if pin specified
+    if getattr(args, 'pin', None) is not None:
+        result = await ctx.servo_service.attach(args.id, channel=args.pin)
+        if not result.ok:
+            print_error(f"Failed to attach servo: {result.error}")
+            return 1
+
     result = await ctx.servo_service.set_angle(
         args.id,
         args.angle,
@@ -224,6 +246,13 @@ async def cmd_servo_pulse(args: argparse.Namespace, ctx: CLIContext) -> int:
 @run_with_context
 async def cmd_servo_sweep(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Sweep servo back and forth."""
+    # Attach servo if pin specified
+    if args.pin is not None:
+        result = await ctx.servo_service.attach(args.id, channel=args.pin)
+        if not result.ok:
+            print_error(f"Failed to attach servo: {result.error}")
+            return 1
+
     console.print(f"[bold cyan]Sweeping servo {args.id}[/bold cyan]")
     console.print(f"  Range: {args.min}\u00b0 - {args.max}\u00b0")
     console.print(f"  Cycles: {args.cycles}")
@@ -256,6 +285,13 @@ async def cmd_servo_sweep(args: argparse.Namespace, ctx: CLIContext) -> int:
 @run_with_context
 async def cmd_servo_center(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Center servo."""
+    # Attach servo if pin specified
+    if getattr(args, 'pin', None) is not None:
+        result = await ctx.servo_service.attach(args.id, channel=args.pin)
+        if not result.ok:
+            print_error(f"Failed to attach servo: {result.error}")
+            return 1
+
     result = await ctx.servo_service.center(args.id, duration_ms=300)
 
     if result.ok:

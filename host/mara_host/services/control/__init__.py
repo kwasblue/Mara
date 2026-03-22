@@ -69,12 +69,17 @@ from mara_host.services.control.pwm_service import (
 )
 from mara_host.services.control.controller_service import (
     ControllerService,
-    Signal,
-    SignalKind,
+    Signal as ControllerSignal,  # Deprecated, use SignalService.Signal
+    SignalKind as ControllerSignalKind,  # Deprecated, use SignalService.SignalKind
     ControllerSlot,
     ControllerType,
     ObserverSlot,
     ObserverType,
+)
+from mara_host.services.control.signal_service import (
+    SignalService,
+    Signal,
+    SignalKind,
 )
 from mara_host.services.control.pid_service import (
     PidService,
@@ -127,10 +132,12 @@ __all__ = [
     "PwmService",
     "PwmConfig",
     "PwmState",
-    # Controller/Observer system
-    "ControllerService",
+    # Signal bus service
+    "SignalService",
     "Signal",
     "SignalKind",
+    # Controller/Observer system
+    "ControllerService",
     "ControllerSlot",
     "ControllerType",
     "ObserverSlot",

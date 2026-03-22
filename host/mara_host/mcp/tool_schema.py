@@ -101,29 +101,32 @@ TOOLS: list[ToolDef] = [
     ),
 
     # ─────────────────────────────────────────────────────────────────────────
-    # State Control Tools
+    # State Control Tools (use StateService for convergence with CLI/GUI)
     # ─────────────────────────────────────────────────────────────────────────
     ToolDef(
         name="arm",
         description="Arm the robot for operation. Required before moving actuators.",
         category="state",
-        client_method="arm",
+        service="state_service",
+        method="arm",
         requires_arm=False,
-        response_format="Armed",
+        response_format="Armed - state: {result.state}",
     ),
     ToolDef(
         name="disarm",
         description="Disarm the robot. Stops all motion.",
         category="state",
-        client_method="disarm",
+        service="state_service",
+        method="disarm",
         requires_arm=False,
-        response_format="Disarmed",
+        response_format="Disarmed - state: {result.state}",
     ),
     ToolDef(
         name="stop",
         description="Emergency stop - immediately halt all motion.",
         category="state",
-        client_method="cmd_stop",
+        service="state_service",
+        method="stop",
         requires_arm=False,
         response_format="Stopped",
     ),

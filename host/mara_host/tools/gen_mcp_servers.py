@@ -295,10 +295,13 @@ def create_generated_routes(runtime) -> list[Route]:
                 service_args.append(f'{arg_name}={param.name}')
             args_str = ", ".join(service_args)
 
+            # Use body dict only if there are params
+            record_args = "body" if tool.params else "{}"
+
             lines.append(f'''        sent_at = datetime.now()
         result = await runtime.{tool.service}.{tool.method}({args_str})
-        runtime.record_command("{tool.name}", body if body else {{}}, result.ok, result.error, sent_at=sent_at)
-        return JSONResponse({{"ok": result.ok, "error": result.error}})
+        runtime.record_command("{tool.name}", {record_args}, result.ok, result.error, sent_at=sent_at)
+        return JSONResponse({{"ok": result.ok, "error": result.error, "state": getattr(result, 'state', None)}})
 
 ''')
 

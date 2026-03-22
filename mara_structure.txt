@@ -1,9 +1,9 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-22 15:13:30
+Generated: 2026-03-22 16:34:53
 Total Files: 718
-Total Lines of Code: 80,026
-================================================================================o
+Total Lines of Code: 80,055
+================================================================================
 
 
 --------------------------------------------------------------------------------
@@ -881,7 +881,7 @@ HOST (Python)
     [Fn] cmd_tcp(args)
     [Fn] _run_tcp_client(host, port, log_level, log_dir)
 
-  host/mara_host/cli/commands/servo.py (226 lines)
+  host/mara_host/cli/commands/servo.py (253 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
@@ -981,7 +981,7 @@ HOST (Python)
     [Fn] format_pin_status(gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
     [Fn] confirm(message, default)
 
-  host/mara_host/cli/context.py (231 lines)
+  host/mara_host/cli/context.py (233 lines)
     [Class] CLIContextConfig
     [Class] CLIContext
       |-- __init__(self, port, baudrate, host, tcp_port, verbose)
@@ -6751,11 +6751,11 @@ DEFINITIONS
   Methods:          2367
 
 LINES OF CODE
-  Python:           60,551
+  Python:           60,580
   C++:              19,475
-  Total Code:       80,026
-  Blank Lines:      22,942
-  Comment Lines:    24,069
-  Total Lines:      127,037
+  Total Code:       80,055
+  Blank Lines:      22,946
+  Comment Lines:    24,073
+  Total Lines:      127,074
 
 ================================================================================

@@ -10,6 +10,7 @@ from typing import Optional, TYPE_CHECKING
 import asyncio
 
 from mara_host.core.result import ServiceResult
+from mara_host.core.utils import clamp as clamp_value
 from mara_host.services.control.service_base import ConfigurableService
 
 if TYPE_CHECKING:
@@ -221,7 +222,7 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
 
         # Apply clamping
         if clamp and config:
-            angle = max(config.min_angle, min(config.max_angle, angle))
+            angle = clamp_value(angle, config.min_angle, config.max_angle)
 
         # Apply inversion
         if config and config.inverted:

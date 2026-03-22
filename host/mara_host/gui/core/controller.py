@@ -66,6 +66,8 @@ class RobotController:
         self._motor_service = None
         self._servo_service = None
         self._gpio_service = None
+        self._signal_service = None
+        self._controller_service = None
 
         # State
         self._state = AppState()
@@ -209,6 +211,8 @@ class RobotController:
                 MotorService,
                 ServoService,
                 GpioService,
+                SignalService,
+                ControllerService,
             )
             from mara_host.services.telemetry import TelemetryService
         except ImportError as e:
@@ -255,6 +259,8 @@ class RobotController:
             self._motor_service = MotorService(client)
             self._servo_service = ServoService(client)
             self._gpio_service = GpioService(client)
+            self._signal_service = SignalService(client)
+            self._controller_service = ControllerService(client)
 
             # Subscribe to telemetry
             self._telemetry_service.on_state(self._on_state_changed)
@@ -338,6 +344,8 @@ class RobotController:
             self._motor_service = None
             self._servo_service = None
             self._gpio_service = None
+            self._signal_service = None
+            self._controller_service = None
 
             self._state.connection_state = ConnectionState.DISCONNECTED
             self._state.robot_state = "UNKNOWN"
@@ -514,46 +522,53 @@ class RobotController:
         except Exception as e:
             print(f"[RobotController] Re-init error: {e}")
 
-    # ==================== Signal Bus Control ====================
+    # ==================== Signal Bus Control (Delegate to SignalService) ====================
 
     def signal_define(self, signal_id: int, name: str, kind: str, initial: float) -> None:
         """Define a signal in the signal bus."""
-        self.send_command("CMD_CTRL_SIGNAL_DEFINE", {
-            "signal_id": signal_id,
-            "name": name,
-            "signal_kind": kind,
-            "initial_value": initial,
-        })
+        self._schedule(self._signal_op("define", signal_id, name, kind=kind, initial_value=initial))
 
     def signal_delete(self, signal_id: int) -> None:
         """Delete a signal from the signal bus."""
-        self.send_command("CMD_CTRL_SIGNAL_DELETE", {"signal_id": signal_id})
+        self._schedule(self._signal_op("delete", signal_id))
 
     def signal_set(self, signal_id: int, value: float) -> None:
         """Set a signal value."""
-        self.send_command("CMD_CTRL_SIGNAL_SET", {"signal_id": signal_id, "value": value})
+        self._schedule(self._signal_op("set", signal_id, value))
 
     def signals_clear(self) -> None:
         """Clear all signals from the signal bus."""
-        self.send_command("CMD_CTRL_SIGNALS_CLEAR", {})
+        self._schedule(self._signal_op("clear"))
 
     def signals_list(self) -> None:
         """Request list of all signals."""
-        self.send_command("CMD_CTRL_SIGNALS_LIST", {})
+        self._schedule(self._signal_op("list"))
 
-    # ==================== Controller Slot Control ====================
+    async def _signal_op(self, op: str, *args, **kwargs) -> None:
+        """Execute signal service operation."""
+        if not self._signal_service:
+            return
+        try:
+            method = getattr(self._signal_service, op)
+            result = await method(*args, **kwargs)
+            if hasattr(result, 'ok') and not result.ok:
+                self.signals.status_error.emit(result.error or f"Signal {op} failed")
+        except Exception as e:
+            self._dev_log(f"Signal op {op} error: {e}")
+
+    # ==================== Controller Slot Control (Delegate to ControllerService) ====================
 
     def controller_config(self, slot: int, config: dict) -> None:
         """Configure a controller slot."""
-        self.send_command("CMD_CTRL_SLOT_CONFIG", {"slot": slot, **config})
+        self._schedule(self._controller_op("controller_config", slot, **config))
 
     def controller_enable(self, slot: int, enable: bool) -> None:
         """Enable or disable a controller slot."""
-        self.send_command("CMD_CTRL_SLOT_ENABLE", {"slot": slot, "enable": enable})
+        self._schedule(self._controller_op("controller_enable", slot, enable))
 
     def controller_reset(self, slot: int) -> None:
         """Reset a controller slot."""
-        self.send_command("CMD_CTRL_SLOT_RESET", {"slot": slot})
+        self._schedule(self._controller_op("controller_reset", slot))
 
     def controller_set_param(self, slot: int, key: str, value: float) -> None:
         """
@@ -562,33 +577,37 @@ class RobotController:
         This is more efficient than full reconfiguration for live tuning.
         Supports: kp, ki, kd, out_min, out_max, i_min, i_max
         """
-        self.send_command("CMD_CTRL_SLOT_SET_PARAM", {
-            "slot": slot,
-            "key": key,
-            "value": value,
-        })
+        self._schedule(self._controller_op("controller_set_param", slot, key, value))
 
     def controller_set_param_array(self, slot: int, key: str, values: list) -> None:
         """Set controller matrix parameters (for state-space)."""
-        self.send_command("CMD_CTRL_SLOT_SET_PARAM_ARRAY", {
-            "slot": slot,
-            "key": key,
-            "values": values,
-        })
+        self._schedule(self._controller_op("controller_set_param_array", slot, key, values))
 
-    # ==================== Observer Slot Control ====================
+    async def _controller_op(self, op: str, *args, **kwargs) -> None:
+        """Execute controller service operation."""
+        if not self._controller_service:
+            return
+        try:
+            method = getattr(self._controller_service, op)
+            result = await method(*args, **kwargs)
+            if hasattr(result, 'ok') and not result.ok:
+                self.signals.status_error.emit(result.error or f"Controller {op} failed")
+        except Exception as e:
+            self._dev_log(f"Controller op {op} error: {e}")
+
+    # ==================== Observer Slot Control (Delegate to ControllerService) ====================
 
     def observer_config(self, slot: int, config: dict) -> None:
         """Configure an observer slot."""
-        self.send_command("CMD_OBSERVER_CONFIG", {"slot": slot, **config})
+        self._schedule(self._controller_op("observer_config", slot, **config))
 
     def observer_enable(self, slot: int, enable: bool) -> None:
         """Enable or disable an observer slot."""
-        self.send_command("CMD_OBSERVER_ENABLE", {"slot": slot, "enable": enable})
+        self._schedule(self._controller_op("observer_enable", slot, enable))
 
     def observer_reset(self, slot: int) -> None:
         """Reset an observer slot."""
-        self.send_command("CMD_OBSERVER_RESET", {"slot": slot})
+        self._schedule(self._controller_op("observer_reset", slot))
 
     def observer_set_param(self, slot: int, key: str, value: float) -> None:
         """
@@ -596,19 +615,11 @@ class RobotController:
 
         Supports observer gain tuning at runtime.
         """
-        self.send_command("CMD_OBSERVER_SET_PARAM", {
-            "slot": slot,
-            "key": key,
-            "value": value,
-        })
+        self._schedule(self._controller_op("observer_set_param", slot, key, value))
 
     def observer_set_param_array(self, slot: int, key: str, values: list) -> None:
         """Set observer matrix parameters (A, B, C, L matrices)."""
-        self.send_command("CMD_OBSERVER_SET_PARAM_ARRAY", {
-            "slot": slot,
-            "key": key,
-            "values": values,
-        })
+        self._schedule(self._controller_op("observer_set_param_array", slot, key, values))
 
     # ==================== Generic Command Interface ====================
 

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
+from mara_host.core.utils import clamp
 from mara_host.services.control.service_base import ConfigurableService
 
 if TYPE_CHECKING:
@@ -76,8 +77,8 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
         """
         self._configs[motor_id] = MotorConfig(
             motor_id=motor_id,
-            min_speed=max(-1.0, min(0, min_speed)),
-            max_speed=max(0, min(1.0, max_speed)),
+            min_speed=clamp(min_speed, -1.0, 0),
+            max_speed=clamp(max_speed, 0, 1.0),
             inverted=inverted,
         )
 
@@ -108,7 +109,8 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
 
         # Clamp to limits
         if clamp:
-            speed = max(config.min_speed, min(config.max_speed, speed))
+            from mara_host.core.utils import clamp as clamp_fn
+            speed = clamp_fn(speed, config.min_speed, config.max_speed)
 
         if request_ack:
             ok, error = await self.client.send_reliable(

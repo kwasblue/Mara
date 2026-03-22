@@ -161,16 +161,16 @@ class CLIContext:
         await self._telemetry.start(interval_ms=100)
         await asyncio.sleep(0.1)  # Wait for telemetry to stabilize
 
-        # Auto-arm for CLI commands
-        ok, err = await self._client.arm()
+        # Auto-arm for CLI commands (use state_service for convergence)
+        result = await self.state_service.arm()
         await asyncio.sleep(0.1)  # Allow state to settle before actuator commands
 
     async def disconnect(self) -> None:
         """Disconnect from the robot."""
-        # Disarm before disconnecting
-        if self._client:
+        # Disarm before disconnecting (use state_service for convergence)
+        if self._state_service:
             try:
-                await self._client.disarm()
+                await self._state_service.disarm()
             except Exception:
                 pass  # Ignore errors on disarm
 

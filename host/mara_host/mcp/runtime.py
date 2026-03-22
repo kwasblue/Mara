@@ -314,9 +314,9 @@ class MaraRuntime:
     async def ensure_armed(self) -> None:
         """Ensure connected and armed for actuator commands."""
         await self.ensure_connected()
-        # Always send arm command - firmware should handle idempotent arms
-        ok, err = await self.client.arm()
-        if ok:
+        # Use state_service for convergence with CLI/GUI
+        result = await self.state_service.arm()
+        if result.ok:
             self._store.robot_state = FreshValue("ARMED", datetime.now(), stale_after_s=2.0)
         # Small delay to let firmware state settle
         await asyncio.sleep(0.02)
@@ -324,6 +324,13 @@ class MaraRuntime:
     # ═══════════════════════════════════════════════════════════
     # Service Access
     # ═══════════════════════════════════════════════════════════
+
+    @property
+    def state_service(self):
+        """Get StateService for state operations (arm/disarm/stop)."""
+        if self._ctx:
+            return self._ctx.state_service
+        raise RuntimeError("Not connected")
 
     @property
     def servo_service(self):

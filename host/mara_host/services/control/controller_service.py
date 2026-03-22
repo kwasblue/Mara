@@ -365,6 +365,65 @@ class ControllerService:
                 error=error or f"Failed to set parameter {key} on slot {slot}"
             )
 
+    async def controller_reset(self, slot: int) -> ServiceResult:
+        """
+        Reset a controller slot.
+
+        Resets internal state (e.g., integrator, previous error).
+
+        Args:
+            slot: Slot number (0-7)
+
+        Returns:
+            ServiceResult
+        """
+        ok, error = await self.client.send_reliable(
+            "CMD_CTRL_SLOT_RESET",
+            {"slot": slot},
+        )
+
+        if ok:
+            return ServiceResult.success(data={"slot": slot})
+        else:
+            return ServiceResult.failure(
+                error=error or f"Failed to reset controller slot {slot}"
+            )
+
+    async def controller_set_param_array(
+        self,
+        slot: int,
+        key: str,
+        values: list,
+    ) -> ServiceResult:
+        """
+        Set controller matrix parameters (for state-space controllers).
+
+        Args:
+            slot: Slot number (0-7)
+            key: Parameter key (e.g., A, B, C, K matrices)
+            values: Matrix values as flat list
+
+        Returns:
+            ServiceResult
+        """
+        ok, error = await self.client.send_reliable(
+            "CMD_CTRL_SLOT_SET_PARAM_ARRAY",
+            {
+                "slot": slot,
+                "key": key,
+                "values": values,
+            },
+        )
+
+        if ok:
+            return ServiceResult.success(
+                data={"slot": slot, "key": key, "values": values}
+            )
+        else:
+            return ServiceResult.failure(
+                error=error or f"Failed to set parameter array {key} on slot {slot}"
+            )
+
     # ==================== Observer Operations ====================
 
     async def observer_config(
@@ -469,4 +528,74 @@ class ControllerService:
         else:
             return ServiceResult.failure(
                 error=error or f"Failed to reset observer slot {slot}"
+            )
+
+    async def observer_set_param(
+        self,
+        slot: int,
+        key: str,
+        value: float,
+    ) -> ServiceResult:
+        """
+        Set an observer parameter.
+
+        Args:
+            slot: Slot number (0-7)
+            key: Parameter key
+            value: Parameter value
+
+        Returns:
+            ServiceResult
+        """
+        ok, error = await self.client.send_reliable(
+            "CMD_OBSERVER_SET_PARAM",
+            {
+                "slot": slot,
+                "key": key,
+                "value": value,
+            },
+        )
+
+        if ok:
+            return ServiceResult.success(
+                data={"slot": slot, "key": key, "value": value}
+            )
+        else:
+            return ServiceResult.failure(
+                error=error or f"Failed to set observer parameter {key} on slot {slot}"
+            )
+
+    async def observer_set_param_array(
+        self,
+        slot: int,
+        key: str,
+        values: list,
+    ) -> ServiceResult:
+        """
+        Set observer matrix parameters (A, B, C, L matrices).
+
+        Args:
+            slot: Slot number (0-7)
+            key: Parameter key (e.g., A, B, C, L)
+            values: Matrix values as flat list
+
+        Returns:
+            ServiceResult
+        """
+        ok, error = await self.client.send_reliable(
+            "CMD_OBSERVER_SET_PARAM_ARRAY",
+            {
+                "slot": slot,
+                "key": key,
+                "values": values,
+            },
+        )
+
+        if ok:
+            return ServiceResult.success(
+                data={"slot": slot, "key": key, "values": values}
+            )
+        else:
+            return ServiceResult.failure(
+                error=error or f"Failed to set observer parameter array {key} on slot {slot}"
             )

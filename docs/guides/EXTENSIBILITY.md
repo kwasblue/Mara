@@ -14,6 +14,7 @@
 
 | To Add | Create File | Convention |
 |:-------|:------------|:-----------|
+| **MCP/HTTP tool** | `mcp/tool_schema.py` | Add `ToolDef` + run `mara generate all` |
 | CLI command | `cli/commands/mycommand.py` | Has `register()` function |
 | GUI panel | `gui/panels/mypanel.py` | Has `PANEL_META` dict |
 | API class | `api/myclass.py` | Add to `__all__` in `api/__init__.py` |
@@ -23,6 +24,39 @@
 | Hardware | `tools/schema/hardware/_sensors.py` | Add to `SENSOR_HARDWARE` |
 | Command schema | `tools/schema/commands/_mydomain.py` | Has `*_COMMANDS` dict |
 | Service | `services/control/myservice.py` | Add to exports |
+
+---
+
+## MCP/HTTP Tools (LLM Interface)
+
+Add a tool to `mcp/tool_schema.py`:
+
+```python
+# mcp/tool_schema.py
+
+TOOLS: list[ToolDef] = [
+    # ... existing tools ...
+
+    ToolDef(
+        name="my_action",
+        description="Do something useful for the LLM.",
+        category="mydevice",
+        service="my_service",
+        method="do_action",
+        params=(
+            ToolParam("device_id", "integer", "Device ID"),
+            ToolParam("value", "number", "Value to set"),
+        ),
+        response_format="Device {device_id} set to {value}",
+    ),
+]
+```
+
+**That's it!** Run `mara generate all`. The tool is exposed via:
+- **MCP**: `mara_my_action` tool for Claude Code
+- **HTTP**: `POST /mydevice/action` endpoint for any LLM
+
+See [MCP_HTTP.md](./MCP_HTTP.md) for full guide.
 
 ---
 

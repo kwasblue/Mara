@@ -170,10 +170,7 @@ async def _run_monitor(args: argparse.Namespace) -> int:
 
         # Update telemetry interval if different
         if args.interval != 100:  # CLIContext defaults to 100ms
-            await ctx.client.send_reliable(
-                "CMD_TELEM_SET_INTERVAL",
-                {"interval_ms": args.interval},
-            )
+            await telemetry.set_interval(args.interval)
 
         # Run live display
         console.print()

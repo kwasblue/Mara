@@ -275,6 +275,34 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
 
         return await self.set_angle(servo_id, center_angle, duration_ms)
 
+    async def set_pulse(
+        self,
+        servo_id: int,
+        pulse_us: int,
+        request_ack: bool = True,
+    ) -> ServiceResult:
+        """
+        Set raw pulse width in microseconds.
+
+        Args:
+            servo_id: Servo ID
+            pulse_us: Pulse width in microseconds
+            request_ack: If True, wait for ACK
+
+        Returns:
+            ServiceResult
+        """
+        payload = {"servo_id": servo_id, "pulse_us": pulse_us}
+
+        if request_ack:
+            ok, error = await self.client.send_reliable("CMD_SERVO_SET_PULSE", payload)
+            if not ok:
+                return ServiceResult.failure(error=error or f"Failed to set servo {servo_id} pulse")
+        else:
+            await self.client.send_auto("CMD_SERVO_SET_PULSE", payload)
+
+        return ServiceResult.success(data={"servo_id": servo_id, "pulse_us": pulse_us})
+
     async def sweep(
         self,
         servo_id: int,

@@ -177,6 +177,22 @@ class TelemetryService:
 
         self._subscribed = False
 
+    async def set_interval(self, interval_ms: int) -> bool:
+        """
+        Change telemetry interval.
+
+        Args:
+            interval_ms: New interval in milliseconds
+
+        Returns:
+            True if successful
+        """
+        ok, _ = await self.client.send_reliable(
+            "CMD_TELEM_SET_INTERVAL",
+            {"interval_ms": interval_ms},
+        )
+        return ok
+
     # -------------------------------------------------------------------------
     # Callback registration
     # -------------------------------------------------------------------------

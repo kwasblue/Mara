@@ -43,6 +43,7 @@ How to add new functionality.
 
 | Document | Description |
 |----------|-------------|
+| [MCP & HTTP Server](guides/MCP_HTTP.md) | LLM interface (Claude, OpenAI, any LLM) |
 | [Adding Commands](guides/ADDING_COMMANDS.md) | Add new protocol commands |
 | [Adding Control Blocks](guides/ADDING_CONTROL.md) | Add controllers, observers, filters |
 | [Adding Hardware](guides/ADDING_HARDWARE.md) | Add sensors, actuators, peripherals |

@@ -161,7 +161,7 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
 
     async def stop(self, motor_id: int) -> ServiceResult:
         """
-        Stop a specific motor.
+        Stop a specific motor (coast).
 
         Args:
             motor_id: Motor ID
@@ -180,6 +180,28 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
             return ServiceResult.success(data={"motor_id": motor_id})
         else:
             return ServiceResult.failure(error=error or f"Failed to stop motor {motor_id}")
+
+    async def brake(self, motor_id: int) -> ServiceResult:
+        """
+        Active brake a motor (short windings).
+
+        Args:
+            motor_id: Motor ID
+
+        Returns:
+            ServiceResult
+        """
+        ok, error = await self.client.send_reliable(
+            "CMD_DC_STOP",
+            {"motor_id": motor_id, "brake": True},
+        )
+
+        if ok:
+            state = self.get_state(motor_id)
+            state.speed = 0.0
+            return ServiceResult.success(data={"motor_id": motor_id})
+        else:
+            return ServiceResult.failure(error=error or f"Failed to brake motor {motor_id}")
 
     async def stop_all(self) -> ServiceResult:
         """

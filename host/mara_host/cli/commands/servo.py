@@ -229,17 +229,13 @@ async def cmd_servo_set(args: argparse.Namespace, ctx: CLIContext) -> int:
 @run_with_context
 async def cmd_servo_pulse(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set raw pulse width."""
-    # Use client directly for raw pulse command
-    ok, error = await ctx.client.send_reliable(
-        "CMD_SERVO_SET_PULSE",
-        {"servo_id": args.id, "pulse_us": args.pulse_us}
-    )
+    result = await ctx.servo_service.set_pulse(args.id, args.pulse_us)
 
-    if ok:
+    if result.ok:
         print_success(f"Servo {args.id}: {args.pulse_us}\u00b5s")
         return 0
     else:
-        print_error(f"Failed: {error}")
+        print_error(f"Failed: {result.error}")
         return 1
 
 

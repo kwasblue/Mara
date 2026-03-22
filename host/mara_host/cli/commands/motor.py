@@ -146,17 +146,13 @@ async def cmd_motor_stop(args: argparse.Namespace, ctx: CLIContext) -> int:
 @run_with_context
 async def cmd_motor_brake(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Active brake motor."""
-    # Use client directly for brake command (not in MotorService yet)
-    ok, error = await ctx.client.send_reliable(
-        "CMD_DC_STOP",
-        {"motor_id": args.id, "brake": True}
-    )
+    result = await ctx.motor_service.brake(args.id)
 
-    if ok:
+    if result.ok:
         print_success(f"Motor {args.id}: braking")
         return 0
     else:
-        print_error(f"Failed: {error}")
+        print_error(f"Failed: {result.error}")
         return 1
 
 

@@ -13,7 +13,6 @@ Examples:
 """
 
 import argparse
-import asyncio
 
 from mara_host.cli.console import (
     console,
@@ -21,6 +20,7 @@ from mara_host.cli.console import (
     print_error,
     print_info,
 )
+from mara_host.cli.context import CLIContext, run_with_context
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -146,183 +146,120 @@ def cmd_help(parser: argparse.ArgumentParser) -> int:
     return 0
 
 
-async def _connect_and_run(port: str, command: str, payload: dict) -> tuple[bool, str]:
-    """Connect to robot, send command, and return result."""
-    from mara_host.services.transport import ConnectionService, ConnectionConfig, TransportType
-
-    config = ConnectionConfig(
-        transport_type=TransportType.SERIAL,
-        port=port,
-        baudrate=115200,
-    )
-
-    conn = ConnectionService(config)
-    try:
-        await conn.connect()
-        ok, error = await conn.client.send_reliable(command, payload)
-        return ok, error or ""
-    finally:
-        await conn.disconnect()
-
-
-def _run_async(coro):
-    return asyncio.run(coro)
-
-
-def cmd_stepper_enable(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_stepper_enable(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Enable stepper."""
-    payload = {"stepper_id": args.id, "enable": True}
+    result = await ctx.stepper_service.enable(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_STEPPER_ENABLE", payload))
-        if ok:
-            print_success(f"Stepper {args.id}: enabled")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Stepper {args.id}: enabled")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_stepper_disable(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_stepper_disable(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Disable stepper."""
-    payload = {"stepper_id": args.id, "enable": False}
+    result = await ctx.stepper_service.disable(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_STEPPER_ENABLE", payload))
-        if ok:
-            print_success(f"Stepper {args.id}: disabled")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Stepper {args.id}: disabled")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_stepper_move(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_stepper_move(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Move stepper by steps."""
-    payload = {
-        "stepper_id": args.id,
-        "steps": args.steps,
-        "speed_rps": args.speed,
-    }
-
     direction = "forward" if args.steps > 0 else "reverse"
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_STEPPER_MOVE_REL", payload))
-        if ok:
-            print_success(f"Stepper {args.id}: moving {abs(args.steps)} steps {direction}")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    result = await ctx.stepper_service.move_relative(
+        args.id,
+        args.steps,
+        speed_rps=args.speed,
+    )
+
+    if result.ok:
+        print_success(f"Stepper {args.id}: moving {abs(args.steps)} steps {direction}")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_stepper_degrees(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_stepper_degrees(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Rotate stepper by degrees."""
-    payload = {
-        "stepper_id": args.id,
-        "degrees": args.angle,
-        "speed_rps": args.speed,
-    }
+    result = await ctx.stepper_service.move_degrees(
+        args.id,
+        args.angle,
+        speed_rps=args.speed,
+    )
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_STEPPER_MOVE_DEG", payload))
-        if ok:
-            print_success(f"Stepper {args.id}: rotating {args.angle}°")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Stepper {args.id}: rotating {args.angle}\u00b0")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_stepper_revs(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_stepper_revs(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Rotate stepper by revolutions."""
-    payload = {
-        "stepper_id": args.id,
-        "revolutions": args.revolutions,
-        "speed_rps": args.speed,
-    }
+    result = await ctx.stepper_service.move_revolutions(
+        args.id,
+        args.revolutions,
+        speed_rps=args.speed,
+    )
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_STEPPER_MOVE_REV", payload))
-        if ok:
-            print_success(f"Stepper {args.id}: rotating {args.revolutions} revolutions")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Stepper {args.id}: rotating {args.revolutions} revolutions")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_stepper_stop(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_stepper_stop(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Stop stepper."""
-    payload = {"stepper_id": args.id}
+    result = await ctx.stepper_service.stop(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_STEPPER_STOP", payload))
-        if ok:
-            print_success(f"Stepper {args.id}: stopped")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Stepper {args.id}: stopped")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_stepper_position(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_stepper_position(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Get stepper position."""
-    payload = {"stepper_id": args.id}
+    result = await ctx.stepper_service.get_position(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_STEPPER_GET_POS", payload))
-        if ok:
-            print_info(f"Stepper {args.id}: position request sent")
-            console.print("[dim]Check telemetry stream for position data[/dim]")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_info(f"Stepper {args.id}: position request sent")
+        console.print("[dim]Check telemetry stream for position data[/dim]")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_stepper_reset(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_stepper_reset(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Reset stepper position counter."""
-    payload = {"stepper_id": args.id}
+    result = await ctx.stepper_service.reset_position(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_STEPPER_RESET_POS", payload))
-        if ok:
-            print_success(f"Stepper {args.id}: position reset to 0")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Stepper {args.id}: position reset to 0")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
-
-    return 0

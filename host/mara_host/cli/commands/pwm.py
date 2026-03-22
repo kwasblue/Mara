@@ -11,7 +11,6 @@ Examples:
 
 import argparse
 import asyncio
-import time
 import math
 
 from mara_host.cli.console import (
@@ -19,6 +18,7 @@ from mara_host.cli.console import (
     print_success,
     print_error,
 )
+from mara_host.cli.context import CLIContext, run_with_context
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -116,128 +116,72 @@ def cmd_help(parser: argparse.ArgumentParser) -> int:
     return 0
 
 
-async def _connect_and_run(port: str, command: str, payload: dict) -> tuple[bool, str]:
-    """Connect to robot, send command, and return result."""
-    from mara_host.services.transport import ConnectionService, ConnectionConfig, TransportType
-
-    config = ConnectionConfig(
-        transport_type=TransportType.SERIAL,
-        port=port,
-        baudrate=115200,
-    )
-
-    conn = ConnectionService(config)
-    try:
-        await conn.connect()
-        ok, error = await conn.client.send_reliable(command, payload)
-        return ok, error or ""
-    finally:
-        await conn.disconnect()
-
-
-def _run_async(coro):
-    return asyncio.run(coro)
-
-
-def cmd_pwm_set(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_pwm_set(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set PWM duty and frequency."""
     if not 0.0 <= args.duty <= 1.0:
         print_error(f"Duty must be 0.0-1.0 (got {args.duty})")
         return 1
 
-    payload = {
-        "channel": args.channel,
-        "duty": args.duty,
-        "freq_hz": args.freq,
-    }
+    result = await ctx.pwm_service.set(args.channel, args.duty, freq_hz=args.freq)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_PWM_SET", payload))
-        if ok:
-            print_success(f"PWM {args.channel}: {args.duty*100:.1f}% @ {args.freq}Hz")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"PWM {args.channel}: {args.duty*100:.1f}% @ {args.freq}Hz")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_pwm_duty(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_pwm_duty(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set PWM duty only."""
     if not 0.0 <= args.duty <= 1.0:
         print_error(f"Duty must be 0.0-1.0 (got {args.duty})")
         return 1
 
-    payload = {
-        "channel": args.channel,
-        "duty": args.duty,
-    }
+    result = await ctx.pwm_service.set_duty(args.channel, args.duty)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_PWM_SET", payload))
-        if ok:
-            print_success(f"PWM {args.channel}: {args.duty*100:.1f}%")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"PWM {args.channel}: {args.duty*100:.1f}%")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_pwm_percent(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_pwm_percent(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set PWM as percentage."""
     if not 0 <= args.percent <= 100:
         print_error(f"Percent must be 0-100 (got {args.percent})")
         return 1
 
-    duty = args.percent / 100.0
-    payload = {
-        "channel": args.channel,
-        "duty": duty,
-    }
+    result = await ctx.pwm_service.set_percent(args.channel, args.percent)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_PWM_SET", payload))
-        if ok:
-            print_success(f"PWM {args.channel}: {args.percent:.0f}%")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"PWM {args.channel}: {args.percent:.0f}%")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_pwm_stop(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_pwm_stop(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Stop PWM."""
-    payload = {
-        "channel": args.channel,
-        "duty": 0.0,
-    }
+    result = await ctx.pwm_service.stop(args.channel)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_PWM_SET", payload))
-        if ok:
-            print_success(f"PWM {args.channel}: stopped")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"PWM {args.channel}: stopped")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_pwm_fade(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_pwm_fade(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Fade PWM in/out."""
     console.print(f"[bold cyan]Fading PWM {args.channel}[/bold cyan]")
     console.print(f"  Cycles: {args.cycles}")
@@ -252,28 +196,25 @@ def cmd_pwm_fade(args: argparse.Namespace) -> int:
             # Fade in
             for i in range(steps):
                 duty = (math.sin(math.pi * i / steps - math.pi/2) + 1) / 2
-                payload = {"channel": args.channel, "duty": duty}
-                _run_async(_connect_and_run(args.port, "CMD_PWM_SET", payload))
-                time.sleep(step_delay)
+                await ctx.pwm_service.set_duty(args.channel, duty)
+                await asyncio.sleep(step_delay)
 
             # Fade out
             for i in range(steps):
                 duty = (math.sin(math.pi * i / steps + math.pi/2) + 1) / 2
-                payload = {"channel": args.channel, "duty": duty}
-                _run_async(_connect_and_run(args.port, "CMD_PWM_SET", payload))
-                time.sleep(step_delay)
+                await ctx.pwm_service.set_duty(args.channel, duty)
+                await asyncio.sleep(step_delay)
 
         # Ensure off at end
-        payload = {"channel": args.channel, "duty": 0.0}
-        _run_async(_connect_and_run(args.port, "CMD_PWM_SET", payload))
+        await ctx.pwm_service.stop(args.channel)
 
         print_success(f"PWM {args.channel}: fade complete")
+        return 0
+
     except KeyboardInterrupt:
-        payload = {"channel": args.channel, "duty": 0.0}
-        _run_async(_connect_and_run(args.port, "CMD_PWM_SET", payload))
+        await ctx.pwm_service.stop(args.channel)
         console.print("\n[dim]Fade interrupted[/dim]")
+        return 0
     except Exception as e:
         print_error(f"Error: {e}")
         return 1
-
-    return 0

@@ -18,6 +18,7 @@ from mara_host.cli.console import (
     print_success,
     print_error,
 )
+from mara_host.cli.context import CLIContext, run_with_context
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -147,168 +148,118 @@ def cmd_help(parser: argparse.ArgumentParser) -> int:
     return 0
 
 
-async def _connect_and_run(port: str, command: str, payload: dict) -> tuple[bool, str]:
-    """Connect to robot, send command, and return result."""
-    from mara_host.services.transport import ConnectionService, ConnectionConfig, TransportType
+@run_with_context
+async def cmd_servo_attach(args: argparse.Namespace, ctx: CLIContext) -> int:
+    """Attach servo."""
+    # Use pin if provided, otherwise use servo_id as channel
+    channel = args.pin if args.pin is not None else args.id
 
-    config = ConnectionConfig(
-        transport_type=TransportType.SERIAL,
-        port=port,
-        baudrate=115200,
+    result = await ctx.servo_service.attach(
+        args.id,
+        channel=channel,
+        min_us=args.min_us,
+        max_us=args.max_us,
     )
 
-    conn = ConnectionService(config)
-    try:
-        await conn.connect()
-        ok, error = await conn.client.send_reliable(command, payload)
-        return ok, error or ""
-    finally:
-        await conn.disconnect()
-
-
-def _run_async(coro):
-    return asyncio.run(coro)
-
-
-def cmd_servo_attach(args: argparse.Namespace) -> int:
-    """Attach servo."""
-    payload = {
-        "servo_id": args.id,
-        "min_us": args.min_us,
-        "max_us": args.max_us,
-    }
-    if args.pin is not None:
-        payload["pin"] = args.pin
-
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_SERVO_ATTACH", payload))
-        if ok:
-            print_success(f"Servo {args.id}: attached")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Servo {args.id}: attached")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_servo_detach(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_servo_detach(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Detach servo."""
-    payload = {"servo_id": args.id}
+    result = await ctx.servo_service.detach(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_SERVO_DETACH", payload))
-        if ok:
-            print_success(f"Servo {args.id}: detached")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Servo {args.id}: detached")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_servo_set(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_servo_set(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set servo angle."""
     if not 0 <= args.angle <= 180:
         print_error(f"Angle must be 0-180 degrees (got {args.angle})")
         return 1
 
-    payload = {
-        "servo_id": args.id,
-        "angle": args.angle,
-        "duration_ms": args.duration,
-    }
+    result = await ctx.servo_service.set_angle(
+        args.id,
+        args.angle,
+        duration_ms=args.duration,
+    )
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_SERVO_SET_ANGLE", payload))
-        if ok:
-            print_success(f"Servo {args.id}: {args.angle}°")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Servo {args.id}: {args.angle}\u00b0")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_servo_pulse(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_servo_pulse(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set raw pulse width."""
-    payload = {
-        "servo_id": args.id,
-        "pulse_us": args.pulse_us,
-    }
+    # Use client directly for raw pulse command
+    ok, error = await ctx.client.send_reliable(
+        "CMD_SERVO_SET_PULSE",
+        {"servo_id": args.id, "pulse_us": args.pulse_us}
+    )
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_SERVO_SET_PULSE", payload))
-        if ok:
-            print_success(f"Servo {args.id}: {args.pulse_us}µs")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if ok:
+        print_success(f"Servo {args.id}: {args.pulse_us}\u00b5s")
+        return 0
+    else:
+        print_error(f"Failed: {error}")
         return 1
 
-    return 0
 
-
-def cmd_servo_sweep(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_servo_sweep(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Sweep servo back and forth."""
     console.print(f"[bold cyan]Sweeping servo {args.id}[/bold cyan]")
-    console.print(f"  Range: {args.min}° - {args.max}°")
+    console.print(f"  Range: {args.min}\u00b0 - {args.max}\u00b0")
     console.print(f"  Cycles: {args.cycles}")
     console.print("[dim]Press Ctrl+C to stop[/dim]")
 
     try:
         for cycle in range(args.cycles):
             # Go to max
-            payload = {"servo_id": args.id, "angle": args.max, "duration_ms": 500}
-            _run_async(_connect_and_run(args.port, "CMD_SERVO_SET_ANGLE", payload))
-            time.sleep(0.6)
+            await ctx.servo_service.set_angle(args.id, args.max, duration_ms=500)
+            await asyncio.sleep(0.6)
 
             # Go to min
-            payload = {"servo_id": args.id, "angle": args.min, "duration_ms": 500}
-            _run_async(_connect_and_run(args.port, "CMD_SERVO_SET_ANGLE", payload))
-            time.sleep(0.6)
+            await ctx.servo_service.set_angle(args.id, args.min, duration_ms=500)
+            await asyncio.sleep(0.6)
 
         # Return to center
-        payload = {"servo_id": args.id, "angle": 90, "duration_ms": 300}
-        _run_async(_connect_and_run(args.port, "CMD_SERVO_SET_ANGLE", payload))
+        result = await ctx.servo_service.center(args.id, duration_ms=300)
 
         print_success(f"Servo {args.id}: sweep complete, centered")
+        return 0
+
     except KeyboardInterrupt:
         console.print("\n[dim]Sweep interrupted[/dim]")
+        return 0
     except Exception as e:
         print_error(f"Error: {e}")
         return 1
 
-    return 0
 
-
-def cmd_servo_center(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_servo_center(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Center servo."""
-    payload = {
-        "servo_id": args.id,
-        "angle": 90,
-        "duration_ms": 300,
-    }
+    result = await ctx.servo_service.center(args.id, duration_ms=300)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_SERVO_SET_ANGLE", payload))
-        if ok:
-            print_success(f"Servo {args.id}: centered (90°)")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Servo {args.id}: centered (90\u00b0)")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
-
-    return 0

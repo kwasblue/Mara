@@ -11,7 +11,6 @@ Examples:
 
 import argparse
 import asyncio
-import time
 
 from mara_host.cli.console import (
     console,
@@ -19,6 +18,7 @@ from mara_host.cli.console import (
     print_error,
     print_info,
 )
+from mara_host.cli.context import CLIContext, run_with_context
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -126,115 +126,73 @@ def cmd_help(parser: argparse.ArgumentParser) -> int:
     return 0
 
 
-async def _connect_and_run(port: str, command: str, payload: dict) -> tuple[bool, str]:
-    """Connect to robot, send command, and return result."""
-    from mara_host.services.transport import ConnectionService, ConnectionConfig, TransportType
-
-    config = ConnectionConfig(
-        transport_type=TransportType.SERIAL,
-        port=port,
-        baudrate=115200,
-    )
-
-    conn = ConnectionService(config)
-    try:
-        await conn.connect()
-        ok, error = await conn.client.send_reliable(command, payload)
-        return ok, error or ""
-    finally:
-        await conn.disconnect()
-
-
-def _run_async(coro):
-    return asyncio.run(coro)
-
-
-def cmd_encoder_attach(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_encoder_attach(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Attach encoder."""
-    payload = {
-        "encoder_id": args.id,
-        "pin_a": args.pin_a,
-        "pin_b": args.pin_b,
-        "ppr": args.ppr,
-        "gear_ratio": args.gear_ratio,
-    }
-
     console.print(f"[bold cyan]Attaching Encoder {args.id}[/bold cyan]")
     console.print(f"  Pin A: {args.pin_a}")
     console.print(f"  Pin B: {args.pin_b}")
     console.print(f"  PPR: {args.ppr}")
     console.print()
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_ENCODER_ATTACH", payload))
-        if ok:
-            print_success(f"Encoder {args.id}: attached")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    result = await ctx.encoder_service.attach(
+        args.id,
+        pin_a=args.pin_a,
+        pin_b=args.pin_b,
+        ppr=args.ppr,
+        gear_ratio=args.gear_ratio,
+    )
+
+    if result.ok:
+        print_success(f"Encoder {args.id}: attached")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_encoder_detach(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_encoder_detach(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Detach encoder."""
-    payload = {"encoder_id": args.id}
+    result = await ctx.encoder_service.detach(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_ENCODER_DETACH", payload))
-        if ok:
-            print_success(f"Encoder {args.id}: detached")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Encoder {args.id}: detached")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_encoder_read(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_encoder_read(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Read encoder."""
-    payload = {"encoder_id": args.id}
+    result = await ctx.encoder_service.read(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_ENCODER_READ", payload))
-        if ok:
-            print_info(f"Encoder {args.id}: read request sent")
-            console.print("[dim]Check telemetry stream for encoder data[/dim]")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_info(f"Encoder {args.id}: read request sent")
+        console.print("[dim]Check telemetry stream for encoder data[/dim]")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_encoder_reset(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_encoder_reset(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Reset encoder count."""
-    payload = {"encoder_id": args.id}
+    result = await ctx.encoder_service.reset(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_ENCODER_RESET", payload))
-        if ok:
-            print_success(f"Encoder {args.id}: count reset to 0")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Encoder {args.id}: count reset to 0")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_encoder_monitor(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_encoder_monitor(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Monitor encoder continuously."""
     console.print(f"[bold cyan]Monitoring Encoder {args.id}[/bold cyan]")
     console.print(f"  Interval: {args.interval}s")
@@ -243,10 +201,9 @@ def cmd_encoder_monitor(args: argparse.Namespace) -> int:
 
     try:
         while True:
-            payload = {"encoder_id": args.id}
-            _run_async(_connect_and_run(args.port, "CMD_ENCODER_READ", payload))
+            await ctx.encoder_service.read(args.id)
             console.print(f"[dim]Encoder {args.id}: polling...[/dim]", end="\r")
-            time.sleep(args.interval)
+            await asyncio.sleep(args.interval)
     except KeyboardInterrupt:
         console.print("\n[dim]Monitoring stopped[/dim]")
 

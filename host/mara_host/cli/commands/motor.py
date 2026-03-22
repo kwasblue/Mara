@@ -10,7 +10,6 @@ Examples:
 """
 
 import argparse
-import asyncio
 
 from mara_host.cli.console import (
     console,
@@ -18,6 +17,7 @@ from mara_host.cli.console import (
     print_error,
     print_warning,
 )
+from mara_host.cli.context import CLIContext, run_with_context
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -106,31 +106,8 @@ def cmd_help(parser: argparse.ArgumentParser) -> int:
     return 0
 
 
-async def _connect_and_run(port: str, command: str, payload: dict) -> tuple[bool, str]:
-    """Connect to robot, send command, and return result."""
-    from mara_host.services.transport import ConnectionService, ConnectionConfig, TransportType
-
-    config = ConnectionConfig(
-        transport_type=TransportType.SERIAL,
-        port=port,
-        baudrate=115200,
-    )
-
-    conn = ConnectionService(config)
-    try:
-        await conn.connect()
-        ok, error = await conn.client.send_reliable(command, payload)
-        return ok, error or ""
-    finally:
-        await conn.disconnect()
-
-
-def _run_async(coro):
-    """Run async coroutine from sync context."""
-    return asyncio.run(coro)
-
-
-def cmd_motor_set(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_motor_set(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set motor speed."""
     speed = args.speed
     if args.percent:
@@ -141,83 +118,60 @@ def cmd_motor_set(args: argparse.Namespace) -> int:
         print_error(f"Speed must be between -1.0 and 1.0 (got {speed})")
         return 1
 
-    payload = {
-        "motor_id": args.id,
-        "speed": speed,
-    }
+    result = await ctx.motor_service.set_speed(args.id, speed)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_DC_SET_SPEED", payload))
-        if ok:
-            direction = "forward" if speed > 0 else "reverse" if speed < 0 else "stopped"
-            print_success(f"Motor {args.id}: {abs(speed)*100:.0f}% {direction}")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        direction = "forward" if speed > 0 else "reverse" if speed < 0 else "stopped"
+        print_success(f"Motor {args.id}: {abs(speed)*100:.0f}% {direction}")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_motor_stop(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_motor_stop(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Coast stop motor."""
-    payload = {"motor_id": args.id}
+    result = await ctx.motor_service.stop(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_DC_STOP", payload))
-        if ok:
-            print_success(f"Motor {args.id}: stopped (coast)")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Motor {args.id}: stopped (coast)")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_motor_brake(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_motor_brake(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Active brake motor."""
-    payload = {"motor_id": args.id, "brake": True}
+    # Use client directly for brake command (not in MotorService yet)
+    ok, error = await ctx.client.send_reliable(
+        "CMD_DC_STOP",
+        {"motor_id": args.id, "brake": True}
+    )
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_DC_STOP", payload))
-        if ok:
-            print_success(f"Motor {args.id}: braking")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if ok:
+        print_success(f"Motor {args.id}: braking")
+        return 0
+    else:
+        print_error(f"Failed: {error}")
         return 1
 
-    return 0
 
-
-def cmd_motor_all_stop(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_motor_all_stop(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Stop all motors."""
     console.print("[bold yellow]Stopping all motors...[/bold yellow]")
 
-    errors = []
-    for motor_id in range(4):
-        payload = {"motor_id": motor_id}
-        try:
-            ok, error = _run_async(_connect_and_run(args.port, "CMD_DC_STOP", payload))
-            if not ok:
-                errors.append(f"Motor {motor_id}: {error}")
-        except Exception as e:
-            errors.append(f"Motor {motor_id}: {e}")
+    result = await ctx.motor_service.stop_all()
 
-    if errors:
-        for err in errors:
-            print_warning(err)
+    if result.ok:
+        print_success("All motors stopped")
+        return 0
+    else:
+        print_warning(result.error)
         return 1
-
-    print_success("All motors stopped")
-    return 0
 
 
 def cmd_motor_status(args: argparse.Namespace) -> int:

@@ -10,14 +10,15 @@ Examples:
 
 import argparse
 import asyncio
-import time
 
 from mara_host.cli.console import (
     console,
     print_success,
     print_error,
     print_info,
+    print_warning,
 )
+from mara_host.cli.context import CLIContext, run_with_context
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -124,112 +125,77 @@ def cmd_help(parser: argparse.ArgumentParser) -> int:
     return 0
 
 
-async def _connect_and_run(port: str, command: str, payload: dict) -> tuple[bool, str]:
-    """Connect to robot, send command, and return result."""
-    from mara_host.services.transport import ConnectionService, ConnectionConfig, TransportType
-
-    config = ConnectionConfig(
-        transport_type=TransportType.SERIAL,
-        port=port,
-        baudrate=115200,
-    )
-
-    conn = ConnectionService(config)
-    try:
-        await conn.connect()
-        ok, error = await conn.client.send_reliable(command, payload)
-        return ok, error or ""
-    finally:
-        await conn.disconnect()
-
-
-def _run_async(coro):
-    return asyncio.run(coro)
-
-
-def cmd_imu_read(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_imu_read(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Read IMU data."""
-    payload = {}
+    result = await ctx.imu_service.read()
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_IMU_READ", payload))
-        if ok:
-            print_info("IMU: read request sent")
-            console.print("[dim]Check telemetry stream for IMU data[/dim]")
-            if args.format == "table":
-                console.print()
-                console.print("[bold]Expected data:[/bold]")
-                console.print("  Acceleration (ax, ay, az): m/s²")
-                console.print("  Gyroscope (gx, gy, gz): rad/s")
-                console.print("  Temperature: °C")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_info("IMU: read request sent")
+        console.print("[dim]Check telemetry stream for IMU data[/dim]")
+        if args.format == "table":
+            console.print()
+            console.print("[bold]Expected data:[/bold]")
+            console.print("  Acceleration (ax, ay, az): m/s\u00b2")
+            console.print("  Gyroscope (gx, gy, gz): rad/s")
+            console.print("  Temperature: \u00b0C")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_imu_calibrate(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_imu_calibrate(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Calibrate IMU bias."""
     console.print("[bold cyan]IMU Calibration[/bold cyan]")
     console.print()
-    console.print("[bold yellow]IMPORTANT:[/bold yellow] Place the robot on a flat, stable surface.")
+    print_warning("Place the robot on a flat, stable surface.")
     console.print("Do not move the robot during calibration.")
     console.print()
     console.print(f"  Samples: {args.samples}")
     console.print(f"  Duration: ~{args.samples * args.delay:.1f}s")
     console.print()
 
-    payload = {
-        "samples": args.samples,
-        "delay_ms": int(args.delay * 1000),
-    }
+    delay_ms = int(args.delay * 1000)
+    result = await ctx.imu_service.calibrate(samples=args.samples, delay_ms=delay_ms)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_IMU_CALIBRATE", payload))
-        if ok:
-            print_success("IMU calibration started")
-            console.print("[dim]Calibration will complete automatically[/dim]")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success("IMU calibration started")
+        console.print("[dim]Calibration will complete automatically[/dim]")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_imu_set_bias(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_imu_set_bias(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set IMU bias manually."""
-    payload = {
-        "accel_bias": [args.ax, args.ay, args.az],
-        "gyro_bias": [args.gx, args.gy, args.gz],
-    }
-
     console.print("[bold cyan]Setting IMU Bias[/bold cyan]")
     console.print(f"  Accel: [{args.ax:.4f}, {args.ay:.4f}, {args.az:.4f}]")
     console.print(f"  Gyro:  [{args.gx:.4f}, {args.gy:.4f}, {args.gz:.4f}]")
     console.print()
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_IMU_SET_BIAS", payload))
-        if ok:
-            print_success("IMU bias set")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    result = await ctx.imu_service.set_bias(
+        ax=args.ax,
+        ay=args.ay,
+        az=args.az,
+        gx=args.gx,
+        gy=args.gy,
+        gz=args.gz,
+    )
+
+    if result.ok:
+        print_success("IMU bias set")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_imu_monitor(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_imu_monitor(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Monitor IMU continuously."""
     console.print("[bold cyan]Monitoring IMU[/bold cyan]")
     console.print(f"  Interval: {args.interval}s")
@@ -238,32 +204,26 @@ def cmd_imu_monitor(args: argparse.Namespace) -> int:
 
     try:
         while True:
-            payload = {}
-            _run_async(_connect_and_run(args.port, "CMD_IMU_READ", payload))
+            await ctx.imu_service.read()
             if args.compact:
                 console.print("[dim]IMU: polling...[/dim]", end="\r")
             else:
                 console.print(f"[dim]IMU: read request sent[/dim]")
-            time.sleep(args.interval)
+            await asyncio.sleep(args.interval)
     except KeyboardInterrupt:
         console.print("\n[dim]Monitoring stopped[/dim]")
 
     return 0
 
 
-def cmd_imu_zero(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_imu_zero(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Zero IMU orientation."""
-    payload = {}
+    result = await ctx.imu_service.zero()
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_IMU_ZERO", payload))
-        if ok:
-            print_success("IMU: orientation zeroed")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success("IMU: orientation zeroed")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
-
-    return 0

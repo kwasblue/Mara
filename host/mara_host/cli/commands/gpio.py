@@ -13,7 +13,6 @@ Examples:
 
 import argparse
 import asyncio
-import time
 
 from mara_host.cli.console import (
     console,
@@ -21,6 +20,7 @@ from mara_host.cli.console import (
     print_error,
     print_info,
 )
+from mara_host.cli.context import CLIContext, run_with_context
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -134,151 +134,91 @@ def cmd_help(parser: argparse.ArgumentParser) -> int:
     return 0
 
 
-async def _connect_and_run(port: str, command: str, payload: dict) -> tuple[bool, str]:
-    """Connect to robot, send command, and return result."""
-    from mara_host.services.transport import ConnectionService, ConnectionConfig, TransportType
-
-    config = ConnectionConfig(
-        transport_type=TransportType.SERIAL,
-        port=port,
-        baudrate=115200,
+@run_with_context
+async def cmd_gpio_register(args: argparse.Namespace, ctx: CLIContext) -> int:
+    """Register GPIO channel."""
+    result = await ctx.gpio_service.register(
+        args.channel,
+        args.pin,
+        mode=args.mode,
     )
 
-    conn = ConnectionService(config)
-    try:
-        await conn.connect()
-        ok, error = await conn.client.send_reliable(command, payload)
-        return ok, error or ""
-    finally:
-        await conn.disconnect()
-
-
-def _run_async(coro):
-    return asyncio.run(coro)
-
-
-MODE_MAP = {
-    "input": 0,
-    "output": 1,
-    "input_pullup": 2,
-    "input_pulldown": 3,
-}
-
-
-def cmd_gpio_register(args: argparse.Namespace) -> int:
-    """Register GPIO channel."""
-    payload = {
-        "channel": args.channel,
-        "pin": args.pin,
-        "mode": MODE_MAP[args.mode],
-    }
-
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_GPIO_REGISTER_CHANNEL", payload))
-        if ok:
-            print_success(f"GPIO channel {args.channel}: pin {args.pin} as {args.mode}")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"GPIO channel {args.channel}: pin {args.pin} as {args.mode}")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_gpio_high(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_gpio_high(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set channel high."""
-    payload = {"channel": args.channel, "value": 1}
+    result = await ctx.gpio_service.high(args.channel)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_GPIO_WRITE", payload))
-        if ok:
-            print_success(f"GPIO {args.channel}: HIGH")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"GPIO {args.channel}: HIGH")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_gpio_low(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_gpio_low(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set channel low."""
-    payload = {"channel": args.channel, "value": 0}
+    result = await ctx.gpio_service.low(args.channel)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_GPIO_WRITE", payload))
-        if ok:
-            print_success(f"GPIO {args.channel}: LOW")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"GPIO {args.channel}: LOW")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_gpio_write(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_gpio_write(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Write value to channel."""
-    payload = {"channel": args.channel, "value": args.value}
+    result = await ctx.gpio_service.write(args.channel, args.value)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_GPIO_WRITE", payload))
-        if ok:
-            state = "HIGH" if args.value else "LOW"
-            print_success(f"GPIO {args.channel}: {state}")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        state = "HIGH" if args.value else "LOW"
+        print_success(f"GPIO {args.channel}: {state}")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_gpio_read(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_gpio_read(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Read channel state."""
-    payload = {"channel": args.channel}
+    result = await ctx.gpio_service.read(args.channel)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_GPIO_READ", payload))
-        if ok:
-            print_info(f"GPIO {args.channel}: read request sent (check telemetry)")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_info(f"GPIO {args.channel}: read request sent (check telemetry)")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_gpio_toggle(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_gpio_toggle(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Toggle channel state."""
-    payload = {"channel": args.channel}
+    result = await ctx.gpio_service.toggle(args.channel)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_GPIO_TOGGLE", payload))
-        if ok:
-            print_success(f"GPIO {args.channel}: toggled")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"GPIO {args.channel}: toggled")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_gpio_blink(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_gpio_blink(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Blink channel."""
     console.print(f"[bold cyan]Blinking GPIO {args.channel}[/bold cyan]")
     console.print(f"  Count: {args.count}")
@@ -288,23 +228,21 @@ def cmd_gpio_blink(args: argparse.Namespace) -> int:
     try:
         for i in range(args.count):
             # High
-            payload = {"channel": args.channel, "value": 1}
-            _run_async(_connect_and_run(args.port, "CMD_GPIO_WRITE", payload))
-            time.sleep(args.interval / 2)
+            await ctx.gpio_service.high(args.channel)
+            await asyncio.sleep(args.interval / 2)
 
             # Low
-            payload = {"channel": args.channel, "value": 0}
-            _run_async(_connect_and_run(args.port, "CMD_GPIO_WRITE", payload))
-            time.sleep(args.interval / 2)
+            await ctx.gpio_service.low(args.channel)
+            await asyncio.sleep(args.interval / 2)
 
         print_success(f"GPIO {args.channel}: blink complete")
+        return 0
+
     except KeyboardInterrupt:
         # Ensure low state on interrupt
-        payload = {"channel": args.channel, "value": 0}
-        _run_async(_connect_and_run(args.port, "CMD_GPIO_WRITE", payload))
+        await ctx.gpio_service.low(args.channel)
         console.print("\n[dim]Blink interrupted[/dim]")
+        return 0
     except Exception as e:
         print_error(f"Error: {e}")
         return 1
-
-    return 0

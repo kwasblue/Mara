@@ -10,7 +10,6 @@ Examples:
 
 import argparse
 import asyncio
-import time
 
 from mara_host.cli.console import (
     console,
@@ -18,6 +17,7 @@ from mara_host.cli.console import (
     print_error,
     print_info,
 )
+from mara_host.cli.context import CLIContext, run_with_context
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -122,96 +122,59 @@ def cmd_help(parser: argparse.ArgumentParser) -> int:
     return 0
 
 
-async def _connect_and_run(port: str, command: str, payload: dict) -> tuple[bool, str]:
-    """Connect to robot, send command, and return result."""
-    from mara_host.services.transport import ConnectionService, ConnectionConfig, TransportType
-
-    config = ConnectionConfig(
-        transport_type=TransportType.SERIAL,
-        port=port,
-        baudrate=115200,
-    )
-
-    conn = ConnectionService(config)
-    try:
-        await conn.connect()
-        ok, error = await conn.client.send_reliable(command, payload)
-        return ok, error or ""
-    finally:
-        await conn.disconnect()
-
-
-def _run_async(coro):
-    return asyncio.run(coro)
-
-
-def cmd_ultrasonic_attach(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_ultrasonic_attach(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Attach ultrasonic sensor."""
-    payload = {
-        "sensor_id": args.id,
-        "trig_pin": args.trig,
-        "echo_pin": args.echo,
-        "max_distance_cm": args.max_distance,
-    }
-
     console.print(f"[bold cyan]Attaching Ultrasonic Sensor {args.id}[/bold cyan]")
     console.print(f"  Trigger: GPIO {args.trig}")
     console.print(f"  Echo: GPIO {args.echo}")
     console.print(f"  Max Distance: {args.max_distance} cm")
     console.print()
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_ULTRASONIC_ATTACH", payload))
-        if ok:
-            print_success(f"Ultrasonic {args.id}: attached")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    result = await ctx.ultrasonic_service.attach(
+        args.id,
+        trig_pin=args.trig,
+        echo_pin=args.echo,
+        max_distance_cm=args.max_distance,
+    )
+
+    if result.ok:
+        print_success(f"Ultrasonic {args.id}: attached")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_ultrasonic_detach(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_ultrasonic_detach(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Detach ultrasonic sensor."""
-    payload = {"sensor_id": args.id}
+    result = await ctx.ultrasonic_service.detach(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_ULTRASONIC_DETACH", payload))
-        if ok:
-            print_success(f"Ultrasonic {args.id}: detached")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_success(f"Ultrasonic {args.id}: detached")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_ultrasonic_read(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_ultrasonic_read(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Read ultrasonic distance."""
-    payload = {"sensor_id": args.id}
+    result = await ctx.ultrasonic_service.read(args.id)
 
-    try:
-        ok, error = _run_async(_connect_and_run(args.port, "CMD_ULTRASONIC_READ", payload))
-        if ok:
-            print_info(f"Ultrasonic {args.id}: read request sent")
-            console.print("[dim]Check telemetry stream for distance data[/dim]")
-        else:
-            print_error(f"Failed: {error}")
-            return 1
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
+    if result.ok:
+        print_info(f"Ultrasonic {args.id}: read request sent")
+        console.print("[dim]Check telemetry stream for distance data[/dim]")
+        return 0
+    else:
+        print_error(f"Failed: {result.error}")
         return 1
 
-    return 0
 
-
-def cmd_ultrasonic_monitor(args: argparse.Namespace) -> int:
+@run_with_context
+async def cmd_ultrasonic_monitor(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Monitor ultrasonic continuously."""
     console.print(f"[bold cyan]Monitoring Ultrasonic {args.id}[/bold cyan]")
     console.print(f"  Interval: {args.interval}s")
@@ -221,10 +184,9 @@ def cmd_ultrasonic_monitor(args: argparse.Namespace) -> int:
 
     try:
         while True:
-            payload = {"sensor_id": args.id}
-            _run_async(_connect_and_run(args.port, "CMD_ULTRASONIC_READ", payload))
+            await ctx.ultrasonic_service.read(args.id)
             console.print(f"[dim]Ultrasonic {args.id}: polling...[/dim]", end="\r")
-            time.sleep(args.interval)
+            await asyncio.sleep(args.interval)
     except KeyboardInterrupt:
         console.print("\n[dim]Monitoring stopped[/dim]")
 

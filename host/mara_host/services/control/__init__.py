@@ -42,6 +42,45 @@ from mara_host.services.control.gpio_service import (
     GpioChannel,
     GpioMode,
 )
+from mara_host.services.control.stepper_service import (
+    StepperService,
+    StepperConfig,
+    StepperState,
+)
+from mara_host.services.control.encoder_service import (
+    EncoderService,
+    EncoderConfig,
+    EncoderState,
+)
+from mara_host.services.control.imu_service import (
+    ImuService,
+    ImuReading,
+    ImuBias,
+)
+from mara_host.services.control.ultrasonic_service import (
+    UltrasonicService,
+    UltrasonicConfig,
+    UltrasonicState,
+)
+from mara_host.services.control.pwm_service import (
+    PwmService,
+    PwmConfig,
+    PwmState,
+)
+from mara_host.services.control.controller_service import (
+    ControllerService,
+    Signal,
+    SignalKind,
+    ControllerSlot,
+    ControllerType,
+    ObserverSlot,
+    ObserverType,
+)
+from mara_host.services.control.pid_service import (
+    PidService,
+    PidGains,
+    PidState,
+)
 from mara_host.core.result import (
     ServiceResult,
     send_command,
@@ -68,6 +107,38 @@ __all__ = [
     "GpioService",
     "GpioChannel",
     "GpioMode",
+    # Stepper control
+    "StepperService",
+    "StepperConfig",
+    "StepperState",
+    # Encoder control
+    "EncoderService",
+    "EncoderConfig",
+    "EncoderState",
+    # IMU control
+    "ImuService",
+    "ImuReading",
+    "ImuBias",
+    # Ultrasonic control
+    "UltrasonicService",
+    "UltrasonicConfig",
+    "UltrasonicState",
+    # PWM control
+    "PwmService",
+    "PwmConfig",
+    "PwmState",
+    # Controller/Observer system
+    "ControllerService",
+    "Signal",
+    "SignalKind",
+    "ControllerSlot",
+    "ControllerType",
+    "ObserverSlot",
+    "ObserverType",
+    # PID control
+    "PidService",
+    "PidGains",
+    "PidState",
     # Result type
     "ServiceResult",
     # Helpers

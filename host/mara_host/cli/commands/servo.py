@@ -97,6 +97,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         default=0,
         help="Transition duration in ms (0 = instant)",
     )
+    set_p.add_argument(
+        "--hold",
+        action="store_true",
+        help="Hold position (stay connected until Ctrl+C)",
+    )
     add_port_arg(set_p)
     set_p.set_defaults(func=cmd_servo_set)
 
@@ -207,10 +212,16 @@ async def cmd_servo_set(args: argparse.Namespace, ctx: CLIContext) -> int:
 
     # Attach servo if pin specified
     if getattr(args, 'pin', None) is not None:
-        result = await ctx.servo_service.attach(args.id, channel=args.pin)
+        result = await ctx.servo_service.attach(
+            args.id,
+            channel=args.pin,
+            min_us=500,
+            max_us=2500,
+        )
         if not result.ok:
             print_error(f"Failed to attach servo: {result.error}")
             return 1
+        await asyncio.sleep(0.05)  # Settle after attach
 
     result = await ctx.servo_service.set_angle(
         args.id,
@@ -218,8 +229,23 @@ async def cmd_servo_set(args: argparse.Namespace, ctx: CLIContext) -> int:
         duration_ms=args.duration,
     )
 
+    # Wait for servo to reach position before disconnecting
+    # Servo needs ~500ms+ to physically move and stabilize
+    wait_time = max(0.8, args.duration / 1000.0 + 0.3)
+    await asyncio.sleep(wait_time)
+
     if result.ok:
         print_success(f"Servo {args.id}: {args.angle}\u00b0")
+
+        # Hold position if requested
+        if getattr(args, 'hold', False):
+            console.print("[dim]Holding position (Ctrl+C to release)[/dim]")
+            try:
+                while True:
+                    await asyncio.sleep(0.5)
+            except KeyboardInterrupt:
+                console.print("\n[dim]Releasing servo[/dim]")
+
         return 0
     else:
         print_error(f"Failed: {result.error}")
@@ -283,12 +309,21 @@ async def cmd_servo_center(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Center servo."""
     # Attach servo if pin specified
     if getattr(args, 'pin', None) is not None:
-        result = await ctx.servo_service.attach(args.id, channel=args.pin)
+        result = await ctx.servo_service.attach(
+            args.id,
+            channel=args.pin,
+            min_us=500,
+            max_us=2500,
+        )
         if not result.ok:
             print_error(f"Failed to attach servo: {result.error}")
             return 1
+        await asyncio.sleep(0.05)  # Settle after attach
 
     result = await ctx.servo_service.center(args.id, duration_ms=300)
+
+    # Wait for servo to physically move before disconnect
+    await asyncio.sleep(0.8)
 
     if result.ok:
         print_success(f"Servo {args.id}: centered (90\u00b0)")

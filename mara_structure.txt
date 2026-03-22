@@ -1,9 +1,9 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-22 14:47:23
+Generated: 2026-03-22 15:13:30
 Total Files: 718
-Total Lines of Code: 80,004
-================================================================================
+Total Lines of Code: 80,026
+================================================================================o
 
 
 --------------------------------------------------------------------------------
@@ -761,7 +761,7 @@ HOST (Python)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
 
-  host/mara_host/cli/commands/monitor.py (269 lines)
+  host/mara_host/cli/commands/monitor.py (266 lines)
     [Class] MonitorState
     [Fn] register(subparsers)
     [Fn] cmd_monitor(args)
@@ -774,7 +774,7 @@ HOST (Python)
     [Fn] _generate_compact_display(state, args, status_line, elapsed)
     [Fn] _speed_bar(speed, width)
 
-  host/mara_host/cli/commands/motor.py (125 lines)
+  host/mara_host/cli/commands/motor.py (122 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
@@ -881,7 +881,7 @@ HOST (Python)
     [Fn] cmd_tcp(args)
     [Fn] _run_tcp_client(host, port, log_level, log_dir)
 
-  host/mara_host/cli/commands/servo.py (229 lines)
+  host/mara_host/cli/commands/servo.py (226 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
@@ -3353,7 +3353,7 @@ HOST (Python)
       |-- _check_rate_limit(self)
       `-- compute_arcade_drive(self, throttle, steering, max_linear, max_angular)
 
-  host/mara_host/services/control/motor_service.py (132 lines)
+  host/mara_host/services/control/motor_service.py (143 lines)
     [Class] MotorConfig
     [Class] MotorState
     [Class] MotorService
@@ -3389,7 +3389,7 @@ HOST (Python)
       |-- clear_configs(self)
       `-- clear_states(self)
 
-  host/mara_host/services/control/servo_service.py (180 lines)
+  host/mara_host/services/control/servo_service.py (194 lines)
     [Class] ServoConfig
     [Class] ServoState
     [Class] ServoService
@@ -3501,7 +3501,7 @@ HOST (Python)
 
   host/mara_host/services/telemetry/__init__.py (12 lines)
 
-  host/mara_host/services/telemetry/telemetry_service.py (243 lines)
+  host/mara_host/services/telemetry/telemetry_service.py (249 lines)
     [Class] ImuData
       `-- from_dict(cls, data)
     [Class] EncoderData
@@ -6751,11 +6751,11 @@ DEFINITIONS
   Methods:          2367
 
 LINES OF CODE
-  Python:           60,529
+  Python:           60,551
   C++:              19,475
-  Total Code:       80,004
-  Blank Lines:      22,930
-  Comment Lines:    24,048
-  Total Lines:      126,982
+  Total Code:       80,026
+  Blank Lines:      22,942
+  Comment Lines:    24,069
+  Total Lines:      127,037
 
 ================================================================================

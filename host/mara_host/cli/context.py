@@ -159,9 +159,11 @@ class CLIContext:
         # Start telemetry (required for arm/actuator commands)
         self._telemetry = TelemetryService(self._client)
         await self._telemetry.start(interval_ms=100)
+        await asyncio.sleep(0.1)  # Wait for telemetry to stabilize
 
         # Auto-arm for CLI commands
-        await self._client.arm()
+        ok, err = await self._client.arm()
+        await asyncio.sleep(0.1)  # Allow state to settle before actuator commands
 
     async def disconnect(self) -> None:
         """Disconnect from the robot."""

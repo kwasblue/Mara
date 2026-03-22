@@ -78,6 +78,27 @@ TOOLS: list[ToolDef] = [
         requires_arm=False,
         custom_handler=True,
     ),
+    ToolDef(
+        name="get_freshness",
+        description="Get data freshness report - shows which sensor data is fresh, aging, or stale.",
+        category="state",
+        requires_arm=False,
+        custom_handler=True,
+    ),
+    ToolDef(
+        name="get_events",
+        description="Get recent events (state changes, commands, errors).",
+        category="state",
+        requires_arm=False,
+        custom_handler=True,
+    ),
+    ToolDef(
+        name="get_command_stats",
+        description="Get command statistics (success rate, latency, pending count).",
+        category="state",
+        requires_arm=False,
+        custom_handler=True,
+    ),
 
     # ─────────────────────────────────────────────────────────────────────────
     # State Control Tools

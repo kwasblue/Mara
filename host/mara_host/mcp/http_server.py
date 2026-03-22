@@ -50,6 +50,31 @@ def create_http_app(runtime: MaraRuntime) -> Starlette:
             return JSONResponse({"error": "not_connected"}, status_code=503)
         return JSONResponse(runtime.get_snapshot())
 
+    async def get_freshness(request: Request) -> JSONResponse:
+        """GET /freshness - Get data freshness report."""
+        if not runtime.is_connected:
+            return JSONResponse({"error": "not_connected"}, status_code=503)
+        return JSONResponse(runtime.get_freshness_report())
+
+    async def get_events(request: Request) -> JSONResponse:
+        """GET /events - Get recent events."""
+        if not runtime.is_connected:
+            return JSONResponse({"error": "not_connected"}, status_code=503)
+        n = int(request.query_params.get("n", 20))
+        events = runtime.state.get_recent_events(n)
+        return JSONResponse({"events": [e.to_dict() for e in events]})
+
+    async def get_commands(request: Request) -> JSONResponse:
+        """GET /commands - Get command history and stats."""
+        if not runtime.is_connected:
+            return JSONResponse({"error": "not_connected"}, status_code=503)
+        n = int(request.query_params.get("n", 20))
+        commands = runtime.state.commands[-n:]
+        return JSONResponse({
+            "stats": runtime.state.get_command_stats(),
+            "commands": [c.to_dict() for c in commands],
+        })
+
     async def post_connect(request: Request) -> JSONResponse:
         """POST /connect - Connect to robot."""
         result = await runtime.connect()
@@ -71,6 +96,9 @@ def create_http_app(runtime: MaraRuntime) -> Starlette:
     # Custom routes
     custom_routes = [
         Route("/state", get_state, methods=["GET"]),
+        Route("/freshness", get_freshness, methods=["GET"]),
+        Route("/events", get_events, methods=["GET"]),
+        Route("/commands", get_commands, methods=["GET"]),
         Route("/schema", get_schema, methods=["GET"]),
         Route("/connect", post_connect, methods=["POST"]),
         Route("/disconnect", post_disconnect, methods=["POST"]),

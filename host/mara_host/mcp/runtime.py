@@ -2,48 +2,207 @@
 """
 Persistent runtime for MCP server.
 
-Maintains connection to robot and provides state access.
+Maintains connection to robot and provides state access with:
+- Freshness tracking and staleness detection
+- Command sequence correlation (sent → acked → observed)
+- Event history for state transitions
 """
 
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass, field
-from typing import Optional, Any
-from datetime import datetime
+from typing import Optional, Any, Literal
+from datetime import datetime, timedelta
+from enum import Enum
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Event Types
+# ═══════════════════════════════════════════════════════════════════════════
+
+class EventType(str, Enum):
+    """Types of events tracked in the runtime."""
+    CONNECTED = "connected"
+    DISCONNECTED = "disconnected"
+    STATE_CHANGE = "state_change"
+    COMMAND_SENT = "command_sent"
+    COMMAND_ACKED = "command_acked"
+    COMMAND_FAILED = "command_failed"
+    TELEMETRY = "telemetry"
+    ERROR = "error"
+
+
+@dataclass
+class Event:
+    """A runtime event with timestamp."""
+    type: EventType
+    timestamp: datetime
+    data: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return {
+            "type": self.type.value,
+            "timestamp": self.timestamp.isoformat(),
+            "data": self.data,
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Command Tracking
+# ═══════════════════════════════════════════════════════════════════════════
 
 @dataclass
 class CommandRecord:
-    """Record of a command sent to the robot."""
+    """Record of a command with full lifecycle tracking."""
+    seq_id: int
     command: str
     params: dict
-    timestamp: datetime
-    success: bool
+    sent_at: datetime
+    acked_at: Optional[datetime] = None
+    success: Optional[bool] = None
     error: Optional[str] = None
+    latency_ms: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "seq_id": self.seq_id,
+            "command": self.command,
+            "params": self.params,
+            "sent_at": self.sent_at.isoformat(),
+            "acked_at": self.acked_at.isoformat() if self.acked_at else None,
+            "success": self.success,
+            "error": self.error,
+            "latency_ms": self.latency_ms,
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# State Store with Freshness
+# ═══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class FreshValue:
+    """A value with freshness tracking."""
+    value: Any
+    updated_at: datetime
+    stale_after_s: float = 5.0  # Default staleness threshold
+
+    @property
+    def age_s(self) -> float:
+        """Age in seconds since last update."""
+        return (datetime.now() - self.updated_at).total_seconds()
+
+    @property
+    def is_stale(self) -> bool:
+        """Check if value is stale."""
+        return self.age_s > self.stale_after_s
+
+    @property
+    def freshness(self) -> Literal["fresh", "aging", "stale"]:
+        """Get freshness status."""
+        age = self.age_s
+        if age < self.stale_after_s * 0.5:
+            return "fresh"
+        elif age < self.stale_after_s:
+            return "aging"
+        return "stale"
+
+    def to_dict(self) -> dict:
+        return {
+            "value": self.value,
+            "age_s": round(self.age_s, 2),
+            "freshness": self.freshness,
+        }
 
 
 @dataclass
-class RuntimeState:
-    """Current runtime state - always fresh."""
+class StateStore:
+    """
+    Canonical state store with freshness tracking.
+
+    All state has explicit freshness so the LLM knows what's current.
+    """
+    # Connection state
     connected: bool = False
-    robot_state: str = "UNKNOWN"
+    connected_at: Optional[datetime] = None
+
+    # Robot state (from firmware)
+    robot_state: FreshValue = field(default_factory=lambda: FreshValue("UNKNOWN", datetime.now(), stale_after_s=2.0))
+
+    # Identity (stable, long staleness)
     firmware_version: str = ""
     protocol_version: int = 0
     features: list = field(default_factory=list)
 
-    # Latest telemetry
-    imu: Optional[dict] = None
-    encoders: dict = field(default_factory=dict)
+    # Telemetry (fast staleness - should update frequently)
+    imu: FreshValue = field(default_factory=lambda: FreshValue(None, datetime.now(), stale_after_s=0.5))
+    encoders: dict[int, FreshValue] = field(default_factory=dict)
 
-    # Command history (last N)
-    command_history: list = field(default_factory=list)
+    # Command tracking
+    command_seq: int = 0
+    commands: list[CommandRecord] = field(default_factory=list)
+    pending_commands: dict[int, CommandRecord] = field(default_factory=dict)
 
-    # Timestamps
-    connected_at: Optional[datetime] = None
-    last_telemetry_at: Optional[datetime] = None
-    last_command_at: Optional[datetime] = None
+    # Event history
+    events: list[Event] = field(default_factory=list)
 
+    # Limits
+    max_commands: int = 100
+    max_events: int = 200
+
+    def next_seq(self) -> int:
+        """Get next command sequence ID."""
+        self.command_seq += 1
+        return self.command_seq
+
+    def add_event(self, event_type: EventType, data: dict = None) -> Event:
+        """Add an event to history."""
+        event = Event(
+            type=event_type,
+            timestamp=datetime.now(),
+            data=data or {},
+        )
+        self.events.append(event)
+
+        # Trim events
+        if len(self.events) > self.max_events:
+            self.events = self.events[-self.max_events:]
+
+        return event
+
+    def get_recent_events(self, n: int = 10, event_type: EventType = None) -> list[Event]:
+        """Get recent events, optionally filtered by type."""
+        events = self.events
+        if event_type:
+            events = [e for e in events if e.type == event_type]
+        return events[-n:]
+
+    def get_command_stats(self) -> dict:
+        """Get command statistics."""
+        if not self.commands:
+            return {"total": 0, "success_rate": 0, "avg_latency_ms": 0}
+
+        successful = [c for c in self.commands if c.success]
+        with_latency = [c for c in self.commands if c.latency_ms is not None]
+
+        return {
+            "total": len(self.commands),
+            "successful": len(successful),
+            "failed": len(self.commands) - len(successful),
+            "success_rate": len(successful) / len(self.commands) if self.commands else 0,
+            "avg_latency_ms": (
+                sum(c.latency_ms for c in with_latency) / len(with_latency)
+                if with_latency else 0
+            ),
+            "pending": len(self.pending_commands),
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Runtime
+# ═══════════════════════════════════════════════════════════════════════════
 
 class MaraRuntime:
     """
@@ -51,6 +210,12 @@ class MaraRuntime:
 
     Maintains a single connection to the robot and exposes
     services and state for MCP tools.
+
+    Features:
+    - Canonical state store with freshness tracking
+    - Command sequence correlation (sent → acked)
+    - Event history for state transitions
+    - Service access layer
     """
 
     def __init__(
@@ -64,14 +229,13 @@ class MaraRuntime:
         self.tcp_port = tcp_port
 
         self._ctx = None
-        self._state = RuntimeState()
-        self._command_history_limit = 50
+        self._store = StateStore()
         self._lock = asyncio.Lock()
 
     @property
-    def state(self) -> RuntimeState:
-        """Get current runtime state."""
-        return self._state
+    def state(self) -> StateStore:
+        """Get state store."""
+        return self._store
 
     @property
     def is_connected(self) -> bool:
@@ -105,17 +269,24 @@ class MaraRuntime:
             self._ctx._telemetry.on_state(self._on_state_change)
 
             # Update state
-            self._state.connected = True
-            self._state.connected_at = datetime.now()
-            self._state.robot_state = "ARMED"  # CLIContext auto-arms
-            self._state.firmware_version = self._ctx.client.firmware_version or ""
-            self._state.protocol_version = self._ctx.client.protocol_version or 0
-            self._state.features = self._ctx.client.features or []
+            now = datetime.now()
+            self._store.connected = True
+            self._store.connected_at = now
+            self._store.robot_state = FreshValue("ARMED", now, stale_after_s=2.0)
+            self._store.firmware_version = self._ctx.client.firmware_version or ""
+            self._store.protocol_version = self._ctx.client.protocol_version or 0
+            self._store.features = self._ctx.client.features or []
+
+            # Record event
+            self._store.add_event(EventType.CONNECTED, {
+                "firmware": self._store.firmware_version,
+                "features": self._store.features,
+            })
 
             return {
                 "status": "connected",
-                "firmware": self._state.firmware_version,
-                "features": self._state.features,
+                "firmware": self._store.firmware_version,
+                "features": self._store.features,
             }
 
     async def disconnect(self) -> dict:
@@ -127,8 +298,11 @@ class MaraRuntime:
             await self._ctx.disconnect()
             self._ctx = None
 
-            self._state.connected = False
-            self._state.robot_state = "UNKNOWN"
+            self._store.connected = False
+            self._store.robot_state = FreshValue("UNKNOWN", datetime.now(), stale_after_s=2.0)
+
+            # Record event
+            self._store.add_event(EventType.DISCONNECTED)
 
             return {"status": "disconnected"}
 
@@ -141,10 +315,9 @@ class MaraRuntime:
         """Ensure connected and armed for actuator commands."""
         await self.ensure_connected()
         # Always send arm command - firmware should handle idempotent arms
-        # This ensures we're armed even if firmware auto-disarmed
         ok, err = await self.client.arm()
         if ok:
-            self._state.robot_state = "ARMED"
+            self._store.robot_state = FreshValue("ARMED", datetime.now(), stale_after_s=2.0)
         # Small delay to let firmware state settle
         await asyncio.sleep(0.02)
 
@@ -207,32 +380,8 @@ class MaraRuntime:
         raise RuntimeError("Not connected")
 
     # ═══════════════════════════════════════════════════════════
-    # State Access
+    # Command Tracking
     # ═══════════════════════════════════════════════════════════
-
-    def get_snapshot(self) -> dict:
-        """Get complete state snapshot for LLM context."""
-        return {
-            "connected": self._state.connected,
-            "robot_state": self._state.robot_state,
-            "firmware": self._state.firmware_version,
-            "features": self._state.features,
-            "imu": self._state.imu,
-            "encoders": self._state.encoders,
-            "last_telemetry": (
-                self._state.last_telemetry_at.isoformat()
-                if self._state.last_telemetry_at else None
-            ),
-            "recent_commands": [
-                {
-                    "command": c.command,
-                    "params": c.params,
-                    "success": c.success,
-                    "error": c.error,
-                }
-                for c in self._state.command_history[-5:]
-            ],
-        }
 
     def record_command(
         self,
@@ -240,21 +389,129 @@ class MaraRuntime:
         params: dict,
         success: bool,
         error: Optional[str] = None,
-    ) -> None:
-        """Record a command in history."""
+        sent_at: Optional[datetime] = None,
+    ) -> CommandRecord:
+        """
+        Record a command with full tracking.
+
+        Args:
+            command: Command name
+            params: Command parameters
+            success: Whether command succeeded
+            error: Error message if failed
+            sent_at: When command was sent (for latency calculation)
+
+        Returns the CommandRecord for correlation.
+        """
+        now = datetime.now()
+        seq_id = self._store.next_seq()
+
+        # Calculate latency if sent_at provided
+        latency_ms = None
+        if sent_at:
+            latency_ms = (now - sent_at).total_seconds() * 1000
+
         record = CommandRecord(
+            seq_id=seq_id,
             command=command,
             params=params,
-            timestamp=datetime.now(),
+            sent_at=sent_at or now,
+            acked_at=now,
             success=success,
             error=error,
+            latency_ms=latency_ms,
         )
-        self._state.command_history.append(record)
-        self._state.last_command_at = record.timestamp
 
-        # Trim history
-        if len(self._state.command_history) > self._command_history_limit:
-            self._state.command_history = self._state.command_history[-self._command_history_limit:]
+        self._store.commands.append(record)
+
+        # Trim command history
+        if len(self._store.commands) > self._store.max_commands:
+            self._store.commands = self._store.commands[-self._store.max_commands:]
+
+        # Record event
+        event_type = EventType.COMMAND_ACKED if success else EventType.COMMAND_FAILED
+        self._store.add_event(event_type, {
+            "seq_id": seq_id,
+            "command": command,
+            "success": success,
+            "error": error,
+            "latency_ms": round(latency_ms, 2) if latency_ms else None,
+        })
+
+        return record
+
+    # ═══════════════════════════════════════════════════════════
+    # State Snapshots
+    # ═══════════════════════════════════════════════════════════
+
+    def get_snapshot(self) -> dict:
+        """
+        Get complete state snapshot for LLM context.
+
+        Includes freshness information so the LLM knows what's current.
+        """
+        return {
+            # Connection
+            "connected": self._store.connected,
+            "connected_at": (
+                self._store.connected_at.isoformat()
+                if self._store.connected_at else None
+            ),
+
+            # Robot state with freshness
+            "robot_state": self._store.robot_state.to_dict(),
+
+            # Identity
+            "firmware": self._store.firmware_version,
+            "features": self._store.features,
+
+            # Telemetry with freshness
+            "imu": self._store.imu.to_dict() if self._store.imu.value else None,
+            "encoders": {
+                eid: ev.to_dict()
+                for eid, ev in self._store.encoders.items()
+            },
+
+            # Command stats
+            "command_stats": self._store.get_command_stats(),
+
+            # Recent commands (last 5)
+            "recent_commands": [
+                c.to_dict() for c in self._store.commands[-5:]
+            ],
+
+            # Recent events (last 10)
+            "recent_events": [
+                e.to_dict() for e in self._store.get_recent_events(10)
+            ],
+        }
+
+    def get_freshness_report(self) -> dict:
+        """Get a report on data freshness."""
+        return {
+            "robot_state": {
+                "value": self._store.robot_state.value,
+                "freshness": self._store.robot_state.freshness,
+                "age_s": round(self._store.robot_state.age_s, 2),
+            },
+            "imu": {
+                "has_data": self._store.imu.value is not None,
+                "freshness": self._store.imu.freshness,
+                "age_s": round(self._store.imu.age_s, 2),
+            },
+            "encoders": {
+                eid: {
+                    "freshness": ev.freshness,
+                    "age_s": round(ev.age_s, 2),
+                }
+                for eid, ev in self._store.encoders.items()
+            },
+            "any_stale": (
+                self._store.robot_state.is_stale or
+                self._store.imu.is_stale or
+                any(ev.is_stale for ev in self._store.encoders.values())
+            ),
+        }
 
     # ═══════════════════════════════════════════════════════════
     # Telemetry Callbacks
@@ -262,24 +519,38 @@ class MaraRuntime:
 
     def _on_imu(self, imu_data) -> None:
         """Handle IMU telemetry."""
-        self._state.imu = {
-            "ax": imu_data.ax,
-            "ay": imu_data.ay,
-            "az": imu_data.az,
-            "gx": imu_data.gx,
-            "gy": imu_data.gy,
-            "gz": imu_data.gz,
-        }
-        self._state.last_telemetry_at = datetime.now()
+        self._store.imu = FreshValue(
+            value={
+                "ax": imu_data.ax,
+                "ay": imu_data.ay,
+                "az": imu_data.az,
+                "gx": imu_data.gx,
+                "gy": imu_data.gy,
+                "gz": imu_data.gz,
+            },
+            updated_at=datetime.now(),
+            stale_after_s=0.5,
+        )
 
     def _on_encoder(self, encoder_data) -> None:
         """Handle encoder telemetry."""
-        self._state.encoders[encoder_data.encoder_id] = {
-            "ticks": encoder_data.ticks,
-            "velocity": encoder_data.velocity,
-        }
-        self._state.last_telemetry_at = datetime.now()
+        self._store.encoders[encoder_data.encoder_id] = FreshValue(
+            value={
+                "ticks": encoder_data.ticks,
+                "velocity": encoder_data.velocity,
+            },
+            updated_at=datetime.now(),
+            stale_after_s=0.5,
+        )
 
     def _on_state_change(self, new_state: str) -> None:
         """Handle robot state change."""
-        self._state.robot_state = new_state
+        old_state = self._store.robot_state.value
+        self._store.robot_state = FreshValue(new_state, datetime.now(), stale_after_s=2.0)
+
+        # Record state transition event
+        if old_state != new_state:
+            self._store.add_event(EventType.STATE_CHANGE, {
+                "from": old_state,
+                "to": new_state,
+            })

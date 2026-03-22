@@ -101,6 +101,7 @@ def generate_mcp_tools() -> str:
 
     # Imports
     lines.append("""from typing import Any
+from datetime import datetime
 from mcp.types import Tool, TextContent
 
 
@@ -173,8 +174,9 @@ async def dispatch_tool(runtime, name: str, args: dict[str, Any]) -> str:
 
             lines.append(f'''    if name == "{mcp_name}":
         await runtime.{ensure}()
+        sent_at = datetime.now()
         result = await runtime.{tool.service}.{tool.method}({args_str})
-        runtime.record_command("{tool.name}", args, result.ok, result.error)
+        runtime.record_command("{tool.name}", args, result.ok, result.error, sent_at=sent_at)
         if result.ok:
             return {response_ok}
         return f"FAIL: {{result.error}}"
@@ -199,6 +201,25 @@ async def _handle_get_state(runtime, args: dict) -> str:
     if not runtime.is_connected:
         return "Not connected. Use mara_connect first."
     return str(runtime.get_snapshot())
+
+
+async def _handle_get_freshness(runtime, args: dict) -> str:
+    if not runtime.is_connected:
+        return "Not connected. Use mara_connect first."
+    return str(runtime.get_freshness_report())
+
+
+async def _handle_get_events(runtime, args: dict) -> str:
+    if not runtime.is_connected:
+        return "Not connected. Use mara_connect first."
+    events = runtime.state.get_recent_events(20)
+    return str([e.to_dict() for e in events])
+
+
+async def _handle_get_command_stats(runtime, args: dict) -> str:
+    if not runtime.is_connected:
+        return "Not connected. Use mara_connect first."
+    return str(runtime.state.get_command_stats())
 ''')
 
     return "".join(lines)
@@ -213,7 +234,8 @@ def generate_http_handlers() -> str:
     lines = [generate_header("Generated HTTP handlers and routes.")]
 
     # Imports
-    lines.append("""from starlette.requests import Request
+    lines.append("""from datetime import datetime
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
@@ -273,8 +295,9 @@ def create_generated_routes(runtime) -> list[Route]:
                 service_args.append(f'{arg_name}={param.name}')
             args_str = ", ".join(service_args)
 
-            lines.append(f'''        result = await runtime.{tool.service}.{tool.method}({args_str})
-        runtime.record_command("{tool.name}", body if body else {{}}, result.ok, result.error)
+            lines.append(f'''        sent_at = datetime.now()
+        result = await runtime.{tool.service}.{tool.method}({args_str})
+        runtime.record_command("{tool.name}", body if body else {{}}, result.ok, result.error, sent_at=sent_at)
         return JSONResponse({{"ok": result.ok, "error": result.error}})
 
 ''')

@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-22 09:36:10
-Total Files: 714
-Total Lines of Code: 79,287
+Generated: 2026-03-22 09:52:13
+Total Files: 718
+Total Lines of Code: 79,720
 ================================================================================
 
 
@@ -735,7 +735,7 @@ HOST (Python)
     [Fn] cmd_info(args)
     [Fn] _run_esptool(esptool_args, port)
 
-  host/mara_host/cli/commands/generate.py (152 lines)
+  host/mara_host/cli/commands/generate.py (168 lines)
     [Fn] register(subparsers)
     [Fn] _run_generator(name, module_name)
     [Fn] cmd_all(args)
@@ -745,6 +745,7 @@ HOST (Python)
     [Fn] cmd_telemetry(args)
     [Fn] cmd_binary(args)
     [Fn] cmd_gpio(args)
+    [Fn] cmd_mcp(args)
 
   host/mara_host/cli/commands/gpio.py (179 lines)
     [Fn] register(subparsers)
@@ -2844,7 +2845,14 @@ HOST (Python)
 
   host/mara_host/mcp/__main__.py (3 lines)
 
-  host/mara_host/mcp/http_server.py (249 lines)
+  host/mara_host/mcp/_generated_http.py (287 lines)
+    [Fn] create_generated_routes(runtime)
+    [Fn] get_openai_function_schema()
+
+  host/mara_host/mcp/_generated_tools.py (249 lines)
+    [Fn] get_tool_definitions()
+
+  host/mara_host/mcp/http_server.py (62 lines)
     [Fn] create_http_app(runtime)
 
   host/mara_host/mcp/runtime.py (192 lines)
@@ -2869,8 +2877,15 @@ HOST (Python)
       |-- _on_encoder(self, encoder_data)
       `-- _on_state_change(self, new_state)
 
-  host/mara_host/mcp/server.py (296 lines)
+  host/mara_host/mcp/server.py (40 lines)
     [Fn] create_server(port, host, tcp_port)
+
+  host/mara_host/mcp/tool_schema.py (249 lines)
+    [Class] ToolParam
+    [Class] ToolDef
+    [Fn] get_tools_by_category(category)
+    [Fn] get_tool_by_name(name)
+    [Fn] get_all_categories()
 
   host/mara_host/motor/__init__.py (7 lines)
 
@@ -3631,6 +3646,14 @@ HOST (Python)
     [Fn] generate_palette_file(output_path)
     [Fn] main()
 
+  host/mara_host/tools/gen_mcp_servers.py (71 lines)
+    [Fn] generate_header(description)
+    [Fn] param_to_json_schema(param)
+    [Fn] tool_to_mcp_schema(tool)
+    [Fn] generate_mcp_tools()
+    [Fn] generate_http_handlers()
+    [Fn] main()
+
   host/mara_host/tools/gen_telemetry.py (114 lines)
     [Fn] generate_cpp_header()
     [Fn] generate_py_module()
@@ -3642,7 +3665,7 @@ HOST (Python)
     [Fn] write_version_files(version, cpp_path, py_path)
     [Fn] main()
 
-  host/mara_host/tools/generate_all.py (38 lines)
+  host/mara_host/tools/generate_all.py (42 lines)
     [Fn] main()
 
   host/mara_host/tools/generate_pins.py (37 lines)
@@ -6703,22 +6726,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     465
+  Python Files:     469
   C++ Files:        249
-  Total Files:      714
+  Total Files:      718
 
 DEFINITIONS
-  Classes:          833
+  Classes:          835
   Structs:          136
-  Functions:        1893
+  Functions:        1906
   Methods:          2356
 
 LINES OF CODE
-  Python:           59,812
+  Python:           60,245
   C++:              19,475
-  Total Code:       79,287
-  Blank Lines:      22,756
-  Comment Lines:    23,773
-  Total Lines:      125,816
+  Total Code:       79,720
+  Blank Lines:      22,864
+  Comment Lines:    23,980
+  Total Lines:      126,564
 
 ================================================================================

@@ -63,6 +63,7 @@ class CLIContext:
         baudrate: Optional[int] = None,
         host: Optional[str] = None,
         tcp_port: Optional[int] = None,
+        verbose: bool = True,
     ):
         """
         Initialize CLI context.
@@ -72,6 +73,7 @@ class CLIContext:
             baudrate: Serial baudrate (uses config default if None)
             host: TCP host (if using TCP instead of serial)
             tcp_port: TCP port number (uses config default if None)
+            verbose: If False, suppress client status messages
         """
         from mara_host.cli.cli_config import (
             get_serial_port,
@@ -84,6 +86,7 @@ class CLIContext:
         self.baudrate = baudrate or get_baudrate()
         self.host = host
         self.tcp_port = tcp_port or get_tcp_port()
+        self.verbose = verbose
 
         self._connection: Optional["ConnectionService"] = None
         self._client: Optional["MaraClient"] = None
@@ -108,16 +111,19 @@ class CLIContext:
         Create CLIContext from argparse namespace.
 
         Args:
-            args: Parsed arguments with port, host, tcp_port attributes
+            args: Parsed arguments with port, host, tcp_port, quiet attributes
 
         Returns:
             Configured CLIContext
         """
+        # quiet flag inverts verbose
+        verbose = not getattr(args, "quiet", False)
         return cls(
             port=getattr(args, "port", None),
             baudrate=getattr(args, "baudrate", None),
             host=getattr(args, "tcp", None) or getattr(args, "host", None),
             tcp_port=getattr(args, "tcp_port", None),
+            verbose=verbose,
         )
 
     async def connect(self) -> None:
@@ -135,6 +141,7 @@ class CLIContext:
                 transport_type=TransportType.TCP,
                 host=self.host,
                 tcp_port=self.tcp_port,
+                verbose=self.verbose,
             )
         else:
             # Serial connection
@@ -142,6 +149,7 @@ class CLIContext:
                 transport_type=TransportType.SERIAL,
                 port=self.port,
                 baudrate=self.baudrate,
+                verbose=self.verbose,
             )
 
         self._connection = ConnectionService(config)

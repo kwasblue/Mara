@@ -259,6 +259,7 @@ class RobotController:
             # Subscribe to telemetry
             self._telemetry_service.on_state(self._on_state_changed)
             self._telemetry_service.on_imu(self._on_imu_data)
+            self._telemetry_service.on_encoder(self._on_encoder_data)
             await self._telemetry_service.start(
                 interval_ms=self._state.telemetry_interval_ms
             )
@@ -475,6 +476,9 @@ class RobotController:
 
     def _on_imu_data(self, imu) -> None:
         self.signals.imu_data.emit(imu)
+
+    def _on_encoder_data(self, encoder) -> None:
+        self.signals.encoder_data.emit(encoder.encoder_id, encoder)
 
     def _on_connection_restored(self, _data: dict) -> None:
         """Handle connection restored after auto-reconnect."""

@@ -450,7 +450,8 @@ class SensorsPanel(QWidget):
 
     def _setup_connections(self) -> None:
         self.signals.connection_changed.connect(self._on_connection_changed)
-        self.signals.telemetry_received.connect(self._on_telemetry)
+        self.signals.imu_data.connect(self._on_imu_data)
+        self.signals.encoder_data.connect(self._on_encoder_data)
 
     def _on_connection_changed(self, connected: bool, info: str) -> None:
         for widget in self.encoder_widgets.values():
@@ -459,23 +460,18 @@ class SensorsPanel(QWidget):
             widget.setEnabled(connected)
         self.imu_widget.setEnabled(connected)
 
-    def _on_telemetry(self, topic: str, data: dict) -> None:
-        if topic == "encoder":
-            enc_id = data.get("encoder_id", 0)
-            if enc_id in self.encoder_widgets:
-                self.encoder_widgets[enc_id].update_reading(
-                    data.get("count", 0),
-                    data.get("velocity", 0.0)
-                )
-        elif topic == "ultrasonic":
-            sensor_id = data.get("sensor_id", 0)
-            if sensor_id in self.ultrasonic_widgets:
-                self.ultrasonic_widgets[sensor_id].update_reading(
-                    data.get("distance_cm", -1)
-                )
-        elif topic == "imu":
-            self.imu_widget.update_reading(
-                data.get("ax", 0), data.get("ay", 0), data.get("az", 0),
-                data.get("gx", 0), data.get("gy", 0), data.get("gz", 0),
-                data.get("temp", 0)
+    def _on_imu_data(self, imu) -> None:
+        """Handle IMU telemetry data."""
+        self.imu_widget.update_reading(
+            getattr(imu, 'ax', 0), getattr(imu, 'ay', 0), getattr(imu, 'az', 0),
+            getattr(imu, 'gx', 0), getattr(imu, 'gy', 0), getattr(imu, 'gz', 0),
+            getattr(imu, 'temp', 0) if hasattr(imu, 'temp') else 0
+        )
+
+    def _on_encoder_data(self, encoder_id: int, encoder) -> None:
+        """Handle encoder telemetry data."""
+        if encoder_id in self.encoder_widgets:
+            self.encoder_widgets[encoder_id].update_reading(
+                getattr(encoder, 'ticks', 0),
+                getattr(encoder, 'velocity', 0.0)
             )

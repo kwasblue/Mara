@@ -390,6 +390,7 @@ class DashboardPanel(QWidget):
         self.signals.connection_changed.connect(self._on_connection_changed)
         self.signals.state_changed.connect(self._on_state_changed)
         self.signals.imu_data.connect(self._on_imu_data)
+        self.signals.encoder_data.connect(self._on_encoder_data)
         self.signals.capabilities_changed.connect(self._on_capabilities_changed)
 
     def _refresh_ports(self) -> None:
@@ -557,6 +558,12 @@ class DashboardPanel(QWidget):
             self.imu_plot.update_imu(imu)
         if hasattr(self, 'gyro_plot'):
             self.gyro_plot.update_gyro(imu)
+
+    def _on_encoder_data(self, encoder_id: int, encoder) -> None:
+        """Handle encoder data update."""
+        if encoder_id in self.encoder_labels:
+            ticks = getattr(encoder, 'ticks', 0)
+            self.encoder_labels[encoder_id].setText(str(ticks))
 
     def _export_telemetry(self) -> None:
         """Export telemetry data to CSV."""

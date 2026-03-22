@@ -105,6 +105,11 @@ For more help on a specific command:
         action="store_true",
         help="Enable verbose output",
     )
+    parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="Suppress client connection messages",
+    )
 
     subparsers = parser.add_subparsers(
         dest="command",

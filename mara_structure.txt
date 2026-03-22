@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-08 22:09:16
-Total Files: 701
-Total Lines of Code: 77,515
+Generated: 2026-03-22 08:27:00
+Total Files: 709
+Total Lines of Code: 78,544
 ================================================================================
 
 
@@ -648,10 +648,11 @@ HOST (Python)
 
   host/mara_host/cli/__init__.py (2 lines)
 
-  host/mara_host/cli/cli_config.py (69 lines)
+  host/mara_host/cli/cli_config.py (76 lines)
     [Fn] find_config_file()
     [Fn] load_config()
     [Fn] get(key, default)
+    [Fn] _platform_serial_default()
     [Fn] get_serial_port()
     [Fn] get_baudrate()
     [Fn] get_tcp_host()
@@ -664,7 +665,7 @@ HOST (Python)
 
   host/mara_host/cli/commands/calibrate/__init__.py (2 lines)
 
-  host/mara_host/cli/commands/calibrate/_common.py (24 lines)
+  host/mara_host/cli/commands/calibrate/_common.py (25 lines)
     [Fn] add_transport_args(p)
     [Fn] create_client_from_args(args)
     [Fn] show_calibrations()
@@ -692,7 +693,7 @@ HOST (Python)
   host/mara_host/cli/commands/calibrate/wheels.py (40 lines)
     [Fn] cmd_wheels(args)
 
-  host/mara_host/cli/commands/config.py (329 lines)
+  host/mara_host/cli/commands/config.py (330 lines)
     [Fn] register(subparsers)
     [Fn] _find_config_files()
     [Fn] cmd_show(args)
@@ -703,20 +704,10 @@ HOST (Python)
     [Fn] _template_full(name)
     [Fn] cmd_cli(args)
 
-  host/mara_host/cli/commands/control.py (391 lines)
+  host/mara_host/cli/commands/control.py (288 lines)
     [Fn] register(subparsers)
+    [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
-    [Fn] _run_async(coro)
-    [Fn] cmd_signals_list(args)
-    [Fn] cmd_signal_define(args)
-    [Fn] cmd_signal_set(args)
-    [Fn] cmd_signals_clear(args)
-    [Fn] cmd_controller_config(args)
-    [Fn] cmd_controller_enable(args)
-    [Fn] cmd_controller_param(args)
-    [Fn] cmd_observer_config(args)
-    [Fn] cmd_observer_enable(args)
-    [Fn] cmd_observer_reset(args)
 
   host/mara_host/cli/commands/dashboard.py (49 lines)
     [Fn] register(subparsers)
@@ -730,18 +721,12 @@ HOST (Python)
     [Fn] cmd_validate(args)
     [Fn] cmd_export_config(args)
 
-  host/mara_host/cli/commands/encoder.py (190 lines)
+  host/mara_host/cli/commands/encoder.py (159 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
-    [Fn] _run_async(coro)
-    [Fn] cmd_encoder_attach(args)
-    [Fn] cmd_encoder_detach(args)
-    [Fn] cmd_encoder_read(args)
-    [Fn] cmd_encoder_reset(args)
-    [Fn] cmd_encoder_monitor(args)
 
-  host/mara_host/cli/commands/flash.py (233 lines)
+  host/mara_host/cli/commands/flash.py (234 lines)
     [Fn] register(subparsers)
     [Fn] _find_esp32_ports()
     [Fn] cmd_ports(args)
@@ -761,52 +746,37 @@ HOST (Python)
     [Fn] cmd_binary(args)
     [Fn] cmd_gpio(args)
 
-  host/mara_host/cli/commands/gpio.py (225 lines)
+  host/mara_host/cli/commands/gpio.py (179 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
-    [Fn] _run_async(coro)
-    [Fn] cmd_gpio_register(args)
-    [Fn] cmd_gpio_high(args)
-    [Fn] cmd_gpio_low(args)
-    [Fn] cmd_gpio_write(args)
-    [Fn] cmd_gpio_read(args)
-    [Fn] cmd_gpio_toggle(args)
-    [Fn] cmd_gpio_blink(args)
 
   host/mara_host/cli/commands/gui.py (42 lines)
     [Fn] register(subparsers)
     [Fn] cmd_gui(args)
 
-  host/mara_host/cli/commands/imu.py (206 lines)
+  host/mara_host/cli/commands/imu.py (178 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
-    [Fn] _run_async(coro)
-    [Fn] cmd_imu_read(args)
-    [Fn] cmd_imu_calibrate(args)
-    [Fn] cmd_imu_set_bias(args)
-    [Fn] cmd_imu_monitor(args)
-    [Fn] cmd_imu_zero(args)
 
-  host/mara_host/cli/commands/monitor.py (190 lines)
+  host/mara_host/cli/commands/monitor.py (269 lines)
     [Class] MonitorState
     [Fn] register(subparsers)
     [Fn] cmd_monitor(args)
-    [Fn] on_heartbeat(data)
-    [Fn] on_telemetry(data)
-    [Fn] on_error(data)
+    [Fn] on_imu(imu_data)
+    [Fn] on_encoder(enc_data)
+    [Fn] on_state_change(new_state)
+    [Fn] on_raw(data)
+    [Fn] _record_telem(state)
     [Fn] _generate_display(state, args)
+    [Fn] _generate_compact_display(state, args, status_line, elapsed)
+    [Fn] _speed_bar(speed, width)
 
-  host/mara_host/cli/commands/motor.py (159 lines)
+  host/mara_host/cli/commands/motor.py (125 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
-    [Fn] _run_async(coro)
-    [Fn] cmd_motor_set(args)
-    [Fn] cmd_motor_stop(args)
-    [Fn] cmd_motor_brake(args)
-    [Fn] cmd_motor_all_stop(args)
     [Fn] cmd_motor_status(args)
 
   host/mara_host/cli/commands/mqtt.py (63 lines)
@@ -863,18 +833,12 @@ HOST (Python)
     [Fn] _wizard_spi()
     [Fn] _wizard_uart()
 
-  host/mara_host/cli/commands/pwm.py (207 lines)
+  host/mara_host/cli/commands/pwm.py (160 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
-    [Fn] _run_async(coro)
-    [Fn] cmd_pwm_set(args)
-    [Fn] cmd_pwm_duty(args)
-    [Fn] cmd_pwm_percent(args)
-    [Fn] cmd_pwm_stop(args)
-    [Fn] cmd_pwm_fade(args)
 
-  host/mara_host/cli/commands/record.py (201 lines)
+  host/mara_host/cli/commands/record.py (202 lines)
     [Fn] register(subparsers)
     [Fn] cmd_record(args)
     [Fn] _run_recording(session, port, tcp_host, duration, show_console)
@@ -889,7 +853,7 @@ HOST (Python)
     [Fn] get_log_params(args)
     [Fn] show_transports()
 
-  host/mara_host/cli/commands/run/_registry.py (145 lines)
+  host/mara_host/cli/commands/run/_registry.py (146 lines)
     [Fn] register(subparsers)
 
   host/mara_host/cli/commands/run/can.py (71 lines)
@@ -916,17 +880,10 @@ HOST (Python)
     [Fn] cmd_tcp(args)
     [Fn] _run_tcp_client(host, port, log_level, log_dir)
 
-  host/mara_host/cli/commands/servo.py (238 lines)
+  host/mara_host/cli/commands/servo.py (229 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
-    [Fn] _run_async(coro)
-    [Fn] cmd_servo_attach(args)
-    [Fn] cmd_servo_detach(args)
-    [Fn] cmd_servo_set(args)
-    [Fn] cmd_servo_pulse(args)
-    [Fn] cmd_servo_sweep(args)
-    [Fn] cmd_servo_center(args)
 
   host/mara_host/cli/commands/sim.py (146 lines)
     [Fn] register(subparsers)
@@ -940,19 +897,10 @@ HOST (Python)
     [Fn] on_event(topic)
     [Fn] handler(data)
 
-  host/mara_host/cli/commands/stepper.py (241 lines)
+  host/mara_host/cli/commands/stepper.py (194 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
-    [Fn] _run_async(coro)
-    [Fn] cmd_stepper_enable(args)
-    [Fn] cmd_stepper_disable(args)
-    [Fn] cmd_stepper_move(args)
-    [Fn] cmd_stepper_degrees(args)
-    [Fn] cmd_stepper_revs(args)
-    [Fn] cmd_stepper_stop(args)
-    [Fn] cmd_stepper_position(args)
-    [Fn] cmd_stepper_reset(args)
 
   host/mara_host/cli/commands/test/__init__.py (2 lines)
 
@@ -961,7 +909,7 @@ HOST (Python)
     [Fn] print_results(results, show_expected)
     [Fn] create_client_from_args(args)
 
-  host/mara_host/cli/commands/test/_registry.py (126 lines)
+  host/mara_host/cli/commands/test/_registry.py (127 lines)
     [Fn] register(subparsers)
     [Fn] add_transport_args(p)
 
@@ -1006,15 +954,10 @@ HOST (Python)
   host/mara_host/cli/commands/test/stepper.py (79 lines)
     [Fn] cmd_stepper(args)
 
-  host/mara_host/cli/commands/ultrasonic.py (176 lines)
+  host/mara_host/cli/commands/ultrasonic.py (149 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
-    [Fn] _run_async(coro)
-    [Fn] cmd_ultrasonic_attach(args)
-    [Fn] cmd_ultrasonic_detach(args)
-    [Fn] cmd_ultrasonic_read(args)
-    [Fn] cmd_ultrasonic_monitor(args)
 
   host/mara_host/cli/completions.py (288 lines)
     [Fn] register(subparsers)
@@ -1037,11 +980,35 @@ HOST (Python)
     [Fn] format_pin_status(gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
     [Fn] confirm(message, default)
 
+  host/mara_host/cli/context.py (231 lines)
+    [Class] CLIContextConfig
+    [Class] CLIContext
+      |-- __init__(self, port, baudrate, host, tcp_port, verbose)
+      |-- from_args(cls, args)
+      |-- client(self)
+      |-- is_connected(self)
+      |-- state_service(self)
+      |-- motor_service(self)
+      |-- servo_service(self)
+      |-- gpio_service(self)
+      |-- stepper_service(self)
+      |-- encoder_service(self)
+      |-- imu_service(self)
+      |-- ultrasonic_service(self)
+      |-- pwm_service(self)
+      |-- controller_service(self)
+      `-- pid_service(self)
+    [Fn] run_with_context(func)
+    [Fn] wrapper(args)
+    [Fn] run_with_context_no_connect(func)
+    [Fn] wrapper(args)
+
   host/mara_host/cli/main.py (49 lines)
     [Fn] _discover_commands(subparsers)
     [Fn] _register_completions(subparsers)
     [Fn] create_parser()
     [Fn] cmd_version(args)
+    [Fn] cmd_debug(args)
     [Fn] main(argv)
 
   host/mara_host/command/__init__.py (29 lines)
@@ -1061,13 +1028,13 @@ HOST (Python)
       |-- _init_binary_encoder(self)
       `-- set_prefer_binary(self, prefer)
 
-  host/mara_host/command/client.py (410 lines)
+  host/mara_host/command/client.py (419 lines)
     [Class] HasSendBytes
       |-- set_frame_handler(self, handler)
       |-- start(self)
       `-- stop(self)
     [Class] BaseMaraClient
-      |-- __init__(self, transport, bus, heartbeat_interval_s, connection_timeout_s, command_timeout_s, max_retries, require_version_match, handshake_timeout_s, log_level, log_dir)
+      |-- __init__(self, transport, bus, heartbeat_interval_s, connection_timeout_s, command_timeout_s, max_retries, require_version_match, handshake_timeout_s, log_level, log_dir, verbose)
       |-- logs(self)
       |-- _log_event(self, event, data)
       |-- _handle_version_response(self, payload)
@@ -1120,7 +1087,8 @@ HOST (Python)
       |-- clear_pending(self)
       `-- stats(self)
 
-  host/mara_host/command/factory.py (144 lines)
+  host/mara_host/command/factory.py (151 lines)
+    [Fn] _default_serial_port()
     [Class] ClientConfig
     [Class] MaraClientFactory
       |-- __init__(self, bus)
@@ -1420,7 +1388,7 @@ HOST (Python)
 
   host/mara_host/gui/__init__.py (5 lines)
 
-  host/mara_host/gui/app.py (159 lines)
+  host/mara_host/gui/app.py (170 lines)
     [Class] MaraApplication
       |-- __init__(self, port, host, tcp_port, dev)
       |-- run(self)
@@ -1431,7 +1399,10 @@ HOST (Python)
     [Class] TeeWriter
       |-- __init__(self, original, log_file)
       |-- write(self, s)
-      `-- flush(self)
+      |-- flush(self)
+      |-- fileno(self)
+      |-- encoding(self)
+      `-- errors(self)
     [Fn] run_app(port, host, tcp_port, dev)
     [Fn] main()
 
@@ -2629,7 +2600,7 @@ HOST (Python)
       |-- set_controller(self, controller)
       `-- get_config(self)
 
-  host/mara_host/gui/widgets/block_diagram/dialogs/pin_info.py (133 lines)
+  host/mara_host/gui/widgets/block_diagram/dialogs/pin_info.py (134 lines)
     [Class] PinInfoDialog
       |-- __init__(self, gpio, parent)
       |-- _setup_ui(self)
@@ -2799,7 +2770,7 @@ HOST (Python)
       |-- __init__(self, parent)
       `-- closeEvent(self, event)
 
-  host/mara_host/gui/widgets/telemetry_plot.py (134 lines)
+  host/mara_host/gui/widgets/telemetry_plot.py (136 lines)
     [Class] DataSeries
     [Class] TelemetryPlotWidget
       |-- __init__(self, title, parent)
@@ -2813,7 +2784,9 @@ HOST (Python)
       |-- _on_window_changed(self, text)
       |-- _toggle_pause(self)
       |-- clear(self)
-      `-- set_paused(self, paused)
+      |-- set_paused(self, paused)
+      |-- showEvent(self, event)
+      `-- hideEvent(self, event)
     [Class] ImuPlotWidget
       |-- __init__(self, parent)
       `-- update_imu(self, imu_data)
@@ -3261,7 +3234,26 @@ HOST (Python)
       |-- _notify_progress(self, gen_type, message)
       `-- get_available_generators()
 
-  host/mara_host/services/control/__init__.py (46 lines)
+  host/mara_host/services/control/__init__.py (110 lines)
+
+  host/mara_host/services/control/controller_service.py (252 lines)
+    [Class] SignalKind
+    [Class] ControllerType
+    [Class] ObserverType
+    [Class] Signal
+    [Class] ControllerSlot
+    [Class] ObserverSlot
+    [Class] ControllerService
+      `-- __init__(self, client)
+
+  host/mara_host/services/control/encoder_service.py (120 lines)
+    [Class] EncoderConfig
+    [Class] EncoderState
+    [Class] EncoderService
+      |-- configure(self, encoder_id, pin_a, pin_b, ppr, gear_ratio, inverted)
+      |-- get_attached_encoders(self)
+      |-- counts_to_radians(self, encoder_id, counts)
+      `-- counts_to_degrees(self, encoder_id, counts)
 
   host/mara_host/services/control/gpio_service.py (150 lines)
     [Class] GpioMode
@@ -3271,6 +3263,15 @@ HOST (Python)
       |-- configure(self, channel, pin, mode, label)
       |-- get_channel(self, channel)
       `-- get_all_channels(self)
+
+  host/mara_host/services/control/imu_service.py (88 lines)
+    [Class] ImuReading
+    [Class] ImuBias
+    [Class] ImuService
+      |-- __init__(self, client)
+      |-- bias(self)
+      |-- last_reading(self)
+      `-- update_reading(self, reading)
 
   host/mara_host/services/control/motion_service.py (143 lines)
     [Class] Velocity
@@ -3294,6 +3295,21 @@ HOST (Python)
     [Class] MotorService
       |-- configure(self, motor_id, min_speed, max_speed, inverted)
       `-- compute_diff_drive(self, vx, omega, track_width, wheel_radius, max_speed)
+
+  host/mara_host/services/control/pid_service.py (144 lines)
+    [Class] PidGains
+    [Class] PidState
+    [Class] PidService
+      |-- __init__(self, client)
+      |-- get_state(self, motor_id)
+      |-- is_enabled(self, motor_id)
+      `-- get_gains(self, motor_id)
+
+  host/mara_host/services/control/pwm_service.py (79 lines)
+    [Class] PwmConfig
+    [Class] PwmState
+    [Class] PwmService
+      `-- configure(self, channel, frequency_hz, resolution)
 
   host/mara_host/services/control/service_base.py (80 lines)
     [Class] ConfigurableService
@@ -3326,6 +3342,24 @@ HOST (Python)
       |-- is_estopped(self)
       |-- set_state(self, state)
       `-- sync_from_telemetry(self, state_str)
+
+  host/mara_host/services/control/stepper_service.py (183 lines)
+    [Class] StepperConfig
+    [Class] StepperState
+    [Class] StepperService
+      |-- configure(self, stepper_id, steps_per_rev, microsteps, max_speed_rps, acceleration, inverted)
+      |-- effective_steps_per_rev(self)
+      `-- get_effective_steps_per_rev(self, stepper_id)
+
+  host/mara_host/services/control/ultrasonic_service.py (111 lines)
+    [Class] UltrasonicConfig
+    [Class] UltrasonicState
+    [Class] UltrasonicService
+      |-- configure(self, sensor_id, trig_pin, echo_pin, max_distance_cm)
+      |-- get_attached_sensors(self)
+      |-- cm_to_meters(cm)
+      |-- cm_to_inches(cm)
+      `-- update_reading(self, sensor_id, distance_cm)
 
   host/mara_host/services/pins/__init__.py (14 lines)
 
@@ -3449,7 +3483,7 @@ HOST (Python)
 
   host/mara_host/services/transport/__init__.py (14 lines)
 
-  host/mara_host/services/transport/connection_service.py (115 lines)
+  host/mara_host/services/transport/connection_service.py (117 lines)
     [Class] TransportType
     [Class] ConnectionConfig
     [Class] ConnectionInfo
@@ -3511,13 +3545,13 @@ HOST (Python)
 
   host/mara_host/telemetry/telemetry_sections.py (76 lines)
 
-  host/mara_host/tools/build_firmware.py (175 lines)
+  host/mara_host/tools/build_firmware.py (180 lines)
     [Fn] parse_features(features_str, no_features_str)
     [Fn] features_to_flags(features)
     [Fn] run_pio(args, verbose, extra_flags)
     [Fn] generate()
     [Fn] build(env, verbose, features)
-    [Fn] upload(env, verbose, features)
+    [Fn] upload(env, verbose, features, port)
     [Fn] test(native, device, filter_pattern, verbose)
     [Fn] clean(env)
     [Fn] list_features()
@@ -6634,22 +6668,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     452
+  Python Files:     460
   C++ Files:        249
-  Total Files:      701
+  Total Files:      709
 
 DEFINITIONS
-  Classes:          803
+  Classes:          830
   Structs:          136
-  Functions:        1942
-  Methods:          2294
+  Functions:        1891
+  Methods:          2336
 
 LINES OF CODE
-  Python:           58,040
+  Python:           59,069
   C++:              19,475
-  Total Code:       77,515
-  Blank Lines:      22,213
-  Comment Lines:    22,752
-  Total Lines:      122,480
+  Total Code:       78,544
+  Blank Lines:      22,583
+  Comment Lines:    23,552
+  Total Lines:      124,679
 
 ================================================================================

@@ -59,9 +59,11 @@ class BaseMaraClient(BinaryCommandsMixin):
         handshake_timeout_s: float = 2.0,
         log_level: int = 20,  # logging.INFO
         log_dir: str = "logs",
+        verbose: bool = True,
     ) -> None:
         self.transport = transport
         self.bus = bus or EventBus()
+        self._verbose = verbose
         self._running = False
         self._seq = 0
         self._heartbeat_task: Optional[asyncio.Task] = None
@@ -181,7 +183,8 @@ class BaseMaraClient(BinaryCommandsMixin):
         await self.connection.start_monitoring(interval_s=0.1)
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
-        print("[MaraClient] Started")
+        if self._verbose:
+            print("[MaraClient] Started")
 
     async def stop(self) -> None:
         """Stop the client and underlying transport (closes serial)."""
@@ -212,7 +215,8 @@ class BaseMaraClient(BinaryCommandsMixin):
         # 5) Close transport last
         await self._stop_transport()
 
-        print("[MaraClient] Stopped")
+        if self._verbose:
+            print("[MaraClient] Stopped")
 
 
     async def _stop_transport(self) -> None:
@@ -233,7 +237,8 @@ class BaseMaraClient(BinaryCommandsMixin):
 
     async def _perform_handshake(self) -> None:
         loop = asyncio.get_running_loop()
-        print(f"[MaraClient] Requesting identity/version (timeout={self._handshake_timeout_s}s)...")
+        if self._verbose:
+            print(f"[MaraClient] Requesting identity/version (timeout={self._handshake_timeout_s}s)...")
 
         self._handshake_future = loop.create_future()
         # If identity arrived before handshake started, complete immediately
@@ -280,12 +285,13 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._board = result.get("board", "unknown")
         self._platform_name = result.get("name", "unknown")
 
-        print(f"[MaraClient] Firmware: {self._firmware_version}, "
-            f"Protocol: {self._protocol_version}, "
-            f"Schema: {self._schema_version}, "
-            f"Board: {self._board}, "
-            f"Name: {self._platform_name}, "
-            f"Features: {self._features}")
+        if self._verbose:
+            print(f"[MaraClient] Firmware: {self._firmware_version}, "
+                f"Protocol: {self._protocol_version}, "
+                f"Schema: {self._schema_version}, "
+                f"Board: {self._board}, "
+                f"Name: {self._platform_name}, "
+                f"Features: {self._features}")
 
         if self._protocol_version != PROTOCOL_VERSION:
             update_target = "firmware" if self._protocol_version < PROTOCOL_VERSION else "host"
@@ -295,14 +301,16 @@ class BaseMaraClient(BinaryCommandsMixin):
             )
 
         self._version_verified = True
-        print("[MaraClient] Handshake OK")
+        if self._verbose:
+            print("[MaraClient] Handshake OK")
 
     def _handle_version_response(self, payload: bytes) -> None:
         """Handle VERSION_RESPONSE from firmware."""
         try:
             data = json.loads(payload.decode("utf-8"))
         except Exception as e:
-            print(f"[MaraClient] Failed to parse version response: {e}")
+            if self._verbose:
+                print(f"[MaraClient] Failed to parse version response: {e}")
             data = {}
         
         self.bus.publish("version", data)
@@ -342,7 +350,7 @@ class BaseMaraClient(BinaryCommandsMixin):
                     last_snapshot = now
 
             except Exception as e:
-                if self._running:
+                if self._running and self._verbose:
                     print(f"[MaraClient] Heartbeat error: {e}")
 
             await asyncio.sleep(self._heartbeat_interval_s)
@@ -389,7 +397,8 @@ class BaseMaraClient(BinaryCommandsMixin):
             text = payload.decode("utf-8")
             obj = json.loads(text)
         except Exception as e:
-            print(f"[MaraClient] Failed to decode JSON payload: {e!r}")
+            if self._verbose:
+                print(f"[MaraClient] Failed to decode JSON payload: {e!r}")
             self.bus.publish("json_error", {"error": str(e), "raw": payload})
             return
 

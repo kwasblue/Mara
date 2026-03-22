@@ -46,6 +46,7 @@ class ConnectionConfig:
     # Logging options
     log_level: int = logging.INFO
     log_dir: str = "logs"
+    verbose: bool = True
 
 
 @dataclass
@@ -119,6 +120,7 @@ class ConnectionService:
             require_version_match=self.config.require_version_match,
             log_level=self.config.log_level,
             log_dir=self.config.log_dir,
+            verbose=self.config.verbose,
         )
 
         # Start connection

@@ -18,11 +18,8 @@ from mara_host.cli.console import (
     print_info,
     print_warning,
 )
-<<<<<<< HEAD
 from mara_host.cli.context import CLIContext, run_with_context
-=======
 from mara_host.cli.cli_config import get_serial_port as _get_port
->>>>>>> 6ae4738 (	modified:   host/mara_host/cli/cli_config.py)
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:

@@ -167,8 +167,8 @@ async def dispatch_tool(runtime, name: str, args: dict[str, Any]) -> str:
 
             # Build response format
             if tool.response_format:
-                # Use f-string style formatting
-                response_ok = f'f"{tool.response_format}"'
+                # Use .format(**args) to interpolate parameter values
+                response_ok = f'"{tool.response_format}".format(**args)'
             else:
                 response_ok = f'str(result.data) if result.data else "{tool.name} OK"'
 

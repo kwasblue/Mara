@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-22 16:58:42
-Total Files: 724
-Total Lines of Code: 80,798
+Generated: 2026-03-22 17:10:22
+Total Files: 725
+Total Lines of Code: 80,808
 ================================================================================
 
 
@@ -663,6 +663,11 @@ HOST (Python)
     [Fn] init_config(path)
     [Fn] apply_defaults(parser_defaults)
 
+  host/mara_host/cli/commands/_common.py (33 lines)
+    [Fn] add_connection_args(parser)
+    [Fn] add_port_arg(parser)
+    [Fn] cmd_help(parser)
+
   host/mara_host/cli/commands/calibrate/__init__.py (2 lines)
 
   host/mara_host/cli/commands/calibrate/_common.py (25 lines)
@@ -774,10 +779,8 @@ HOST (Python)
     [Fn] _generate_compact_display(state, args, status_line, elapsed)
     [Fn] _speed_bar(speed, width)
 
-  host/mara_host/cli/commands/motor.py (122 lines)
+  host/mara_host/cli/commands/motor.py (113 lines)
     [Fn] register(subparsers)
-    [Fn] add_port_arg(parser)
-    [Fn] cmd_help(parser)
     [Fn] cmd_motor_status(args)
 
   host/mara_host/cli/commands/mqtt.py (63 lines)
@@ -881,10 +884,8 @@ HOST (Python)
     [Fn] cmd_tcp(args)
     [Fn] _run_tcp_client(host, port, log_level, log_dir)
 
-  host/mara_host/cli/commands/servo.py (253 lines)
+  host/mara_host/cli/commands/servo.py (244 lines)
     [Fn] register(subparsers)
-    [Fn] add_port_arg(parser)
-    [Fn] cmd_help(parser)
 
   host/mara_host/cli/commands/sim.py (146 lines)
     [Fn] register(subparsers)
@@ -1412,7 +1413,7 @@ HOST (Python)
 
   host/mara_host/gui/core/__init__.py (15 lines)
 
-  host/mara_host/gui/core/controller.py (437 lines)
+  host/mara_host/gui/core/controller.py (447 lines)
     [Class] RobotController
       |-- __init__(self, signals, dev_mode)
       |-- state(self)
@@ -3357,7 +3358,7 @@ HOST (Python)
       |-- _check_rate_limit(self)
       `-- compute_arcade_drive(self, throttle, steering, max_linear, max_angular)
 
-  host/mara_host/services/control/motor_service.py (145 lines)
+  host/mara_host/services/control/motor_service.py (137 lines)
     [Class] MotorConfig
     [Class] MotorState
     [Class] MotorService
@@ -3393,7 +3394,7 @@ HOST (Python)
       |-- clear_configs(self)
       `-- clear_states(self)
 
-  host/mara_host/services/control/servo_service.py (195 lines)
+  host/mara_host/services/control/servo_service.py (188 lines)
     [Class] ServoConfig
     [Class] ServoState
     [Class] ServoService
@@ -6821,22 +6822,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     475
+  Python Files:     476
   C++ Files:        249
-  Total Files:      724
+  Total Files:      725
 
 DEFINITIONS
   Classes:          855
   Structs:          136
-  Functions:        1907
+  Functions:        1906
   Methods:          2418
 
 LINES OF CODE
-  Python:           61,323
+  Python:           61,333
   C++:              19,475
-  Total Code:       80,798
-  Blank Lines:      23,219
-  Comment Lines:    24,353
-  Total Lines:      128,370
+  Total Code:       80,808
+  Blank Lines:      23,228
+  Comment Lines:    24,380
+  Total Lines:      128,416
 
 ================================================================================

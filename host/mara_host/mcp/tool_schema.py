@@ -110,7 +110,7 @@ TOOLS: list[ToolDef] = [
         service="state_service",
         method="arm",
         requires_arm=False,
-        response_format="Armed - state: {result.state}",
+        response_format="Armed",
     ),
     ToolDef(
         name="disarm",
@@ -119,7 +119,7 @@ TOOLS: list[ToolDef] = [
         service="state_service",
         method="disarm",
         requires_arm=False,
-        response_format="Disarmed - state: {result.state}",
+        response_format="Disarmed",
     ),
     ToolDef(
         name="stop",
@@ -224,7 +224,7 @@ TOOLS: list[ToolDef] = [
             ToolParam("channel", "integer", "GPIO channel ID"),
             ToolParam("value", "integer", "0=low, 1=high"),
         ),
-        response_format="GPIO {channel} -> {'HIGH' if value else 'LOW'}",
+        response_format="GPIO {channel} set to {value}",
     ),
     ToolDef(
         name="gpio_toggle",

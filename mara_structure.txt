@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-22 08:27:00
-Total Files: 709
-Total Lines of Code: 78,544
+Generated: 2026-03-22 09:36:10
+Total Files: 714
+Total Lines of Code: 79,287
 ================================================================================
 
 
@@ -1408,7 +1408,7 @@ HOST (Python)
 
   host/mara_host/gui/core/__init__.py (15 lines)
 
-  host/mara_host/gui/core/controller.py (427 lines)
+  host/mara_host/gui/core/controller.py (430 lines)
     [Class] RobotController
       |-- __init__(self, signals, dev_mode)
       |-- state(self)
@@ -1437,6 +1437,7 @@ HOST (Python)
       |-- gpio_toggle(self, channel)
       |-- _on_state_changed(self, state)
       |-- _on_imu_data(self, imu)
+      |-- _on_encoder_data(self, encoder)
       |-- _on_connection_restored(self, _data)
       |-- signal_define(self, signal_id, name, kind, initial)
       |-- signal_delete(self, signal_id)
@@ -1758,7 +1759,7 @@ HOST (Python)
       |-- _on_apply_pid_gains(self)
       `-- _on_set_velocity_target(self)
 
-  host/mara_host/gui/panels/dashboard.py (438 lines)
+  host/mara_host/gui/panels/dashboard.py (443 lines)
     [Class] DashboardPanel
       |-- __init__(self, signals, controller, settings)
       |-- _setup_ui(self)
@@ -1775,6 +1776,7 @@ HOST (Python)
       |-- _on_connection_changed(self, connected, info)
       |-- _on_state_changed(self, state)
       |-- _on_imu_data(self, imu)
+      |-- _on_encoder_data(self, encoder_id, encoder)
       |-- _export_telemetry(self)
       `-- _on_capabilities_changed(self, caps)
 
@@ -1948,7 +1950,7 @@ HOST (Python)
       |-- _on_connection_changed(self, connected, info)
       `-- _stop_all(self)
 
-  host/mara_host/gui/panels/sensors.py (364 lines)
+  host/mara_host/gui/panels/sensors.py (357 lines)
     [Class] EncoderWidget
       |-- __init__(self, encoder_id, controller, parent)
       |-- _setup_ui(self)
@@ -1974,7 +1976,8 @@ HOST (Python)
       |-- _setup_ui(self)
       |-- _setup_connections(self)
       |-- _on_connection_changed(self, connected, info)
-      `-- _on_telemetry(self, topic, data)
+      |-- _on_imu_data(self, imu)
+      `-- _on_encoder_data(self, encoder_id, encoder)
 
   host/mara_host/gui/panels/session.py (445 lines)
     [Class] RecordingTab
@@ -2836,6 +2839,38 @@ HOST (Python)
     [Class] MaraLogBundle
       |-- __init__(self, name, log_dir, level, console, max_bytes, backup_count, dedup_cooldown_s, jsonl_file, text_file)
       `-- close(self)
+
+  host/mara_host/mcp/__init__.py (2 lines)
+
+  host/mara_host/mcp/__main__.py (3 lines)
+
+  host/mara_host/mcp/http_server.py (249 lines)
+    [Fn] create_http_app(runtime)
+
+  host/mara_host/mcp/runtime.py (192 lines)
+    [Class] CommandRecord
+    [Class] RuntimeState
+    [Class] MaraRuntime
+      |-- __init__(self, port, host, tcp_port)
+      |-- state(self)
+      |-- is_connected(self)
+      |-- servo_service(self)
+      |-- motor_service(self)
+      |-- gpio_service(self)
+      |-- stepper_service(self)
+      |-- encoder_service(self)
+      |-- imu_service(self)
+      |-- pwm_service(self)
+      |-- client(self)
+      |-- telemetry(self)
+      |-- get_snapshot(self)
+      |-- record_command(self, command, params, success, error)
+      |-- _on_imu(self, imu_data)
+      |-- _on_encoder(self, encoder_data)
+      `-- _on_state_change(self, new_state)
+
+  host/mara_host/mcp/server.py (296 lines)
+    [Fn] create_server(port, host, tcp_port)
 
   host/mara_host/motor/__init__.py (7 lines)
 
@@ -6668,22 +6703,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     460
+  Python Files:     465
   C++ Files:        249
-  Total Files:      709
+  Total Files:      714
 
 DEFINITIONS
-  Classes:          830
+  Classes:          833
   Structs:          136
-  Functions:        1891
-  Methods:          2336
+  Functions:        1893
+  Methods:          2356
 
 LINES OF CODE
-  Python:           59,069
+  Python:           59,812
   C++:              19,475
-  Total Code:       78,544
-  Blank Lines:      22,583
-  Comment Lines:    23,552
-  Total Lines:      124,679
+  Total Code:       79,287
+  Blank Lines:      22,756
+  Comment Lines:    23,773
+  Total Lines:      125,816
 
 ================================================================================

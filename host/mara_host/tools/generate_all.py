@@ -62,6 +62,11 @@ def main():
     gen_can.main()
     print()
 
+    import gen_mcp_servers
+    print("-" * 60)
+    gen_mcp_servers.main()
+    print()
+
     print("=" * 60)
     print("All generators completed successfully!")
     print("=" * 60)

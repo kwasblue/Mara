@@ -79,6 +79,13 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     gpio_p.set_defaults(func=cmd_gpio)
 
+    # mcp
+    mcp_p = gen_sub.add_parser(
+        "mcp",
+        help="Generate MCP/HTTP server tools",
+    )
+    mcp_p.set_defaults(func=cmd_mcp)
+
     # Default handler
     gen_parser.set_defaults(func=cmd_all)
 
@@ -116,6 +123,7 @@ def cmd_all(args: argparse.Namespace) -> int:
         ("Binary commands", "gen_binary_commands"),
         ("Telemetry sections", "gen_telemetry"),
         ("CAN bus definitions", "gen_can"),
+        ("MCP/HTTP tools", "gen_mcp_servers"),
     ]
 
     errors = 0
@@ -219,4 +227,19 @@ def cmd_gpio(args: argparse.Namespace) -> int:
     if rc == 0:
         print_success("GPIO channel mappings generated")
         print_info("Generated: GpioChannelDefs.h, gpio_channels.py")
+    return rc
+
+
+def cmd_mcp(args: argparse.Namespace) -> int:
+    """Generate MCP/HTTP server tools."""
+    console.print()
+    console.print("[bold cyan]Generating MCP/HTTP server tools[/bold cyan]")
+    console.print()
+
+    rc = _run_generator("MCP/HTTP tools", "gen_mcp_servers")
+
+    console.print()
+    if rc == 0:
+        print_success("MCP/HTTP server tools generated")
+        print_info("Generated: _generated_tools.py, _generated_http.py")
     return rc

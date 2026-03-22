@@ -658,6 +658,10 @@ class TestMainWindowPanels:
         # Check all expected panels are present
         assert "dashboard" in panel_ids
         assert "control" in panel_ids
+        assert "motion" in panel_ids
+        assert "pwm" in panel_ids
+        assert "stepper" in panel_ids
+        assert "sensors" in panel_ids
         assert "camera" in panel_ids
         assert "commands" in panel_ids
         assert "calibration" in panel_ids
@@ -671,4 +675,4 @@ class TestMainWindowPanels:
         assert "logs" in panel_ids
 
         # Check count
-        assert len(panels) == 13
+        assert len(panels) == 17

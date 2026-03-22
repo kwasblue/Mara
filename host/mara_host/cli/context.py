@@ -36,7 +36,7 @@ T = TypeVar("T")
 class CLIContextConfig:
     """Configuration for CLI context."""
 
-    port: str = "/dev/cu.usbserial-0001"
+    port: Optional[str] = None  # Uses cli_config default if not set
     baudrate: int = 115200
     host: Optional[str] = None  # For TCP connections
     tcp_port: int = 3333
@@ -58,24 +58,31 @@ class CLIContext:
 
     def __init__(
         self,
-        port: str = "/dev/cu.usbserial-0001",
-        baudrate: int = 115200,
+        port: Optional[str] = None,
+        baudrate: Optional[int] = None,
         host: Optional[str] = None,
-        tcp_port: int = 3333,
+        tcp_port: Optional[int] = None,
     ):
         """
         Initialize CLI context.
 
         Args:
-            port: Serial port for connection
-            baudrate: Serial baudrate
+            port: Serial port for connection (uses config default if None)
+            baudrate: Serial baudrate (uses config default if None)
             host: TCP host (if using TCP instead of serial)
-            tcp_port: TCP port number
+            tcp_port: TCP port number (uses config default if None)
         """
-        self.port = port
-        self.baudrate = baudrate
+        from mara_host.cli.cli_config import (
+            get_serial_port,
+            get_baudrate,
+            get_tcp_host,
+            get_tcp_port,
+        )
+
+        self.port = port or get_serial_port()
+        self.baudrate = baudrate or get_baudrate()
         self.host = host
-        self.tcp_port = tcp_port
+        self.tcp_port = tcp_port or get_tcp_port()
 
         self._connection: Optional["ConnectionService"] = None
         self._client: Optional["MaraClient"] = None
@@ -104,10 +111,10 @@ class CLIContext:
             Configured CLIContext
         """
         return cls(
-            port=getattr(args, "port", "/dev/cu.usbserial-0001"),
-            baudrate=getattr(args, "baudrate", 115200),
+            port=getattr(args, "port", None),
+            baudrate=getattr(args, "baudrate", None),
             host=getattr(args, "tcp", None) or getattr(args, "host", None),
-            tcp_port=getattr(args, "tcp_port", 3333),
+            tcp_port=getattr(args, "tcp_port", None),
         )
 
     async def connect(self) -> None:

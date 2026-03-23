@@ -374,6 +374,12 @@ class MaraRuntime:
         raise RuntimeError("Not connected")
 
     @property
+    def ultrasonic_service(self):
+        if self._ctx:
+            return self._ctx.ultrasonic_service
+        raise RuntimeError("Not connected")
+
+    @property
     def pwm_service(self):
         if self._ctx:
             return self._ctx.pwm_service

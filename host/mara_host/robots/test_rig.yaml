@@ -1,0 +1,63 @@
+# Test Rig - Hardware integration test platform
+#
+# Components:
+#   Actuators: servo, DC motor, stepper
+#   Sensors: IMU, ultrasonic distance sensor
+#
+# Use this to test LLM control of hardware:
+#   "Move the servo to 45 degrees"
+#   "Spin the motor at half speed"
+#   "Step forward 100 steps"
+#   "What's the distance reading?"
+#   "What's the current orientation?"
+
+name: "test_rig"
+description: "Hardware test rig with servo, DC motor, stepper, IMU, and ultrasonic sensor"
+type: "test_platform"
+
+joints:
+  # Standard servo - position control
+  servo:
+    type: revolute
+    actuator: servo
+    actuator_id: 0
+    pin: 18
+    min_angle: 0
+    max_angle: 180
+    home: 90
+    zero_position: "fully counter-clockwise"
+    max_position: "fully clockwise"
+
+  # DC motor - speed control (-180 to 180 maps to -1.0 to 1.0)
+  motor:
+    type: continuous
+    actuator: dc_motor
+    actuator_id: 0
+    min_angle: -180   # Maps to -1.0 (full reverse)
+    max_angle: 180    # Maps to +1.0 (full forward)
+    home: 0           # Stopped
+    zero_position: "full reverse"
+    max_position: "full forward"
+
+  # Stepper - position control (angle = steps)
+  stepper:
+    type: revolute
+    actuator: stepper
+    actuator_id: 0
+    min_angle: -10000  # Steps in reverse
+    max_angle: 10000   # Steps forward
+    home: 0
+    zero_position: "home position"
+    max_position: "10000 steps from home"
+
+# Sensors are accessed via existing tools:
+#   mara_imu_read - Get IMU data (accel, gyro)
+#   mara_ultrasonic_read - Get distance in cm
+#   Or via telemetry streaming
+
+# Pin assignments (suggested for ESP32):
+#   Servo:      GPIO 18 (PWM capable)
+#   DC Motor:   GPIO 25, 26 (PWM + direction, or motor driver)
+#   Stepper:    GPIO 32, 33 (step + direction)
+#   IMU:        GPIO 21, 22 (I2C SDA, SCL)
+#   Ultrasonic: GPIO 4 (trigger), GPIO 5 (echo)

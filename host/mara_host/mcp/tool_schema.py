@@ -333,6 +333,48 @@ TOOLS: list[ToolDef] = [
     ),
 
     # ─────────────────────────────────────────────────────────────────────────
+    # Ultrasonic Tools
+    # ─────────────────────────────────────────────────────────────────────────
+    ToolDef(
+        name="ultrasonic_attach",
+        description="Attach an ultrasonic distance sensor to GPIO pins.",
+        category="ultrasonic",
+        service="ultrasonic_service",
+        method="attach",
+        params=(
+            ToolParam("sensor_id", "integer", "Sensor ID (0-3)"),
+            ToolParam("trig_pin", "integer", "Trigger GPIO pin"),
+            ToolParam("echo_pin", "integer", "Echo GPIO pin"),
+            ToolParam("max_distance_cm", "number", "Maximum measurable distance in cm", required=False, default=400.0),
+        ),
+        requires_arm=False,
+        response_format="Ultrasonic {sensor_id} attached (trig={trig_pin}, echo={echo_pin})",
+    ),
+    ToolDef(
+        name="ultrasonic_read",
+        description="Read distance from ultrasonic sensor in centimeters.",
+        category="ultrasonic",
+        service="ultrasonic_service",
+        method="read",
+        params=(
+            ToolParam("sensor_id", "integer", "Sensor ID (0-3)"),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="ultrasonic_detach",
+        description="Detach an ultrasonic sensor.",
+        category="ultrasonic",
+        service="ultrasonic_service",
+        method="detach",
+        params=(
+            ToolParam("sensor_id", "integer", "Sensor ID (0-3)"),
+        ),
+        requires_arm=False,
+        response_format="Ultrasonic {sensor_id} detached",
+    ),
+
+    # ─────────────────────────────────────────────────────────────────────────
     # Robot Tools (semantic abstraction layer)
     # ─────────────────────────────────────────────────────────────────────────
     ToolDef(

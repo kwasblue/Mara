@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-22 17:10:22
-Total Files: 725
-Total Lines of Code: 80,808
+Generated: 2026-03-23 13:34:40
+Total Files: 732
+Total Lines of Code: 82,155
 ================================================================================
 
 
@@ -2849,17 +2849,17 @@ HOST (Python)
 
   host/mara_host/mcp/__main__.py (3 lines)
 
-  host/mara_host/mcp/_generated_http.py (306 lines)
+  host/mara_host/mcp/_generated_http.py (338 lines)
     [Fn] create_generated_routes(runtime)
     [Fn] get_openai_function_schema()
 
-  host/mara_host/mcp/_generated_tools.py (308 lines)
+  host/mara_host/mcp/_generated_tools.py (367 lines)
     [Fn] get_tool_definitions()
 
   host/mara_host/mcp/http_server.py (84 lines)
     [Fn] create_http_app(runtime)
 
-  host/mara_host/mcp/runtime.py (355 lines)
+  host/mara_host/mcp/runtime.py (395 lines)
     [Class] EventType
     [Class] Event
       `-- to_dict(self)
@@ -2889,6 +2889,10 @@ HOST (Python)
       |-- pwm_service(self)
       |-- client(self)
       |-- telemetry(self)
+      |-- robot_loaded(self)
+      |-- robot_service(self)
+      |-- robot_context(self)
+      |-- robot_model(self)
       |-- record_command(self, command, params, success, error, sent_at)
       |-- get_snapshot(self)
       |-- get_freshness_report(self)
@@ -2899,7 +2903,7 @@ HOST (Python)
   host/mara_host/mcp/server.py (40 lines)
     [Fn] create_server(port, host, tcp_port)
 
-  host/mara_host/mcp/tool_schema.py (273 lines)
+  host/mara_host/mcp/tool_schema.py (318 lines)
     [Class] ToolParam
     [Class] ToolDef
     [Fn] get_tools_by_category(category)
@@ -3216,6 +3220,78 @@ HOST (Python)
     [Fn] load_config(config_path)
     [Fn] robot_from_config(config)
     [Fn] _robot_from_dict(config)
+
+  host/mara_host/robot_layer/__init__.py (38 lines)
+
+  host/mara_host/robot_layer/context.py (159 lines)
+    [Class] RobotStateContext
+      |-- __init__(self, model, pose_tracker, state_service, telemetry_service)
+      |-- get_state_summary(self)
+      |-- _format_safety_status(self)
+      |-- _format_pose(self)
+      |-- format_pose(self)
+      |-- format_sensors(self)
+      |-- get_system_context(self)
+      `-- _format_structure(self)
+    [Fn] format_joint(joint, indent)
+
+  host/mara_host/robot_layer/loader.py (129 lines)
+    [Class] RobotConfigError
+    [Fn] load_robot_model(path)
+    [Fn] _parse_config(config, source_path)
+    [Fn] _parse_joint(name, config)
+    [Fn] validate_robot_model(model)
+
+  host/mara_host/robot_layer/model.py (63 lines)
+    [Class] JointType
+    [Class] ActuatorType
+    [Class] Joint
+      |-- validate_angle(self, angle)
+      `-- clamp_angle(self, angle)
+    [Class] RobotModel
+      |-- get_joint(self, name)
+      |-- has_joint(self, name)
+      |-- get_chain(self, name)
+      |-- get_group(self, name)
+      |-- get_joints_by_actuator(self, actuator_type)
+      |-- get_root_joints(self)
+      `-- get_children(self, joint_name)
+
+  host/mara_host/robot_layer/pose.py (107 lines)
+    [Class] PoseSnapshot
+    [Class] PoseTracker
+      |-- __init__(self, model)
+      |-- record_command(self, joint, angle)
+      |-- update_telemetry(self, joint, angle)
+      |-- get_current(self)
+      |-- get_commanded(self)
+      |-- get_age(self, joint)
+      |-- get_freshness(self, joint)
+      |-- get_source(self, joint)
+      |-- get_detailed(self)
+      |-- _get_age_ms(self, joint)
+      |-- _angle_to_pct(self, joint, angle)
+      |-- _add_snapshot(self, source)
+      |-- get_history(self, limit)
+      `-- clear(self)
+
+  host/mara_host/robot_layer/service.py (333 lines)
+    [Class] Waypoint
+    [Class] Trajectory
+      |-- from_dicts(cls, waypoints, duration_ms)
+      `-- from_json(cls, data, duration_ms)
+    [Class] TrajectoryExecution
+      |-- progress(self)
+      |-- is_complete(self)
+      |-- is_cancelled(self)
+      |-- error(self)
+      `-- cancel(self)
+    [Class] RobotService
+      |-- __init__(self, model, servo_service, motor_service, stepper_service)
+      |-- start_trajectory(self, trajectory, frequency_hz, interpolate, on_waypoint)
+      |-- _interpolate_to_waypoint(self, waypoint)
+      |-- get_pose(self)
+      `-- describe(self)
 
   host/mara_host/runtime/__init__.py (7 lines)
 
@@ -3673,7 +3749,7 @@ HOST (Python)
     [Fn] generate_palette_file(output_path)
     [Fn] main()
 
-  host/mara_host/tools/gen_mcp_servers.py (88 lines)
+  host/mara_host/tools/gen_mcp_servers.py (100 lines)
     [Fn] generate_header(description)
     [Fn] param_to_json_schema(param)
     [Fn] tool_to_mcp_schema(tool)
@@ -4581,6 +4657,46 @@ HOST (Python)
   host/tests/test_reliable_commander_stats.py (70 lines)
     [Fn] _import_commander()
     [Fn] on_event(evt)
+
+  host/tests/test_robot_layer.py (330 lines)
+    [Fn] sample_model()
+    [Fn] mock_servo_service()
+    [Fn] config_path()
+    [Class] TestRobotModel
+      |-- test_get_joint(self, sample_model)
+      |-- test_get_joint_unknown(self, sample_model)
+      |-- test_has_joint(self, sample_model)
+      |-- test_get_root_joints(self, sample_model)
+      |-- test_get_children(self, sample_model)
+      `-- test_get_joints_by_actuator(self, sample_model)
+    [Class] TestJoint
+      |-- test_validate_angle_valid(self, sample_model)
+      |-- test_validate_angle_below_min(self, sample_model)
+      |-- test_validate_angle_above_max(self, sample_model)
+      `-- test_clamp_angle(self, sample_model)
+    [Class] TestLoader
+      |-- test_load_example_config(self, config_path)
+      |-- test_load_nonexistent_file(self)
+      `-- test_validate_model(self, config_path)
+    [Class] TestPoseTracker
+      |-- test_initial_pose_is_home(self, sample_model)
+      |-- test_record_command(self, sample_model)
+      |-- test_freshness_after_command(self, sample_model)
+      |-- test_freshness_unknown_without_command(self, sample_model)
+      `-- test_get_source(self, sample_model)
+    [Class] TestRobotService
+      `-- test_describe(self, sample_model)
+    [Class] TestRobotStateContext
+      |-- test_get_state_summary(self, sample_model)
+      |-- test_format_pose(self, sample_model)
+      `-- test_get_system_context(self, sample_model)
+    [Class] TestTrajectory
+      |-- test_waypoint_creation(self)
+      |-- test_trajectory_from_dicts(self)
+      `-- test_trajectory_from_json(self)
+    [Class] TestTrajectoryExecution
+      `-- mock_servo_for_trajectory(self)
+    [Fn] on_waypoint(index, waypoint)
 
   host/tests/test_schema.py (189 lines)
     [Class] TestSchemaPackageStructure
@@ -6822,22 +6938,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     476
+  Python Files:     483
   C++ Files:        249
-  Total Files:      725
+  Total Files:      732
 
 DEFINITIONS
-  Classes:          855
+  Classes:          875
   Structs:          136
-  Functions:        1906
-  Methods:          2418
+  Functions:        1915
+  Methods:          2491
 
 LINES OF CODE
-  Python:           61,333
+  Python:           62,680
   C++:              19,475
-  Total Code:       80,808
-  Blank Lines:      23,228
-  Comment Lines:    24,380
-  Total Lines:      128,416
+  Total Code:       82,155
+  Blank Lines:      23,638
+  Comment Lines:    24,798
+  Total Lines:      130,591
 
 ================================================================================

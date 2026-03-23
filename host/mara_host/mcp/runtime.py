@@ -232,6 +232,11 @@ class MaraRuntime:
         self._store = StateStore()
         self._lock = asyncio.Lock()
 
+        # Robot abstraction layer (initialized via load_robot)
+        self._robot_model = None
+        self._robot_service = None
+        self._robot_context = None
+
     @property
     def state(self) -> StateStore:
         """Get state store."""
@@ -385,6 +390,74 @@ class MaraRuntime:
         if self._ctx:
             return self._ctx._telemetry
         raise RuntimeError("Not connected")
+
+    # ═══════════════════════════════════════════════════════════
+    # Robot Abstraction Layer
+    # ═══════════════════════════════════════════════════════════
+
+    @property
+    def robot_loaded(self) -> bool:
+        """Check if robot model is loaded."""
+        return self._robot_service is not None
+
+    @property
+    def robot_service(self):
+        """Get robot service for semantic control."""
+        if not self._robot_service:
+            raise RuntimeError("Robot not loaded. Call load_robot(config_path) first.")
+        return self._robot_service
+
+    @property
+    def robot_context(self):
+        """Get robot context for LLM state presentation."""
+        if not self._robot_context:
+            raise RuntimeError("Robot not loaded. Call load_robot(config_path) first.")
+        return self._robot_context
+
+    @property
+    def robot_model(self):
+        """Get robot model."""
+        if not self._robot_model:
+            raise RuntimeError("Robot not loaded. Call load_robot(config_path) first.")
+        return self._robot_model
+
+    async def load_robot(self, config_path: str) -> dict:
+        """
+        Load robot model and initialize robot abstraction layer.
+
+        Call this after connect() to enable semantic robot control.
+
+        Args:
+            config_path: Path to robot YAML configuration file
+
+        Returns:
+            Dict with robot info (name, joints)
+        """
+        from mara_host.robot_layer import load_robot_model, RobotService, RobotStateContext
+
+        # Load model from YAML
+        self._robot_model = load_robot_model(config_path)
+
+        # Create robot service (wraps existing hardware services)
+        self._robot_service = RobotService(
+            model=self._robot_model,
+            servo_service=self.servo_service if self.is_connected else None,
+            motor_service=self.motor_service if self.is_connected else None,
+        )
+
+        # Create context provider for LLM
+        self._robot_context = RobotStateContext(
+            model=self._robot_model,
+            pose_tracker=self._robot_service.pose,
+            state_service=self.state_service if self.is_connected else None,
+            telemetry_service=self._store,
+        )
+
+        return {
+            "name": self._robot_model.name,
+            "type": self._robot_model.type,
+            "joints": list(self._robot_model.joints.keys()),
+        }
 
     # ═══════════════════════════════════════════════════════════
     # Command Tracking

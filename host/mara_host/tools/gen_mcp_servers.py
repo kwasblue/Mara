@@ -220,6 +220,25 @@ async def _handle_get_command_stats(runtime, args: dict) -> str:
     if not runtime.is_connected:
         return "Not connected. Use mara_connect first."
     return str(runtime.state.get_command_stats())
+
+
+# Robot abstraction layer handlers
+async def _handle_robot_describe(runtime, args: dict) -> str:
+    if not runtime.robot_loaded:
+        return "Robot not loaded. Call load_robot(config_path) first."
+    return runtime.robot_service.describe()
+
+
+async def _handle_robot_state(runtime, args: dict) -> str:
+    if not runtime.robot_loaded:
+        return "Robot not loaded. Call load_robot(config_path) first."
+    return runtime.robot_context.get_state_summary()
+
+
+async def _handle_robot_pose(runtime, args: dict) -> str:
+    if not runtime.robot_loaded:
+        return "Robot not loaded. Call load_robot(config_path) first."
+    return runtime.robot_context.format_pose()
 ''')
 
     return "".join(lines)

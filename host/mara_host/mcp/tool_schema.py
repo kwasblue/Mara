@@ -331,6 +331,55 @@ TOOLS: list[ToolDef] = [
         params=(),
         requires_arm=False,
     ),
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Robot Tools (semantic abstraction layer)
+    # ─────────────────────────────────────────────────────────────────────────
+    ToolDef(
+        name="robot_describe",
+        description="Get robot structure: joints, their limits, relationships, and what each controls. Call this first to understand what you're controlling.",
+        category="robot",
+        requires_arm=False,
+        custom_handler=True,
+    ),
+    ToolDef(
+        name="robot_state",
+        description="Get complete robot status: safety state (IDLE/ARMED/ESTOP), current joint positions with freshness indicators, and sensor readings.",
+        category="robot",
+        requires_arm=False,
+        custom_handler=True,
+    ),
+    ToolDef(
+        name="robot_pose",
+        description="Get current position of all joints by name, with percentage of range and freshness indicators.",
+        category="robot",
+        requires_arm=False,
+        custom_handler=True,
+    ),
+    ToolDef(
+        name="robot_move",
+        description="Move one or more joints by name. Joints move simultaneously. Provide moves as JSON array.",
+        category="robot",
+        service="robot_service",
+        method="move_joints",
+        params=(
+            ToolParam("moves", "string", "JSON array of moves, e.g. [{joint: shoulder, angle: 45}]"),
+            ToolParam("duration_ms", "integer", "Movement duration in milliseconds", required=False, default=300),
+        ),
+        response_format="Moved: {moved}",
+    ),
+    ToolDef(
+        name="robot_home",
+        description="Move all joints (or specified joints) to their home positions.",
+        category="robot",
+        service="robot_service",
+        method="home",
+        params=(
+            ToolParam("joints", "string", "JSON array of joint names to home, or omit for all joints", required=False, default=None),
+            ToolParam("duration_ms", "integer", "Movement duration in milliseconds", required=False, default=500),
+        ),
+        response_format="Homed",
+    ),
 ]
 
 

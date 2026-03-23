@@ -43,6 +43,7 @@ How to add new functionality.
 
 | Document | Description |
 |----------|-------------|
+| [Robot Abstraction Layer](guides/ROBOT_LAYER.md) | Semantic robot control for LLM integration |
 | [MCP & HTTP Server](guides/MCP_HTTP.md) | LLM interface (Claude, OpenAI, any LLM) |
 | [Adding Commands](guides/ADDING_COMMANDS.md) | Add new protocol commands |
 | [Adding Control Blocks](guides/ADDING_CONTROL.md) | Add controllers, observers, filters |
@@ -101,6 +102,8 @@ docs/
 │   ├── COMPOSITION.md
 │   └── RULES.md
 ├── guides/                ← How-to guides
+│   ├── ROBOT_LAYER.md
+│   ├── MCP_HTTP.md
 │   ├── ADDING_COMMANDS.md
 │   ├── ADDING_CONTROL.md
 │   ├── ADDING_HARDWARE.md

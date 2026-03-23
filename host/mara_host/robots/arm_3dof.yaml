@@ -1,0 +1,70 @@
+# Example: 3-DOF Robotic Arm with Gripper
+#
+# This is an example configuration showing the YAML format.
+# Create your own config file for your specific robot.
+#
+# Required fields per joint:
+#   - actuator: servo, dc_motor, or stepper
+#   - actuator_id: hardware ID (servo_id, motor_id, etc.)
+#
+# Optional fields:
+#   - type: revolute (default), prismatic, continuous
+#   - pin: GPIO pin for attachment
+#   - min_angle, max_angle: position limits (default: 0-180)
+#   - home: home position (default: 90)
+#   - max_velocity: speed limit in degrees/second
+#   - zero_position, max_position: semantic descriptions for LLM
+#   - parent: parent joint name for kinematic chain
+
+name: "arm_3dof"
+description: "3-DOF robotic arm with gripper for pick and place tasks"
+type: "manipulator"
+
+joints:
+  shoulder:
+    type: revolute
+    actuator: servo
+    actuator_id: 0
+    pin: 18
+    min_angle: 0
+    max_angle: 180
+    home: 90
+    max_velocity: 180
+    zero_position: "pointing straight down"
+    max_position: "pointing straight up"
+    # No parent - this is the base joint
+
+  elbow:
+    type: revolute
+    actuator: servo
+    actuator_id: 1
+    pin: 19
+    min_angle: 30
+    max_angle: 150
+    home: 90
+    max_velocity: 200
+    zero_position: "fully extended (straight arm)"
+    max_position: "fully folded back"
+    parent: shoulder
+
+  gripper:
+    type: revolute
+    actuator: servo
+    actuator_id: 2
+    pin: 20
+    min_angle: 60
+    max_angle: 120
+    home: 60
+    max_velocity: 300
+    zero_position: "fully open"
+    max_position: "fully closed (gripping)"
+    parent: elbow
+
+# Kinematic chains: ordered joint sequences from base to tip
+chains:
+  arm: [shoulder, elbow, gripper]
+
+# Groups: joints that are often controlled together
+groups:
+  full_arm: [shoulder, elbow]
+  end_effector: [gripper]

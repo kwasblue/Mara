@@ -261,7 +261,7 @@ TOOLS: list[ToolDef] = [
         params=(
             ToolParam("stepper_id", "integer", "Stepper ID"),
             ToolParam("steps", "integer", "Steps to move (negative=reverse)"),
-            ToolParam("speed", "number", "Speed in steps/second", required=False, default=None),
+            ToolParam("speed", "number", "Speed in steps/second", required=False, default=None, service_name="speed_rps"),
         ),
         response_format="Stepper {stepper_id} moved {steps} steps",
     ),

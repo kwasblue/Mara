@@ -12,7 +12,7 @@ public:
     }
 
     void loop(uint32_t now_ms) override {
-        const uint32_t PERIOD_MS = 1000; // 1 Hz
+        const uint32_t PERIOD_MS = 10000; // 0.1 Hz (every 10 seconds)
         if (now_ms - lastBeatMs_ >= PERIOD_MS) {
             lastBeatMs_ = now_ms;
             Event evt{ EventType::HEARTBEAT, now_ms, EventPayload{} };

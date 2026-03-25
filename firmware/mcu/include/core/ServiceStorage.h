@@ -210,7 +210,7 @@ struct ServiceStorage {
     // =========================================================================
     LoopScheduler safetyScheduler{20};    // 20ms = 50Hz
     LoopScheduler controlScheduler{20};   // 20ms = 50Hz
-    LoopScheduler telemetryScheduler{100}; // 100ms = 10Hz
+    LoopScheduler telemetryScheduler{1000}; // 1000ms = 1Hz (reduced for WiFi stability)
 
     // =========================================================================
     // Initialization methods

@@ -105,18 +105,21 @@ class ConnectionService:
         self.transport = self._create_transport()
 
         # Create client with transport-appropriate settings
-        # TCP over WiFi needs slower heartbeat to avoid overwhelming the link
+        # TCP over WiFi needs keepalive pings to maintain connection
         if self.config.transport_type == TransportType.TCP:
-            heartbeat_interval = 10.0  # 10 seconds for TCP/WiFi
-            connection_timeout = 15.0  # Longer timeout for WiFi
+            heartbeat_interval = 15.0  # 15 seconds - keep connection alive
+            connection_timeout = 60.0  # Longer timeout for WiFi
+            command_timeout = 5.0      # 5 seconds for WiFi latency
         else:
             heartbeat_interval = 0.5   # 500ms for serial (fast, reliable)
             connection_timeout = self.config.connection_timeout_s
+            command_timeout = 1.0      # 1 second for serial
 
         self.client = MaraClient(
             self.transport,
             heartbeat_interval_s=heartbeat_interval,
             connection_timeout_s=connection_timeout,
+            command_timeout_s=command_timeout,
             require_version_match=self.config.require_version_match,
             log_level=self.config.log_level,
             log_dir=self.config.log_dir,

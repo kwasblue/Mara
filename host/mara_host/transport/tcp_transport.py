@@ -165,15 +165,15 @@ class AsyncTcpTransport(AsyncBaseTransport):
             # Enable keepalive
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
-            # Platform-specific keepalive settings
+            # Platform-specific keepalive settings (aggressive for WiFi)
             if sys.platform == 'darwin':  # macOS
                 # TCP_KEEPALIVE = idle time before sending keepalive probes
                 TCP_KEEPALIVE = 0x10
-                sock.setsockopt(socket.IPPROTO_TCP, TCP_KEEPALIVE, 30)
+                sock.setsockopt(socket.IPPROTO_TCP, TCP_KEEPALIVE, 10)  # 10 seconds
             elif sys.platform == 'linux':
                 # Idle time, interval between probes, max failed probes
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 30)
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 10)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 10)  # 10 seconds
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 5)   # 5 seconds between probes
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
 
             # Disable Nagle's algorithm for lower latency

@@ -1,4 +1,3 @@
-# tests/test_mcp_runtime.py
 """Tests for MCP runtime."""
 
 import pytest
@@ -72,7 +71,6 @@ class TestFreshValue:
 
     def test_freshness_states(self):
         """Test freshness transitions."""
-        # Fresh when just created
         fv = FreshValue("test", datetime.now(), stale_after_s=1.0)
         assert fv.freshness == "fresh"
         assert not fv.is_stale
@@ -92,25 +90,23 @@ class TestMaraRuntime:
 
     @pytest.fixture
     def runtime(self):
-        """Create a fresh runtime instance."""
         return MaraRuntime()
 
     def test_initial_state(self, runtime):
-        """Test initial runtime state."""
         assert not runtime.is_connected
         assert runtime.state.connected is False
 
     @pytest.fixture
     def mock_ctx(self):
-        """Create a mock CLIContext."""
         ctx = MagicMock()
         ctx.is_connected = True
         ctx.client = MagicMock()
         ctx.client.firmware_version = "1.0.0"
         ctx.client.protocol_version = 2
         ctx.client.features = ["motor", "servo"]
+        ctx.connect = AsyncMock()
+        ctx.disconnect = AsyncMock()
 
-        # Mock services
         ctx.state_service = MagicMock()
         ctx.state_service.arm = AsyncMock(return_value=MagicMock(ok=True, state="ARMED"))
         ctx.state_service.disarm = AsyncMock(return_value=MagicMock(ok=True, state="IDLE"))
@@ -119,7 +115,6 @@ class TestMaraRuntime:
         ctx.motor_service = MagicMock()
         ctx.gpio_service = MagicMock()
 
-        # Mock telemetry
         ctx._telemetry = MagicMock()
         ctx._telemetry.on_imu = MagicMock()
         ctx._telemetry.on_encoder = MagicMock()
@@ -129,19 +124,16 @@ class TestMaraRuntime:
 
     @pytest.mark.asyncio
     async def test_ensure_armed_uses_state_service(self, runtime, mock_ctx):
-        """Test that ensure_armed uses state_service, not direct client."""
         runtime._ctx = mock_ctx
         runtime._store.connected = True
 
         await runtime.ensure_armed()
 
-        # Should use state_service.arm(), not client.arm()
         mock_ctx.state_service.arm.assert_called_once()
         mock_ctx.client.arm.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_ensure_armed_updates_store(self, runtime, mock_ctx):
-        """Test that ensure_armed updates state store."""
         runtime._ctx = mock_ctx
         runtime._store.connected = True
 
@@ -150,29 +142,22 @@ class TestMaraRuntime:
         assert runtime._store.robot_state.value == "ARMED"
 
     def test_state_service_property(self, runtime, mock_ctx):
-        """Test state_service property access."""
         runtime._ctx = mock_ctx
-
-        svc = runtime.state_service
-        assert svc == mock_ctx.state_service
+        assert runtime.state_service == mock_ctx.state_service
 
     def test_state_service_property_not_connected(self, runtime):
-        """Test state_service raises when not connected."""
         with pytest.raises(RuntimeError, match="Not connected"):
             _ = runtime.state_service
 
     def test_servo_service_property(self, runtime, mock_ctx):
-        """Test servo_service property access."""
         runtime._ctx = mock_ctx
         assert runtime.servo_service == mock_ctx.servo_service
 
     def test_motor_service_property(self, runtime, mock_ctx):
-        """Test motor_service property access."""
         runtime._ctx = mock_ctx
         assert runtime.motor_service == mock_ctx.motor_service
 
     def test_record_command(self, runtime):
-        """Test command recording."""
         sent_at = datetime.now()
         record = runtime.record_command(
             command="test_cmd",
@@ -188,18 +173,54 @@ class TestMaraRuntime:
         assert len(runtime.state.commands) == 1
 
     def test_get_snapshot(self, runtime):
-        """Test state snapshot generation."""
         snapshot = runtime.get_snapshot()
-
         assert "connected" in snapshot
         assert "robot_state" in snapshot
         assert "command_stats" in snapshot
         assert "recent_commands" in snapshot
 
     def test_get_freshness_report(self, runtime):
-        """Test freshness report generation."""
         report = runtime.get_freshness_report()
-
         assert "robot_state" in report
         assert "imu" in report
         assert "any_stale" in report
+
+    def test_get_health_report(self, runtime, mock_ctx):
+        runtime._ctx = mock_ctx
+        runtime._store.connected = True
+        runtime._store.robot_state = FreshValue("ARMED", datetime.now(), stale_after_s=2.0)
+
+        report = runtime.get_health_report()
+
+        assert report["connected"] is True
+        assert report["context_present"] is True
+        assert report["context_connected"] is True
+        assert report["robot_state"]["value"] == "ARMED"
+
+    @pytest.mark.asyncio
+    async def test_connect_replaces_stale_context(self, runtime, mock_ctx):
+        stale_ctx = MagicMock()
+        stale_ctx.is_connected = False
+        stale_ctx.disconnect = AsyncMock()
+        runtime._ctx = stale_ctx
+
+        with patch("mara_host.cli.context.CLIContext", return_value=mock_ctx):
+            result = await runtime.connect()
+
+        stale_ctx.disconnect.assert_called_once()
+        assert runtime._ctx == mock_ctx
+        assert result["status"] == "connected"
+        assert runtime.state.connected is True
+
+    @pytest.mark.asyncio
+    async def test_disconnect_clears_state_even_if_ctx_disconnect_raises(self, runtime, mock_ctx):
+        mock_ctx.disconnect.side_effect = RuntimeError("boom")
+        runtime._ctx = mock_ctx
+        runtime._store.connected = True
+
+        result = await runtime.disconnect()
+
+        assert result["status"] == "disconnected"
+        assert runtime._ctx is None
+        assert runtime.state.connected is False
+        assert runtime.state.robot_state.value == "UNKNOWN"

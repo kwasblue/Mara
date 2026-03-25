@@ -20,7 +20,7 @@ public:
         }
 
         SafetyConfig config;
-        config.host_timeout_ms   = 2000;
+        config.host_timeout_ms   = 10000;
         config.motion_timeout_ms = 2000;
         config.max_linear_vel    = 0.5f;
         config.max_angular_vel   = 2.0f;

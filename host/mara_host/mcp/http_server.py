@@ -75,6 +75,11 @@ def create_http_app(runtime: MaraRuntime) -> Starlette:
             "commands": [c.to_dict() for c in commands],
         })
 
+    async def get_health(request: Request) -> JSONResponse:
+        """GET /health - Compact runtime connectivity/telemetry health."""
+        status = 200 if runtime.is_connected else 503
+        return JSONResponse(runtime.get_health_report(), status_code=status)
+
     async def post_connect(request: Request) -> JSONResponse:
         """POST /connect - Connect to robot."""
         result = await runtime.connect()
@@ -97,6 +102,7 @@ def create_http_app(runtime: MaraRuntime) -> Starlette:
     custom_routes = [
         Route("/state", get_state, methods=["GET"]),
         Route("/freshness", get_freshness, methods=["GET"]),
+        Route("/health", get_health, methods=["GET"]),
         Route("/events", get_events, methods=["GET"]),
         Route("/commands", get_commands, methods=["GET"]),
         Route("/schema", get_schema, methods=["GET"]),

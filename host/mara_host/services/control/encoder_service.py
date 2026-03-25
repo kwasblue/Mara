@@ -189,15 +189,20 @@ class EncoderService(ConfigurableService[EncoderConfig, EncoderState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
+        result = await self._send_reliable_with_ack_payload(
             "CMD_ENCODER_READ",
             {"encoder_id": encoder_id},
+            error_message=f"Failed to read encoder {encoder_id}",
         )
 
-        if ok:
-            return ServiceResult.success(data={"encoder_id": encoder_id})
+        if result.ok:
+            data = result.data or {"encoder_id": encoder_id}
+            state = self.get_state(encoder_id)
+            if isinstance(data, dict) and "ticks" in data:
+                state.count = int(data["ticks"])
+            return ServiceResult.success(data=data)
         else:
-            return ServiceResult.failure(error=error or f"Failed to read encoder {encoder_id}")
+            return result
 
     async def reset(self, encoder_id: int) -> ServiceResult:
         """

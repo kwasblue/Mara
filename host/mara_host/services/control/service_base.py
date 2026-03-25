@@ -9,8 +9,9 @@ configurations and states by ID.
 from __future__ import annotations
 
 from abc import ABC
+import asyncio
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, Type, TypeVar, TYPE_CHECKING
+from typing import Callable, Generic, Optional, Type, TypeVar, TYPE_CHECKING, Any
 
 from mara_host.core.result import ServiceResult
 
@@ -183,6 +184,45 @@ class ConfigurableService(Generic[ConfigT, StateT], ABC):
             return ServiceResult.failure(
                 error=error or error_message or f"Command {command} failed"
             )
+
+    async def _send_reliable_with_ack_payload(
+        self,
+        command: str,
+        payload: dict,
+        error_message: Optional[str] = None,
+        ack_timeout_s: float = 0.1,
+    ) -> ServiceResult:
+        """
+        Send a reliable command and capture the raw ACK payload published on the client bus.
+
+        This is useful for read-style commands where the MCU returns data in the ACK body,
+        but the core reliable path currently only resolves to (ok, error).
+        """
+        loop = asyncio.get_running_loop()
+        ack_future: asyncio.Future[Any] = loop.create_future()
+        topic = f"cmd.{command}"
+
+        def _handler(data: Any) -> None:
+            if not ack_future.done():
+                ack_future.set_result(data)
+
+        self.client.bus.subscribe(topic, _handler)
+        try:
+            ok, error = await self.client.send_reliable(command, payload)
+            if not ok:
+                return ServiceResult.failure(
+                    error=error or error_message or f"Command {command} failed"
+                )
+
+            ack_payload = None
+            try:
+                ack_payload = await asyncio.wait_for(ack_future, timeout=ack_timeout_s)
+            except asyncio.TimeoutError:
+                ack_payload = None
+
+            return ServiceResult.success(data=ack_payload or payload)
+        finally:
+            self.client.bus.unsubscribe(topic, _handler)
 
     async def _send_auto(
         self,

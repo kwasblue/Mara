@@ -180,17 +180,16 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
+        result = await self._send_reliable_with_ack_payload(
             "CMD_ULTRASONIC_READ",
             {"sensor_id": sensor_id},
+            error_message=f"Failed to read ultrasonic sensor {sensor_id}",
         )
 
-        if ok:
-            return ServiceResult.success(data={"sensor_id": sensor_id})
+        if result.ok:
+            return ServiceResult.success(data=result.data or {"sensor_id": sensor_id})
         else:
-            return ServiceResult.failure(
-                error=error or f"Failed to read ultrasonic sensor {sensor_id}"
-            )
+            return result
 
     async def detach_all(self) -> ServiceResult:
         """

@@ -161,7 +161,12 @@ def create_generated_routes(runtime) -> list[Route]:
         sent_at = datetime.now()
         result = await runtime.gpio_service.read(channel=channel)
         runtime.record_command("gpio_read", body, result.ok, result.error, sent_at=sent_at)
-        return JSONResponse({"ok": result.ok, "error": result.error, "state": getattr(result, 'state', None)})
+        return JSONResponse({
+            "ok": result.ok,
+            "error": result.error,
+            "state": getattr(result, 'state', None),
+            "data": getattr(result, 'data', None),
+        })
 
     async def handle_stepper_move(request: Request) -> JSONResponse:
         """POST /stepper/move"""
@@ -216,7 +221,14 @@ def create_generated_routes(runtime) -> list[Route]:
         sent_at = datetime.now()
         result = await runtime.encoder_service.read(encoder_id=encoder_id)
         runtime.record_command("encoder_read", body, result.ok, result.error, sent_at=sent_at)
-        return JSONResponse({"ok": result.ok, "error": result.error, "state": getattr(result, 'state', None)})
+        encoder_value = runtime.state.encoders.get(encoder_id)
+        return JSONResponse({
+            "ok": result.ok,
+            "error": result.error,
+            "state": getattr(result, 'state', None),
+            "data": getattr(result, 'data', None),
+            "telemetry": encoder_value.to_dict() if encoder_value else None,
+        })
 
     async def handle_encoder_reset(request: Request) -> JSONResponse:
         """POST /encoder/reset"""
@@ -236,7 +248,13 @@ def create_generated_routes(runtime) -> list[Route]:
         sent_at = datetime.now()
         result = await runtime.imu_service.read()
         runtime.record_command("imu_read", {}, result.ok, result.error, sent_at=sent_at)
-        return JSONResponse({"ok": result.ok, "error": result.error, "state": getattr(result, 'state', None)})
+        return JSONResponse({
+            "ok": result.ok,
+            "error": result.error,
+            "state": getattr(result, 'state', None),
+            "data": getattr(result, 'data', None),
+            "telemetry": runtime.state.imu.to_dict() if runtime.state.imu.value is not None else None,
+        })
 
     async def handle_ultrasonic_attach(request: Request) -> JSONResponse:
         """POST /ultrasonic/attach"""
@@ -267,7 +285,12 @@ def create_generated_routes(runtime) -> list[Route]:
         sent_at = datetime.now()
         result = await runtime.ultrasonic_service.read(sensor_id=sensor_id)
         runtime.record_command("ultrasonic_read", body, result.ok, result.error, sent_at=sent_at)
-        return JSONResponse({"ok": result.ok, "error": result.error, "state": getattr(result, 'state', None)})
+        return JSONResponse({
+            "ok": result.ok,
+            "error": result.error,
+            "state": getattr(result, 'state', None),
+            "data": getattr(result, 'data', None),
+        })
 
     async def handle_ultrasonic_detach(request: Request) -> JSONResponse:
         """POST /ultrasonic/detach"""

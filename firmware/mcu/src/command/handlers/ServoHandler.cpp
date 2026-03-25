@@ -9,20 +9,27 @@ void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
     int servoId = payload["servo_id"] | 0;
     int minUs = payload["min_us"] | 1000;
     int maxUs = payload["max_us"] | 2000;
+    int requestedChannel = payload["channel"] | -1;
 
     uint8_t pin = 0;
     bool ok = true;
+    bool usedRequestedChannel = false;
 
-    switch (servoId) {
-        case 0: pin = Pins::SERVO1_SIG; break;
-        default:
-            ok = false;
-            break;
+    if (requestedChannel >= 0) {
+        pin = static_cast<uint8_t>(requestedChannel);
+        usedRequestedChannel = true;
+    } else {
+        switch (servoId) {
+            case 0: pin = Pins::SERVO1_SIG; break;
+            default:
+                ok = false;
+                break;
+        }
     }
 
     if (ok) {
-        DBG_PRINTF("[SERVO] ATTACH id=%d pin=%d min=%d max=%d\n",
-                   servoId, pin, minUs, maxUs);
+        DBG_PRINTF("[SERVO] ATTACH id=%d pin=%d min=%d max=%d requested=%d\n",
+                   servoId, pin, minUs, maxUs, requestedChannel);
         servo_.attach(servoId, pin, minUs, maxUs);
     } else {
         DBG_PRINTF("[SERVO] ATTACH: unknown servoId=%d\n", servoId);
@@ -31,8 +38,10 @@ void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
     JsonDocument resp;
     resp["servo_id"] = servoId;
     resp["pin"] = pin;
+    resp["channel"] = pin;
     resp["min_us"] = minUs;
     resp["max_us"] = maxUs;
+    resp["used_requested_channel"] = usedRequestedChannel;
     if (!ok) {
         resp["error"] = "unknown_servo_id";
     }

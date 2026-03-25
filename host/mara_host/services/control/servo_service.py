@@ -154,7 +154,7 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
             if initial_angle is not None:
                 await self.set_angle(servo_id, initial_angle)
 
-            return ServiceResult.success(data={"servo_id": servo_id, "channel": channel})
+            return ServiceResult.success(data={"servo_id": servo_id, "channel": channel, "pin": channel})
         else:
             return ServiceResult.failure(error=error or f"Failed to attach servo {servo_id}")
 

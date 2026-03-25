@@ -191,20 +191,20 @@ class GpioService(ConfigurableService[GpioChannel, GpioChannel]):
         Returns:
             ServiceResult with value in data
         """
-        ok, error = await self.client.send_reliable(
+        result = await self._send_reliable_with_ack_payload(
             "CMD_GPIO_READ",
             {"channel": channel},
+            error_message=f"Failed to read GPIO channel {channel}",
         )
 
-        if ok:
-            # Value should be in the response
-            # For now, we return success without value
-            # The actual value comes from MCU response
-            return ServiceResult.success(data={"channel": channel})
+        if result.ok:
+            data = result.data or {"channel": channel}
+            ch = self._channels.get(channel)
+            if ch and isinstance(data, dict) and "value" in data:
+                ch.value = int(data["value"])
+            return ServiceResult.success(data=data)
         else:
-            return ServiceResult.failure(
-                error=error or f"Failed to read GPIO channel {channel}"
-            )
+            return result
 
     async def toggle(self, channel: int) -> ServiceResult:
         """

@@ -256,43 +256,67 @@ class MaraRuntime:
         from mara_host.cli.context import CLIContext
 
         async with self._lock:
-            if self._ctx is not None:
+            if self._ctx is not None and self._ctx.is_connected:
                 return {"status": "already_connected"}
 
-            self._ctx = CLIContext(
+            # Recover from stale runtime contexts that still exist but no longer
+            # hold a live client connection.
+            if self._ctx is not None and not self._ctx.is_connected:
+                try:
+                    await self._ctx.disconnect()
+                except Exception:
+                    pass
+                self._ctx = None
+
+            ctx = CLIContext(
                 port=self.port,
                 host=self.host,
                 tcp_port=self.tcp_port,
                 verbose=False,
             )
 
-            await self._ctx.connect()
+            try:
+                await ctx.connect()
 
-            # Set up telemetry callbacks
-            self._ctx._telemetry.on_imu(self._on_imu)
-            self._ctx._telemetry.on_encoder(self._on_encoder)
-            self._ctx._telemetry.on_state(self._on_state_change)
+                # Set up telemetry callbacks
+                ctx._telemetry.on_imu(self._on_imu)
+                ctx._telemetry.on_encoder(self._on_encoder)
+                ctx._telemetry.on_state(self._on_state_change)
 
-            # Update state
-            now = datetime.now()
-            self._store.connected = True
-            self._store.connected_at = now
-            self._store.robot_state = FreshValue("ARMED", now, stale_after_s=2.0)
-            self._store.firmware_version = self._ctx.client.firmware_version or ""
-            self._store.protocol_version = self._ctx.client.protocol_version or 0
-            self._store.features = self._ctx.client.features or []
+                self._ctx = ctx
 
-            # Record event
-            self._store.add_event(EventType.CONNECTED, {
-                "firmware": self._store.firmware_version,
-                "features": self._store.features,
-            })
+                # Update state
+                now = datetime.now()
+                self._store.connected = True
+                self._store.connected_at = now
+                self._store.robot_state = FreshValue("ARMED", now, stale_after_s=2.0)
+                self._store.firmware_version = self._ctx.client.firmware_version or ""
+                self._store.protocol_version = self._ctx.client.protocol_version or 0
+                self._store.features = self._ctx.client.features or []
 
-            return {
-                "status": "connected",
-                "firmware": self._store.firmware_version,
-                "features": self._store.features,
-            }
+                # Record event
+                self._store.add_event(EventType.CONNECTED, {
+                    "firmware": self._store.firmware_version,
+                    "features": self._store.features,
+                })
+
+                return {
+                    "status": "connected",
+                    "firmware": self._store.firmware_version,
+                    "features": self._store.features,
+                }
+            except Exception as e:
+                try:
+                    await ctx.disconnect()
+                except Exception:
+                    pass
+                self._ctx = None
+                self._store.connected = False
+                self._store.add_event(EventType.ERROR, {
+                    "stage": "connect",
+                    "error": str(e),
+                })
+                raise
 
     async def disconnect(self) -> dict:
         """Disconnect from robot."""
@@ -300,14 +324,23 @@ class MaraRuntime:
             if self._ctx is None:
                 return {"status": "not_connected"}
 
-            await self._ctx.disconnect()
-            self._ctx = None
+            disconnect_error = None
+            try:
+                await self._ctx.disconnect()
+            except Exception as e:
+                disconnect_error = e
+            finally:
+                self._ctx = None
+                self._store.connected = False
+                self._store.robot_state = FreshValue("UNKNOWN", datetime.now(), stale_after_s=2.0)
 
-            self._store.connected = False
-            self._store.robot_state = FreshValue("UNKNOWN", datetime.now(), stale_after_s=2.0)
-
-            # Record event
-            self._store.add_event(EventType.DISCONNECTED)
+                # Record event
+                self._store.add_event(EventType.DISCONNECTED)
+                if disconnect_error is not None:
+                    self._store.add_event(EventType.ERROR, {
+                        "stage": "disconnect",
+                        "error": str(disconnect_error),
+                    })
 
             return {"status": "disconnected"}
 
@@ -597,6 +630,35 @@ class MaraRuntime:
                 self._store.imu.is_stale or
                 any(ev.is_stale for ev in self._store.encoders.values())
             ),
+        }
+
+    def get_health_report(self) -> dict:
+        """Get a compact runtime health report for HTTP callers."""
+        connected = self.is_connected
+        imu_has_data = self._store.imu.value is not None
+        encoder_count = len(self._store.encoders)
+        recent_commands = self._store.commands[-5:]
+        last_command = recent_commands[-1].to_dict() if recent_commands else None
+
+        return {
+            "connected": connected,
+            "context_present": self._ctx is not None,
+            "context_connected": (self._ctx.is_connected if self._ctx is not None else False),
+            "robot_state": self._store.robot_state.to_dict(),
+            "telemetry": {
+                "imu": {
+                    "has_data": imu_has_data,
+                    "freshness": self._store.imu.freshness,
+                    "age_s": round(self._store.imu.age_s, 2),
+                },
+                "encoders_seen": encoder_count,
+                "encoder_ids": sorted(self._store.encoders.keys()),
+            },
+            "commands": {
+                "stats": self._store.get_command_stats(),
+                "last": last_command,
+            },
+            "healthy": connected and not self._store.robot_state.is_stale,
         }
 
     # ═══════════════════════════════════════════════════════════

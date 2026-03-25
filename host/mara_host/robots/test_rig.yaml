@@ -55,9 +55,9 @@ joints:
 #   mara_ultrasonic_read - Get distance in cm
 #   Or via telemetry streaming
 
-# Pin assignments (suggested for ESP32):
-#   Servo:      GPIO 18 (PWM capable)
-#   DC Motor:   GPIO 25, 26 (PWM + direction, or motor driver)
-#   Stepper:    GPIO 32, 33 (step + direction)
-#   IMU:        GPIO 21, 22 (I2C SDA, SCL)
-#   Ultrasonic: GPIO 4 (trigger), GPIO 5 (echo)
+# Pin assignments:
+#   Servo:      GPIO 18 (PWM signal)
+#   DC Motor:   GPIO 25 (ENA/PWM), GPIO 26 (IN1), GPIO 27 (IN2) → L298N
+#   Stepper:    GPIO 32 (STEP), GPIO 33 (DIR) → A4988
+#   IMU:        GPIO 21 (SDA), GPIO 22 (SCL) → I2C
+#   Ultrasonic: GPIO 4 (TRIG), GPIO 5 (ECHO with voltage divider)

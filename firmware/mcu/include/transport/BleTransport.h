@@ -23,9 +23,37 @@ public:
     void begin() override {
         DBG_PRINTLN("[BleTransport] begin()");
 
+        constexpr const char* kLegacyPin = "1234";
+        if (!SerialBT_.setPin(kLegacyPin)) {
+            DBG_PRINTLN("[BleTransport] Failed to set Bluetooth PIN");
+            return;
+        }
+        DBG_PRINT("[BleTransport] Legacy PIN configured: ");
+        DBG_PRINTLN(kLegacyPin);
+
+        SerialBT_.onAuthComplete(
+            [](bool success) {
+                DBG_PRINTF("[BleTransport] Auth complete: %s\n",
+                           success ? "success" : "failed");
+            }
+        );
+
         if (!SerialBT_.begin(name_)) {
             DBG_PRINTLN("[BleTransport] Failed to start BluetoothSerial");
             return;
+        }
+
+        esp_bt_io_cap_t iocap = ESP_BT_IO_CAP_NONE;
+        esp_err_t secErr = esp_bt_gap_set_security_param(
+            ESP_BT_SP_IOCAP_MODE,
+            &iocap,
+            sizeof(iocap)
+        );
+        if (secErr != ESP_OK) {
+            DBG_PRINTF("[BleTransport] Failed to set IO capability: %d\n",
+                       static_cast<int>(secErr));
+        } else {
+            DBG_PRINTLN("[BleTransport] IO capability forced to NoInputNoOutput");
         }
 
         DBG_PRINT("[BleTransport] Started as: ");

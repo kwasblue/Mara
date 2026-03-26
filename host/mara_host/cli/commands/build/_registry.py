@@ -51,6 +51,21 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         default=_get_port(),
         help="Serial port for upload",
     )
+    upload_p.add_argument(
+        "--upload-baud",
+        type=int,
+        help="Use slower direct flashing via esptool at this baud rate if needed (e.g. 115200)",
+    )
+    upload_p.add_argument(
+        "--direct",
+        action="store_true",
+        help="Skip PlatformIO upload and flash directly with esptool-managed artifacts",
+    )
+    upload_p.add_argument(
+        "--auto-retry-direct",
+        action="store_true",
+        help="If PlatformIO upload fails, retry through mara's direct esptool path at 115200 baud",
+    )
     upload_p.set_defaults(func=cmd_upload)
 
     # clean

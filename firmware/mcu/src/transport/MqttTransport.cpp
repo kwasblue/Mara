@@ -42,31 +42,72 @@ MqttTransport::MqttTransport(
 void MqttTransport::begin() {
     mqtt_.setServer(broker_.c_str(), port_);
     mqtt_.setBufferSize(1024);
+    mqtt_.setKeepAlive(5);
+    mqtt_.setSocketTimeout(1);
 
     mqtt_.setCallback([this](char* topic, uint8_t* payload, unsigned int length) {
         this->onMessage(topic, payload, length);
     });
 
-    reconnect();
+    nextReconnectAttemptMs_ = millis();
 }
 
 void MqttTransport::loop() {
-    if (!mqtt_.connected()) {
-        uint32_t now = millis();
-        if (now - lastReconnectAttempt_ > RECONNECT_INTERVAL_MS) {
-            lastReconnectAttempt_ = now;
-            reconnect();
-        }
-    } else {
+    if (mqtt_.connected()) {
+        consecutiveFailures_ = 0;
         mqtt_.loop();
+        return;
     }
+
+    if (connectInProgress_) {
+        return;
+    }
+
+    if (WiFi.status() != WL_CONNECTED) {
+        return;
+    }
+
+    uint32_t now = millis();
+    if (now < nextReconnectAttemptMs_) {
+        return;
+    }
+
+    reconnect();
 }
 
 void MqttTransport::reconnect() {
-    if (mqtt_.connected()) return;
+    if (mqtt_.connected() || connectInProgress_) return;
 
+    connectInProgress_ = true;
+    BaseType_t ok = xTaskCreatePinnedToCore(
+        &MqttTransport::connectTaskEntry,
+        "mqtt_connect",
+        4096,
+        this,
+        1,
+        &connectTask_,
+        0
+    );
+
+    if (ok != pdPASS) {
+        connectInProgress_ = false;
+        connectTask_ = nullptr;
+        consecutiveFailures_++;
+        nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
+        Serial.println("[MQTT] Failed to start connect task; backing off");
+    }
+}
+
+void MqttTransport::connectTaskEntry(void* arg) {
+    auto* self = static_cast<MqttTransport*>(arg);
+    self->connectTaskBody();
+}
+
+void MqttTransport::connectTaskBody() {
     Serial.printf("[MQTT] Connecting to %s:%d as %s...\n",
         broker_.c_str(), port_, robotId_.c_str());
+
+    const uint32_t startMs = millis();
 
     bool connected = false;
     if (username_.empty()) {
@@ -75,8 +116,10 @@ void MqttTransport::reconnect() {
         connected = mqtt_.connect(robotId_.c_str(), username_.c_str(), password_.c_str());
     }
 
+    const uint32_t elapsedMs = millis() - startMs;
+
     if (connected) {
-        Serial.println("[MQTT] Connected!");
+        Serial.printf("[MQTT] Connected in %lu ms\n", static_cast<unsigned long>(elapsedMs));
 
         bool ok1 = mqtt_.subscribe(topicCmd_.c_str());
         bool ok2 = mqtt_.subscribe(topicDiscovery_.c_str());
@@ -84,10 +127,32 @@ void MqttTransport::reconnect() {
         Serial.printf("[MQTT] Sub cmd=%d (%s)\n", ok1, topicCmd_.c_str());
         Serial.printf("[MQTT] Sub discover=%d (%s)\n", ok2, topicDiscovery_.c_str());
 
+        consecutiveFailures_ = 0;
+        nextReconnectAttemptMs_ = millis() + RECONNECT_INTERVAL_MS;
         publishDiscoveryResponse();
     } else {
-        Serial.printf("[MQTT] Failed, rc=%d\n", mqtt_.state());
+        consecutiveFailures_++;
+        nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
+        Serial.printf("[MQTT] Failed after %lu ms, rc=%d, next retry in %lu ms\n",
+            static_cast<unsigned long>(elapsedMs),
+            mqtt_.state(),
+            static_cast<unsigned long>(nextReconnectAttemptMs_ - millis()));
     }
+
+    connectInProgress_ = false;
+    connectTask_ = nullptr;
+    vTaskDelete(nullptr);
+}
+
+uint32_t MqttTransport::nextReconnectDelayMs() const {
+    uint32_t delayMs = RECONNECT_INTERVAL_MS;
+    for (uint8_t i = 1; i < consecutiveFailures_; ++i) {
+        if (delayMs >= (MAX_RECONNECT_INTERVAL_MS / 2)) {
+            return MAX_RECONNECT_INTERVAL_MS;
+        }
+        delayMs *= 2;
+    }
+    return delayMs > MAX_RECONNECT_INTERVAL_MS ? MAX_RECONNECT_INTERVAL_MS : delayMs;
 }
 
 void MqttTransport::onMessage(char* topic, uint8_t* payload, unsigned int length) {

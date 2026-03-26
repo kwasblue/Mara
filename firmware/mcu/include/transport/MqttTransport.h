@@ -10,6 +10,8 @@
 #include "core/ITransport.h"
 #include <string>
 #include <functional>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 class MqttTransport : public ITransport {
 public:
@@ -47,6 +49,9 @@ private:
     void reconnect();
     void onMessage(char* topic, uint8_t* payload, unsigned int length);
     void publishDiscoveryResponse();
+    static void connectTaskEntry(void* arg);
+    void connectTaskBody();
+    uint32_t nextReconnectDelayMs() const;
 
     WiFiClient wifi_;
     PubSubClient mqtt_;
@@ -67,8 +72,13 @@ private:
     FrameCallback frameCallback_;       // legacy
     FrameCallbackV2 frameCallbackV2_;   // preferred
 
-    uint32_t lastReconnectAttempt_ = 0;
+    TaskHandle_t connectTask_ = nullptr;
+    volatile bool connectInProgress_ = false;
+    uint32_t nextReconnectAttemptMs_ = 0;
+    uint8_t consecutiveFailures_ = 0;
+
     static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
+    static constexpr uint32_t MAX_RECONNECT_INTERVAL_MS = 60000;
 };
 
 #else // !HAS_MQTT_TRANSPORT || !HAS_WIFI

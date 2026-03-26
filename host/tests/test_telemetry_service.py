@@ -350,6 +350,63 @@ class TestTelemetryService:
         assert telemetry_service.get_state() == "ACTIVE"
         callback.assert_called_once()
 
+    def test_binary_telemetry_with_real_packet_shape(self, telemetry_service):
+        """Test binary telemetry handling with current parser field names."""
+
+        class RealImu:
+            ax_g = 0.12
+            ay_g = -0.34
+            az_g = 1.01
+            gx_dps = 4.5
+            gy_dps = -5.5
+            gz_dps = 6.5
+
+        class RealEncoder0:
+            encoder_id = 0
+            ticks = 1234
+
+        class RealPacket:
+            imu = RealImu()
+            encoder0 = RealEncoder0()
+
+        telemetry_service._on_binary_telemetry(RealPacket())
+
+        imu = telemetry_service.get_latest_imu()
+        assert imu.ax == 0.12
+        assert imu.ay == -0.34
+        assert imu.gz == 6.5
+
+        enc0 = telemetry_service.get_latest_encoder(0)
+        assert enc0.ticks == 1234
+
+    def test_json_telemetry_with_nested_firmware_shape(self, telemetry_service):
+        """Test JSON telemetry handling with current firmware nested data shape."""
+        telemetry_service._on_json_telemetry({
+            "src": "mcu",
+            "type": "TELEMETRY",
+            "ts_ms": 123,
+            "data": {
+                "mode": {"state": "IDLE"},
+                "imu": {
+                    "ax_g": 0.5,
+                    "ay_g": 0.0,
+                    "az_g": 1.0,
+                    "gx_dps": 1.5,
+                    "gy_dps": 2.5,
+                    "gz_dps": 3.5,
+                },
+                "encoder0": {"ticks": 77},
+            },
+        })
+
+        imu = telemetry_service.get_latest_imu()
+        assert imu.ax == 0.5
+        assert imu.gx == 1.5
+        assert telemetry_service.get_state() == "IDLE"
+
+        enc0 = telemetry_service.get_latest_encoder(0)
+        assert enc0.ticks == 77
+
 
 class TestTelemetrySnapshot:
     """Tests for TelemetrySnapshot dataclass."""

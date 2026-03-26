@@ -14,6 +14,7 @@
 #include "sensor/EncoderManager.h"
 #include "motor/StepperManager.h"
 #include "motor/DcMotorManager.h"
+#include "telemetry/TelemetrySections.h"
 
 namespace {
 
@@ -27,6 +28,10 @@ public:
         }
 
         ctx.telemetry->setInterval(0);
+        // Validate the intended path: emit binary telemetry sections and keep
+        // JSON telemetry off unless explicitly needed for debugging.
+        ctx.telemetry->setBinaryEnabled(true);
+        ctx.telemetry->setJsonEnabled(false);
 
         // Safety/Mode state
         if (ctx.mode) {
@@ -105,6 +110,22 @@ public:
                     node["distance_cm"] = (dist_cm >= 0.0f) ? dist_cm : -1.0f;
                 }
             );
+
+            ctx.telemetry->registerBinProvider(
+                TelemetrySections::id(TelemetrySections::SectionId::TELEM_ULTRASONIC),
+                [ultrasonic](std::vector<uint8_t>& out) {
+                    const uint8_t sensor_id = 0;
+                    const bool attached = ultrasonic->isAttached(sensor_id);
+                    const float dist_cm = attached ? ultrasonic->readDistanceCm(sensor_id) : -1.0f;
+                    const bool ok = attached && (dist_cm >= 0.0f);
+                    uint16_t dist_mm = ok ? static_cast<uint16_t>(dist_cm * 10.0f) : 0;
+                    out.push_back(sensor_id);
+                    out.push_back(attached ? 1 : 0);
+                    out.push_back(ok ? 1 : 0);
+                    out.push_back(static_cast<uint8_t>(dist_mm & 0xFF));
+                    out.push_back(static_cast<uint8_t>((dist_mm >> 8) & 0xFF));
+                }
+            );
         }
 
         // IMU
@@ -129,6 +150,28 @@ public:
                     node["gy_dps"] = s.gy_dps;
                     node["gz_dps"] = s.gz_dps;
                     node["temp_c"] = s.temp_c;
+                }
+            );
+
+            ctx.telemetry->registerBinProvider(
+                TelemetrySections::id(TelemetrySections::SectionId::TELEM_IMU),
+                [imu](std::vector<uint8_t>& out) {
+                    const bool online = imu->isOnline();
+                    ImuManager::Sample s;
+                    const bool ok = online && imu->readSample(s);
+                    auto put_i16 = [&out](int16_t v) {
+                        out.push_back(static_cast<uint8_t>(v & 0xFF));
+                        out.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
+                    };
+                    out.push_back(online ? 1 : 0);
+                    out.push_back(ok ? 1 : 0);
+                    put_i16(ok ? static_cast<int16_t>(s.ax_g * 1000.0f) : 0);
+                    put_i16(ok ? static_cast<int16_t>(s.ay_g * 1000.0f) : 0);
+                    put_i16(ok ? static_cast<int16_t>(s.az_g * 1000.0f) : 0);
+                    put_i16(ok ? static_cast<int16_t>(s.gx_dps * 1000.0f) : 0);
+                    put_i16(ok ? static_cast<int16_t>(s.gy_dps * 1000.0f) : 0);
+                    put_i16(ok ? static_cast<int16_t>(s.gz_dps * 1000.0f) : 0);
+                    put_i16(ok ? static_cast<int16_t>(s.temp_c * 100.0f) : 0);
                 }
             );
         }
@@ -161,6 +204,17 @@ public:
                 [encoder](ArduinoJson::JsonObject node) {
                     int32_t ticks = encoder->getCount(0);
                     node["ticks"] = ticks;
+                }
+            );
+
+            ctx.telemetry->registerBinProvider(
+                TelemetrySections::id(TelemetrySections::SectionId::TELEM_ENCODER0),
+                [encoder](std::vector<uint8_t>& out) {
+                    int32_t ticks = encoder->getCount(0);
+                    out.push_back(static_cast<uint8_t>(ticks & 0xFF));
+                    out.push_back(static_cast<uint8_t>((ticks >> 8) & 0xFF));
+                    out.push_back(static_cast<uint8_t>((ticks >> 16) & 0xFF));
+                    out.push_back(static_cast<uint8_t>((ticks >> 24) & 0xFF));
                 }
             );
         }

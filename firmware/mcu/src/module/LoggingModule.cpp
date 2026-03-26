@@ -41,13 +41,16 @@ void LoggingModule::handleEvent(const Event& evt) {
         break;
 
     case EventType::JSON_MESSAGE_RX:
-        DBG_PRINTF("[LOG] JSON RX: %s\n", evt.payload.json.c_str());
-        sendLogJson("debug", "JSON_RX", evt.payload.json, evt.timestamp_ms);
+        // Raw JSON payload echoing is extremely expensive at high verbosity and can
+        // destabilize the control/transport path. Keep a lightweight local trace only.
+        DBG_PRINTF("[LOG] JSON RX (%u bytes)\n", (unsigned)evt.payload.json.size());
         break;
 
     case EventType::JSON_MESSAGE_TX:
-        DBG_PRINTF("[LOG] JSON TX: %s\n", evt.payload.json.c_str());
-        sendLogJson("debug", "JSON_TX", evt.payload.json, evt.timestamp_ms);
+        // Never forward JSON TX as another JSON log event: that creates recursive
+        // amplification because sendLog()/sendLogJson() themselves publish JSON_MESSAGE_TX.
+        // Keep a lightweight local trace only.
+        DBG_PRINTF("[LOG] JSON TX (%u bytes)\n", (unsigned)evt.payload.json.size());
         break;
 
     case EventType::HEARTBEAT:

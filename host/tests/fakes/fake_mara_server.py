@@ -1,5 +1,6 @@
 import asyncio
 import json
+import threading
 from typing import Any
 
 from mara_host.config.version import PROTOCOL_VERSION
@@ -12,6 +13,7 @@ class FakeMaraTcpServer:
     Supports:
     - version/identity handshake
     - JSON command ACKs with optional command-specific payload overrides
+    - thread-backed mode for sync HTTP/TestClient end-to-end tests
     """
 
     def __init__(self, host: str = "127.0.0.1", port: int = 0):
@@ -31,6 +33,9 @@ class FakeMaraTcpServer:
             "board": "fake-esp32",
             "name": "fake-mara",
         }
+        self._thread = None
+        self._thread_loop = None
+        self._thread_ready = None
 
     async def start(self):
         self.server = await asyncio.start_server(self._handle_client, self.host, self.port)
@@ -52,6 +57,41 @@ class FakeMaraTcpServer:
             self.server.close()
             await self.server.wait_closed()
             self.server = None
+
+    def start_in_thread(self):
+        if self._thread is not None:
+            return self
+
+        ready = threading.Event()
+        self._thread_ready = ready
+
+        def _runner():
+            loop = asyncio.new_event_loop()
+            self._thread_loop = loop
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.start())
+            ready.set()
+            try:
+                loop.run_forever()
+            finally:
+                loop.run_until_complete(self.stop())
+                loop.close()
+
+        self._thread = threading.Thread(target=_runner, daemon=True)
+        self._thread.start()
+        ready.wait(timeout=5)
+        if not ready.is_set():
+            raise RuntimeError("FakeMaraTcpServer failed to start in thread")
+        return self
+
+    def stop_threaded(self):
+        if self._thread_loop is None or self._thread is None:
+            return
+        self._thread_loop.call_soon_threadsafe(self._thread_loop.stop)
+        self._thread.join(timeout=5)
+        self._thread = None
+        self._thread_loop = None
+        self._thread_ready = None
 
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self._connections.append(writer)

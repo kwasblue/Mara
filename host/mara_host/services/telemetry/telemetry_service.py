@@ -300,15 +300,17 @@ class TelemetryService:
         """Handle binary telemetry packet."""
         self._latest_timestamp = time.time()
 
-        # Parse IMU data
-        if hasattr(packet, "imu"):
+        # Parse IMU data from both the current binary parser model
+        # (ax_g/gx_dps fields) and older/mock packet shapes (ax/gx fields).
+        imu_pkt = getattr(packet, "imu", None)
+        if imu_pkt is not None:
             imu_data = ImuData(
-                ax=getattr(packet.imu, "ax", 0.0),
-                ay=getattr(packet.imu, "ay", 0.0),
-                az=getattr(packet.imu, "az", 0.0),
-                gx=getattr(packet.imu, "gx", 0.0),
-                gy=getattr(packet.imu, "gy", 0.0),
-                gz=getattr(packet.imu, "gz", 0.0),
+                ax=getattr(imu_pkt, "ax_g", getattr(imu_pkt, "ax", 0.0)) or 0.0,
+                ay=getattr(imu_pkt, "ay_g", getattr(imu_pkt, "ay", 0.0)) or 0.0,
+                az=getattr(imu_pkt, "az_g", getattr(imu_pkt, "az", 0.0)) or 0.0,
+                gx=getattr(imu_pkt, "gx_dps", getattr(imu_pkt, "gx", 0.0)) or 0.0,
+                gy=getattr(imu_pkt, "gy_dps", getattr(imu_pkt, "gy", 0.0)) or 0.0,
+                gz=getattr(imu_pkt, "gz_dps", getattr(imu_pkt, "gz", 0.0)) or 0.0,
                 timestamp=self._latest_timestamp,
             )
             self._latest_imu = imu_data
@@ -320,28 +322,37 @@ class TelemetryService:
                 except Exception:
                     pass
 
-        # Parse encoder data
-        if hasattr(packet, "encoders"):
-            for i, enc in enumerate(packet.encoders):
-                enc_data = EncoderData(
-                    encoder_id=i,
-                    ticks=getattr(enc, "ticks", 0),
-                    velocity=getattr(enc, "velocity", 0.0),
-                    timestamp=self._latest_timestamp,
-                )
-                self._latest_encoders[i] = enc_data
+        # Parse encoder data from both the current packet model (explicit encoder0)
+        # and older/mock packet shapes (encoders = [...]).
+        encoder_packets = []
+        encoder0_pkt = getattr(packet, "encoder0", None)
+        if encoder0_pkt is not None:
+            encoder_packets.append((getattr(encoder0_pkt, "encoder_id", 0), encoder0_pkt))
 
-                if i not in self._encoder_history:
-                    self._encoder_history[i] = deque(maxlen=self._history_size)
-                self._encoder_history[i].append(enc_data)
+        if hasattr(packet, "encoders") and getattr(packet, "encoders") is not None:
+            for i, enc in enumerate(getattr(packet, "encoders")):
+                encoder_packets.append((i, enc))
 
-                for cb in self._encoder_callbacks:
-                    try:
-                        cb(enc_data)
-                    except Exception:
-                        pass
+        for encoder_id, encoder_pkt in encoder_packets:
+            enc_data = EncoderData(
+                encoder_id=getattr(encoder_pkt, "encoder_id", encoder_id),
+                ticks=getattr(encoder_pkt, "ticks", 0),
+                velocity=getattr(encoder_pkt, "velocity", 0.0) or 0.0,
+                timestamp=self._latest_timestamp,
+            )
+            self._latest_encoders[enc_data.encoder_id] = enc_data
 
-        # State
+            if enc_data.encoder_id not in self._encoder_history:
+                self._encoder_history[enc_data.encoder_id] = deque(maxlen=self._history_size)
+            self._encoder_history[enc_data.encoder_id].append(enc_data)
+
+            for cb in self._encoder_callbacks:
+                try:
+                    cb(enc_data)
+                except Exception:
+                    pass
+
+        # Preserve older/mock packet support for binary state updates.
         if hasattr(packet, "state"):
             new_state = str(packet.state)
             if new_state != self._latest_state:
@@ -356,18 +367,29 @@ class TelemetryService:
         """Handle JSON telemetry packet."""
         self._latest_timestamp = time.time()
 
-        # Notify raw callbacks
+        # Firmware JSON telemetry is currently emitted as:
+        # {"src":"mcu","type":"TELEMETRY","ts_ms":...,"data":{...providers...}}
+        payload = data.get("data") if isinstance(data.get("data"), dict) else data
+
+        # Notify raw callbacks with the original object
         for cb in self._raw_callbacks:
             try:
                 cb(data)
             except Exception:
                 pass
 
-        # Parse IMU data
-        if "imu" in data:
-            imu_dict = data["imu"]
-            imu_data = ImuData.from_dict(imu_dict)
-            imu_data.timestamp = self._latest_timestamp
+        # Parse IMU data (support both legacy flat shape and current provider shape)
+        if "imu" in payload:
+            imu_dict = payload["imu"]
+            imu_data = ImuData(
+                ax=imu_dict.get("ax", imu_dict.get("ax_g", 0.0)),
+                ay=imu_dict.get("ay", imu_dict.get("ay_g", 0.0)),
+                az=imu_dict.get("az", imu_dict.get("az_g", 0.0)),
+                gx=imu_dict.get("gx", imu_dict.get("gx_dps", 0.0)),
+                gy=imu_dict.get("gy", imu_dict.get("gy_dps", 0.0)),
+                gz=imu_dict.get("gz", imu_dict.get("gz_dps", 0.0)),
+                timestamp=self._latest_timestamp,
+            )
             self._latest_imu = imu_data
             self._imu_history.append(imu_data)
 
@@ -378,11 +400,11 @@ class TelemetryService:
                     pass
 
         # Parse encoder data
-        for key in data:
+        for key in payload:
             if key.startswith("encoder"):
                 try:
                     encoder_id = int(key.replace("encoder", ""))
-                    enc_dict = data[key]
+                    enc_dict = payload[key]
                     enc_data = EncoderData.from_dict(encoder_id, enc_dict)
                     enc_data.timestamp = self._latest_timestamp
                     self._latest_encoders[encoder_id] = enc_data
@@ -401,16 +423,17 @@ class TelemetryService:
                 except (ValueError, KeyError):
                     pass
 
-        # State
-        if "state" in data:
-            new_state = data["state"]
-            if new_state != self._latest_state:
-                self._latest_state = new_state
-                for cb in self._state_callbacks:
-                    try:
-                        cb(new_state)
-                    except Exception:
-                        pass
+        # State (support legacy top-level state and current nested mode.state)
+        new_state = payload.get("state")
+        if new_state is None and isinstance(payload.get("mode"), dict):
+            new_state = payload["mode"].get("state")
+        if new_state is not None and new_state != self._latest_state:
+            self._latest_state = new_state
+            for cb in self._state_callbacks:
+                try:
+                    cb(new_state)
+                except Exception:
+                    pass
 
     def _on_state_changed(self, data: dict) -> None:
         """Handle state change event."""

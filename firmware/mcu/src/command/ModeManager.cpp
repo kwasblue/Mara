@@ -113,6 +113,7 @@ void ModeManager::readHardwareInputs() {
 
 void ModeManager::onHostHeartbeat(uint32_t now_ms) {
     lastHostHeartbeat_ = now_ms;
+    stopLatched_ = false;  // host contact recovered; allow future stop episode logs/callbacks
 
     if (!hostEverSeen_) {
         hostEverSeen_ = true;
@@ -153,6 +154,7 @@ bool ModeManager::canTransition(MaraMode from, MaraMode to) {
 
 void ModeManager::arm() {
     mara::CriticalSection lock(lock_);
+    stopLatched_ = false;
     if (mode_ == MaraMode::IDLE) {
         mode_ = MaraMode::ARMED;
     }
@@ -160,6 +162,7 @@ void ModeManager::arm() {
 
 void ModeManager::activate() {
     mara::CriticalSection lock(lock_);
+    stopLatched_ = false;
     if (mode_ == MaraMode::ARMED) {
         lastMotionCmd_ = now_ms();
         mode_ = MaraMode::ACTIVE;
@@ -193,6 +196,7 @@ void ModeManager::estop() {
 
 bool ModeManager::clearEstop() {
     mara::CriticalSection lock(lock_);
+    stopLatched_ = false;
     if (!isEstopped()) {
         return true;
     }
@@ -222,6 +226,8 @@ bool ModeManager::validateVelocity(float vx, float omega, float& out_vx, float& 
 
 void ModeManager::triggerStop() {
     if (bypassed_) return;
+    if (stopLatched_) return;
+    stopLatched_ = true;
     if (stopCallback_) stopCallback_();
 }
 

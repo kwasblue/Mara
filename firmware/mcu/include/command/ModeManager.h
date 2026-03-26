@@ -95,6 +95,7 @@ private:
     bool hostEverSeen_ = false;
     bool bypassed_ = false;
     bool wasMoving_ = false;  // True if non-zero velocity was commanded
+    bool stopLatched_ = false;  // Prevent repeated stop callback spam for one fault episode
 
     StopCallback stopCallback_;
     StopCallback emergencyStopCallback_;  // Direct motor disable for E-stop

@@ -172,11 +172,15 @@ async def dispatch_tool(runtime, name: str, args: dict[str, Any]) -> str:
             else:
                 response_ok = f'str(result.data) if result.data else "{tool.name} OK"'
 
+            sync_line = ""
+            if tool.service == "state_service":
+                sync_line = "        runtime.sync_state_result(result)\n"
+
             lines.append(f'''    if name == "{mcp_name}":
         await runtime.{ensure}()
         sent_at = datetime.now()
         result = await runtime.{tool.service}.{tool.method}({args_str})
-        runtime.record_command("{tool.name}", args, result.ok, result.error, sent_at=sent_at)
+{sync_line}        runtime.record_command("{tool.name}", args, result.ok, result.error, sent_at=sent_at)
         if result.ok:
             return {response_ok}
         return f"FAIL: {{result.error}}"
@@ -317,10 +321,14 @@ def create_generated_routes(runtime) -> list[Route]:
             # Use body dict only if there are params
             record_args = "body" if tool.params else "{}"
 
+            sync_line = ""
+            if tool.service == "state_service":
+                sync_line = "        runtime.sync_state_result(result)\n"
+
             lines.append(f'''        sent_at = datetime.now()
         result = await runtime.{tool.service}.{tool.method}({args_str})
-        runtime.record_command("{tool.name}", {record_args}, result.ok, result.error, sent_at=sent_at)
-        return JSONResponse({{"ok": result.ok, "error": result.error, "state": getattr(result, 'state', None)}})
+{sync_line}        runtime.record_command("{tool.name}", {record_args}, result.ok, result.error, sent_at=sent_at)
+        return JSONResponse({{"ok": result.ok, "error": result.error, "state": getattr(result, 'state', None), "data": getattr(result, 'data', None)}})
 
 ''')
 

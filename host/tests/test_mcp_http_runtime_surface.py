@@ -127,3 +127,25 @@ def test_http_servo_attach_and_arm_flow_reaches_fake_firmware():
             )
     finally:
         server.stop_threaded()
+
+
+def test_http_state_endpoint_reflects_disarm_result_immediately():
+    server = FakeMaraTcpServer().start_in_thread()
+    try:
+        runtime = MaraRuntime(host="127.0.0.1", tcp_port=server.port)
+        app = create_http_app(runtime)
+
+        with TestClient(app) as client:
+            arm = client.post("/state/arm", json={})
+            assert arm.status_code == 200
+            assert arm.json()["state"] == "ARMED"
+
+            disarm = client.post("/state/disarm", json={})
+            assert disarm.status_code == 200
+            assert disarm.json()["state"] == "IDLE"
+
+            state = client.get("/state")
+            assert state.status_code == 200
+            assert state.json()["robot_state"]["value"] == "IDLE"
+    finally:
+        server.stop_threaded()

@@ -222,10 +222,12 @@ class MaraRuntime:
         self,
         port: Optional[str] = None,
         host: Optional[str] = None,
+        ble_name: Optional[str] = None,
         tcp_port: int = 3333,
     ):
         self.port = port
         self.host = host
+        self.ble_name = ble_name
         self.tcp_port = tcp_port
 
         self._ctx = None
@@ -271,6 +273,7 @@ class MaraRuntime:
             ctx = CLIContext(
                 port=self.port,
                 host=self.host,
+                ble_name=self.ble_name,
                 tcp_port=self.tcp_port,
                 verbose=False,
             )
@@ -419,6 +422,12 @@ class MaraRuntime:
         raise RuntimeError("Not connected")
 
     @property
+    def wifi_service(self):
+        if self._ctx:
+            return self._ctx.wifi_service
+        raise RuntimeError("Not connected")
+
+    @property
     def client(self):
         if self._ctx:
             return self._ctx.client
@@ -562,6 +571,15 @@ class MaraRuntime:
     # ═══════════════════════════════════════════════════════════
     # State Snapshots
     # ═══════════════════════════════════════════════════════════
+
+    def sync_state_result(self, result) -> None:
+        """Sync cached robot state from a successful StateService result."""
+        if not getattr(result, "ok", False):
+            return
+
+        state = getattr(result, "state", None)
+        if state:
+            self._store.robot_state = FreshValue(state, datetime.now(), stale_after_s=2.0)
 
     def get_snapshot(self) -> dict:
         """

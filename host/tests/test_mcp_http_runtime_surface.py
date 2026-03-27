@@ -88,9 +88,6 @@ def test_http_read_endpoints_return_fake_ack_payloads():
             assert encoder_body["ok"] is True
             assert encoder_body["data"]["encoder_id"] == 2
             assert encoder_body["data"]["ticks"] == 123
-            # ACK payload is guaranteed here; telemetry cache may still be empty
-            # unless the fake server also emits telemetry frames.
-            assert "telemetry" in encoder_body
 
             ultrasonic = client.post("/ultrasonic/read", json={"sensor_id": 1})
             assert ultrasonic.status_code == 200

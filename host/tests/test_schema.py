@@ -51,8 +51,8 @@ class TestCommandsDomainFiles:
     def test_commands_has_expected_count(self):
         """COMMANDS should have expected number of commands."""
         from mara_host.tools.schema import COMMANDS
-        # Total should be 80 commands across all domains
-        assert len(COMMANDS) == 80, f"Expected 80 commands, got {len(COMMANDS)}"
+        # Total should be 86 commands across all domains
+        assert len(COMMANDS) == 86, f"Expected 86 commands, got {len(COMMANDS)}"
 
     def test_individual_domain_exports(self):
         """Individual domain exports should be available."""
@@ -73,12 +73,12 @@ class TestCommandsDomainFiles:
         # Verify expected counts per domain
         assert len(SAFETY_COMMANDS) == 9, f"SAFETY: expected 9, got {len(SAFETY_COMMANDS)}"
         assert len(RATE_COMMANDS) == 4, f"RATE: expected 4, got {len(RATE_COMMANDS)}"
-        assert len(CONTROL_COMMANDS) == 13, f"CONTROL: expected 13, got {len(CONTROL_COMMANDS)}"
+        assert len(CONTROL_COMMANDS) == 17, f"CONTROL: expected 17, got {len(CONTROL_COMMANDS)}"
         assert len(MOTION_COMMANDS) == 2, f"MOTION: expected 2, got {len(MOTION_COMMANDS)}"
         assert len(GPIO_COMMANDS) == 7, f"GPIO: expected 7, got {len(GPIO_COMMANDS)}"
         assert len(SERVO_COMMANDS) == 4, f"SERVO: expected 4, got {len(SERVO_COMMANDS)}"
         assert len(STEPPER_COMMANDS) == 3, f"STEPPER: expected 3, got {len(STEPPER_COMMANDS)}"
-        assert len(SENSOR_COMMANDS) == 5, f"SENSOR: expected 5, got {len(SENSOR_COMMANDS)}"
+        assert len(SENSOR_COMMANDS) == 7, f"SENSOR: expected 7, got {len(SENSOR_COMMANDS)}"
         assert len(DC_MOTOR_COMMANDS) == 5, f"DC_MOTOR: expected 5, got {len(DC_MOTOR_COMMANDS)}"
         assert len(OBSERVER_COMMANDS) == 6, f"OBSERVER: expected 6, got {len(OBSERVER_COMMANDS)}"
         assert len(TELEMETRY_COMMANDS) == 2, f"TELEMETRY: expected 2, got {len(TELEMETRY_COMMANDS)}"

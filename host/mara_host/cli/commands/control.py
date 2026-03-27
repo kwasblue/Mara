@@ -15,7 +15,7 @@ from mara_host.cli.console import (
     print_info,
 )
 from mara_host.cli.context import CLIContext, run_with_context
-from mara_host.cli.cli_config import get_serial_port as _get_port
+from mara_host.cli.commands._common import add_connection_args
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -33,12 +33,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         metavar="<subcommand>",
     )
 
-    def add_port_arg(parser):
-        parser.add_argument(
-            "-p", "--port",
-            default=_get_port(),
-            help="Serial port",
-        )
+    def add_transport_args(parser):
+        add_connection_args(parser)
 
     # ==================== Signal Bus Commands ====================
 
@@ -47,7 +43,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "signals",
         help="List all signals in the signal bus",
     )
-    add_port_arg(sig_list_p)
+    add_transport_args(sig_list_p)
     sig_list_p.set_defaults(func=cmd_signals_list)
 
     # signal define
@@ -69,7 +65,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         default=0.0,
         help="Initial value (default: 0.0)",
     )
-    add_port_arg(sig_def_p)
+    add_transport_args(sig_def_p)
     sig_def_p.set_defaults(func=cmd_signal_define)
 
     # signal set
@@ -79,7 +75,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     sig_set_p.add_argument("id", type=int, help="Signal ID")
     sig_set_p.add_argument("value", type=float, help="Value to set")
-    add_port_arg(sig_set_p)
+    add_transport_args(sig_set_p)
     sig_set_p.set_defaults(func=cmd_signal_set)
 
     # signal clear
@@ -87,7 +83,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "signal-clear",
         help="Clear all signals",
     )
-    add_port_arg(sig_clear_p)
+    add_transport_args(sig_clear_p)
     sig_clear_p.set_defaults(func=cmd_signals_clear)
 
     # ==================== Control Graph Commands ====================
@@ -97,7 +93,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Validate and upload a control graph from JSON",
     )
     graph_upload_p.add_argument("graph_file", help="Path to graph JSON file or '-' for stdin")
-    add_port_arg(graph_upload_p)
+    add_transport_args(graph_upload_p)
     graph_upload_p.set_defaults(func=cmd_graph_upload)
 
     graph_apply_p = ctrl_sub.add_parser(
@@ -105,35 +101,35 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Validate, upload, and enable a control graph from JSON",
     )
     graph_apply_p.add_argument("graph_file", help="Path to graph JSON file or '-' for stdin")
-    add_port_arg(graph_apply_p)
+    add_transport_args(graph_apply_p)
     graph_apply_p.set_defaults(func=cmd_graph_apply)
 
     graph_status_p = ctrl_sub.add_parser(
         "graph-status",
         help="Get current runtime control-graph status",
     )
-    add_port_arg(graph_status_p)
+    add_transport_args(graph_status_p)
     graph_status_p.set_defaults(func=cmd_graph_status)
 
     graph_enable_p = ctrl_sub.add_parser(
         "graph-enable",
         help="Enable the uploaded runtime control graph",
     )
-    add_port_arg(graph_enable_p)
+    add_transport_args(graph_enable_p)
     graph_enable_p.set_defaults(func=cmd_graph_enable)
 
     graph_disable_p = ctrl_sub.add_parser(
         "graph-disable",
         help="Disable the uploaded runtime control graph",
     )
-    add_port_arg(graph_disable_p)
+    add_transport_args(graph_disable_p)
     graph_disable_p.set_defaults(func=cmd_graph_disable)
 
     graph_clear_p = ctrl_sub.add_parser(
         "graph-clear",
         help="Clear the uploaded runtime control graph",
     )
-    add_port_arg(graph_clear_p)
+    add_transport_args(graph_clear_p)
     graph_clear_p.set_defaults(func=cmd_graph_clear)
 
     # ==================== Controller Slot Commands ====================
@@ -166,7 +162,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--rate-hz", type=int, default=100,
         help="Control rate in Hz (default: 100)",
     )
-    add_port_arg(ctrl_cfg_p)
+    add_transport_args(ctrl_cfg_p)
     ctrl_cfg_p.set_defaults(func=cmd_controller_config)
 
     # controller enable
@@ -180,7 +176,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Disable the slot (default: enable)",
     )
-    add_port_arg(ctrl_en_p)
+    add_transport_args(ctrl_en_p)
     ctrl_en_p.set_defaults(func=cmd_controller_enable)
 
     # controller set-param
@@ -191,7 +187,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     ctrl_param_p.add_argument("slot", type=int, help="Slot number (0-7)")
     ctrl_param_p.add_argument("key", help="Parameter key (e.g., kp, ki, kd)")
     ctrl_param_p.add_argument("value", type=float, help="Parameter value")
-    add_port_arg(ctrl_param_p)
+    add_transport_args(ctrl_param_p)
     ctrl_param_p.set_defaults(func=cmd_controller_param)
 
     # ==================== Observer Slot Commands ====================
@@ -212,7 +208,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--rate-hz", type=int, default=100,
         help="Update rate in Hz (default: 100)",
     )
-    add_port_arg(obs_cfg_p)
+    add_transport_args(obs_cfg_p)
     obs_cfg_p.set_defaults(func=cmd_observer_config)
 
     # observer enable
@@ -226,7 +222,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Disable the slot (default: enable)",
     )
-    add_port_arg(obs_en_p)
+    add_transport_args(obs_en_p)
     obs_en_p.set_defaults(func=cmd_observer_enable)
 
     # observer reset
@@ -235,7 +231,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Reset an observer slot",
     )
     obs_reset_p.add_argument("slot", type=int, help="Slot number (0-7)")
-    add_port_arg(obs_reset_p)
+    add_transport_args(obs_reset_p)
     obs_reset_p.set_defaults(func=cmd_observer_reset)
 
     # Default

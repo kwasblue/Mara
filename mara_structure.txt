@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-27 17:05:36
-Total Files: 771
-Total Lines of Code: 87,151
+Generated: 2026-03-27 18:13:57
+Total Files: 772
+Total Lines of Code: 87,340
 ================================================================================
 
 
@@ -3687,7 +3687,7 @@ HOST (Python)
 
   host/mara_host/services/transport/__init__.py (14 lines)
 
-  host/mara_host/services/transport/connection_service.py (125 lines)
+  host/mara_host/services/transport/connection_service.py (128 lines)
     [Class] TransportType
     [Class] ConnectionConfig
     [Class] ConnectionInfo
@@ -4388,6 +4388,9 @@ HOST (Python)
       |-- __init__(self, client)
       `-- name(self)
 
+  host/scripts/test_rig_hardware.py (154 lines)
+    [Fn] main()
+
   host/tests/conftest.py (156 lines)
     [Fn] bus()
     [Fn] transport()
@@ -4740,7 +4743,7 @@ HOST (Python)
     [Fn] _import_jsonl_logger()
     [Fn] test_jsonl_logger_writes_valid_json_lines(tmp_path)
 
-  host/tests/test_mcp_http_runtime_surface.py (122 lines)
+  host/tests/test_mcp_http_runtime_surface.py (121 lines)
     [Fn] test_http_health_endpoint_reports_runtime_status_without_robot()
     [Fn] test_http_runtime_connect_state_and_disconnect_round_trip()
     [Fn] test_http_read_endpoints_return_fake_ack_payloads()
@@ -6589,7 +6592,8 @@ FIRMWARE/MCU (C++)
     [Class] SetupTransportModule
     [Fn] getSetupTransportModule()
 
-  firmware/mcu/src/setup/SetupWifi.cpp (63 lines)
+  firmware/mcu/src/setup/SetupWifi.cpp (96 lines)
+    [Fn] onWiFiEvent(WiFiEvent_t event)
     [Class] SetupWifiModule
     [Fn] getSetupWifiModule()
 
@@ -7213,22 +7217,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     520
+  Python Files:     521
   C++ Files:        251
-  Total Files:      771
+  Total Files:      772
 
 DEFINITIONS
   Classes:          894
   Structs:          147
-  Functions:        2043
+  Functions:        2045
   Methods:          2530
 
 LINES OF CODE
-  Python:           66,227
-  C++:              20,924
-  Total Code:       87,151
-  Blank Lines:      24,453
-  Comment Lines:    24,934
-  Total Lines:      136,538
+  Python:           66,383
+  C++:              20,957
+  Total Code:       87,340
+  Blank Lines:      24,511
+  Comment Lines:    24,961
+  Total Lines:      136,812
 
 ================================================================================

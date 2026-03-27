@@ -38,6 +38,10 @@ class TestHttpHandlerPatterns:
         runtime.servo_service.set_angle = AsyncMock(
             return_value=ServiceResult.success(data={"angle": 90})
         )
+        runtime.composite_service = MagicMock()
+        runtime.composite_service.apply = AsyncMock(
+            return_value=ServiceResult.success(data={"count": 2})
+        )
         runtime.servo_service.attach = AsyncMock(
             return_value=ServiceResult.success(data={"servo_id": 0})
         )
@@ -105,6 +109,21 @@ class TestHttpHandlerPatterns:
         mock_runtime.servo_service.set_angle.assert_called_once_with(
             servo_id=0, angle=90, duration_ms=300
         )
+
+    @pytest.mark.asyncio
+    async def test_batch_apply_handler(self, mock_runtime):
+        """Test generic batch endpoint."""
+        await mock_runtime.ensure_armed()
+        actions = [
+            {"cmd": "CMD_GPIO_WRITE", "args": {"channel": 0, "value": 1}},
+            {"cmd": "CMD_SERVO_SET_ANGLE", "args": {"servo_id": 0, "angle_deg": 90, "duration_ms": 300}},
+            {"cmd": "CMD_DC_SET_SPEED", "args": {"motor_id": 0, "speed": 0.5}},
+            {"cmd": "CMD_STEPPER_STOP", "args": {"motor_id": 1}},
+        ]
+        result = await mock_runtime.composite_service.apply(actions=actions)
+
+        assert result.ok
+        mock_runtime.composite_service.apply.assert_called_once_with(actions=actions)
 
     @pytest.mark.asyncio
     async def test_motor_set_handler(self, mock_runtime):

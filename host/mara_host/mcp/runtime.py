@@ -386,6 +386,13 @@ class MaraRuntime:
         raise RuntimeError("Not connected")
 
     @property
+    def composite_service(self):
+        if self._ctx:
+            from mara_host.services.control.composite_service import CompositeService
+            return CompositeService(self._ctx.client)
+        raise RuntimeError("Not connected")
+
+    @property
     def gpio_service(self):
         if self._ctx:
             return self._ctx.gpio_service

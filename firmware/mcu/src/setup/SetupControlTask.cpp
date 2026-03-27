@@ -76,6 +76,55 @@ static void controlTaskFunc(void* param) {
                     ctx->motion->setVelocity(vel.vx, vel.omega);
                 }
             }
+            // Composite/batch intent (latest batch wins, fixed per-family apply order on one control tick)
+            mara::CompositeIntent composite;
+            if (ctx->intents->consumeCompositeIntent(composite)) {
+                for (uint8_t i = 0; i < composite.gpio_count; ++i) {
+                    if (ctx->gpio) {
+                        ctx->gpio->write(composite.gpio_writes[i].channel, composite.gpio_writes[i].value ? 1 : 0);
+                    }
+                }
+                for (uint8_t i = 0; i < composite.pwm_count; ++i) {
+                    if (ctx->pwm) {
+                        const auto& pwm = composite.pwm_sets[i];
+                        ctx->pwm->set(pwm.channel, pwm.duty, pwm.freq_hz);
+                    }
+                }
+                for (uint8_t i = 0; i < composite.servo_count; ++i) {
+                    const auto& servo = composite.servo_sets[i];
+                    if (ctx->motion) {
+                        if (servo.duration_ms == 0) {
+                            if (ctx->servo) {
+                                ctx->servo->setAngle(servo.servo_id, servo.angle_deg);
+                            }
+                        } else {
+                            ctx->motion->setServoTarget(servo.servo_id, servo.angle_deg, servo.duration_ms);
+                        }
+                    }
+                }
+                for (uint8_t i = 0; i < composite.dc_motor_set_count; ++i) {
+                    if (ctx->dcMotor) {
+                        const auto& motor = composite.dc_motor_sets[i];
+                        ctx->dcMotor->setSpeed(motor.motor_id, motor.speed);
+                    }
+                }
+                for (uint8_t i = 0; i < composite.dc_motor_stop_count; ++i) {
+                    if (ctx->dcMotor) {
+                        ctx->dcMotor->stop(composite.dc_motor_stops[i].motor_id);
+                    }
+                }
+                for (uint8_t i = 0; i < composite.stepper_stop_count; ++i) {
+                    if (ctx->stepper) {
+                        ctx->stepper->stop(composite.stepper_stops[i].motor_id);
+                    }
+                }
+                for (uint8_t i = 0; i < composite.stepper_move_count; ++i) {
+                    if (ctx->motion) {
+                        const auto& step = composite.stepper_moves[i];
+                        ctx->motion->moveStepperRelative(step.motor_id, step.steps, step.speed_steps_s);
+                    }
+                }
+            }
 
             // Servo intents (per-servo)
             for (uint8_t i = 0; i < mara::IntentBuffer::MAX_SERVO_INTENTS; ++i) {

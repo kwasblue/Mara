@@ -38,4 +38,18 @@ SERVO_COMMANDS: dict[str, dict] = {
             },
         },
     },
+
+    "CMD_BATCH_APPLY": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "Apply a staged batch of batchable commands at one control boundary with deterministic MCU family ordering.",
+        "payload": {
+            "actions": {
+                "type": "array",
+                "required": True,
+                "description": "Array of action objects shaped like {cmd, args}. Batchable commands: CMD_GPIO_WRITE, CMD_SERVO_SET_ANGLE, CMD_PWM_SET, CMD_DC_SET_SPEED, CMD_DC_STOP, CMD_STEPPER_MOVE_REL, CMD_STEPPER_STOP.",
+                "items": {"type": "object"},
+            },
+        },
+    },
 }

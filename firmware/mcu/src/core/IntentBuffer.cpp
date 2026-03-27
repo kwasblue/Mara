@@ -55,6 +55,22 @@ bool IntentBuffer::consumeServoIntent(uint8_t id, ServoIntent& out) {
     return true;
 }
 
+void IntentBuffer::setCompositeIntent(const CompositeIntent& intent) {
+    CriticalSection lock(lock_);
+    composite_ = intent;
+    composite_.pending = true;
+}
+
+bool IntentBuffer::consumeCompositeIntent(CompositeIntent& out) {
+    CriticalSection lock(lock_);
+    if (!composite_.pending) {
+        return false;
+    }
+    out = composite_;
+    composite_.pending = false;
+    return true;
+}
+
 // =============================================================================
 // DC Motor Intent
 // =============================================================================
@@ -115,10 +131,8 @@ bool IntentBuffer::consumeStepperIntent(int id, StepperIntent& out) {
 void IntentBuffer::queueSignalIntent(uint16_t id, float value, uint32_t now_ms) {
     CriticalSection lock(lock_);
 
-    // Check if buffer is full
     uint8_t next = (signalHead_ + 1) % MAX_SIGNAL_INTENTS;
     if (next == signalTail_) {
-        // Buffer full - drop oldest by advancing tail
         signalTail_ = (signalTail_ + 1) % MAX_SIGNAL_INTENTS;
     }
 
@@ -132,7 +146,6 @@ bool IntentBuffer::consumeSignalIntent(SignalIntent& out) {
     CriticalSection lock(lock_);
 
     if (signalHead_ == signalTail_) {
-        // Buffer empty
         return false;
     }
 
@@ -161,6 +174,7 @@ void IntentBuffer::clearAll() {
     for (uint8_t i = 0; i < MAX_SERVO_INTENTS; ++i) {
         servos_[i].pending = false;
     }
+    composite_.pending = false;
 
     for (uint8_t i = 0; i < MAX_DC_MOTOR_INTENTS; ++i) {
         dcMotors_[i].pending = false;

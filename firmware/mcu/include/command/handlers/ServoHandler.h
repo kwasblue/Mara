@@ -20,6 +20,7 @@ public:
             case CmdType::SERVO_ATTACH:
             case CmdType::SERVO_DETACH:
             case CmdType::SERVO_SET_ANGLE:
+            case CmdType::BATCH_APPLY:
                 return true;
             default:
                 return false;
@@ -28,9 +29,10 @@ public:
 
     void handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx) override {
         switch (cmd) {
-            case CmdType::SERVO_ATTACH:    handleAttach(payload, ctx);   break;
-            case CmdType::SERVO_DETACH:    handleDetach(payload, ctx);   break;
-            case CmdType::SERVO_SET_ANGLE: handleSetAngle(payload, ctx); break;
+            case CmdType::SERVO_ATTACH:             handleAttach(payload, ctx);          break;
+            case CmdType::SERVO_DETACH:             handleDetach(payload, ctx);          break;
+            case CmdType::SERVO_SET_ANGLE:          handleSetAngle(payload, ctx);        break;
+            case CmdType::BATCH_APPLY:               handleBatchApply(payload, ctx);      break;
             default: break;
         }
     }
@@ -43,4 +45,5 @@ private:
     void handleAttach(JsonVariantConst payload, CommandContext& ctx);
     void handleDetach(JsonVariantConst payload, CommandContext& ctx);
     void handleSetAngle(JsonVariantConst payload, CommandContext& ctx);
+    void handleBatchApply(JsonVariantConst payload, CommandContext& ctx);
 };

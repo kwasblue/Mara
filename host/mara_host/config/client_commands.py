@@ -526,6 +526,12 @@ class RobotCommandsMixin:
         payload['duration_ms'] = duration_ms
         await self.send_json_cmd('CMD_SERVO_SET_ANGLE', payload)
 
+    async def cmd_batch_apply(self, actions: Any) -> None:
+        """Apply a staged batch of batchable commands at one control boundary with deterministic MCU family ordering. (CMD_BATCH_APPLY)"""
+        payload: dict[str, Any] = {}
+        payload['actions'] = actions
+        await self.send_json_cmd('CMD_BATCH_APPLY', payload)
+
     async def cmd_stepper_move_rel(self, motor_id: int, steps: int, speed_steps_s: float = 1000.0) -> None:
         """Move a stepper a relative number of steps. (CMD_STEPPER_MOVE_REL)"""
         payload: dict[str, Any] = {}

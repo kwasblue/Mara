@@ -7,6 +7,7 @@
 enum class CmdType {
     ACTIVATE,
     ARM,
+    BATCH_APPLY,
     CAM_APPLY_PRESET,
     CAM_CAPTURE_FRAME,
     CAM_FLASH,
@@ -90,6 +91,7 @@ enum class CmdType {
 inline CmdType cmdTypeFromString(const std::string& s) {
     if (s == "CMD_ACTIVATE") return CmdType::ACTIVATE;
     if (s == "CMD_ARM") return CmdType::ARM;
+    if (s == "CMD_BATCH_APPLY") return CmdType::BATCH_APPLY;
     if (s == "CMD_CAM_APPLY_PRESET") return CmdType::CAM_APPLY_PRESET;
     if (s == "CMD_CAM_CAPTURE_FRAME") return CmdType::CAM_CAPTURE_FRAME;
     if (s == "CMD_CAM_FLASH") return CmdType::CAM_FLASH;
@@ -174,6 +176,7 @@ inline const char* cmdTypeToString(CmdType c) {
     switch (c) {
         case CmdType::ACTIVATE: return "CMD_ACTIVATE";
         case CmdType::ARM: return "CMD_ARM";
+        case CmdType::BATCH_APPLY: return "CMD_BATCH_APPLY";
         case CmdType::CAM_APPLY_PRESET: return "CMD_CAM_APPLY_PRESET";
         case CmdType::CAM_CAPTURE_FRAME: return "CMD_CAM_CAPTURE_FRAME";
         case CmdType::CAM_FLASH: return "CMD_CAM_FLASH";

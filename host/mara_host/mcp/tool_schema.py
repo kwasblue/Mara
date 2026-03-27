@@ -24,7 +24,7 @@ from typing import Optional, Literal, NamedTuple
 class ToolParam(NamedTuple):
     """Parameter definition for a tool."""
     name: str
-    type: Literal["integer", "number", "string", "boolean"]
+    type: Literal["integer", "number", "string", "boolean", "array", "object"]
     description: str
     required: bool = True
     default: Optional[any] = None
@@ -190,6 +190,17 @@ TOOLS: list[ToolDef] = [
             ToolParam("duration_ms", "integer", "Movement duration in ms (0=instant)", required=False, default=300),
         ),
         response_format="Servo {servo_id} -> {angle}deg",
+    ),
+    ToolDef(
+        name="batch_apply",
+        description="Apply a generic staged batch/composite envelope using actions=[{cmd,args}, ...]. Batchable commands: CMD_GPIO_WRITE, CMD_SERVO_SET_ANGLE, CMD_PWM_SET, CMD_DC_SET_SPEED, CMD_DC_STOP, CMD_STEPPER_MOVE_REL, CMD_STEPPER_STOP. MCU apply order is fixed by command family on one control tick.",
+        category="batch",
+        service="composite_service",
+        method="apply",
+        params=(
+            ToolParam("actions", "array", "Array of batch action objects shaped like {cmd, args}. Batchable cmds: CMD_GPIO_WRITE, CMD_SERVO_SET_ANGLE, CMD_PWM_SET, CMD_DC_SET_SPEED, CMD_DC_STOP, CMD_STEPPER_MOVE_REL, CMD_STEPPER_STOP."),
+        ),
+        response_format="batch_apply OK",
     ),
     ToolDef(
         name="servo_center",

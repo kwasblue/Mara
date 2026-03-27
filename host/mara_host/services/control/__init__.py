@@ -37,6 +37,9 @@ from mara_host.services.control.servo_service import (
     ServoConfig,
     ServoState,
 )
+from mara_host.services.control.composite_service import (
+    CompositeService,
+)
 from mara_host.services.control.gpio_service import (
     GpioService,
     GpioChannel,
@@ -111,6 +114,8 @@ __all__ = [
     "ServoService",
     "ServoConfig",
     "ServoState",
+    # Composite/batch control
+    "CompositeService",
     # GPIO control
     "GpioService",
     "GpioChannel",

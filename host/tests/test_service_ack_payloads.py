@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 from mara_host.core.event_bus import EventBus
 from mara_host.services.control.encoder_service import EncoderService
 from mara_host.services.control.gpio_service import GpioService
+from mara_host.services.control.composite_service import CompositeService
 from mara_host.services.control.ultrasonic_service import UltrasonicService
 
 
@@ -77,3 +78,37 @@ async def test_ultrasonic_read_returns_ack_payload():
     assert result.ok is True
     assert result.data["sensor_id"] == 0
     assert result.data["distance_cm"] == 55.5
+
+
+@pytest.mark.asyncio
+async def test_composite_service_accepts_extended_batch_payload():
+    client = FakeClient()
+    service = CompositeService(client)
+
+    actions = [
+        {"cmd": "CMD_GPIO_WRITE", "args": {"channel": 0, "value": 1}},
+        {"cmd": "CMD_SERVO_SET_ANGLE", "args": {"servo_id": 0, "angle_deg": 90, "duration_ms": 250}},
+        {"cmd": "CMD_PWM_SET", "args": {"channel": 1, "duty": 0.4, "freq_hz": 1000.0}},
+        {"cmd": "CMD_DC_SET_SPEED", "args": {"motor_id": 0, "speed": 0.2}},
+        {"cmd": "CMD_STEPPER_MOVE_REL", "args": {"motor_id": 1, "steps": 100, "speed_steps_s": 800.0}},
+    ]
+
+    result = await service.apply(actions)
+
+    assert result.ok is True
+    client.send_reliable.assert_awaited_once_with("CMD_BATCH_APPLY", {"actions": actions})
+
+
+@pytest.mark.asyncio
+async def test_composite_service_rejects_conflicting_motor_actions_locally():
+    client = FakeClient()
+    service = CompositeService(client)
+
+    result = await service.apply([
+        {"cmd": "CMD_DC_SET_SPEED", "args": {"motor_id": 0, "speed": 0.5}},
+        {"cmd": "CMD_DC_STOP", "args": {"motor_id": 0}},
+    ])
+
+    assert result.ok is False
+    assert result.error.startswith("conflicting_motor_action")
+    client.send_reliable.assert_not_awaited()

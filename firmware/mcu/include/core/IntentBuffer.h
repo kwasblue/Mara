@@ -85,6 +85,70 @@ struct ServoIntent {
     bool pending = false;
 };
 
+struct GpioWriteAction {
+    uint8_t channel = 0;
+    bool value = false;
+};
+
+struct ServoSetAction {
+    uint8_t servo_id = 0;
+    float angle_deg = 0.0f;
+    uint32_t duration_ms = 0;
+};
+
+struct PwmSetAction {
+    uint8_t channel = 0;
+    float duty = 0.0f;
+    float freq_hz = 0.0f;
+};
+
+struct DcMotorSetAction {
+    uint8_t motor_id = 0;
+    float speed = 0.0f;
+};
+
+struct DcMotorStopAction {
+    uint8_t motor_id = 0;
+};
+
+struct StepperMoveAction {
+    uint8_t motor_id = 0;
+    int steps = 0;
+    float speed_steps_s = 0.0f;
+};
+
+struct StepperStopAction {
+    uint8_t motor_id = 0;
+};
+
+/// Generic staged batch/composite intent. Applied together on one control tick.
+struct CompositeIntent {
+    static constexpr uint8_t MAX_GPIO_WRITES = 8;
+    static constexpr uint8_t MAX_SERVO_ACTIONS = 4;
+    static constexpr uint8_t MAX_PWM_ACTIONS = 8;
+    static constexpr uint8_t MAX_DC_MOTOR_SET_ACTIONS = 4;
+    static constexpr uint8_t MAX_DC_MOTOR_STOP_ACTIONS = 4;
+    static constexpr uint8_t MAX_STEPPER_MOVE_ACTIONS = 4;
+    static constexpr uint8_t MAX_STEPPER_STOP_ACTIONS = 4;
+
+    GpioWriteAction gpio_writes[MAX_GPIO_WRITES];
+    ServoSetAction servo_sets[MAX_SERVO_ACTIONS];
+    PwmSetAction pwm_sets[MAX_PWM_ACTIONS];
+    DcMotorSetAction dc_motor_sets[MAX_DC_MOTOR_SET_ACTIONS];
+    DcMotorStopAction dc_motor_stops[MAX_DC_MOTOR_STOP_ACTIONS];
+    StepperMoveAction stepper_moves[MAX_STEPPER_MOVE_ACTIONS];
+    StepperStopAction stepper_stops[MAX_STEPPER_STOP_ACTIONS];
+    uint8_t gpio_count = 0;
+    uint8_t servo_count = 0;
+    uint8_t pwm_count = 0;
+    uint8_t dc_motor_set_count = 0;
+    uint8_t dc_motor_stop_count = 0;
+    uint8_t stepper_move_count = 0;
+    uint8_t stepper_stop_count = 0;
+    uint32_t timestamp_ms = 0;
+    bool pending = false;
+};
+
 /// DC Motor intent from DC_SET_SPEED commands
 struct DcMotorIntent {
     uint8_t id = 0;
@@ -147,6 +211,12 @@ public:
     /// Consume servo intent (called from control task)
     RT_SAFE bool consumeServoIntent(uint8_t id, ServoIntent& out);
 
+    /// Set staged composite/batch intent (latest batch wins)
+    void setCompositeIntent(const CompositeIntent& intent);
+
+    /// Consume composite/batch intent
+    RT_SAFE bool consumeCompositeIntent(CompositeIntent& out);
+
     // -------------------------------------------------------------------------
     // DC Motor Intent (by id)
     // -------------------------------------------------------------------------
@@ -194,6 +264,7 @@ private:
     // Storage
     VelocityIntent velocity_;
     ServoIntent servos_[MAX_SERVO_INTENTS];
+    CompositeIntent composite_;
     DcMotorIntent dcMotors_[MAX_DC_MOTOR_INTENTS];
     StepperIntent steppers_[MAX_STEPPER_INTENTS];
 

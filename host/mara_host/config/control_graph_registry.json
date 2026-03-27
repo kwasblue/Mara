@@ -1,0 +1,351 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "constant": {
+      "kind": "constant",
+      "category": "source",
+      "description": "Publish a constant scalar value each tick.",
+      "params": [
+        {
+          "name": "value",
+          "type": "float",
+          "required": true,
+          "description": "Constant scalar value to publish.",
+          "default": 0.0
+        }
+      ],
+      "inputs": 0,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "utility"
+      ],
+      "impl_key": "source.constant"
+    },
+    "imu_axis": {
+      "kind": "imu_axis",
+      "category": "source",
+      "description": "Read a derived orientation axis from the IMU.",
+      "params": [
+        {
+          "name": "axis",
+          "type": "enum",
+          "required": true,
+          "description": "Derived tilt axis to publish.",
+          "enum": [
+            "pitch",
+            "roll"
+          ]
+        }
+      ],
+      "inputs": 0,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [
+        "imu"
+      ],
+      "tags": [
+        "sensor",
+        "orientation"
+      ],
+      "impl_key": "source.imu_axis"
+    }
+  },
+  "transforms": {
+    "clamp": {
+      "kind": "clamp",
+      "category": "transform",
+      "description": "Clamp the input signal to a configured range.",
+      "params": [
+        {
+          "name": "min",
+          "type": "float",
+          "required": true,
+          "description": "Lower bound.",
+          "default": -1.0
+        },
+        {
+          "name": "max",
+          "type": "float",
+          "required": true,
+          "description": "Upper bound.",
+          "default": 1.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "math",
+        "safety"
+      ],
+      "impl_key": "transform.clamp"
+    },
+    "deadband": {
+      "kind": "deadband",
+      "category": "transform",
+      "description": "Suppress small input values around zero.",
+      "params": [
+        {
+          "name": "threshold",
+          "type": "float",
+          "required": true,
+          "description": "Magnitude below which the output is forced to zero.",
+          "default": 0.0,
+          "minimum": 0.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "nonlinear"
+      ],
+      "impl_key": "transform.deadband"
+    },
+    "delta_gate": {
+      "kind": "delta_gate",
+      "category": "transform",
+      "description": "Emit a new value only when it changes by at least a threshold from the last emitted value.",
+      "params": [
+        {
+          "name": "threshold",
+          "type": "float",
+          "required": true,
+          "description": "Minimum absolute change required before a new value is emitted.",
+          "default": 0.0,
+          "minimum": 0.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": true,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "stateful",
+        "gating"
+      ],
+      "impl_key": "transform.delta_gate"
+    },
+    "lowpass": {
+      "kind": "lowpass",
+      "category": "transform",
+      "description": "First-order exponential smoothing filter.",
+      "params": [
+        {
+          "name": "alpha",
+          "type": "float",
+          "required": true,
+          "description": "Smoothing factor; higher tracks the input more aggressively.",
+          "default": 0.5,
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": true,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "filter"
+      ],
+      "impl_key": "transform.lowpass"
+    },
+    "offset": {
+      "kind": "offset",
+      "category": "transform",
+      "description": "Add a constant offset to the input signal.",
+      "params": [
+        {
+          "name": "value",
+          "type": "float",
+          "required": true,
+          "description": "Constant value added to the input.",
+          "default": 0.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "math"
+      ],
+      "impl_key": "transform.offset"
+    },
+    "scale": {
+      "kind": "scale",
+      "category": "transform",
+      "description": "Multiply the input signal by a scalar factor.",
+      "params": [
+        {
+          "name": "factor",
+          "type": "float",
+          "required": true,
+          "description": "Scalar multiplier applied to the input.",
+          "default": 1.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "math"
+      ],
+      "impl_key": "transform.scale"
+    },
+    "slew_rate": {
+      "kind": "slew_rate",
+      "category": "transform",
+      "description": "Limit how quickly the output is allowed to change, in output units per second.",
+      "params": [
+        {
+          "name": "rate",
+          "type": "float",
+          "required": true,
+          "description": "Maximum absolute output change per second.",
+          "default": 0.0,
+          "minimum": 0.0,
+          "unit": "units/s"
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": true,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "stateful",
+        "limiter"
+      ],
+      "impl_key": "transform.slew_rate"
+    }
+  },
+  "sinks": {
+    "gpio_write": {
+      "kind": "gpio_write",
+      "category": "sink",
+      "description": "Drive a logical GPIO output from a scalar signal.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "required": true,
+          "description": "Logical GPIO channel.",
+          "minimum": 0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 0,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [
+        "gpio"
+      ],
+      "tags": [
+        "actuator"
+      ],
+      "impl_key": "sink.gpio_write"
+    },
+    "motor_speed": {
+      "kind": "motor_speed",
+      "category": "sink",
+      "description": "Drive a DC motor speed command from a scalar signal.",
+      "params": [
+        {
+          "name": "motor_id",
+          "type": "int",
+          "required": true,
+          "description": "Logical motor identifier.",
+          "minimum": 0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 0,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [
+        "dc_motor"
+      ],
+      "tags": [
+        "actuator"
+      ],
+      "impl_key": "sink.motor_speed"
+    },
+    "pwm_duty": {
+      "kind": "pwm_duty",
+      "category": "sink",
+      "description": "Drive a PWM duty-cycle command from a scalar signal.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "required": true,
+          "description": "Logical PWM channel identifier.",
+          "minimum": 0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 0,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [
+        "pwm"
+      ],
+      "tags": [
+        "actuator"
+      ],
+      "impl_key": "sink.pwm_duty"
+    },
+    "servo_angle": {
+      "kind": "servo_angle",
+      "category": "sink",
+      "description": "Drive a servo target angle in degrees.",
+      "params": [
+        {
+          "name": "servo_id",
+          "type": "int",
+          "required": true,
+          "description": "Logical servo identifier.",
+          "minimum": 0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 0,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [
+        "servo"
+      ],
+      "tags": [
+        "actuator"
+      ],
+      "impl_key": "sink.servo_angle"
+    }
+  }
+}

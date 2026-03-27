@@ -87,6 +87,9 @@ from mara_host.services.control.signal_service import (
     Signal,
     SignalKind,
 )
+from mara_host.services.control.control_graph_service import (
+    ControlGraphService,
+)
 from mara_host.services.control.pid_service import (
     PidService,
     PidGains,
@@ -142,6 +145,8 @@ __all__ = [
     "PwmState",
     # Wi-Fi control
     "WifiService",
+    # Control graph
+    "ControlGraphService",
     # Signal bus service
     "SignalService",
     "Signal",

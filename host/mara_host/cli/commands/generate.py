@@ -86,6 +86,13 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     mcp_p.set_defaults(func=cmd_mcp)
 
+    # control-graph
+    cg_p = gen_sub.add_parser(
+        "control-graph",
+        help="Generate control-graph type registry",
+    )
+    cg_p.set_defaults(func=cmd_control_graph)
+
     # Default handler
     gen_parser.set_defaults(func=cmd_all)
 
@@ -124,6 +131,7 @@ def cmd_all(args: argparse.Namespace) -> int:
         ("Telemetry sections", "gen_telemetry"),
         ("CAN bus definitions", "gen_can"),
         ("MCP/HTTP tools", "gen_mcp_servers"),
+        ("Control graph registry", "gen_control_graph"),
     ]
 
     errors = 0
@@ -242,4 +250,19 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     if rc == 0:
         print_success("MCP/HTTP server tools generated")
         print_info("Generated: _generated_tools.py, _generated_http.py")
+    return rc
+
+
+def cmd_control_graph(args: argparse.Namespace) -> int:
+    """Generate control-graph type registry."""
+    console.print()
+    console.print("[bold cyan]Generating control-graph registry[/bold cyan]")
+    console.print()
+
+    rc = _run_generator("Control graph registry", "gen_control_graph")
+
+    console.print()
+    if rc == 0:
+        print_success("Control-graph registry generated")
+        print_info("Generated: control_graph_registry.json, control_graph_defs.py, control_graph_schema.json")
     return rc

@@ -411,6 +411,12 @@ class MaraRuntime:
         raise RuntimeError("Not connected")
 
     @property
+    def i2c_service(self):
+        if self._ctx:
+            return self._ctx.i2c_service
+        raise RuntimeError("Not connected")
+
+    @property
     def imu_service(self):
         if self._ctx:
             return self._ctx.imu_service
@@ -432,6 +438,12 @@ class MaraRuntime:
     def wifi_service(self):
         if self._ctx:
             return self._ctx.wifi_service
+        raise RuntimeError("Not connected")
+
+    @property
+    def control_graph_service(self):
+        if self._ctx:
+            return self._ctx.control_graph_service
         raise RuntimeError("Not connected")
 
     @property

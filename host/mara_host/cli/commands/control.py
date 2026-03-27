@@ -1,15 +1,18 @@
 # mara_host/cli/commands/control.py
 """Control system commands for MARA CLI.
 
-Commands for signal bus and observer/controller slot management.
+Commands for signal bus, observer/controller slot management, and runtime control graphs.
 """
 
 import argparse
+import json
+from pathlib import Path
 
 from mara_host.cli.console import (
     console,
     print_success,
     print_error,
+    print_info,
 )
 from mara_host.cli.context import CLIContext, run_with_context
 from mara_host.cli.cli_config import get_serial_port as _get_port
@@ -86,6 +89,52 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     add_port_arg(sig_clear_p)
     sig_clear_p.set_defaults(func=cmd_signals_clear)
+
+    # ==================== Control Graph Commands ====================
+
+    graph_upload_p = ctrl_sub.add_parser(
+        "graph-upload",
+        help="Validate and upload a control graph from JSON",
+    )
+    graph_upload_p.add_argument("graph_file", help="Path to graph JSON file or '-' for stdin")
+    add_port_arg(graph_upload_p)
+    graph_upload_p.set_defaults(func=cmd_graph_upload)
+
+    graph_apply_p = ctrl_sub.add_parser(
+        "graph-apply",
+        help="Validate, upload, and enable a control graph from JSON",
+    )
+    graph_apply_p.add_argument("graph_file", help="Path to graph JSON file or '-' for stdin")
+    add_port_arg(graph_apply_p)
+    graph_apply_p.set_defaults(func=cmd_graph_apply)
+
+    graph_status_p = ctrl_sub.add_parser(
+        "graph-status",
+        help="Get current runtime control-graph status",
+    )
+    add_port_arg(graph_status_p)
+    graph_status_p.set_defaults(func=cmd_graph_status)
+
+    graph_enable_p = ctrl_sub.add_parser(
+        "graph-enable",
+        help="Enable the uploaded runtime control graph",
+    )
+    add_port_arg(graph_enable_p)
+    graph_enable_p.set_defaults(func=cmd_graph_enable)
+
+    graph_disable_p = ctrl_sub.add_parser(
+        "graph-disable",
+        help="Disable the uploaded runtime control graph",
+    )
+    add_port_arg(graph_disable_p)
+    graph_disable_p.set_defaults(func=cmd_graph_disable)
+
+    graph_clear_p = ctrl_sub.add_parser(
+        "graph-clear",
+        help="Clear the uploaded runtime control graph",
+    )
+    add_port_arg(graph_clear_p)
+    graph_clear_p.set_defaults(func=cmd_graph_clear)
 
     # ==================== Controller Slot Commands ====================
 
@@ -269,6 +318,95 @@ async def cmd_signals_clear(args: argparse.Namespace, ctx: CLIContext) -> int:
     else:
         print_error(f"Failed: {result.error}")
         return 1
+
+
+def _load_graph_file(path_str: str) -> dict:
+    if path_str == "-":
+        raw = __import__("sys").stdin.read()
+        source = "stdin"
+    else:
+        path = Path(path_str)
+        raw = path.read_text(encoding="utf-8")
+        source = str(path)
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {source}: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise ValueError("Control graph JSON must be an object")
+    return data
+
+
+@run_with_context
+async def cmd_graph_upload(args: argparse.Namespace, ctx: CLIContext) -> int:
+    graph = _load_graph_file(args.graph_file)
+    await ctx.state_service.disarm()
+    result = await ctx.control_graph_service.upload(graph)
+    if result.ok:
+        print_success("Control graph uploaded")
+        console.print_json(data=result.data)
+        return 0
+    print_error(f"Failed: {result.error}")
+    return 1
+
+
+@run_with_context
+async def cmd_graph_apply(args: argparse.Namespace, ctx: CLIContext) -> int:
+    graph = _load_graph_file(args.graph_file)
+    await ctx.state_service.disarm()
+    result = await ctx.control_graph_service.apply(graph)
+    if result.ok:
+        print_success("Control graph applied and enabled")
+        console.print_json(data=result.data)
+        return 0
+    print_error(f"Failed: {result.error}")
+    return 1
+
+
+@run_with_context
+async def cmd_graph_status(args: argparse.Namespace, ctx: CLIContext) -> int:
+    result = await ctx.control_graph_service.status()
+    if result.ok:
+        print_info("Control graph status")
+        console.print_json(data=result.data)
+        return 0
+    print_error(f"Failed: {result.error}")
+    return 1
+
+
+@run_with_context
+async def cmd_graph_enable(args: argparse.Namespace, ctx: CLIContext) -> int:
+    result = await ctx.control_graph_service.enable(True)
+    if result.ok:
+        print_success("Control graph enabled")
+        console.print_json(data=result.data)
+        return 0
+    print_error(f"Failed: {result.error}")
+    return 1
+
+
+@run_with_context
+async def cmd_graph_disable(args: argparse.Namespace, ctx: CLIContext) -> int:
+    result = await ctx.control_graph_service.disable()
+    if result.ok:
+        print_success("Control graph disabled")
+        console.print_json(data=result.data)
+        return 0
+    print_error(f"Failed: {result.error}")
+    return 1
+
+
+@run_with_context
+async def cmd_graph_clear(args: argparse.Namespace, ctx: CLIContext) -> int:
+    result = await ctx.control_graph_service.clear()
+    if result.ok:
+        print_success("Control graph cleared")
+        console.print_json(data=result.data)
+        return 0
+    print_error(f"Failed: {result.error}")
+    return 1
 
 
 # ==================== Controller Commands ====================

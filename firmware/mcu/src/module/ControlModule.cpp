@@ -30,6 +30,10 @@ ControlModule::ControlModule(
 }
 
 void ControlModule::setup() {
+    const char* restore_error = nullptr;
+    graph_.restore(restore_error);
+    (void)restore_error;
+
     // Register JSON telemetry providers for control system visibility
     if (telemetry_) {
         // Combined control telemetry (signals + observers + slots)

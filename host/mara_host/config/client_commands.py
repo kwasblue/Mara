@@ -259,6 +259,28 @@ class RobotCommandsMixin:
         payload['slot'] = slot
         await self.send_json_cmd('CMD_CTRL_SLOT_STATUS', payload)
 
+    async def cmd_ctrl_graph_upload(self, graph: Any) -> None:
+        """Upload a runtime control-graph config. First slice stores validated graph config on the MCU. (CMD_CTRL_GRAPH_UPLOAD)"""
+        payload: dict[str, Any] = {}
+        payload['graph'] = graph
+        await self.send_json_cmd('CMD_CTRL_GRAPH_UPLOAD', payload)
+
+    async def cmd_ctrl_graph_clear(self) -> None:
+        """Clear the stored runtime control-graph config. (CMD_CTRL_GRAPH_CLEAR)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_CTRL_GRAPH_CLEAR', payload)
+
+    async def cmd_ctrl_graph_enable(self, enable: bool) -> None:
+        """Enable or disable all stored control-graph slots. (CMD_CTRL_GRAPH_ENABLE)"""
+        payload: dict[str, Any] = {}
+        payload['enable'] = enable
+        await self.send_json_cmd('CMD_CTRL_GRAPH_ENABLE', payload)
+
+    async def cmd_ctrl_graph_status(self) -> None:
+        """Get status of the stored runtime control graph. (CMD_CTRL_GRAPH_STATUS)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_CTRL_GRAPH_STATUS', payload)
+
     async def cmd_dc_set_speed(self, motor_id: int, speed: float) -> None:
         """Set DC motor speed and direction for a given motor ID. (CMD_DC_SET_SPEED)"""
         payload: dict[str, Any] = {}
@@ -470,6 +492,16 @@ class RobotCommandsMixin:
         """Stop all motion (soft stop). (CMD_STOP)"""
         payload: dict[str, Any] = {}
         await self.send_json_cmd('CMD_STOP', payload)
+
+    async def cmd_imu_read(self) -> None:
+        """Request a one-shot IMU snapshot and return it directly in the ACK payload. (CMD_IMU_READ)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_IMU_READ', payload)
+
+    async def cmd_i2c_scan(self) -> None:
+        """Scan the primary MCU I2C bus and report responding 7-bit addresses. (CMD_I2C_SCAN)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_I2C_SCAN', payload)
 
     async def cmd_ultrasonic_attach(self, sensor_id: int = 0) -> None:
         """Attach/configure an ultrasonic sensor for the given logical sensor_id. (CMD_ULTRASONIC_ATTACH)"""

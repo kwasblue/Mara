@@ -6,6 +6,7 @@ from mara_host.services.control.encoder_service import EncoderService
 from mara_host.services.control.gpio_service import GpioService
 from mara_host.services.control.composite_service import CompositeService
 from mara_host.services.control.ultrasonic_service import UltrasonicService
+from mara_host.services.control.imu_service import ImuService
 
 
 class FakeClient:
@@ -37,6 +38,20 @@ class FakeClient:
                 "ok": True,
                 "sensor_id": payload["sensor_id"],
                 "distance_cm": 55.5,
+            })
+        elif command == "CMD_IMU_READ":
+            self.bus.publish(f"cmd.{command}", {
+                "src": "mcu",
+                "cmd": command,
+                "ok": True,
+                "online": True,
+                "ax_g": 0.01,
+                "ay_g": -0.02,
+                "az_g": 1.00,
+                "gx_dps": 0.3,
+                "gy_dps": -0.4,
+                "gz_dps": 0.5,
+                "temp_c": 24.75,
             })
         return True, None
 
@@ -78,6 +93,23 @@ async def test_ultrasonic_read_returns_ack_payload():
     assert result.ok is True
     assert result.data["sensor_id"] == 0
     assert result.data["distance_cm"] == 55.5
+
+
+@pytest.mark.asyncio
+async def test_imu_read_returns_explicit_snapshot_payload():
+    client = FakeClient()
+    service = ImuService(client)
+
+    result = await service.read()
+
+    assert result.ok is True
+    assert result.data["online"] is True
+    assert result.data["ax"] == pytest.approx(0.01)
+    assert result.data["az"] == pytest.approx(1.0)
+    assert result.data["temperature"] == pytest.approx(24.75)
+    assert result.data["units"]["accel"] == "g"
+    assert service.last_reading is not None
+    assert service.last_reading.gz == pytest.approx(0.5)
 
 
 @pytest.mark.asyncio

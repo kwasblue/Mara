@@ -5,6 +5,106 @@
 #include "config/PinConfig.h"
 #include "core/Debug.h"
 
+namespace {
+constexpr uint8_t REG_WHO_AM_I = 0x75;
+
+const char* classifyI2cDevice(uint8_t address, uint8_t whoAmI, bool whoOk, bool imuOnline, uint8_t imuAddr) {
+    if (imuOnline && address == imuAddr) {
+        return "imu";
+    }
+    if (whoOk) {
+        switch (whoAmI) {
+            case 0x12:
+            case 0x68:
+            case 0x70:
+            case 0x71:
+            case 0x73:
+                return "imu_candidate";
+            default:
+                break;
+        }
+    }
+    if (address == 0x29) {
+        return "vl53l0x_candidate";
+    }
+    return "unknown";
+}
+}
+
+void SensorHandler::handleImuRead(CommandContext& ctx) {
+    JsonDocument resp;
+    const bool online = imu_.isOnline();
+    resp["online"] = online;
+
+    if (!online) {
+        resp["error"] = "offline";
+        ctx.sendAck("CMD_IMU_READ", false, resp);
+        return;
+    }
+
+    ImuManager::Sample sample;
+    const bool ok = imu_.readSample(sample);
+    resp["ax_g"] = ok ? sample.ax_g : 0.0f;
+    resp["ay_g"] = ok ? sample.ay_g : 0.0f;
+    resp["az_g"] = ok ? sample.az_g : 0.0f;
+    resp["gx_dps"] = ok ? sample.gx_dps : 0.0f;
+    resp["gy_dps"] = ok ? sample.gy_dps : 0.0f;
+    resp["gz_dps"] = ok ? sample.gz_dps : 0.0f;
+    resp["temp_c"] = ok ? sample.temp_c : 0.0f;
+    if (!ok) {
+        resp["error"] = "read_failed";
+    }
+
+    ctx.sendAck("CMD_IMU_READ", ok, resp);
+}
+
+void SensorHandler::handleI2cScan(CommandContext& ctx) {
+    JsonDocument resp;
+    auto* bus = imu_.hal();
+    if (!bus) {
+        resp["error"] = "i2c_unavailable";
+        ctx.sendAck("CMD_I2C_SCAN", false, resp);
+        return;
+    }
+
+    JsonArray found = resp["addresses"].to<JsonArray>();
+    JsonArray devices = resp["devices"].to<JsonArray>();
+    bool imuOnline = imu_.isOnline();
+    uint8_t imuAddr = imu_.address();
+
+    for (uint8_t address = 0x08; address <= 0x77; ++address) {
+        if (!bus->devicePresent(address)) {
+            continue;
+        }
+
+        char hexAddr[5];
+        snprintf(hexAddr, sizeof(hexAddr), "0x%02X", address);
+        found.add(hexAddr);
+
+        JsonObject dev = devices.add<JsonObject>();
+        dev["address"] = address;
+        dev["address_hex"] = hexAddr;
+
+        uint8_t whoAmI = 0;
+        bool whoOk = (bus->readReg(address, REG_WHO_AM_I, &whoAmI) == hal::I2cResult::Ok);
+        if (whoOk) {
+            char whoHex[5];
+            snprintf(whoHex, sizeof(whoHex), "0x%02X", whoAmI);
+            dev["who_am_i"] = whoHex;
+        }
+        dev["kind"] = classifyI2cDevice(address, whoAmI, whoOk, imuOnline, imuAddr);
+    }
+
+    resp["count"] = found.size();
+    resp["imu_online"] = imuOnline;
+    if (imuOnline) {
+        char imuHex[5];
+        snprintf(imuHex, sizeof(imuHex), "0x%02X", imuAddr);
+        resp["imu_address"] = imuHex;
+    }
+    ctx.sendAck("CMD_I2C_SCAN", true, resp);
+}
+
 void SensorHandler::handleUltrasonicAttach(JsonVariantConst payload, CommandContext& ctx) {
     int sensorId = payload["sensor_id"] | 0;
 

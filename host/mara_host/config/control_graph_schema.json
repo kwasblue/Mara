@@ -1,0 +1,492 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MARA Control Graph",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/slot"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "slots"
+  ],
+  "definitions": {
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "source": {
+          "title": "source",
+          "oneOf": [
+            {
+              "title": "constant",
+              "description": "Publish a constant scalar value each tick.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "constant"
+                },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "float",
+                      "description": "Constant scalar value to publish.",
+                      "default": 0.0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "title": "imu_axis",
+              "description": "Read a derived orientation axis from the IMU.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "imu_axis"
+                },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "axis": {
+                      "type": "enum",
+                      "description": "Derived tilt axis to publish.",
+                      "enum": [
+                        "pitch",
+                        "roll"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "axis"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "discriminator": {
+            "propertyName": "type",
+            "mapping": {
+              "constant": "#/definitions/source/constant",
+              "imu_axis": "#/definitions/source/imu_axis"
+            }
+          }
+        },
+        "transforms": {
+          "type": "array",
+          "items": {
+            "title": "transform",
+            "oneOf": [
+              {
+                "title": "clamp",
+                "description": "Clamp the input signal to a configured range.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "clamp"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "float",
+                        "description": "Lower bound.",
+                        "default": -1.0
+                      },
+                      "max": {
+                        "type": "float",
+                        "description": "Upper bound.",
+                        "default": 1.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "deadband",
+                "description": "Suppress small input values around zero.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "deadband"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "threshold": {
+                        "type": "float",
+                        "description": "Magnitude below which the output is forced to zero.",
+                        "default": 0.0,
+                        "minimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "delta_gate",
+                "description": "Emit a new value only when it changes by at least a threshold from the last emitted value.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "delta_gate"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "threshold": {
+                        "type": "float",
+                        "description": "Minimum absolute change required before a new value is emitted.",
+                        "default": 0.0,
+                        "minimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "lowpass",
+                "description": "First-order exponential smoothing filter.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "lowpass"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "alpha": {
+                        "type": "float",
+                        "description": "Smoothing factor; higher tracks the input more aggressively.",
+                        "default": 0.5,
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "offset",
+                "description": "Add a constant offset to the input signal.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "offset"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "float",
+                        "description": "Constant value added to the input.",
+                        "default": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "scale",
+                "description": "Multiply the input signal by a scalar factor.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "scale"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "factor": {
+                        "type": "float",
+                        "description": "Scalar multiplier applied to the input.",
+                        "default": 1.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "slew_rate",
+                "description": "Limit how quickly the output is allowed to change, in output units per second.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "slew_rate"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "rate": {
+                        "type": "float",
+                        "description": "Maximum absolute output change per second.",
+                        "default": 0.0,
+                        "minimum": 0.0,
+                        "unit": "units/s"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            ],
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "clamp": "#/definitions/transform/clamp",
+                "deadband": "#/definitions/transform/deadband",
+                "delta_gate": "#/definitions/transform/delta_gate",
+                "lowpass": "#/definitions/transform/lowpass",
+                "offset": "#/definitions/transform/offset",
+                "scale": "#/definitions/transform/scale",
+                "slew_rate": "#/definitions/transform/slew_rate"
+              }
+            }
+          },
+          "default": []
+        },
+        "sink": {
+          "title": "sink",
+          "oneOf": [
+            {
+              "title": "gpio_write",
+              "description": "Drive a logical GPIO output from a scalar signal.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "gpio_write"
+                },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "channel": {
+                      "type": "int",
+                      "description": "Logical GPIO channel.",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "channel"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "title": "motor_speed",
+              "description": "Drive a DC motor speed command from a scalar signal.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "motor_speed"
+                },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "motor_id": {
+                      "type": "int",
+                      "description": "Logical motor identifier.",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "motor_id"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "title": "pwm_duty",
+              "description": "Drive a PWM duty-cycle command from a scalar signal.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "pwm_duty"
+                },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "channel": {
+                      "type": "int",
+                      "description": "Logical PWM channel identifier.",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "channel"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "title": "servo_angle",
+              "description": "Drive a servo target angle in degrees.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "servo_angle"
+                },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "servo_id": {
+                      "type": "int",
+                      "description": "Logical servo identifier.",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "servo_id"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "discriminator": {
+            "propertyName": "type",
+            "mapping": {
+              "gpio_write": "#/definitions/sink/gpio_write",
+              "motor_speed": "#/definitions/sink/motor_speed",
+              "pwm_duty": "#/definitions/sink/pwm_duty",
+              "servo_angle": "#/definitions/sink/servo_angle"
+            }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "sink"
+      ]
+    },
+    "source": {
+      "constant": {
+        "type": "object"
+      },
+      "imu_axis": {
+        "type": "object"
+      }
+    },
+    "transform": {
+      "clamp": {
+        "type": "object"
+      },
+      "deadband": {
+        "type": "object"
+      },
+      "delta_gate": {
+        "type": "object"
+      },
+      "lowpass": {
+        "type": "object"
+      },
+      "offset": {
+        "type": "object"
+      },
+      "scale": {
+        "type": "object"
+      },
+      "slew_rate": {
+        "type": "object"
+      }
+    },
+    "sink": {
+      "gpio_write": {
+        "type": "object"
+      },
+      "motor_speed": {
+        "type": "object"
+      },
+      "pwm_duty": {
+        "type": "object"
+      },
+      "servo_angle": {
+        "type": "object"
+      }
+    }
+  }
+}

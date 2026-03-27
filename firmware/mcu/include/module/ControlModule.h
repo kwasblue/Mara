@@ -8,6 +8,7 @@
 #include "control/SignalBus.h"
 #include "control/ControlKernel.h"
 #include "control/Observer.h"
+#include "control/ControlGraphRuntime.h"
 
 class EventBus;
 class ModeManager;
@@ -27,22 +28,21 @@ public:
         TelemetryModule* telemetry
     );
 
-    // IModule interface
     RT_UNSAFE void setup() override;
     RT_SAFE void loop(uint32_t now_ms) override;
     RT_SAFE const char* name() const override { return "ControlModule"; }
 
-    // Event handling
     void handleEvent(const Event& evt);
 
-    // Access to subsystems
     SignalBus& signals() { return signals_; }
     ControlKernel& kernel() { return kernel_; }
     ObserverManager& observers() { return observers_; }
-    
+    ControlGraphRuntime& graph() { return graph_; }
+
     const SignalBus& signals() const { return signals_; }
     const ControlKernel& kernel() const { return kernel_; }
     const ObserverManager& observers() const { return observers_; }
+    const ControlGraphRuntime& graph() const { return graph_; }
 
 private:
     EventBus* bus_;
@@ -55,6 +55,7 @@ private:
     SignalBus signals_;
     ControlKernel kernel_;
     ObserverManager observers_;
-    
+    ControlGraphRuntime graph_;
+
     uint32_t last_step_ms_ = 0;
 };

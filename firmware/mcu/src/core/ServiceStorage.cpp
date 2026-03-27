@@ -98,7 +98,7 @@ void ServiceStorage::initCommands() {
     servoHandler     = new ServoHandler(servo, motion);
     stepperHandler   = new StepperHandler(stepper, motion);
     dcMotorHandler   = new DcMotorHandler(dcMotor);
-    sensorHandler    = new SensorHandler(ultrasonic, encoder);
+    sensorHandler    = new SensorHandler(ultrasonic, encoder, imu);
     telemetryHandler = new TelemetryHandler(telemetry);
     controlHandler   = new ControlHandler();
     observerHandler  = new ObserverHandler();

@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "slots": [
+    {
+      "id": "imu_pitch_servo0_pythonish",
+      "enabled": true,
+      "rate_hz": 20,
+      "source": {
+        "type": "imu_axis",
+        "params": {
+          "axis": "pitch"
+        }
+      },
+      "transforms": [
+        {
+          "type": "deadband",
+          "params": {
+            "threshold": 2.0
+          }
+        },
+        {
+          "type": "clamp",
+          "params": {
+            "min": -25.0,
+            "max": 25.0
+          }
+        },
+        {
+          "type": "scale",
+          "params": {
+            "factor": 0.8
+          }
+        },
+        {
+          "type": "offset",
+          "params": {
+            "value": 90.0
+          }
+        },
+        {
+          "type": "clamp",
+          "params": {
+            "min": 70.0,
+            "max": 110.0
+          }
+        },
+        {
+          "type": "lowpass",
+          "params": {
+            "alpha": 0.25
+          }
+        },
+        {
+          "type": "delta_gate",
+          "params": {
+            "threshold": 1.0
+          }
+        },
+        {
+          "type": "slew_rate",
+          "params": {
+            "rate": 90.0
+          }
+        }
+      ],
+      "sink": {
+        "type": "servo_angle",
+        "params": {
+          "servo_id": 0
+        }
+      }
+    }
+  ]
+}

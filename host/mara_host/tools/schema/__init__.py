@@ -63,6 +63,14 @@ from .gpio_channels import (
     validate_gpio_channels,
 )
 
+# Control graph registry
+from .control_graph import (
+    CONTROL_GRAPH_TYPES,
+    SOURCE_DEFS,
+    TRANSFORM_DEFS,
+    SINK_DEFS,
+)
+
 __all__ = [
     # Paths
     "ROOT",
@@ -95,4 +103,9 @@ __all__ = [
     # GPIO
     "GPIO_CHANNELS",
     "validate_gpio_channels",
+    # Control graph
+    "CONTROL_GRAPH_TYPES",
+    "SOURCE_DEFS",
+    "TRANSFORM_DEFS",
+    "SINK_DEFS",
 ]

@@ -29,6 +29,10 @@ enum class CmdType {
     CAM_STOP_CAPTURE,
     CAM_STOP_RECORDING,
     CLEAR_ESTOP,
+    CTRL_GRAPH_CLEAR,
+    CTRL_GRAPH_ENABLE,
+    CTRL_GRAPH_STATUS,
+    CTRL_GRAPH_UPLOAD,
     CTRL_SET_RATE,
     CTRL_SIGNALS_CLEAR,
     CTRL_SIGNALS_LIST,
@@ -61,6 +65,8 @@ enum class CmdType {
     GPIO_TOGGLE,
     GPIO_WRITE,
     HEARTBEAT,
+    I2C_SCAN,
+    IMU_READ,
     LED_OFF,
     LED_ON,
     OBSERVER_CONFIG,
@@ -113,6 +119,10 @@ inline CmdType cmdTypeFromString(const std::string& s) {
     if (s == "CMD_CAM_STOP_CAPTURE") return CmdType::CAM_STOP_CAPTURE;
     if (s == "CMD_CAM_STOP_RECORDING") return CmdType::CAM_STOP_RECORDING;
     if (s == "CMD_CLEAR_ESTOP") return CmdType::CLEAR_ESTOP;
+    if (s == "CMD_CTRL_GRAPH_CLEAR") return CmdType::CTRL_GRAPH_CLEAR;
+    if (s == "CMD_CTRL_GRAPH_ENABLE") return CmdType::CTRL_GRAPH_ENABLE;
+    if (s == "CMD_CTRL_GRAPH_STATUS") return CmdType::CTRL_GRAPH_STATUS;
+    if (s == "CMD_CTRL_GRAPH_UPLOAD") return CmdType::CTRL_GRAPH_UPLOAD;
     if (s == "CMD_CTRL_SET_RATE") return CmdType::CTRL_SET_RATE;
     if (s == "CMD_CTRL_SIGNALS_CLEAR") return CmdType::CTRL_SIGNALS_CLEAR;
     if (s == "CMD_CTRL_SIGNALS_LIST") return CmdType::CTRL_SIGNALS_LIST;
@@ -145,6 +155,8 @@ inline CmdType cmdTypeFromString(const std::string& s) {
     if (s == "CMD_GPIO_TOGGLE") return CmdType::GPIO_TOGGLE;
     if (s == "CMD_GPIO_WRITE") return CmdType::GPIO_WRITE;
     if (s == "CMD_HEARTBEAT") return CmdType::HEARTBEAT;
+    if (s == "CMD_I2C_SCAN") return CmdType::I2C_SCAN;
+    if (s == "CMD_IMU_READ") return CmdType::IMU_READ;
     if (s == "CMD_LED_OFF") return CmdType::LED_OFF;
     if (s == "CMD_LED_ON") return CmdType::LED_ON;
     if (s == "CMD_OBSERVER_CONFIG") return CmdType::OBSERVER_CONFIG;
@@ -198,6 +210,10 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::CAM_STOP_CAPTURE: return "CMD_CAM_STOP_CAPTURE";
         case CmdType::CAM_STOP_RECORDING: return "CMD_CAM_STOP_RECORDING";
         case CmdType::CLEAR_ESTOP: return "CMD_CLEAR_ESTOP";
+        case CmdType::CTRL_GRAPH_CLEAR: return "CMD_CTRL_GRAPH_CLEAR";
+        case CmdType::CTRL_GRAPH_ENABLE: return "CMD_CTRL_GRAPH_ENABLE";
+        case CmdType::CTRL_GRAPH_STATUS: return "CMD_CTRL_GRAPH_STATUS";
+        case CmdType::CTRL_GRAPH_UPLOAD: return "CMD_CTRL_GRAPH_UPLOAD";
         case CmdType::CTRL_SET_RATE: return "CMD_CTRL_SET_RATE";
         case CmdType::CTRL_SIGNALS_CLEAR: return "CMD_CTRL_SIGNALS_CLEAR";
         case CmdType::CTRL_SIGNALS_LIST: return "CMD_CTRL_SIGNALS_LIST";
@@ -230,6 +246,8 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::GPIO_TOGGLE: return "CMD_GPIO_TOGGLE";
         case CmdType::GPIO_WRITE: return "CMD_GPIO_WRITE";
         case CmdType::HEARTBEAT: return "CMD_HEARTBEAT";
+        case CmdType::I2C_SCAN: return "CMD_I2C_SCAN";
+        case CmdType::IMU_READ: return "CMD_IMU_READ";
         case CmdType::LED_OFF: return "CMD_LED_OFF";
         case CmdType::LED_ON: return "CMD_LED_ON";
         case CmdType::OBSERVER_CONFIG: return "CMD_OBSERVER_CONFIG";

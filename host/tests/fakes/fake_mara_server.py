@@ -36,6 +36,8 @@ class FakeMaraTcpServer:
         self._thread = None
         self._thread_loop = None
         self._thread_ready = None
+        self._control_graph: dict[str, Any] | None = None
+        self._control_graph_enabled: bool = False
 
     async def start(self):
         self.server = await asyncio.start_server(self._handle_client, self.host, self.port)
@@ -147,11 +149,63 @@ class FakeMaraTcpServer:
                     ack.setdefault("sensor_id", cmd.get("sensor_id", 0))
                     ack.setdefault("distance_cm", 42.5)
                 elif cmd_type == "CMD_IMU_READ":
-                    ack.setdefault("state", "ARMED")
+                    ack.setdefault("online", True)
+                    ack.setdefault("ax_g", 0.01)
+                    ack.setdefault("ay_g", -0.02)
+                    ack.setdefault("az_g", 1.00)
+                    ack.setdefault("gx_dps", 0.3)
+                    ack.setdefault("gy_dps", -0.4)
+                    ack.setdefault("gz_dps", 0.5)
+                    ack.setdefault("temp_c", 24.75)
                 elif cmd_type == "CMD_SERVO_ATTACH":
                     ack.setdefault("servo_id", cmd.get("servo_id", 0))
                     ack.setdefault("channel", cmd.get("channel"))
                     ack.setdefault("pin", cmd.get("channel"))
+                elif cmd_type == "CMD_CTRL_GRAPH_UPLOAD":
+                    graph = cmd.get("graph", {})
+                    self._control_graph = graph
+                    self._control_graph_enabled = any(
+                        slot.get("enabled", True) for slot in graph.get("slots", [])
+                    )
+                    ack.setdefault("present", True)
+                    ack.setdefault("schema_version", graph.get("schema_version", 0))
+                    ack.setdefault("slot_count", len(graph.get("slots", [])))
+                elif cmd_type == "CMD_CTRL_GRAPH_CLEAR":
+                    self._control_graph = None
+                    self._control_graph_enabled = False
+                    ack.setdefault("cleared", True)
+                    ack.setdefault("present", False)
+                    ack.setdefault("slot_count", 0)
+                elif cmd_type == "CMD_CTRL_GRAPH_ENABLE":
+                    self._control_graph_enabled = cmd.get("enable", True)
+                    if self._control_graph:
+                        for slot in self._control_graph.get("slots", []):
+                            slot["enabled"] = self._control_graph_enabled
+                    ack.setdefault("present", self._control_graph is not None)
+                    ack.setdefault("enabled", self._control_graph_enabled)
+                elif cmd_type == "CMD_CTRL_GRAPH_STATUS":
+                    graph = self._control_graph or {}
+                    slots = []
+                    for slot in graph.get("slots", []):
+                        slots.append(
+                            {
+                                "id": slot.get("id"),
+                                "enabled": slot.get("enabled", self._control_graph_enabled),
+                                "rate_hz": slot.get("rate_hz", 0),
+                                "source_type": slot.get("source", {}).get("type", ""),
+                                "sink_type": slot.get("sink", {}).get("type", ""),
+                                "transform_count": len(slot.get("transforms", [])),
+                                "valid": True,
+                                "run_count": 0,
+                                "last_run_ms": 0,
+                                "last_output_high": False,
+                            }
+                        )
+                    ack.setdefault("present", self._control_graph is not None)
+                    ack.setdefault("enabled", self._control_graph_enabled)
+                    ack.setdefault("schema_version", graph.get("schema_version", 0))
+                    ack.setdefault("slot_count", len(graph.get("slots", [])))
+                    ack.setdefault("slots", slots)
                 await self._send_frame(writer, protocol.MSG_CMD_JSON, json.dumps(ack).encode("utf-8"))
 
     async def _send_frame(self, writer: asyncio.StreamWriter, msg_type: int, payload: bytes = b""):

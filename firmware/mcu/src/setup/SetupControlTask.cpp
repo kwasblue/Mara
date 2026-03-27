@@ -179,6 +179,7 @@ static void controlTaskFunc(void* param) {
         // Run control module (PID/LQR slots, observers)
         if (ctx->control) {
             ctx->control->loop(now_ms);
+            ctx->control->graph().step(now_ms, ctx->mode, ctx->gpio, ctx->servo, ctx->imu);
         }
 
         RT_ZONE_END();

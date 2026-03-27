@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "slots": [
+    {
+      "id": "imu_pitch_servo0_fullrange_raw",
+      "enabled": true,
+      "rate_hz": 25,
+      "source": {
+        "type": "imu_axis",
+        "params": {
+          "axis": "pitch"
+        }
+      },
+      "transforms": [
+        {
+          "type": "deadband",
+          "params": {
+            "threshold": 0.2
+          }
+        },
+        {
+          "type": "clamp",
+          "params": {
+            "min": -12.0,
+            "max": 12.0
+          }
+        },
+        {
+          "type": "scale",
+          "params": {
+            "factor": 7.5
+          }
+        },
+        {
+          "type": "offset",
+          "params": {
+            "value": 90.0
+          }
+        },
+        {
+          "type": "clamp",
+          "params": {
+            "min": 0.0,
+            "max": 180.0
+          }
+        }
+      ],
+      "sink": {
+        "type": "servo_angle",
+        "params": {
+          "servo_id": 0
+        }
+      }
+    }
+  ]
+}

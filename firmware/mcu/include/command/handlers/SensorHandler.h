@@ -7,16 +7,19 @@
 #include "command/CommandContext.h"
 #include "sensor/UltrasonicManager.h"
 #include "sensor/EncoderManager.h"
+#include "sensor/ImuManager.h"
 
 class SensorHandler : public ICommandHandler {
 public:
-    SensorHandler(UltrasonicManager& ultrasonic, EncoderManager& encoder)
-        : ultrasonic_(ultrasonic), encoder_(encoder) {}
+    SensorHandler(UltrasonicManager& ultrasonic, EncoderManager& encoder, ImuManager& imu)
+        : ultrasonic_(ultrasonic), encoder_(encoder), imu_(imu) {}
 
     const char* name() const override { return "SensorHandler"; }
 
     bool canHandle(CmdType cmd) const override {
         switch (cmd) {
+            case CmdType::IMU_READ:
+            case CmdType::I2C_SCAN:
             case CmdType::ULTRASONIC_ATTACH:
             case CmdType::ULTRASONIC_READ:
             case CmdType::ENCODER_ATTACH:
@@ -30,6 +33,8 @@ public:
 
     void handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx) override {
         switch (cmd) {
+            case CmdType::IMU_READ:          handleImuRead(ctx);                    break;
+            case CmdType::I2C_SCAN:          handleI2cScan(ctx);                    break;
             case CmdType::ULTRASONIC_ATTACH: handleUltrasonicAttach(payload, ctx); break;
             case CmdType::ULTRASONIC_READ:   handleUltrasonicRead(payload, ctx);   break;
             case CmdType::ENCODER_ATTACH:    handleEncoderAttach(payload, ctx);    break;
@@ -42,8 +47,11 @@ public:
 private:
     UltrasonicManager& ultrasonic_;
     EncoderManager& encoder_;
+    ImuManager& imu_;
 
     // Implemented in SensorHandler.cpp
+    void handleImuRead(CommandContext& ctx);
+    void handleI2cScan(CommandContext& ctx);
     void handleUltrasonicAttach(JsonVariantConst payload, CommandContext& ctx);
     void handleUltrasonicRead(JsonVariantConst payload, CommandContext& ctx);
     void handleEncoderAttach(JsonVariantConst payload, CommandContext& ctx);

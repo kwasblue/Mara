@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "slots": [
+    {
+      "id": "imu_pitch_servo0_snappy",
+      "enabled": true,
+      "rate_hz": 20,
+      "source": {
+        "type": "imu_axis",
+        "params": {
+          "axis": "pitch"
+        }
+      },
+      "transforms": [
+        {
+          "type": "deadband",
+          "params": {
+            "threshold": 1.0
+          }
+        },
+        {
+          "type": "clamp",
+          "params": {
+            "min": -15.0,
+            "max": 15.0
+          }
+        },
+        {
+          "type": "offset",
+          "params": {
+            "value": 90.0
+          }
+        },
+        {
+          "type": "clamp",
+          "params": {
+            "min": 76.0,
+            "max": 104.0
+          }
+        },
+        {
+          "type": "lowpass",
+          "params": {
+            "alpha": 0.28
+          }
+        }
+      ],
+      "sink": {
+        "type": "servo_angle",
+        "params": {
+          "servo_id": 0
+        }
+      }
+    }
+  ]
+}

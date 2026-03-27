@@ -11,6 +11,8 @@ Examples:
 import argparse
 import asyncio
 
+import json
+
 from mara_host.cli.console import (
     console,
     print_success,
@@ -56,6 +58,20 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     add_port_arg(read_p)
     read_p.set_defaults(func=cmd_imu_read)
+
+    # imu scan
+    scan_p = imu_sub.add_parser(
+        "scan",
+        help="Scan the MCU I2C bus for IMU/sensor devices",
+    )
+    scan_p.add_argument(
+        "--format",
+        choices=["table", "json", "raw"],
+        default="table",
+        help="Output format (default: table)",
+    )
+    add_port_arg(scan_p)
+    scan_p.set_defaults(func=cmd_imu_scan)
 
     # imu calibrate
     cal_p = imu_sub.add_parser(
@@ -131,19 +147,63 @@ async def cmd_imu_read(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Read IMU data."""
     result = await ctx.imu_service.read()
 
-    if result.ok:
-        print_info("IMU: read request sent")
-        console.print("[dim]Check telemetry stream for IMU data[/dim]")
-        if args.format == "table":
-            console.print()
-            console.print("[bold]Expected data:[/bold]")
-            console.print("  Acceleration (ax, ay, az): m/s\u00b2")
-            console.print("  Gyroscope (gx, gy, gz): rad/s")
-            console.print("  Temperature: \u00b0C")
-        return 0
-    else:
+    if not result.ok:
         print_error(f"Failed: {result.error}")
         return 1
+
+    data = result.data or {}
+    if args.format == "json":
+        console.print_json(json.dumps(data))
+        return 0
+
+    if args.format == "raw":
+        console.print(data)
+        return 0
+
+    print_info("IMU snapshot")
+    console.print(f"  Online: {data.get('online', False)}")
+    console.print(
+        "  Accel [g]: "
+        f"x={data.get('ax', 0.0):.4f} y={data.get('ay', 0.0):.4f} z={data.get('az', 0.0):.4f}"
+    )
+    console.print(
+        "  Gyro [deg/s]: "
+        f"x={data.get('gx', 0.0):.4f} y={data.get('gy', 0.0):.4f} z={data.get('gz', 0.0):.4f}"
+    )
+    console.print(f"  Temp [C]: {data.get('temperature', 0.0):.2f}")
+    return 0
+
+
+@run_with_context
+async def cmd_imu_scan(args: argparse.Namespace, ctx: CLIContext) -> int:
+    """Scan MCU I2C bus."""
+    result = await ctx.i2c_service.scan()
+
+    if not result.ok:
+        print_error(f"Failed: {result.error}")
+        return 1
+
+    data = result.data or {}
+    if args.format == "json":
+        console.print_json(json.dumps(data))
+        return 0
+
+    if args.format == "raw":
+        console.print(data)
+        return 0
+
+    print_info("I2C scan")
+    console.print(f"  Count: {data.get('count', 0)}")
+    console.print(f"  Addresses: {', '.join(data.get('addresses', [])) or '(none)'}")
+    if data.get("imu_address"):
+        console.print(f"  IMU address: {data.get('imu_address')}")
+    for device in data.get("devices", []):
+        extra = f" who_am_i={device.get('who_am_i')}" if device.get("who_am_i") else ""
+        console.print(
+            f"    - {device.get('address_hex', hex(device.get('address', 0)))}"
+            f" kind={device.get('kind', 'unknown')}{extra}"
+        )
+    return 0
 
 
 @run_with_context

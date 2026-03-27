@@ -44,6 +44,7 @@ python examples/00_getting_started.py
 | 10 | Custom Robot Class | Building your own robot abstraction |
 | 11 | Sensors and Telemetry | Encoder, IMU, Ultrasonic |
 | 12 | Velocity Control | High-rate streaming for differential drive |
+| 13 | IMU to Servo Prototype | Map accel-based pitch/roll to servo 0 safely |
 
 ### Legacy Examples (Low-Level API)
 
@@ -112,6 +113,45 @@ async with Robot("/dev/ttyUSB0") as robot:
         await robot.motion.set_velocity(vx=0.5, omega=0.1)
         await asyncio.sleep(0.02)  # 50Hz
 ```
+
+### 13: IMU to Servo Prototype
+Tie one accel-derived IMU axis to servo 0 using the explicit IMU snapshot path and the existing servo service:
+
+```bash
+python examples/13_imu_to_servo.py --port /dev/ttyUSB0 --pin 18 --axis pitch
+```
+
+Useful tuning flags:
+- `--axis pitch|roll`
+- `--tilt-limit-deg 25`
+- `--servo-span-deg 20`
+- `--deadband-deg 2`
+- `--smoothing-alpha 0.25`
+- `--interval-s 0.20`
+- `--dry-run`
+
+Safety behavior:
+- centers the servo first
+- defaults to a narrow clamp (`60..120` deg)
+- detaches the servo and disarms the robot on Ctrl+C / exit
+
+### MCU Control-Graph JSON Presets
+Ready-to-run MCU-native graph presets live in:
+
+- `examples/control_graphs/imu_pitch_servo_safe.json`
+- `examples/control_graphs/imu_pitch_servo_snappy.json`
+
+Apply one with:
+
+```bash
+mara control graph-apply examples/control_graphs/imu_pitch_servo_safe.json
+mara control graph-status
+```
+
+Notes:
+- upload/apply must happen while the robot is `IDLE`
+- these files only configure the graph; you still need servo 0 attached on the right pin before expecting motion
+- if direction is backwards, insert a `scale` transform with factor `-1.0` before the offset stage
 
 ## Examples in Detail
 

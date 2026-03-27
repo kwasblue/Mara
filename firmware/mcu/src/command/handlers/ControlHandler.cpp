@@ -322,3 +322,85 @@ void ControlHandler::handleSlotStatus(JsonVariantConst payload, CommandContext& 
     }
     ctx.sendAck(ACK, true, resp);
 }
+
+void ControlHandler::handleGraphUpload(JsonVariantConst payload, CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_CTRL_GRAPH_UPLOAD";
+
+    if (!ctx.requireIdle(ACK)) return;
+    if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
+
+    JsonVariantConst graph = payload["graph"];
+    const char* error = nullptr;
+    bool ok = controlModule_->graph().upload(graph, error);
+
+    JsonDocument resp;
+    resp["present"] = ok;
+    resp["schema_version"] = ok ? controlModule_->graph().schemaVersion() : 0;
+    resp["slot_count"] = ok ? controlModule_->graph().slotCount() : 0;
+    if (!ok && error) {
+        resp["error"] = error;
+    }
+    ctx.sendAck(ACK, ok, resp);
+}
+
+void ControlHandler::handleGraphClear(CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_CTRL_GRAPH_CLEAR";
+
+    if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
+    controlModule_->graph().clear();
+
+    JsonDocument resp;
+    resp["cleared"] = true;
+    resp["present"] = false;
+    resp["slot_count"] = 0;
+    ctx.sendAck(ACK, true, resp);
+}
+
+void ControlHandler::handleGraphEnable(JsonVariantConst payload, CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_CTRL_GRAPH_ENABLE";
+
+    if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
+    if (!controlModule_->graph().present()) { ctx.sendError(ACK, "graph_not_present"); return; }
+
+    bool enable = payload["enable"] | true;
+    controlModule_->graph().setEnabled(enable);
+
+    JsonDocument resp;
+    resp["present"] = true;
+    resp["enabled"] = controlModule_->graph().enabled();
+    resp["slot_count"] = controlModule_->graph().slotCount();
+    ctx.sendAck(ACK, true, resp);
+}
+
+void ControlHandler::handleGraphStatus(CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_CTRL_GRAPH_STATUS";
+
+    if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
+
+    const auto& graph = controlModule_->graph();
+    JsonDocument resp;
+    resp["present"] = graph.present();
+    resp["enabled"] = graph.enabled();
+    resp["schema_version"] = graph.schemaVersion();
+    resp["slot_count"] = graph.slotCount();
+    JsonArray slots = resp["slots"].to<JsonArray>();
+    for (uint8_t i = 0; i < graph.slotCount(); ++i) {
+        const auto& slot = graph.slot(i);
+        const auto& runtime = graph.runtimeSlot(i);
+        JsonObject out = slots.add<JsonObject>();
+        out["id"] = slot.id;
+        out["enabled"] = slot.enabled;
+        out["rate_hz"] = slot.rate_hz;
+        out["source_type"] = slot.source_type;
+        out["sink_type"] = slot.sink_type;
+        out["transform_count"] = slot.transform_count;
+        out["valid"] = runtime.valid;
+        out["run_count"] = runtime.run_count;
+        out["last_run_ms"] = runtime.last_run_ms;
+        out["last_output_high"] = runtime.last_output_high;
+        if (runtime.error[0]) {
+            out["error"] = runtime.error;
+        }
+    }
+    ctx.sendAck(ACK, true, resp);
+}

@@ -298,4 +298,45 @@ CONTROL_COMMANDS: dict[str, dict] = {
             },
         },
     },
+
+    # Runtime control-graph upload/status surface
+    "CMD_CTRL_GRAPH_UPLOAD": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "Upload a runtime control-graph config. First slice stores validated graph config on the MCU.",
+        "payload": {
+            "graph": {
+                "type": "object",
+                "required": True,
+                "description": "Normalized control-graph config with schema_version and slots.",
+            },
+        },
+    },
+
+    "CMD_CTRL_GRAPH_CLEAR": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "Clear the stored runtime control-graph config.",
+        "payload": {},
+    },
+
+    "CMD_CTRL_GRAPH_ENABLE": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "Enable or disable all stored control-graph slots.",
+        "payload": {
+            "enable": {
+                "type": "bool",
+                "required": True,
+                "description": "True to enable all slots, false to disable all slots.",
+            },
+        },
+    },
+
+    "CMD_CTRL_GRAPH_STATUS": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "Get status of the stored runtime control graph.",
+        "payload": {},
+    },
 }

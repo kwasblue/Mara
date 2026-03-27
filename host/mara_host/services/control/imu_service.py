@@ -5,8 +5,9 @@ IMU sensor service.
 Provides high-level control for IMU (accelerometer/gyroscope) sensors.
 """
 
-from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+import asyncio
+from dataclasses import asdict, dataclass
+from typing import Any, Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
 
@@ -18,12 +19,14 @@ if TYPE_CHECKING:
 class ImuReading:
     """IMU sensor reading."""
 
-    # Accelerometer (m/s^2)
+    online: bool = False
+
+    # Accelerometer (sensor native g units from MCU snapshot)
     ax: float = 0.0
     ay: float = 0.0
     az: float = 0.0
 
-    # Gyroscope (rad/s)
+    # Gyroscope (sensor native deg/s from MCU snapshot)
     gx: float = 0.0
     gy: float = 0.0
     gz: float = 0.0
@@ -92,21 +95,75 @@ class ImuService:
         """Get last IMU reading."""
         return self._last_reading
 
+    async def _send_with_ack_payload(
+        self,
+        command: str,
+        payload: dict,
+        *,
+        error_message: str,
+        ack_timeout_s: float = 0.2,
+    ) -> ServiceResult:
+        loop = asyncio.get_running_loop()
+        ack_future: asyncio.Future[Any] = loop.create_future()
+        topic = f"cmd.{command}"
+
+        def _handler(data: Any) -> None:
+            if not ack_future.done():
+                ack_future.set_result(data)
+
+        self.client.bus.subscribe(topic, _handler)
+        try:
+            ok, error = await self.client.send_reliable(command, payload)
+            if not ok:
+                return ServiceResult.failure(error=error or error_message)
+
+            try:
+                ack_payload = await asyncio.wait_for(ack_future, timeout=ack_timeout_s)
+            except asyncio.TimeoutError:
+                ack_payload = None
+
+            return ServiceResult.success(data=ack_payload or payload)
+        finally:
+            self.client.bus.unsubscribe(topic, _handler)
+
     async def read(self) -> ServiceResult:
         """
-        Request IMU reading from MCU.
-
-        Note: The actual values come via telemetry.
+        Request an explicit IMU snapshot from the MCU.
 
         Returns:
-            ServiceResult
+            ServiceResult with snapshot data in ``data``.
         """
-        ok, error = await self.client.send_reliable("CMD_IMU_READ", {})
+        result = await self._send_with_ack_payload(
+            "CMD_IMU_READ",
+            {},
+            error_message="Failed to read IMU",
+            ack_timeout_s=0.2,
+        )
 
-        if ok:
-            return ServiceResult.success()
-        else:
-            return ServiceResult.failure(error=error or "Failed to read IMU")
+        if not result.ok:
+            return result
+
+        data = result.data or {}
+        reading = ImuReading(
+            online=bool(data.get("online", True)),
+            ax=float(data.get("ax_g", 0.0)),
+            ay=float(data.get("ay_g", 0.0)),
+            az=float(data.get("az_g", 0.0)),
+            gx=float(data.get("gx_dps", 0.0)),
+            gy=float(data.get("gy_dps", 0.0)),
+            gz=float(data.get("gz_dps", 0.0)),
+            temperature=float(data.get("temp_c", 0.0)),
+        )
+        self._last_reading = reading
+        payload = {
+            **asdict(reading),
+            "units": {
+                "accel": "g",
+                "gyro": "deg/s",
+                "temperature": "C",
+            },
+        }
+        return ServiceResult.success(data=payload)
 
     async def calibrate(
         self,

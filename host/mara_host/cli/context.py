@@ -20,10 +20,12 @@ if TYPE_CHECKING:
     from mara_host.services.control.gpio_service import GpioService
     from mara_host.services.control.stepper_service import StepperService
     from mara_host.services.control.encoder_service import EncoderService
+    from mara_host.services.control.i2c_service import I2cService
     from mara_host.services.control.imu_service import ImuService
     from mara_host.services.control.ultrasonic_service import UltrasonicService
     from mara_host.services.control.pwm_service import PwmService
     from mara_host.services.control.wifi_service import WifiService
+    from mara_host.services.control.control_graph_service import ControlGraphService
     from mara_host.services.control.controller_service import ControllerService
     from mara_host.services.control.pid_service import PidService
     from mara_host.services.control.state_service import StateService
@@ -104,10 +106,12 @@ class CLIContext:
         self._gpio_service: Optional["GpioService"] = None
         self._stepper_service: Optional["StepperService"] = None
         self._encoder_service: Optional["EncoderService"] = None
+        self._i2c_service: Optional["I2cService"] = None
         self._imu_service: Optional["ImuService"] = None
         self._ultrasonic_service: Optional["UltrasonicService"] = None
         self._pwm_service: Optional["PwmService"] = None
         self._wifi_service: Optional["WifiService"] = None
+        self._control_graph_service: Optional["ControlGraphService"] = None
         self._controller_service: Optional["ControllerService"] = None
         self._pid_service: Optional["PidService"] = None
 
@@ -206,10 +210,12 @@ class CLIContext:
         self._gpio_service = None
         self._stepper_service = None
         self._encoder_service = None
+        self._i2c_service = None
         self._imu_service = None
         self._ultrasonic_service = None
         self._pwm_service = None
         self._wifi_service = None
+        self._control_graph_service = None
         self._controller_service = None
         self._pid_service = None
 
@@ -283,6 +289,14 @@ class CLIContext:
         return self._encoder_service
 
     @property
+    def i2c_service(self) -> "I2cService":
+        """Get or create I2cService instance."""
+        if self._i2c_service is None:
+            from mara_host.services.control.i2c_service import I2cService
+            self._i2c_service = I2cService(self.client)
+        return self._i2c_service
+
+    @property
     def imu_service(self) -> "ImuService":
         """Get or create ImuService instance."""
         if self._imu_service is None:
@@ -313,6 +327,14 @@ class CLIContext:
             from mara_host.services.control.wifi_service import WifiService
             self._wifi_service = WifiService(self.client)
         return self._wifi_service
+
+    @property
+    def control_graph_service(self) -> "ControlGraphService":
+        """Get or create ControlGraphService instance."""
+        if self._control_graph_service is None:
+            from mara_host.services.control.control_graph_service import ControlGraphService
+            self._control_graph_service = ControlGraphService(self.client)
+        return self._control_graph_service
 
     @property
     def controller_service(self) -> "ControllerService":

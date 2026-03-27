@@ -48,6 +48,7 @@ _EXPORTS = {
     "GpioService": "control",
     "GpioChannel": "control",
     "GpioMode": "control",
+    "WifiService": "control",
     "ServiceResult": "control",
     # Telemetry
     "TelemetryService": "telemetry",

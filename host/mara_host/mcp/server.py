@@ -31,12 +31,13 @@ from mara_host.mcp._generated_tools import get_tool_definitions, dispatch_tool
 def create_server(
     port: str | None = None,
     host: str | None = None,
+    ble_name: str | None = None,
     tcp_port: int = 3333,
 ) -> Server:
     """Create and configure the MCP server."""
 
     server = Server("mara")
-    runtime = MaraRuntime(port=port, host=host, tcp_port=tcp_port)
+    runtime = MaraRuntime(port=port, host=host, ble_name=ble_name, tcp_port=tcp_port)
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
@@ -79,6 +80,7 @@ Examples:
     )
     parser.add_argument("-p", "--port", help="Serial port (default: from config)")
     parser.add_argument("--tcp", metavar="HOST", help="TCP host (instead of serial)")
+    parser.add_argument("--ble-name", default=None, help="Bluetooth SPP device name (instead of serial/TCP)")
     parser.add_argument("--tcp-port", type=int, default=3333, help="TCP port (default: 3333)")
     parser.add_argument("--http", action="store_true", help="Run HTTP server instead of MCP")
     parser.add_argument("--http-port", type=int, default=8000, help="HTTP port (default: 8000)")
@@ -87,10 +89,11 @@ Examples:
     # Get port from args or environment or config
     port = args.port or os.environ.get("MARA_PORT")
     host = args.tcp or os.environ.get("MARA_HOST")
+    ble_name = args.ble_name or os.environ.get("MARA_BLE_NAME")
     tcp_port = args.tcp_port or int(os.environ.get("MARA_TCP_PORT", "3333"))
 
     # Default to config if nothing specified
-    if not port and not host:
+    if not port and not host and not ble_name:
         from mara_host.cli.cli_config import get_serial_port
         port = get_serial_port()
 
@@ -100,12 +103,13 @@ Examples:
         await run_http_server(
             port=port,
             host=host,
+            ble_name=ble_name,
             tcp_port=tcp_port,
             http_port=args.http_port,
         )
     else:
         # MCP mode
-        server = create_server(port=port, host=host, tcp_port=tcp_port)
+        server = create_server(port=port, host=host, ble_name=ble_name, tcp_port=tcp_port)
         async with stdio_server() as (read_stream, write_stream):
             await server.run(read_stream, write_stream, server.create_initialization_options())
 

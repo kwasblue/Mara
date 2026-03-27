@@ -67,6 +67,10 @@ void MqttTransport::loop() {
         return;
     }
 
+    if (retriesExhausted()) {
+        return;
+    }
+
     uint32_t now = millis();
     if (now < nextReconnectAttemptMs_) {
         return;
@@ -93,8 +97,14 @@ void MqttTransport::reconnect() {
         connectInProgress_ = false;
         connectTask_ = nullptr;
         consecutiveFailures_++;
-        nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
-        Serial.println("[MQTT] Failed to start connect task; backing off");
+        if (retriesExhausted()) {
+            nextReconnectAttemptMs_ = UINT32_MAX;
+            Serial.printf("[MQTT] Failed to start connect task; giving up after %u attempts\n",
+                static_cast<unsigned>(MAX_RETRIES));
+        } else {
+            nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
+            Serial.println("[MQTT] Failed to start connect task; backing off");
+        }
     }
 }
 
@@ -132,11 +142,19 @@ void MqttTransport::connectTaskBody() {
         publishDiscoveryResponse();
     } else {
         consecutiveFailures_++;
-        nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
-        Serial.printf("[MQTT] Failed after %lu ms, rc=%d, next retry in %lu ms\n",
-            static_cast<unsigned long>(elapsedMs),
-            mqtt_.state(),
-            static_cast<unsigned long>(nextReconnectAttemptMs_ - millis()));
+        if (retriesExhausted()) {
+            nextReconnectAttemptMs_ = UINT32_MAX;
+            Serial.printf("[MQTT] Failed after %lu ms, rc=%d, giving up after %u attempts\n",
+                static_cast<unsigned long>(elapsedMs),
+                mqtt_.state(),
+                static_cast<unsigned>(MAX_RETRIES));
+        } else {
+            nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
+            Serial.printf("[MQTT] Failed after %lu ms, rc=%d, next retry in %lu ms\n",
+                static_cast<unsigned long>(elapsedMs),
+                mqtt_.state(),
+                static_cast<unsigned long>(nextReconnectAttemptMs_ - millis()));
+        }
     }
 
     connectInProgress_ = false;
@@ -153,6 +171,10 @@ uint32_t MqttTransport::nextReconnectDelayMs() const {
         delayMs *= 2;
     }
     return delayMs > MAX_RECONNECT_INTERVAL_MS ? MAX_RECONNECT_INTERVAL_MS : delayMs;
+}
+
+bool MqttTransport::retriesExhausted() const {
+    return consecutiveFailures_ >= MAX_RETRIES;
 }
 
 void MqttTransport::onMessage(char* topic, uint8_t* payload, unsigned int length) {

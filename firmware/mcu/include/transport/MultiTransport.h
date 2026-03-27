@@ -13,7 +13,8 @@
 // RESPONSE SEMANTICS:
 //   - sendBytes() sends to the LAST transport that delivered a frame
 //   - sendBytesToAll() broadcasts to ALL connected transports
-//   - If no frame has been received yet, sendBytes() broadcasts
+//   - If no frame has been received yet, sendBytes() drops the payload
+//     instead of broadcasting binary telemetry/heartbeats onto every transport
 //
 // DUPLICATE COMMAND PREVENTION:
 //   - CommandContext handles duplicate detection via ACK cache
@@ -73,17 +74,16 @@ public:
         }
     }
 
-    /// Send bytes to the originating transport (or broadcast if unknown)
+    /// Send bytes to the originating transport only.
+    /// If no transport has received a frame yet, drop instead of broadcasting.
     bool sendBytes(const uint8_t* data, size_t len) override {
         if (lastReceiveTransportIdx_ < transports_.size()) {
-            // Send only to the transport that last received a frame
             ITransport* t = transports_[lastReceiveTransportIdx_];
             if (t) {
                 return t->sendBytes(data, len);
             }
         }
-        // Fallback: broadcast to all
-        return sendBytesToAll(data, len);
+        return false;
     }
 
     /// Broadcast to all transports

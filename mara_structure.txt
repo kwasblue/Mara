@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-23 13:34:40
-Total Files: 732
-Total Lines of Code: 82,155
+Generated: 2026-03-26 18:39:43
+Total Files: 741
+Total Lines of Code: 83,784
 ================================================================================
 
 
@@ -852,13 +852,17 @@ HOST (Python)
 
   host/mara_host/cli/commands/run/__init__.py (2 lines)
 
-  host/mara_host/cli/commands/run/_common.py (37 lines)
+  host/mara_host/cli/commands/run/_common.py (38 lines)
     [Fn] add_logging_args(parser)
     [Fn] get_log_params(args)
     [Fn] show_transports()
 
-  host/mara_host/cli/commands/run/_registry.py (146 lines)
+  host/mara_host/cli/commands/run/_registry.py (180 lines)
     [Fn] register(subparsers)
+
+  host/mara_host/cli/commands/run/ble.py (66 lines)
+    [Fn] cmd_ble(args)
+    [Fn] _run_ble_client(device_name, baudrate, log_level, log_dir)
 
   host/mara_host/cli/commands/run/can.py (71 lines)
     [Fn] cmd_can(args)
@@ -872,7 +876,7 @@ HOST (Python)
     [Fn] _run_serial_client(port, baudrate, log_level, log_dir)
     [Fn] _run_serial_shell(port, baudrate, log_level, log_dir)
 
-  host/mara_host/cli/commands/run/shell.py (321 lines)
+  host/mara_host/cli/commands/run/shell.py (330 lines)
     [Fn] cmd_shell(args)
     [Fn] log_event(topic, data)
     [Fn] handle_event(topic, data, style)
@@ -982,10 +986,10 @@ HOST (Python)
     [Fn] format_pin_status(gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
     [Fn] confirm(message, default)
 
-  host/mara_host/cli/context.py (233 lines)
+  host/mara_host/cli/context.py (253 lines)
     [Class] CLIContextConfig
     [Class] CLIContext
-      |-- __init__(self, port, baudrate, host, tcp_port, verbose)
+      |-- __init__(self, port, baudrate, host, tcp_port, ble_name, verbose)
       |-- from_args(cls, args)
       |-- client(self)
       |-- is_connected(self)
@@ -998,6 +1002,7 @@ HOST (Python)
       |-- imu_service(self)
       |-- ultrasonic_service(self)
       |-- pwm_service(self)
+      |-- wifi_service(self)
       |-- controller_service(self)
       `-- pid_service(self)
     [Fn] run_with_context(func)
@@ -1149,7 +1154,7 @@ HOST (Python)
 
   host/mara_host/config/pin_config.py (16 lines)
 
-  host/mara_host/config/robot_config.py (179 lines)
+  host/mara_host/config/robot_config.py (185 lines)
     [Class] TransportConfig
       `-- from_dict(cls, data)
     [Class] DriveConfig
@@ -2849,17 +2854,17 @@ HOST (Python)
 
   host/mara_host/mcp/__main__.py (3 lines)
 
-  host/mara_host/mcp/_generated_http.py (338 lines)
+  host/mara_host/mcp/_generated_http.py (441 lines)
     [Fn] create_generated_routes(runtime)
     [Fn] get_openai_function_schema()
 
-  host/mara_host/mcp/_generated_tools.py (367 lines)
+  host/mara_host/mcp/_generated_tools.py (448 lines)
     [Fn] get_tool_definitions()
 
-  host/mara_host/mcp/http_server.py (84 lines)
+  host/mara_host/mcp/http_server.py (89 lines)
     [Fn] create_http_app(runtime)
 
-  host/mara_host/mcp/runtime.py (395 lines)
+  host/mara_host/mcp/runtime.py (470 lines)
     [Class] EventType
     [Class] Event
       `-- to_dict(self)
@@ -2876,7 +2881,7 @@ HOST (Python)
       |-- get_recent_events(self, n, event_type)
       `-- get_command_stats(self)
     [Class] MaraRuntime
-      |-- __init__(self, port, host, tcp_port)
+      |-- __init__(self, port, host, ble_name, tcp_port)
       |-- state(self)
       |-- is_connected(self)
       |-- state_service(self)
@@ -2886,7 +2891,9 @@ HOST (Python)
       |-- stepper_service(self)
       |-- encoder_service(self)
       |-- imu_service(self)
+      |-- ultrasonic_service(self)
       |-- pwm_service(self)
+      |-- wifi_service(self)
       |-- client(self)
       |-- telemetry(self)
       |-- robot_loaded(self)
@@ -2894,16 +2901,18 @@ HOST (Python)
       |-- robot_context(self)
       |-- robot_model(self)
       |-- record_command(self, command, params, success, error, sent_at)
+      |-- sync_state_result(self, result)
       |-- get_snapshot(self)
       |-- get_freshness_report(self)
+      |-- get_health_report(self)
       |-- _on_imu(self, imu_data)
       |-- _on_encoder(self, encoder_data)
       `-- _on_state_change(self, new_state)
 
-  host/mara_host/mcp/server.py (40 lines)
-    [Fn] create_server(port, host, tcp_port)
+  host/mara_host/mcp/server.py (41 lines)
+    [Fn] create_server(port, host, ble_name, tcp_port)
 
-  host/mara_host/mcp/tool_schema.py (318 lines)
+  host/mara_host/mcp/tool_schema.py (386 lines)
     [Class] ToolParam
     [Class] ToolDef
     [Fn] get_tools_by_category(category)
@@ -3194,7 +3203,7 @@ HOST (Python)
     [Fn] model(params, v)
     [Fn] cost(params)
 
-  host/mara_host/robot.py (215 lines)
+  host/mara_host/robot.py (236 lines)
     [Class] Session
       |-- __init__(self, robot, name, log_dir)
       |-- start(self)
@@ -3202,7 +3211,7 @@ HOST (Python)
       |-- __enter__(self)
       `-- __exit__(self, exc_type, exc_val, exc_tb)
     [Class] Robot
-      |-- __init__(self, port, host, tcp_port, baudrate)
+      |-- __init__(self, port, host, ble_name, tcp_port, baudrate)
       |-- _setup(self)
       |-- client(self)
       |-- bus(self)
@@ -3324,7 +3333,7 @@ HOST (Python)
     [Class] EncoderHostModule
       `-- __init__(self, bus, client, defaults)
 
-  host/mara_host/services/__init__.py (62 lines)
+  host/mara_host/services/__init__.py (63 lines)
     [Fn] __getattr__(name)
     [Fn] __dir__()
 
@@ -3379,7 +3388,7 @@ HOST (Python)
       |-- _notify_progress(self, gen_type, message)
       `-- get_available_generators()
 
-  host/mara_host/services/control/__init__.py (116 lines)
+  host/mara_host/services/control/__init__.py (120 lines)
 
   host/mara_host/services/control/controller_service.py (329 lines)
     [Class] SignalKind
@@ -3391,7 +3400,7 @@ HOST (Python)
     [Class] ControllerService
       `-- __init__(self, client)
 
-  host/mara_host/services/control/encoder_service.py (120 lines)
+  host/mara_host/services/control/encoder_service.py (125 lines)
     [Class] EncoderConfig
     [Class] EncoderState
     [Class] EncoderService
@@ -3400,7 +3409,7 @@ HOST (Python)
       |-- counts_to_radians(self, encoder_id, counts)
       `-- counts_to_degrees(self, encoder_id, counts)
 
-  host/mara_host/services/control/gpio_service.py (150 lines)
+  host/mara_host/services/control/gpio_service.py (153 lines)
     [Class] GpioMode
     [Class] GpioChannel
     [Class] GpioService
@@ -3456,7 +3465,7 @@ HOST (Python)
     [Class] PwmService
       `-- configure(self, channel, frequency_hz, resolution)
 
-  host/mara_host/services/control/service_base.py (80 lines)
+  host/mara_host/services/control/service_base.py (109 lines)
     [Class] ConfigurableService
       |-- __init__(self, client)
       |-- _create_default_config(self, item_id)
@@ -3469,6 +3478,7 @@ HOST (Python)
       |-- get_all_states(self)
       |-- clear_configs(self)
       `-- clear_states(self)
+    [Fn] _handler(data)
 
   host/mara_host/services/control/servo_service.py (188 lines)
     [Class] ServoConfig
@@ -3504,7 +3514,7 @@ HOST (Python)
       |-- effective_steps_per_rev(self)
       `-- get_effective_steps_per_rev(self, stepper_id)
 
-  host/mara_host/services/control/ultrasonic_service.py (111 lines)
+  host/mara_host/services/control/ultrasonic_service.py (110 lines)
     [Class] UltrasonicConfig
     [Class] UltrasonicState
     [Class] UltrasonicService
@@ -3513,6 +3523,10 @@ HOST (Python)
       |-- cm_to_meters(cm)
       |-- cm_to_inches(cm)
       `-- update_reading(self, sensor_id, distance_cm)
+
+  host/mara_host/services/control/wifi_service.py (44 lines)
+    [Class] WifiService
+      `-- __init__(self, client)
 
   host/mara_host/services/pins/__init__.py (14 lines)
 
@@ -3590,7 +3604,7 @@ HOST (Python)
 
   host/mara_host/services/telemetry/__init__.py (12 lines)
 
-  host/mara_host/services/telemetry/telemetry_service.py (249 lines)
+  host/mara_host/services/telemetry/telemetry_service.py (265 lines)
     [Class] ImuData
       `-- from_dict(cls, data)
     [Class] EncoderData
@@ -3636,7 +3650,7 @@ HOST (Python)
 
   host/mara_host/services/transport/__init__.py (14 lines)
 
-  host/mara_host/services/transport/connection_service.py (117 lines)
+  host/mara_host/services/transport/connection_service.py (125 lines)
     [Class] TransportType
     [Class] ConnectionConfig
     [Class] ConnectionInfo
@@ -3698,13 +3712,15 @@ HOST (Python)
 
   host/mara_host/telemetry/telemetry_sections.py (76 lines)
 
-  host/mara_host/tools/build_firmware.py (180 lines)
+  host/mara_host/tools/build_firmware.py (235 lines)
     [Fn] parse_features(features_str, no_features_str)
     [Fn] features_to_flags(features)
     [Fn] run_pio(args, verbose, extra_flags)
     [Fn] generate()
     [Fn] build(env, verbose, features)
-    [Fn] upload(env, verbose, features, port)
+    [Fn] _find_esptool()
+    [Fn] _direct_upload(env, port, upload_baud)
+    [Fn] upload(env, verbose, features, port, upload_baud, direct)
     [Fn] test(native, device, filter_pattern, verbose)
     [Fn] clean(env)
     [Fn] list_features()
@@ -4290,6 +4306,14 @@ HOST (Python)
       |-- stop(self)
       `-- _inject_body(self, body)
 
+  host/tests/fakes/fake_mara_server.py (136 lines)
+    [Class] FakeMaraTcpServer
+      |-- __init__(self, host, port)
+      |-- start_in_thread(self)
+      |-- stop_threaded(self)
+      `-- _on_frame(self, body, writer)
+    [Fn] _runner()
+
   host/tests/fakes/fake_transport.py (20 lines)
     [Class] FakeTransport
       |-- __init__(self)
@@ -4333,6 +4357,34 @@ HOST (Python)
       |-- stop(self)
       `-- _send_bytes(self, data)
     [Fn] test_base_transport_send_frame_encodes()
+
+  host/tests/test_build_upload_cli.py (89 lines)
+    [Fn] _args()
+    [Fn] test_cmd_upload_passes_direct_options(monkeypatch)
+    [Fn] fake_upload(env, verbose, features, port, upload_baud, direct)
+    [Fn] test_cmd_upload_auto_retries_direct_on_failure(monkeypatch)
+    [Fn] fake_upload(env, verbose, features, port, upload_baud, direct)
+    [Fn] test_cmd_upload_does_not_retry_direct_without_port(monkeypatch)
+    [Fn] fake_upload(env, verbose, features, port, upload_baud, direct)
+
+  host/tests/test_cli_surface_parity.py (151 lines)
+    [Class] FakeCLIContext
+      `-- __init__(self)
+    [Fn] _patch_ctx(monkeypatch, fake_ctx)
+    [Fn] test_cli_gpio_write_uses_gpio_service(monkeypatch)
+    [Fn] test_cli_gpio_read_uses_gpio_service(monkeypatch)
+    [Fn] test_cli_servo_attach_uses_pin_as_channel(monkeypatch)
+    [Fn] test_cli_servo_set_with_pin_attaches_then_sets(monkeypatch)
+    [Fn] test_cli_servo_set_rejects_invalid_angle(monkeypatch)
+    [Fn] test_cli_encoder_attach_uses_encoder_service(monkeypatch)
+    [Fn] test_cli_encoder_read_uses_encoder_service(monkeypatch)
+    [Fn] test_cli_encoder_reset_uses_encoder_service(monkeypatch)
+    [Fn] test_cli_imu_read_uses_imu_service(monkeypatch)
+    [Fn] test_cli_imu_calibrate_converts_delay_to_ms(monkeypatch)
+    [Fn] test_cli_imu_set_bias_uses_imu_service(monkeypatch)
+    [Fn] test_cli_ultrasonic_attach_uses_service(monkeypatch)
+    [Fn] test_cli_ultrasonic_read_uses_service(monkeypatch)
+    [Fn] test_cli_parser_registers_key_control_commands()
 
   host/tests/test_client_async.py (119 lines)
     [Fn] _import_client()
@@ -4564,7 +4616,14 @@ HOST (Python)
     [Fn] _import_jsonl_logger()
     [Fn] test_jsonl_logger_writes_valid_json_lines(tmp_path)
 
-  host/tests/test_mcp_runtime.py (129 lines)
+  host/tests/test_mcp_http_runtime_surface.py (122 lines)
+    [Fn] test_http_health_endpoint_reports_runtime_status_without_robot()
+    [Fn] test_http_runtime_connect_state_and_disconnect_round_trip()
+    [Fn] test_http_read_endpoints_return_fake_ack_payloads()
+    [Fn] test_http_servo_attach_and_arm_flow_reaches_fake_firmware()
+    [Fn] test_http_state_endpoint_reflects_disarm_result_immediately()
+
+  host/tests/test_mcp_runtime.py (161 lines)
     [Class] TestStateStore
       |-- test_initial_state(self)
       |-- test_next_seq(self)
@@ -4585,7 +4644,8 @@ HOST (Python)
       |-- test_motor_service_property(self, runtime, mock_ctx)
       |-- test_record_command(self, runtime)
       |-- test_get_snapshot(self, runtime)
-      `-- test_get_freshness_report(self, runtime)
+      |-- test_get_freshness_report(self, runtime)
+      `-- test_get_health_report(self, runtime, mock_ctx)
 
   host/tests/test_metrics_and_benchmarks_artifacts.py (20 lines)
     [Fn] test_basic_metrics_outputs(tmp_path)
@@ -4698,6 +4758,10 @@ HOST (Python)
       `-- mock_servo_for_trajectory(self)
     [Fn] on_waypoint(index, waypoint)
 
+  host/tests/test_runtime_lifecycle_stress.py (50 lines)
+    [Fn] test_runtime_repeated_connect_disconnect_cycles_over_http()
+    [Fn] test_runtime_recovers_after_fake_server_restart()
+
   host/tests/test_schema.py (189 lines)
     [Class] TestSchemaPackageStructure
       |-- test_schema_package_exists(self)
@@ -4721,6 +4785,10 @@ HOST (Python)
     [Class] TestSchemaIntegration
       |-- test_schema_exports_match_init_all(self)
       `-- test_commands_package_exports_match_init_all(self)
+
+  host/tests/test_service_ack_payloads.py (63 lines)
+    [Class] FakeClient
+      `-- __init__(self)
 
   host/tests/test_session_replay.py (19 lines)
     [Fn] _import_replay()
@@ -4748,7 +4816,7 @@ HOST (Python)
     [Fn] test_bin_telem_unknown_section_is_ignored()
     [Fn] test_bin_telem_short_header_graceful()
 
-  host/tests/test_telemetry_service.py (256 lines)
+  host/tests/test_telemetry_service.py (301 lines)
     [Class] MockEventBus
       |-- __init__(self)
       |-- subscribe(self, topic, handler)
@@ -4777,10 +4845,15 @@ HOST (Python)
       |-- test_raw_callback(self, telemetry_service)
       |-- test_remove_callback(self, telemetry_service)
       |-- test_callback_exception_doesnt_break_service(self, telemetry_service)
-      `-- test_binary_telemetry_with_mock_packet(self, telemetry_service)
+      |-- test_binary_telemetry_with_mock_packet(self, telemetry_service)
+      |-- test_binary_telemetry_with_real_packet_shape(self, telemetry_service)
+      `-- test_json_telemetry_with_nested_firmware_shape(self, telemetry_service)
     [Class] MockImu
     [Class] MockEncoder
     [Class] MockPacket
+    [Class] RealImu
+    [Class] RealEncoder0
+    [Class] RealPacket
     [Class] TestTelemetrySnapshot
       |-- test_default_values(self)
       `-- test_with_data(self)
@@ -4970,7 +5043,7 @@ FIRMWARE/MCU (C++)
     [Fn] sendSimple(uint8_t msgType)
     [Fn] sendVersionResponse()
 
-  firmware/mcu/include/command/ModeManager.h (81 lines)
+  firmware/mcu/include/command/ModeManager.h (82 lines)
     [Fn] maraModeToString(MaraMode m)
     [Struct] SafetyConfig
     [Class] ModeManager
@@ -6058,7 +6131,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/telemetry/TelemetrySections.h (18 lines)
     [Fn] id(SectionId s)
 
-  firmware/mcu/include/transport/BleTransport.h (80 lines)
+  firmware/mcu/include/transport/BleTransport.h (105 lines)
     [Class] BleTransport
     [Fn] begin()
     [Fn] loop()
@@ -6074,7 +6147,7 @@ FIRMWARE/MCU (C++)
     [Struct] ProtoReassembly
     [Class] CanTransport
 
-  firmware/mcu/include/transport/MqttTransport.h (63 lines)
+  firmware/mcu/include/transport/MqttTransport.h (74 lines)
     [Class] MqttTransport
     [Fn] begin()
     [Fn] loop()
@@ -6085,6 +6158,10 @@ FIRMWARE/MCU (C++)
     [Fn] reconnect()
     [Fn] onMessage(char* topic, uint8_t* payload, unsigned int length)
     [Fn] publishDiscoveryResponse()
+    [Fn] connectTaskEntry(void* arg)
+    [Fn] connectTaskBody()
+    [Fn] nextReconnectDelayMs()
+    [Fn] retriesExhausted()
     [Class] MqttTransport
     [Fn] begin()
     [Fn] loop()
@@ -6146,7 +6223,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/command/MessageRouter.cpp (196 lines)
 
-  firmware/mcu/src/command/ModeManager.cpp (186 lines)
+  firmware/mcu/src/command/ModeManager.cpp (192 lines)
     [Fn] maraModeToString(MaraMode m)
     [Fn] lock(lock_)
     [Fn] lock(lock_)
@@ -6154,6 +6231,10 @@ FIRMWARE/MCU (C++)
     [Fn] lock(lock_)
     [Fn] lock(lock_)
     [Fn] lock(lock_)
+
+  firmware/mcu/src/command/WifiCommandHandler.cpp (114 lines)
+    [Fn] wifiStatusToString(wl_status_t status)
+    [Class] WifiCommandHandler
 
   firmware/mcu/src/command/decoders/ControlDecoders.cpp (75 lines)
 
@@ -6173,7 +6254,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/command/handlers/SensorHandler.cpp (81 lines)
 
-  firmware/mcu/src/command/handlers/ServoHandler.cpp (68 lines)
+  firmware/mcu/src/command/handlers/ServoHandler.cpp (77 lines)
 
   firmware/mcu/src/command/handlers/StepperHandler.cpp (43 lines)
 
@@ -6251,7 +6332,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/src/module/IdentityModule.cpp (67 lines)
     [Fn] publishIdentity(EventBus& bus)
 
-  firmware/mcu/src/module/LoggingModule.cpp (121 lines)
+  firmware/mcu/src/module/LoggingModule.cpp (119 lines)
 
   firmware/mcu/src/module/TelemetryModule.cpp (113 lines)
 
@@ -6306,7 +6387,7 @@ FIRMWARE/MCU (C++)
     [Class] SetupSensorsModule
     [Fn] getSetupSensorsModule()
 
-  firmware/mcu/src/setup/SetupTelemetry.cpp (196 lines)
+  firmware/mcu/src/setup/SetupTelemetry.cpp (245 lines)
     [Class] SetupTelemetryModule
     [Fn] getSetupTelemetryModule()
 
@@ -6320,7 +6401,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/transport/CanTransport.cpp (224 lines)
 
-  firmware/mcu/src/transport/MqttTransport.cpp (132 lines)
+  firmware/mcu/src/transport/MqttTransport.cpp (206 lines)
     [Fn] dumpHexPrefix(const uint8_t* data, unsigned len, unsigned maxBytes = 16)
     [Fn] t(topic)
 
@@ -6938,22 +7019,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     483
-  C++ Files:        249
-  Total Files:      732
+  Python Files:     491
+  C++ Files:        250
+  Total Files:      741
 
 DEFINITIONS
-  Classes:          875
+  Classes:          883
   Structs:          136
-  Functions:        1915
-  Methods:          2491
+  Functions:        1955
+  Methods:          2506
 
 LINES OF CODE
-  Python:           62,680
-  C++:              19,475
-  Total Code:       82,155
-  Blank Lines:      23,638
-  Comment Lines:    24,798
-  Total Lines:      130,591
+  Python:           64,022
+  C++:              19,762
+  Total Code:       83,784
+  Blank Lines:      23,935
+  Comment Lines:    24,862
+  Total Lines:      132,581
 
 ================================================================================

@@ -52,6 +52,7 @@ private:
     static void connectTaskEntry(void* arg);
     void connectTaskBody();
     uint32_t nextReconnectDelayMs() const;
+    bool retriesExhausted() const;
 
     WiFiClient wifi_;
     PubSubClient mqtt_;
@@ -79,6 +80,7 @@ private:
 
     static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
     static constexpr uint32_t MAX_RECONNECT_INTERVAL_MS = 60000;
+    static constexpr uint8_t MAX_RETRIES = 3;
 };
 
 #else // !HAS_MQTT_TRANSPORT || !HAS_WIFI

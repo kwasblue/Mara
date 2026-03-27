@@ -44,6 +44,7 @@ def show_transports() -> int:
     console.print("[bold cyan]Available Transports[/bold cyan]")
     console.print()
     console.print("  [green]serial[/green]  Connect via USB serial port")
+    console.print("  [green]ble[/green]     Connect via Bluetooth Classic SPP")
     console.print("  [green]tcp[/green]     Connect via TCP/WiFi")
     console.print("  [green]can[/green]     Connect via CAN bus")
     console.print("  [green]mqtt[/green]    Connect via MQTT broker")

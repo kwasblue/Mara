@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from mara_host.services.control.imu_service import ImuService
     from mara_host.services.control.ultrasonic_service import UltrasonicService
     from mara_host.services.control.pwm_service import PwmService
+    from mara_host.services.control.wifi_service import WifiService
     from mara_host.services.control.controller_service import ControllerService
     from mara_host.services.control.pid_service import PidService
     from mara_host.services.control.state_service import StateService
@@ -41,6 +42,7 @@ class CLIContextConfig:
     baudrate: int = 115200
     host: Optional[str] = None  # For TCP connections
     tcp_port: int = 3333
+    ble_name: Optional[str] = None  # For Bluetooth SPP connections
 
 
 class CLIContext:
@@ -63,6 +65,7 @@ class CLIContext:
         baudrate: Optional[int] = None,
         host: Optional[str] = None,
         tcp_port: Optional[int] = None,
+        ble_name: Optional[str] = None,
         verbose: bool = True,
     ):
         """
@@ -73,6 +76,7 @@ class CLIContext:
             baudrate: Serial baudrate (uses config default if None)
             host: TCP host (if using TCP instead of serial)
             tcp_port: TCP port number (uses config default if None)
+            ble_name: Bluetooth SPP device name (if using BLE instead of serial/TCP)
             verbose: If False, suppress client status messages
         """
         from mara_host.cli.cli_config import (
@@ -86,6 +90,7 @@ class CLIContext:
         self.baudrate = baudrate or get_baudrate()
         self.host = host
         self.tcp_port = tcp_port or get_tcp_port()
+        self.ble_name = ble_name
         self.verbose = verbose
 
         self._connection: Optional["ConnectionService"] = None
@@ -102,6 +107,7 @@ class CLIContext:
         self._imu_service: Optional["ImuService"] = None
         self._ultrasonic_service: Optional["UltrasonicService"] = None
         self._pwm_service: Optional["PwmService"] = None
+        self._wifi_service: Optional["WifiService"] = None
         self._controller_service: Optional["ControllerService"] = None
         self._pid_service: Optional["PidService"] = None
 
@@ -123,6 +129,7 @@ class CLIContext:
             baudrate=getattr(args, "baudrate", None),
             host=getattr(args, "tcp", None) or getattr(args, "host", None),
             tcp_port=getattr(args, "tcp_port", None),
+            ble_name=getattr(args, "ble_name", None),
             verbose=verbose,
         )
 
@@ -141,6 +148,14 @@ class CLIContext:
                 transport_type=TransportType.TCP,
                 host=self.host,
                 tcp_port=self.tcp_port,
+                verbose=self.verbose,
+            )
+        elif self.ble_name:
+            # Bluetooth SPP connection
+            config = ConnectionConfig(
+                transport_type=TransportType.BLE,
+                ble_name=self.ble_name,
+                baudrate=self.baudrate,
                 verbose=self.verbose,
             )
         else:
@@ -194,6 +209,7 @@ class CLIContext:
         self._imu_service = None
         self._ultrasonic_service = None
         self._pwm_service = None
+        self._wifi_service = None
         self._controller_service = None
         self._pid_service = None
 
@@ -289,6 +305,14 @@ class CLIContext:
             from mara_host.services.control.pwm_service import PwmService
             self._pwm_service = PwmService(self.client)
         return self._pwm_service
+
+    @property
+    def wifi_service(self) -> "WifiService":
+        """Get or create WifiService instance."""
+        if self._wifi_service is None:
+            from mara_host.services.control.wifi_service import WifiService
+            self._wifi_service = WifiService(self.client)
+        return self._wifi_service
 
     @property
     def controller_service(self) -> "ControllerService":

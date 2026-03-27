@@ -15,6 +15,7 @@ import logging
 class TransportType(Enum):
     """Supported transport types."""
     SERIAL = "serial"
+    BLE = "ble"
     TCP = "tcp"
     CAN = "can"
     MQTT = "mqtt"
@@ -32,6 +33,9 @@ class ConnectionConfig:
     # TCP options
     host: str = "192.168.4.1"
     tcp_port: int = 3333
+
+    # BLE options
+    ble_name: str = "ESP32-SPP"
 
     # CAN options
     can_channel: str = "can0"
@@ -110,7 +114,7 @@ class ConnectionService:
             heartbeat_interval = 10.0  # 10 seconds for TCP/WiFi
             connection_timeout = 15.0  # Longer timeout for WiFi
         else:
-            heartbeat_interval = 0.5   # 500ms for serial (fast, reliable)
+            heartbeat_interval = 0.5   # 500ms for serial/BLE (fast, reliable local links)
             connection_timeout = self.config.connection_timeout_s
 
         self.client = MaraClient(
@@ -157,6 +161,13 @@ class ConnectionService:
             return SerialTransport(
                 self.config.port,
                 baudrate=self.config.baudrate
+            )
+
+        elif self.config.transport_type == TransportType.BLE:
+            from mara_host.transport.bluetooth_transport import BluetoothSerialTransport
+            return BluetoothSerialTransport.auto(
+                device_name=self.config.ble_name,
+                baudrate=self.config.baudrate,
             )
 
         elif self.config.transport_type == TransportType.TCP:

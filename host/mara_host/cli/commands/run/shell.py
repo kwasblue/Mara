@@ -29,6 +29,9 @@ def cmd_shell(args: argparse.Namespace) -> int:
     if transport_type == "serial":
         console.print(f"  Transport: [green]Serial[/green]")
         console.print(f"  Port: [green]{args.port}[/green]")
+    elif transport_type == "ble":
+        console.print(f"  Transport: [green]Bluetooth SPP[/green]")
+        console.print(f"  Device: [green]{args.ble_name}[/green]")
     else:
         console.print(f"  Transport: [green]TCP[/green]")
         console.print(f"  Host: [green]{args.host}:{args.tcp_port}[/green]")
@@ -47,7 +50,13 @@ async def _run_interactive_shell(args: argparse.Namespace, log_level: int = logg
     # Create transport
     if args.transport == "serial":
         from mara_host.transport.serial_transport import SerialTransport
-        transport = SerialTransport(args.port, baudrate=115200)
+        transport = SerialTransport(args.port, baudrate=args.baudrate)
+    elif args.transport == "ble":
+        from mara_host.transport.bluetooth_transport import BluetoothSerialTransport
+        transport = BluetoothSerialTransport.auto(
+            device_name=args.ble_name,
+            baudrate=args.baudrate,
+        )
     else:
         from mara_host.transport.tcp_transport import AsyncTcpTransport
         transport = AsyncTcpTransport(host=args.host, port=args.tcp_port)

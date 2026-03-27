@@ -5,6 +5,7 @@ import argparse
 
 from ._common import add_logging_args, show_transports
 from .serial import cmd_serial
+from .ble import cmd_ble
 from .tcp import cmd_tcp
 from .can import cmd_can
 from .mqtt import cmd_mqtt
@@ -49,6 +50,30 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     add_logging_args(serial_p)
     serial_p.set_defaults(func=cmd_serial)
+
+    # ble
+    ble_p = run_sub.add_parser(
+        "ble",
+        help="Connect via Bluetooth Classic SPP",
+    )
+    ble_p.add_argument(
+        "--ble-name",
+        default="ESP32-SPP",
+        help="Bluetooth SPP device name to auto-discover (default: %(default)s)",
+    )
+    ble_p.add_argument(
+        "-b", "--baudrate",
+        type=int,
+        default=115200,
+        help="Baud rate hint (default: 115200)",
+    )
+    ble_p.add_argument(
+        "--shell",
+        action="store_true",
+        help="Launch interactive shell",
+    )
+    add_logging_args(ble_p)
+    ble_p.set_defaults(func=cmd_ble)
 
     # tcp
     tcp_p = run_sub.add_parser(
@@ -139,7 +164,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     shell_p.add_argument(
         "-t", "--transport",
-        choices=["serial", "tcp"],
+        choices=["serial", "ble", "tcp"],
         default="serial",
         help="Transport type (default: serial)",
     )
@@ -147,6 +172,17 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "-p", "--port",
         default=_get_port(),
         help="Serial port (for serial transport)",
+    )
+    shell_p.add_argument(
+        "-b", "--baudrate",
+        type=int,
+        default=115200,
+        help="Baud rate for serial/BLE transport (default: 115200)",
+    )
+    shell_p.add_argument(
+        "--ble-name",
+        default="ESP32-SPP",
+        help="Bluetooth SPP device name (for BLE transport)",
     )
     shell_p.add_argument(
         "-H", "--host",

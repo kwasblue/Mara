@@ -44,13 +44,14 @@ class TransportConfig:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TransportConfig":
+        transport_type = data.get("type", "serial")
         return cls(
-            type=data.get("type", "serial"),
+            type=transport_type,
             port=data.get("port"),
             baudrate=data.get("baudrate", 115200),
             host=data.get("host"),
-            tcp_port=data.get("port", 3333) if data.get("type") == "tcp" else 3333,
-            ble_name=data.get("ble_name"),
+            tcp_port=data.get("port", 3333) if transport_type == "tcp" else data.get("tcp_port", 3333),
+            ble_name=data.get("ble_name") or (data.get("port") if transport_type == "ble" else None),
         )
 
 
@@ -301,6 +302,11 @@ class RobotConfig:
             return Robot(
                 host=self.transport.host,
                 tcp_port=self.transport.tcp_port,
+            )
+        elif self.transport.type == "ble":
+            return Robot(
+                ble_name=self.transport.ble_name,
+                baudrate=self.transport.baudrate,
             )
         else:
             raise ValueError(f"Unsupported transport type: {self.transport.type}")

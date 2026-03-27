@@ -114,7 +114,7 @@ class Robot:
     Connection to a physical robot running ESP32 MCU Host firmware.
 
     This is the main entry point for the mara_host library. It handles:
-    - Transport setup (serial or TCP)
+    - Transport setup (serial, Bluetooth SPP, or TCP)
     - Protocol handshake and version verification
     - Connection monitoring and heartbeat
     - Event routing via EventBus
@@ -122,8 +122,9 @@ class Robot:
     Args:
         port: Serial port path (e.g., "/dev/ttyUSB0", "COM3")
         host: TCP host for WiFi connection (e.g., "192.168.4.1")
+        ble_name: Bluetooth Classic SPP device name (e.g., "ESP32-SPP")
         tcp_port: TCP port number (default: 3333)
-        baudrate: Serial baud rate (default: 115200)
+        baudrate: Serial/BLE baud rate hint (default: 115200)
 
     Example - Serial connection:
         robot = Robot("/dev/ttyUSB0")
@@ -131,6 +132,10 @@ class Robot:
 
     Example - TCP/WiFi connection:
         robot = Robot(host="192.168.4.1")
+        await robot.connect()
+
+    Example - Bluetooth Classic SPP connection:
+        robot = Robot(ble_name="ESP32-SPP")
         await robot.connect()
 
     Example - Context manager (recommended):
@@ -143,14 +148,17 @@ class Robot:
         self,
         port: Optional[str] = None,
         host: Optional[str] = None,
+        ble_name: Optional[str] = None,
         tcp_port: int = 3333,
         baudrate: int = 115200,
     ) -> None:
-        if not port and not host:
-            raise ValueError("Provide either port= (serial) or host= (TCP)")
+        selected = sum(bool(v) for v in (port, host, ble_name))
+        if selected != 1:
+            raise ValueError("Provide exactly one of port= (serial), host= (TCP), or ble_name= (Bluetooth SPP)")
 
         self._port = port
         self._host = host
+        self._ble_name = ble_name
         self._tcp_port = tcp_port
         self._baudrate = baudrate
 
@@ -175,6 +183,12 @@ class Robot:
         if self._port:
             from .transport.serial_transport import SerialTransport
             self._transport = SerialTransport(self._port, self._baudrate)
+        elif self._ble_name:
+            from .transport.bluetooth_transport import BluetoothSerialTransport
+            self._transport = BluetoothSerialTransport.auto(
+                device_name=self._ble_name,
+                baudrate=self._baudrate,
+            )
         else:
             from .transport.tcp_transport import AsyncTcpTransport
             self._transport = AsyncTcpTransport(self._host, self._tcp_port)
@@ -507,8 +521,15 @@ class Robot:
         return config.create_robot()
 
     def __repr__(self) -> str:
-        conn_type = "serial" if self._port else "tcp"
-        addr = self._port or f"{self._host}:{self._tcp_port}"
+        if self._port:
+            conn_type = "serial"
+            addr = self._port
+        elif self._ble_name:
+            conn_type = "ble"
+            addr = self._ble_name
+        else:
+            conn_type = "tcp"
+            addr = f"{self._host}:{self._tcp_port}"
         status = "connected" if self._connected else "disconnected"
         return f"Robot({conn_type}={addr!r}, {status})"
 
@@ -570,6 +591,11 @@ def _robot_from_dict(config: Dict[str, Any]) -> Robot:
         return Robot(
             host=transport.get("host", "192.168.4.1"),
             tcp_port=transport.get("port", 3333),
+        )
+    elif transport_type == "ble":
+        return Robot(
+            ble_name=transport.get("ble_name") or transport.get("port", "ESP32-SPP"),
+            baudrate=transport.get("baudrate", 115200),
         )
     else:
         raise ValueError(f"Unknown transport type: {transport_type}")

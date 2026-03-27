@@ -119,13 +119,14 @@ def create_http_app(runtime: MaraRuntime) -> Starlette:
 async def run_http_server(
     port: Optional[str] = None,
     host: Optional[str] = None,
+    ble_name: Optional[str] = None,
     tcp_port: int = 3333,
     http_port: int = 8000,
 ) -> None:
     """Run the HTTP server."""
     import uvicorn
 
-    runtime = MaraRuntime(port=port, host=host, tcp_port=tcp_port)
+    runtime = MaraRuntime(port=port, host=host, ble_name=ble_name, tcp_port=tcp_port)
     app = create_http_app(runtime)
 
     print(f"[MARA HTTP] Starting server on http://localhost:{http_port}")

@@ -14,6 +14,7 @@ Usage:
 from pathlib import Path
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 
@@ -169,9 +170,62 @@ def build(env: str, verbose: bool = False,
     return run_pio(args, verbose, features_to_flags(features))
 
 
+def _find_esptool() -> str | None:
+    """Find a usable esptool entrypoint."""
+    candidates = [
+        shutil.which("esptool.py"),
+        shutil.which("esptool"),
+        str(Path.home() / ".platformio" / "packages" / "tool-esptoolpy" / "esptool.py"),
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return candidate
+    return None
+
+
+def _direct_upload(env: str, port: str, upload_baud: int) -> int:
+    """Flash via esptool directly using PlatformIO build artifacts."""
+    build_dir = MCU_PROJECT / ".pio" / "build" / env
+    bootloader = build_dir / "bootloader.bin"
+    partitions = build_dir / "partitions.bin"
+    firmware = build_dir / "firmware.bin"
+    boot_app0 = Path.home() / ".platformio" / "packages" / "framework-arduinoespressif32" / "tools" / "partitions" / "boot_app0.bin"
+
+    missing = [str(p) for p in (bootloader, partitions, firmware, boot_app0) if not p.exists()]
+    if missing:
+        print("[build_firmware] Missing flash artifacts:")
+        for path in missing:
+            print(f"  - {path}")
+        return 1
+
+    esptool = _find_esptool()
+    if not esptool:
+        print("[build_firmware] Could not find esptool")
+        return 1
+
+    cmd = [
+        sys.executable, esptool,
+        "--chip", "esp32",
+        "--port", port,
+        "--baud", str(upload_baud),
+        "--before", "default_reset",
+        "--after", "hard_reset",
+        "write_flash", "-z",
+        "0x1000", str(bootloader),
+        "0x8000", str(partitions),
+        "0xe000", str(boot_app0),
+        "0x10000", str(firmware),
+    ]
+    print(f"[build_firmware] Running direct flash: {' '.join(cmd)}")
+    result = subprocess.run(cmd, cwd=MCU_PROJECT)
+    return result.returncode
+
+
 def upload(env: str, verbose: bool = False,
            features: dict[str, bool] | None = None,
-           port: str | None = None) -> int:
+           port: str | None = None,
+           upload_baud: int | None = None,
+           direct: bool = False) -> int:
     """Compile and upload firmware.
 
     Args:
@@ -179,13 +233,26 @@ def upload(env: str, verbose: bool = False,
         verbose: Verbose output
         features: Feature flags dict
         port: Serial port for upload (auto-detect if None)
+        upload_baud: If set, use direct esptool flashing at this baud rate
+        direct: Skip PlatformIO upload target and flash directly with esptool
     """
     print(f"[build_firmware] Uploading to environment: {env}")
     if port:
         print(f"[build_firmware] Upload port: {port}")
+    if upload_baud:
+        print(f"[build_firmware] Upload baud: {upload_baud}")
     if features:
         enabled = [k for k, v in features.items() if v]
         print(f"[build_firmware] Features: {', '.join(enabled)}")
+
+    if direct or upload_baud:
+        build_rc = build(env, verbose, features)
+        if build_rc != 0:
+            return build_rc
+        if not port:
+            print("[build_firmware] Direct flash requires --port")
+            return 1
+        return _direct_upload(env, port, upload_baud or 115200)
 
     args = ["run", "-e", env, "-t", "upload"]
     if port:

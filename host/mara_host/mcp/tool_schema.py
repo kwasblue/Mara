@@ -99,6 +99,36 @@ TOOLS: list[ToolDef] = [
         requires_arm=False,
         custom_handler=True,
     ),
+    ToolDef(
+        name="wifi_status",
+        description="Get current Wi‑Fi status including STA/AP mode and IPs.",
+        category="wifi",
+        service="wifi_service",
+        method="status",
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="wifi_join",
+        description="Join a Wi‑Fi network at runtime while keeping AP recovery available.",
+        category="wifi",
+        service="wifi_service",
+        method="join",
+        params=(
+            ToolParam("ssid", "string", "Wi‑Fi SSID"),
+            ToolParam("password", "string", "Wi‑Fi password"),
+            ToolParam("wait_for_connect", "boolean", "Wait for connection result before replying", required=False, default=True),
+            ToolParam("timeout_ms", "integer", "Join timeout in milliseconds", required=False, default=10000),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="wifi_disconnect",
+        description="Disconnect station Wi‑Fi while leaving AP recovery intact.",
+        category="wifi",
+        service="wifi_service",
+        method="disconnect",
+        requires_arm=False,
+    ),
 
     # ─────────────────────────────────────────────────────────────────────────
     # State Control Tools (use StateService for convergence with CLI/GUI)

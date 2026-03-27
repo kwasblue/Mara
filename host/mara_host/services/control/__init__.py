@@ -67,6 +67,9 @@ from mara_host.services.control.pwm_service import (
     PwmConfig,
     PwmState,
 )
+from mara_host.services.control.wifi_service import (
+    WifiService,
+)
 from mara_host.services.control.controller_service import (
     ControllerService,
     Signal as ControllerSignal,  # Deprecated, use SignalService.Signal
@@ -132,6 +135,8 @@ __all__ = [
     "PwmService",
     "PwmConfig",
     "PwmState",
+    # Wi-Fi control
+    "WifiService",
     # Signal bus service
     "SignalService",
     "Signal",

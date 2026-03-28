@@ -5,6 +5,7 @@
 #include "config/PinConfig.h"
 #include "core/Debug.h"
 
+#if HAS_I2C
 namespace {
 constexpr uint8_t REG_WHO_AM_I = 0x75;
 
@@ -30,6 +31,7 @@ const char* classifyI2cDevice(uint8_t address, uint8_t whoAmI, bool whoOk, bool 
     return "unknown";
 }
 }
+#endif
 
 void SensorHandler::handleImuRead(CommandContext& ctx) {
     JsonDocument resp;
@@ -58,6 +60,7 @@ void SensorHandler::handleImuRead(CommandContext& ctx) {
     ctx.sendAck("CMD_IMU_READ", ok, resp);
 }
 
+#if HAS_I2C
 void SensorHandler::handleI2cScan(CommandContext& ctx) {
     JsonDocument resp;
     auto* bus = imu_.hal();
@@ -104,6 +107,13 @@ void SensorHandler::handleI2cScan(CommandContext& ctx) {
     }
     ctx.sendAck("CMD_I2C_SCAN", true, resp);
 }
+#else
+void SensorHandler::handleI2cScan(CommandContext& ctx) {
+    JsonDocument resp;
+    resp["error"] = "i2c_disabled";
+    ctx.sendAck("CMD_I2C_SCAN", false, resp);
+}
+#endif
 
 void SensorHandler::handleUltrasonicAttach(JsonVariantConst payload, CommandContext& ctx) {
     int sensorId = payload["sensor_id"] | 0;

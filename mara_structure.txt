@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-27 18:13:57
-Total Files: 772
-Total Lines of Code: 87,340
+Generated: 2026-03-27 23:47:13
+Total Files: 787
+Total Lines of Code: 88,038
 ================================================================================
 
 
@@ -718,9 +718,9 @@ HOST (Python)
     [Fn] _template_full(name)
     [Fn] cmd_cli(args)
 
-  host/mara_host/cli/commands/control.py (402 lines)
+  host/mara_host/cli/commands/control.py (398 lines)
     [Fn] register(subparsers)
-    [Fn] add_port_arg(parser)
+    [Fn] add_transport_args(parser)
     [Fn] cmd_help(parser)
     [Fn] _load_graph_file(path_str)
 
@@ -3931,14 +3931,15 @@ HOST (Python)
 
   host/mara_host/tools/schema/control_graph/__init__.py (20 lines)
 
-  host/mara_host/tools/schema/control_graph/core.py (137 lines)
+  host/mara_host/tools/schema/control_graph/core.py (140 lines)
     [Class] ParamDef
       |-- to_dict(self)
       |-- int(cls, name)
       |-- float(cls, name)
       |-- string(cls, name)
       |-- boolean(cls, name)
-      `-- enum_param(cls, name)
+      |-- enum_param(cls, name)
+      `-- string_list(cls, name)
     [Class] GraphTypeDef
       `-- to_dict(self)
     [Class] SourceDef
@@ -3951,7 +3952,7 @@ HOST (Python)
   host/mara_host/tools/schema/control_graph/discovery.py (22 lines)
     [Fn] discover_defs(package_file, package_name, export_name)
 
-  host/mara_host/tools/schema/control_graph/schema.py (211 lines)
+  host/mara_host/tools/schema/control_graph/schema.py (241 lines)
     [Class] ControlGraphValidationError
     [Fn] _param_schema(param)
     [Fn] _kind_schema(defs, title)
@@ -3979,19 +3980,49 @@ HOST (Python)
 
   host/mara_host/tools/schema/control_graph/transforms/__init__.py (3 lines)
 
+  host/mara_host/tools/schema/control_graph/transforms/_abs.py (12 lines)
+
   host/mara_host/tools/schema/control_graph/transforms/_clamp.py (15 lines)
 
   host/mara_host/tools/schema/control_graph/transforms/_deadband.py (20 lines)
 
   host/mara_host/tools/schema/control_graph/transforms/_delta_gate.py (20 lines)
 
+  host/mara_host/tools/schema/control_graph/transforms/_derivative.py (19 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_hysteresis.py (25 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_integrator.py (31 lines)
+
   host/mara_host/tools/schema/control_graph/transforms/_lowpass.py (21 lines)
 
+  host/mara_host/tools/schema/control_graph/transforms/_map.py (37 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_median.py (12 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_negate.py (12 lines)
+
   host/mara_host/tools/schema/control_graph/transforms/_offset.py (19 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_oscillator.py (33 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_proportional.py (19 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_pulse.py (35 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_recall.py (24 lines)
 
   host/mara_host/tools/schema/control_graph/transforms/_scale.py (19 lines)
 
   host/mara_host/tools/schema/control_graph/transforms/_slew_rate.py (21 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_sum.py (18 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_tap.py (18 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_threshold.py (31 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_toggle.py (19 lines)
 
   host/mara_host/tools/schema/gpio_channels.py (73 lines)
     [Fn] validate_gpio_channels()
@@ -5409,10 +5440,11 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/config/WifiSecretsTemplate.h (3 lines)
 
-  firmware/mcu/include/control/ControlGraphRuntime.h (487 lines)
+  firmware/mcu/include/control/ControlGraphRuntime.h (810 lines)
     [Struct] ControlGraphSlotSummary
     [Class] ControlGraphRuntime
     [Struct] TransformRuntime
+    [Struct] SinkRuntime
     [Struct] SlotRuntime
     [Fn] upload(JsonVariantConst graph, const char*& error)
     [Fn] restore(const char*& error)
@@ -5431,9 +5463,13 @@ FIRMWARE/MCU (C++)
     [Fn] clearPersistedGraph_()
     [Fn] copyString_(char* dst, size_t dst_len, const char* src)
     [Fn] clamp_(float v, float lo, float hi)
+    [Fn] findTap_(SlotRuntime& slot, const char* name)
+    [Fn] storeTap_(SlotRuntime& slot, const char* name, float value)
+    [Fn] recallTap_(SlotRuntime& slot, const char* name, float fallback = 0.0f)
     [Fn] computePitchDeg_(const ImuManager::Sample& s)
     [Fn] computeRollDeg_(const ImuManager::Sample& s)
-    [Fn] parseSlot_(JsonObjectConst source, JsonArrayConst transforms, JsonObjectConst sink, SlotRuntime& out, const char*& error)
+    [Fn] parseSink_(JsonObjectConst sink, SinkRuntime& out, const char*& error)
+    [Fn] parseSlot_(JsonObjectConst source, JsonArrayConst transforms, JsonVariantConst sinkVariant, SlotRuntime& out, const char*& error)
     [Fn] readSource_(const SlotRuntime& slot, ImuManager* imu, float& value)
     [Fn] applyTransforms_(SlotRuntime& slot, float value, uint32_t now_ms, bool& should_emit)
     [Fn] writeSink_(SlotRuntime& slot, GpioManager* gpio, ServoManager* servo, float value)
@@ -6421,7 +6457,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/command/decoders/ObserverDecoders.cpp (31 lines)
 
-  firmware/mcu/src/command/handlers/ControlHandler.cpp (313 lines)
+  firmware/mcu/src/command/handlers/ControlHandler.cpp (314 lines)
 
   firmware/mcu/src/command/handlers/DcMotorHandler.cpp (83 lines)
 
@@ -7217,22 +7253,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     521
+  Python Files:     536
   C++ Files:        251
-  Total Files:      772
+  Total Files:      787
 
 DEFINITIONS
   Classes:          894
-  Structs:          147
-  Functions:        2045
-  Methods:          2530
+  Structs:          148
+  Functions:        2049
+  Methods:          2531
 
 LINES OF CODE
-  Python:           66,383
-  C++:              20,957
-  Total Code:       87,340
-  Blank Lines:      24,511
-  Comment Lines:    24,961
-  Total Lines:      136,812
+  Python:           66,757
+  C++:              21,281
+  Total Code:       88,038
+  Blank Lines:      24,550
+  Comment Lines:    25,002
+  Total Lines:      137,590
 
 ================================================================================

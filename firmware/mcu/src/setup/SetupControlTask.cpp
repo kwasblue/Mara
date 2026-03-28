@@ -8,6 +8,7 @@
 #include "motor/ServoManager.h"
 #include "motor/DcMotorManager.h"
 #include "motor/StepperManager.h"
+#include "hw/PwmManager.h"
 #include "loop/LoopFunctions.h"
 
 #include <Arduino.h>

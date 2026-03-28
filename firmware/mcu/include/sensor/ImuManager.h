@@ -87,7 +87,7 @@ public:
     bool begin(int, int, uint8_t = 0x68) { return false; }
     bool isOnline() const { return false; }
     uint8_t address() const { return 0x68; }
-    hal::II2c* hal() const { return nullptr; }
+    void* hal() const { return nullptr; }
     uint8_t whoAmI() const { return 0; }
     DeviceType deviceType() const { return DeviceType::Unknown; }
     bool readSample(Sample&) { return false; }

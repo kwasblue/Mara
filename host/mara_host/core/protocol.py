@@ -12,7 +12,7 @@ MSG_TELEMETRY_BIN    = 0x30
 MSG_CMD_JSON         = 0x50
 MSG_CMD_BIN          = 0x51  # Binary command for high-rate streaming
 
-_MAX_LEN = 65535  # 16-bit length
+_MAX_LEN = 4096  # Maximum payload size to prevent DoS (matches firmware)
 
 
 # Pre-computed CRC16-CCITT lookup table (polynomial 0x1021)

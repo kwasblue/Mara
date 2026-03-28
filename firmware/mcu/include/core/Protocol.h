@@ -6,6 +6,7 @@
 namespace Protocol {
 
 static constexpr uint8_t HEADER = 0xAA;
+static constexpr uint16_t MAX_FRAME_SIZE = 4096;  // Maximum payload size to prevent DoS
 
 enum MsgType : uint8_t {
     MSG_HEARTBEAT        = 0x01,
@@ -107,7 +108,8 @@ inline void extractFrames(std::vector<uint8_t>& buffer,
         uint8_t len_lo = buffer[i + 2];
         uint16_t length = static_cast<uint16_t>((len_hi << 8) | len_lo);
 
-        if (length < 1) {
+        if (length < 1 || length > MAX_FRAME_SIZE) {
+            // Invalid or oversized frame - skip this header byte
             ++i;
             continue;
         }

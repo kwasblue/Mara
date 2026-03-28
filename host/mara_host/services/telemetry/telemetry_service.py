@@ -3,15 +3,22 @@
 Telemetry service for subscribing to and processing robot data.
 
 Provides a unified interface for telemetry streams from the robot.
+Features:
+- Sequence number tracking for packet loss detection
+- IMU/encoder data processing with history buffers
+- Callback-based subscriptions for real-time updates
 """
 
 from dataclasses import dataclass, field
 from typing import Optional, Callable, Any, TYPE_CHECKING
 from collections import deque
+import logging
 import time
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
+
+_log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -84,12 +91,36 @@ class TelemetrySnapshot:
     raw_data: dict = field(default_factory=dict)
 
 
+@dataclass
+class TelemetryStats:
+    """Statistics for telemetry packet tracking."""
+
+    packets_received: int = 0
+    packets_lost: int = 0
+    last_seq: int = -1
+    gap_events: int = 0  # Number of gap detection events
+
+    @property
+    def loss_rate(self) -> float:
+        """Calculate packet loss rate as a percentage."""
+        total = self.packets_received + self.packets_lost
+        if total == 0:
+            return 0.0
+        return (self.packets_lost / total) * 100.0
+
+
 class TelemetryService:
     """
     Service for managing telemetry subscriptions and data.
 
     Subscribes to telemetry topics from the robot and provides
     a clean interface for accessing latest values or historical data.
+
+    Features:
+    - Sequence number tracking for packet loss detection
+    - Automatic gap detection and logging
+    - IMU and encoder history buffers
+    - Callback-based subscriptions
 
     Example:
         telem = TelemetryService(client)
@@ -103,6 +134,10 @@ class TelemetryService:
         # Get latest values
         imu = telem.get_latest_imu()
         snapshot = telem.get_snapshot()
+
+        # Check packet loss
+        stats = telem.get_stats()
+        print(f"Lost {stats.packets_lost} packets ({stats.loss_rate:.1f}%)")
 
         # Stop when done
         telem.stop()
@@ -139,9 +174,13 @@ class TelemetryService:
         self._encoder_callbacks: list[Callable[[EncoderData], None]] = []
         self._state_callbacks: list[Callable[[str], None]] = []
         self._raw_callbacks: list[Callable[[dict], None]] = []
+        self._packet_loss_callbacks: list[Callable[[int, int], None]] = []  # (expected, actual)
 
         # Subscribed state
         self._subscribed = False
+
+        # Packet tracking stats
+        self._stats = TelemetryStats()
 
     async def start(self, interval_ms: int = 50) -> None:
         """
@@ -213,6 +252,14 @@ class TelemetryService:
         """Register callback for raw telemetry data."""
         self._raw_callbacks.append(callback)
 
+    def on_packet_loss(self, callback: Callable[[int, int], None]) -> None:
+        """
+        Register callback for packet loss events.
+
+        Callback receives (expected_seq, actual_seq) when a gap is detected.
+        """
+        self._packet_loss_callbacks.append(callback)
+
     def remove_callback(self, callback: Callable) -> None:
         """Remove a registered callback."""
         for cb_list in [
@@ -220,6 +267,7 @@ class TelemetryService:
             self._encoder_callbacks,
             self._state_callbacks,
             self._raw_callbacks,
+            self._packet_loss_callbacks,
         ]:
             if callback in cb_list:
                 cb_list.remove(callback)
@@ -292,13 +340,83 @@ class TelemetryService:
             return list(history)
         return list(history)[-count:]
 
+    def get_stats(self) -> TelemetryStats:
+        """
+        Get telemetry statistics including packet loss.
+
+        Returns:
+            TelemetryStats with packets_received, packets_lost, loss_rate, etc.
+        """
+        return self._stats
+
+    def reset_stats(self) -> None:
+        """Reset telemetry statistics."""
+        self._stats = TelemetryStats()
+
     # -------------------------------------------------------------------------
     # Internal handlers
     # -------------------------------------------------------------------------
 
+    def _track_sequence(self, seq: int) -> None:
+        """
+        Track telemetry sequence number and detect packet loss.
+
+        MCU sends 16-bit sequence numbers that wrap around at 65535.
+        Gap detection accounts for wrap-around.
+        """
+        self._stats.packets_received += 1
+
+        if self._stats.last_seq < 0:
+            # First packet, initialize sequence tracking
+            self._stats.last_seq = seq
+            return
+
+        # Calculate expected next sequence (handles 16-bit wrap)
+        expected = (self._stats.last_seq + 1) & 0xFFFF
+
+        if seq != expected:
+            # Gap detected - calculate how many packets were lost
+            # Handle wrap-around: if seq < expected, it wrapped
+            if seq >= expected:
+                gap = seq - expected
+            else:
+                # Wrapped around: (max - expected) + seq + 1
+                gap = (0xFFFF - expected) + seq + 1
+
+            # Sanity check: if gap is huge, it's likely a reset not packet loss
+            if gap > 1000:
+                _log.info(
+                    f"Telemetry sequence reset detected: expected={expected}, got={seq}"
+                )
+            else:
+                self._stats.packets_lost += gap
+                self._stats.gap_events += 1
+                _log.warning(
+                    f"Telemetry gap: {gap} packets lost "
+                    f"(expected seq={expected}, got={seq}, "
+                    f"total_lost={self._stats.packets_lost})"
+                )
+
+                # Notify callbacks
+                for cb in self._packet_loss_callbacks:
+                    try:
+                        cb(expected, seq)
+                    except Exception:
+                        pass
+
+        self._stats.last_seq = seq
+
     def _on_binary_telemetry(self, packet: Any) -> None:
-        """Handle binary telemetry packet."""
+        """Handle binary telemetry packet with sequence tracking."""
         self._latest_timestamp = time.time()
+
+        # Track sequence numbers for packet loss detection
+        # Binary parser stores seq in packet.raw["seq"]
+        raw = getattr(packet, "raw", {})
+        if isinstance(raw, dict):
+            seq = raw.get("seq")
+            if seq is not None:
+                self._track_sequence(seq)
 
         # Parse IMU data from both the current binary parser model
         # (ax_g/gx_dps fields) and older/mock packet shapes (ax/gx fields).

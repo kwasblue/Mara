@@ -1,15 +1,31 @@
 # mara_host/logging/logger.py
+"""
+Logging infrastructure for MARA host.
+
+Provides:
+- Logger: Traditional rotating file logger with dedup
+- JsonlLogger: JSONL flight recorder for structured events
+- StructuredLogger: Context-aware logger with correlation IDs
+- MaraLogBundle: Convenience wrapper combining text and JSONL logging
+"""
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import os
 import threading
 import time
+import uuid
 from dataclasses import asdict, is_dataclass
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Dict
+
+# Context variable for correlation ID propagation across async calls
+_correlation_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "correlation_id", default=None
+)
 
 
 class DedupFilter(logging.Filter):
@@ -173,10 +189,190 @@ class JsonlLogger:
         return obj
 
 
+def get_correlation_id() -> Optional[str]:
+    """Get the current correlation ID from context."""
+    return _correlation_id.get()
+
+
+def set_correlation_id(correlation_id: Optional[str] = None) -> str:
+    """
+    Set the correlation ID in context.
+
+    Args:
+        correlation_id: ID to set, or None to generate a new UUID
+
+    Returns:
+        The correlation ID that was set
+    """
+    if correlation_id is None:
+        correlation_id = str(uuid.uuid4())[:8]  # Short UUID for readability
+    _correlation_id.set(correlation_id)
+    return correlation_id
+
+
+class StructuredLogger:
+    """
+    Structured logger with correlation IDs and subsystem tags.
+
+    Provides context-aware logging that enables request tracing across
+    async operations and subsystems.
+
+    Features:
+    - Automatic correlation ID propagation
+    - Subsystem tagging for filtering
+    - Structured metadata in each log entry
+    - JSONL output for machine parsing
+
+    Example:
+        log = StructuredLogger("commander", jsonl_path="logs/events.jsonl")
+
+        # Set correlation ID for a request
+        with log.correlation_context("req-123"):
+            log.info("command.sent", cmd_type="CMD_ARM", seq=42)
+            # ... async work ...
+            log.info("command.ack", seq=42, latency_ms=15.2)
+
+        # Later, grep by correlation_id to trace the full request
+    """
+
+    def __init__(
+        self,
+        subsystem: str,
+        jsonl_path: Optional[str] = None,
+        writer: Optional[JsonlLogger] = None,
+    ):
+        """
+        Initialize structured logger.
+
+        Args:
+            subsystem: Subsystem name (e.g., "commander", "telemetry")
+            jsonl_path: Path to JSONL file (creates new writer)
+            writer: Existing JsonlLogger to use (alternative to jsonl_path)
+        """
+        self._subsystem = subsystem
+
+        if writer is not None:
+            self._writer = writer
+        elif jsonl_path is not None:
+            self._writer = JsonlLogger(jsonl_path)
+        else:
+            self._writer = None
+
+    def log(
+        self,
+        event: str,
+        level: str = "info",
+        correlation_id: Optional[str] = None,
+        **context: Any,
+    ) -> None:
+        """
+        Log a structured event.
+
+        Args:
+            event: Event name (e.g., "cmd.sent", "telem.gap")
+            level: Log level (debug, info, warning, error)
+            correlation_id: Override correlation ID (uses context var if None)
+            **context: Additional context fields
+        """
+        if self._writer is None:
+            return
+
+        # Use provided correlation_id or get from context
+        cid = correlation_id or get_correlation_id()
+
+        entry: Dict[str, Any] = {
+            "subsystem": self._subsystem,
+            "level": level,
+        }
+
+        if cid:
+            entry["correlation_id"] = cid
+
+        # Merge context
+        entry.update(context)
+
+        self._writer.write(event, **entry)
+
+    def debug(self, event: str, **context: Any) -> None:
+        """Log debug-level event."""
+        self.log(event, level="debug", **context)
+
+    def info(self, event: str, **context: Any) -> None:
+        """Log info-level event."""
+        self.log(event, level="info", **context)
+
+    def warning(self, event: str, **context: Any) -> None:
+        """Log warning-level event."""
+        self.log(event, level="warning", **context)
+
+    def error(self, event: str, **context: Any) -> None:
+        """Log error-level event."""
+        self.log(event, level="error", **context)
+
+    def correlation_context(self, correlation_id: Optional[str] = None):
+        """
+        Context manager for correlation ID scope.
+
+        Args:
+            correlation_id: ID to use, or None to generate
+
+        Returns:
+            Context manager that sets/restores correlation ID
+
+        Example:
+            with log.correlation_context("req-42"):
+                log.info("start")
+                await do_work()
+                log.info("done")
+        """
+        return _CorrelationContext(correlation_id)
+
+    def child(self, subsystem: str) -> "StructuredLogger":
+        """
+        Create a child logger with a different subsystem tag.
+
+        Shares the same writer, so all logs go to the same file.
+
+        Args:
+            subsystem: New subsystem name
+
+        Returns:
+            New StructuredLogger with shared writer
+        """
+        return StructuredLogger(subsystem, writer=self._writer)
+
+    def close(self) -> None:
+        """Close the underlying writer if owned."""
+        if self._writer is not None:
+            self._writer.close()
+
+
+class _CorrelationContext:
+    """Context manager for correlation ID scope."""
+
+    def __init__(self, correlation_id: Optional[str] = None):
+        self._new_id = correlation_id
+        self._token: Optional[contextvars.Token] = None
+
+    def __enter__(self) -> str:
+        old_id = _correlation_id.get()
+        new_id = self._new_id if self._new_id else str(uuid.uuid4())[:8]
+        self._token = _correlation_id.set(new_id)
+        return new_id
+
+    def __exit__(self, *args) -> None:
+        if self._token is not None:
+            _correlation_id.reset(self._token)
+
+
 class MaraLogBundle:
     """
     Convenience wrapper: a human-readable rotating Logger + a JSONL event logger.
+
+    Provides both traditional text logging and structured JSONL logging.
+    The structured logger shares the same JSONL writer for unified output.
     """
+
     def __init__(
         self,
         name: str,
@@ -203,6 +399,21 @@ class MaraLogBundle:
             dedup_cooldown_s=dedup_cooldown_s,
         )
         self.events = JsonlLogger(path=str(Path(log_dir) / jsonl_file))
+
+        # Structured logger sharing the same JSONL writer
+        self.structured = StructuredLogger(name, writer=self.events)
+
+    def child_logger(self, subsystem: str) -> StructuredLogger:
+        """
+        Create a child structured logger for a specific subsystem.
+
+        Args:
+            subsystem: Subsystem name (e.g., "commander", "telemetry")
+
+        Returns:
+            StructuredLogger that writes to the same JSONL file
+        """
+        return StructuredLogger(subsystem, writer=self.events)
 
     def close(self) -> None:
         self.events.close()

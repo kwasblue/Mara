@@ -24,6 +24,7 @@ public:
             case CmdType::CLEAR_ESTOP:
             case CmdType::STOP:
             case CmdType::SET_MODE:
+            case CmdType::GET_STATE:
                 return true;
             default:
                 return false;
@@ -41,6 +42,7 @@ public:
             case CmdType::CLEAR_ESTOP:  handleClearEstop(ctx);        break;
             case CmdType::STOP:         handleStop(ctx);              break;
             case CmdType::SET_MODE:     handleSetMode(payload, ctx);  break;
+            case CmdType::GET_STATE:    handleGetState(ctx);          break;
             default: break;
         }
     }
@@ -58,4 +60,5 @@ private:
     void handleClearEstop(CommandContext& ctx);
     void handleStop(CommandContext& ctx);
     void handleSetMode(JsonVariantConst payload, CommandContext& ctx);
+    void handleGetState(CommandContext& ctx);
 };

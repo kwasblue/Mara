@@ -109,6 +109,25 @@
             "title": "transform",
             "oneOf": [
               {
+                "title": "abs",
+                "description": "Output absolute value of input.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "abs"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
                 "title": "clamp",
                 "description": "Clamp the input signal to a configured range.",
                 "type": "object",
@@ -191,6 +210,96 @@
                 "additionalProperties": false
               },
               {
+                "title": "derivative",
+                "description": "Compute rate of change of input (dv/dt). Useful for predictive/damping control.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "derivative"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "gain": {
+                        "type": "float",
+                        "description": "Multiplier applied to the derivative output.",
+                        "default": 1.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "hysteresis",
+                "description": "Schmitt trigger with separate on/off thresholds to prevent chattering.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "hysteresis"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "on_threshold": {
+                        "type": "float",
+                        "description": "Threshold to turn on (input must exceed this to go high).",
+                        "default": 0.5
+                      },
+                      "off_threshold": {
+                        "type": "float",
+                        "description": "Threshold to turn off (input must drop below this to go low).",
+                        "default": 0.3
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "integrator",
+                "description": "Accumulate input over time (integral). Includes anti-windup bounds.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "integrator"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "gain": {
+                        "type": "float",
+                        "description": "Multiplier applied to input before integrating.",
+                        "default": 1.0
+                      },
+                      "min": {
+                        "type": "float",
+                        "description": "Anti-windup lower bound for accumulated value.",
+                        "default": -1000.0
+                      },
+                      "max": {
+                        "type": "float",
+                        "description": "Anti-windup upper bound for accumulated value.",
+                        "default": 1000.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
                 "title": "lowpass",
                 "description": "First-order exponential smoothing filter.",
                 "type": "object",
@@ -218,6 +327,84 @@
                 "additionalProperties": false
               },
               {
+                "title": "map",
+                "description": "Linearly remap input from one range to another.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "map"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "in_min": {
+                        "type": "float",
+                        "description": "Input range minimum.",
+                        "default": 0.0
+                      },
+                      "in_max": {
+                        "type": "float",
+                        "description": "Input range maximum.",
+                        "default": 1.0
+                      },
+                      "out_min": {
+                        "type": "float",
+                        "description": "Output range minimum.",
+                        "default": 0.0
+                      },
+                      "out_max": {
+                        "type": "float",
+                        "description": "Output range maximum.",
+                        "default": 1.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "median",
+                "description": "Rolling median filter (5-sample window). Rejects outlier spikes better than lowpass.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "median"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "negate",
+                "description": "Flip the sign of the input value.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "negate"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
                 "title": "offset",
                 "description": "Add a constant offset to the input signal.",
                 "type": "object",
@@ -235,6 +422,139 @@
                       }
                     },
                     "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "oscillator",
+                "description": "Generate sine wave output. Input is ignored; output is offset + amplitude * sin(phase).",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "oscillator"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "frequency": {
+                        "type": "float",
+                        "description": "Oscillation frequency in Hz.",
+                        "default": 1.0,
+                        "minimum": 0.001,
+                        "unit": "Hz"
+                      },
+                      "amplitude": {
+                        "type": "float",
+                        "description": "Peak amplitude of the sine wave.",
+                        "default": 1.0
+                      },
+                      "offset": {
+                        "type": "float",
+                        "description": "DC offset added to the sine wave.",
+                        "default": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "proportional",
+                "description": "Proportional gain (P term). Multiplies input by gain factor.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "proportional"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "gain": {
+                        "type": "float",
+                        "description": "Proportional gain factor (Kp).",
+                        "default": 1.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "pulse",
+                "description": "Generate periodic pulses. Input is ignored.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "pulse"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "interval_ms": {
+                        "type": "float",
+                        "description": "Time between pulse starts in milliseconds.",
+                        "default": 1000.0,
+                        "minimum": 1.0,
+                        "unit": "ms"
+                      },
+                      "duration_ms": {
+                        "type": "float",
+                        "description": "Pulse duration in milliseconds.",
+                        "default": 100.0,
+                        "minimum": 1.0,
+                        "unit": "ms"
+                      },
+                      "value": {
+                        "type": "float",
+                        "description": "Output value during pulse (0 otherwise).",
+                        "default": 1.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "recall",
+                "description": "Retrieve value from a named tap. Replaces current value with tap value.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "recall"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Name of the tap to recall from (must match a tap defined earlier in the slot)."
+                      },
+                      "fallback": {
+                        "type": "float",
+                        "description": "Value to use if tap not found.",
+                        "default": 0.0
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "name"
+                    ]
                   }
                 },
                 "required": [
@@ -293,18 +613,147 @@
                   "type"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "title": "sum",
+                "description": "Sum values from multiple named taps. Enables MISO (multiple-input, single-output) patterns like PID.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "sum"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "inputs": {
+                        "type": "string_list",
+                        "description": "List of tap names to sum together (max 4)."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "inputs"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "tap",
+                "description": "Store current value to a named tap for recall by other transforms. Passes value through unchanged.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "tap"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Name of the tap (max 11 chars). Used by recall/sum to reference this value."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "name"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "threshold",
+                "description": "Binary output based on cutoff value.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "threshold"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "cutoff": {
+                        "type": "float",
+                        "description": "Threshold cutoff value.",
+                        "default": 0.5
+                      },
+                      "output_low": {
+                        "type": "float",
+                        "description": "Output value when input is below cutoff.",
+                        "default": 0.0
+                      },
+                      "output_high": {
+                        "type": "float",
+                        "description": "Output value when input is at or above cutoff.",
+                        "default": 1.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "toggle",
+                "description": "Flip output state each time input crosses threshold (rising edge).",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "toggle"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "threshold": {
+                        "type": "float",
+                        "description": "Threshold for detecting rising edge.",
+                        "default": 0.5
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
               }
             ],
             "discriminator": {
               "propertyName": "type",
               "mapping": {
+                "abs": "#/definitions/transform/abs",
                 "clamp": "#/definitions/transform/clamp",
                 "deadband": "#/definitions/transform/deadband",
                 "delta_gate": "#/definitions/transform/delta_gate",
+                "derivative": "#/definitions/transform/derivative",
+                "hysteresis": "#/definitions/transform/hysteresis",
+                "integrator": "#/definitions/transform/integrator",
                 "lowpass": "#/definitions/transform/lowpass",
+                "map": "#/definitions/transform/map",
+                "median": "#/definitions/transform/median",
+                "negate": "#/definitions/transform/negate",
                 "offset": "#/definitions/transform/offset",
+                "oscillator": "#/definitions/transform/oscillator",
+                "proportional": "#/definitions/transform/proportional",
+                "pulse": "#/definitions/transform/pulse",
+                "recall": "#/definitions/transform/recall",
                 "scale": "#/definitions/transform/scale",
-                "slew_rate": "#/definitions/transform/slew_rate"
+                "slew_rate": "#/definitions/transform/slew_rate",
+                "sum": "#/definitions/transform/sum",
+                "tap": "#/definitions/transform/tap",
+                "threshold": "#/definitions/transform/threshold",
+                "toggle": "#/definitions/transform/toggle"
               }
             }
           },
@@ -435,12 +884,154 @@
               "servo_angle": "#/definitions/sink/servo_angle"
             }
           }
+        },
+        "sinks": {
+          "type": "array",
+          "items": {
+            "title": "sink",
+            "oneOf": [
+              {
+                "title": "gpio_write",
+                "description": "Drive a logical GPIO output from a scalar signal.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "gpio_write"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "type": "int",
+                        "description": "Logical GPIO channel.",
+                        "minimum": 0
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "channel"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "motor_speed",
+                "description": "Drive a DC motor speed command from a scalar signal.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "motor_speed"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "motor_id": {
+                        "type": "int",
+                        "description": "Logical motor identifier.",
+                        "minimum": 0
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "motor_id"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "pwm_duty",
+                "description": "Drive a PWM duty-cycle command from a scalar signal.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "pwm_duty"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "channel": {
+                        "type": "int",
+                        "description": "Logical PWM channel identifier.",
+                        "minimum": 0
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "channel"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "servo_angle",
+                "description": "Drive a servo target angle in degrees.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "servo_angle"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "servo_id": {
+                        "type": "int",
+                        "description": "Logical servo identifier.",
+                        "minimum": 0
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "servo_id"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            ],
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "gpio_write": "#/definitions/sink/gpio_write",
+                "motor_speed": "#/definitions/sink/motor_speed",
+                "pwm_duty": "#/definitions/sink/pwm_duty",
+                "servo_angle": "#/definitions/sink/servo_angle"
+              }
+            }
+          },
+          "minItems": 1,
+          "maxItems": 4
         }
       },
       "required": [
         "id",
-        "source",
-        "sink"
+        "source"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "sink"
+          ]
+        },
+        {
+          "required": [
+            "sinks"
+          ]
+        }
       ]
     },
     "source": {
@@ -452,6 +1043,9 @@
       }
     },
     "transform": {
+      "abs": {
+        "type": "object"
+      },
       "clamp": {
         "type": "object"
       },
@@ -461,16 +1055,58 @@
       "delta_gate": {
         "type": "object"
       },
+      "derivative": {
+        "type": "object"
+      },
+      "hysteresis": {
+        "type": "object"
+      },
+      "integrator": {
+        "type": "object"
+      },
       "lowpass": {
         "type": "object"
       },
+      "map": {
+        "type": "object"
+      },
+      "median": {
+        "type": "object"
+      },
+      "negate": {
+        "type": "object"
+      },
       "offset": {
+        "type": "object"
+      },
+      "oscillator": {
+        "type": "object"
+      },
+      "proportional": {
+        "type": "object"
+      },
+      "pulse": {
+        "type": "object"
+      },
+      "recall": {
         "type": "object"
       },
       "scale": {
         "type": "object"
       },
       "slew_rate": {
+        "type": "object"
+      },
+      "sum": {
+        "type": "object"
+      },
+      "tap": {
+        "type": "object"
+      },
+      "threshold": {
+        "type": "object"
+      },
+      "toggle": {
         "type": "object"
       }
     },

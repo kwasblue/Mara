@@ -10,11 +10,13 @@ from typing import Optional, Protocol, Callable, Dict, Any, Tuple
 
 from mara_host.core.event_bus import EventBus
 from mara_host.core import protocol
-from .coms.connection_monitor import ConnectionMonitor
-from .coms.reliable_commander import ReliableCommander
+from .coms.connection_monitor import ConnectionMonitor, ConnectionState
+from .coms.reliable_commander import ReliableCommander, RetryConfig
 from mara_host.config.client_commands import RobotCommandsMixin
 from mara_host.telemetry.binary_parser import parse_telemetry_bin
 from mara_host.config.version import PROTOCOL_VERSION
+from mara_host.tools.schema.error_codes import ErrorCode, get_error_message
+from mara_host.tools.schema.commands import COMMANDS
 from .binary_mixin import BinaryCommandsMixin
 
 class HasSendBytes(Protocol):
@@ -94,12 +96,15 @@ class BaseMaraClient(BinaryCommandsMixin):
 
         # Reliable commander (uses lazy logs via property)
         # Handles both reliable (tracked) and streaming (fire-and-forget) commands
+        # Pass COMMANDS dict for per-command timeout overrides
         self.commander = ReliableCommander(
             send_func=self._send_json_cmd_internal,
             send_binary_func=self._send_binary_cmd,
             timeout_s=command_timeout_s,
             max_retries=max_retries,
             on_event=lambda event, data: self._log_event(event, data),
+            command_defs=COMMANDS,
+            retry_config=RetryConfig(),  # Uses defaults: 50ms base, 1s max, 10% jitter
         )
 
         self._heartbeat_interval_s = heartbeat_interval_s
@@ -434,13 +439,21 @@ class BaseMaraClient(BinaryCommandsMixin):
             seq = obj.get("seq", -1)
             ok = obj.get("ok", False)
             error = obj.get("error")
-            
+            error_code = obj.get("error_code")  # Structured error code (uint16)
+
             # Route to reliable commander
             self.commander.on_ack(seq, ok, error)
-            
+
+            # Enrich with parsed error code if present
+            if error_code is not None:
+                try:
+                    obj["error_code_enum"] = ErrorCode(error_code)
+                except ValueError:
+                    pass  # Unknown error code, keep raw value
+
             # Also publish to bus for other listeners
             self.bus.publish(f"cmd.{cmd_str}", obj)
-            
+
             # Publish state changes
             if "state" in obj:
                 self.bus.publish("state.changed", {"state": obj["state"]})
@@ -559,6 +572,49 @@ class BaseMaraClient(BinaryCommandsMixin):
         # Fire-and-forget through commander (binary or JSON)
         await self.commander.send_fire_and_forget(cmd_type, payload, binary=binary)
         return True, None
+
+    async def send_with_data(
+        self,
+        type_str: str,
+        payload: Optional[dict] = None,
+        timeout_s: float = 2.0,
+    ) -> tuple[bool, Optional[str], Optional[dict]]:
+        """
+        Send a command and return the full response data.
+
+        Unlike send_reliable which only returns (ok, error), this method
+        captures the full response payload from the MCU.
+
+        Returns:
+            (success, error_msg, response_data)
+        """
+        import asyncio
+
+        loop = asyncio.get_event_loop()
+        future: asyncio.Future[dict] = loop.create_future()
+
+        def on_response(msg: dict) -> None:
+            if not future.done():
+                future.set_result(msg)
+
+        # Subscribe to response on the bus
+        topic = f"cmd.{type_str}"
+        self.bus.subscribe(topic, on_response)
+
+        try:
+            # Send the command
+            ok, error = await self.send_reliable(type_str, payload)
+            if not ok:
+                return ok, error, None
+
+            # Wait for bus response with timeout
+            try:
+                response = await asyncio.wait_for(future, timeout=timeout_s)
+                return response.get("ok", False), response.get("error"), response
+            except asyncio.TimeoutError:
+                return False, "Response timeout", None
+        finally:
+            self.bus.unsubscribe(topic, on_response)
 
     # ---------- Convenience methods ----------
 

@@ -3,6 +3,7 @@
 
 #include "command/handlers/SafetyHandler.h"
 #include "core/Debug.h"
+#include "core/ErrorCodes.h"
 #include <cstring>
 
 void SafetyHandler::handleHeartbeat(CommandContext& ctx) {
@@ -21,10 +22,11 @@ void SafetyHandler::handleArm(CommandContext& ctx) {
     JsonDocument resp;
     resp["state"] = maraModeToString(mode_.mode());
     bool ok = (mode_.mode() == MaraMode::ARMED);
-    if (!ok) {
-        resp["error"] = "invalid_transition";
+    if (ok) {
+        ctx.sendAck("CMD_ARM", true, resp);
+    } else {
+        ctx.sendAck("CMD_ARM", false, resp, ErrorCode::INVALID_TRANSITION);
     }
-    ctx.sendAck("CMD_ARM", ok, resp);
 }
 
 void SafetyHandler::handleDisarm(CommandContext& ctx) {
@@ -34,10 +36,11 @@ void SafetyHandler::handleDisarm(CommandContext& ctx) {
     JsonDocument resp;
     resp["state"] = maraModeToString(mode_.mode());
     bool ok = (mode_.mode() == MaraMode::IDLE);
-    if (!ok) {
-        resp["error"] = "invalid_transition";
+    if (ok) {
+        ctx.sendAck("CMD_DISARM", true, resp);
+    } else {
+        ctx.sendAck("CMD_DISARM", false, resp, ErrorCode::INVALID_TRANSITION);
     }
-    ctx.sendAck("CMD_DISARM", ok, resp);
 }
 
 void SafetyHandler::handleActivate(CommandContext& ctx) {
@@ -47,10 +50,11 @@ void SafetyHandler::handleActivate(CommandContext& ctx) {
     JsonDocument resp;
     resp["state"] = maraModeToString(mode_.mode());
     bool ok = (mode_.mode() == MaraMode::ACTIVE);
-    if (!ok) {
-        resp["error"] = "invalid_transition";
+    if (ok) {
+        ctx.sendAck("CMD_ACTIVATE", true, resp);
+    } else {
+        ctx.sendAck("CMD_ACTIVATE", false, resp, ErrorCode::INVALID_TRANSITION);
     }
-    ctx.sendAck("CMD_ACTIVATE", ok, resp);
 }
 
 void SafetyHandler::handleDeactivate(CommandContext& ctx) {
@@ -77,10 +81,11 @@ void SafetyHandler::handleClearEstop(CommandContext& ctx) {
 
     JsonDocument resp;
     resp["state"] = maraModeToString(mode_.mode());
-    if (!cleared) {
-        resp["error"] = "cannot_clear";
+    if (cleared) {
+        ctx.sendAck("CMD_CLEAR_ESTOP", true, resp);
+    } else {
+        ctx.sendAck("CMD_CLEAR_ESTOP", false, resp, ErrorCode::CANNOT_CLEAR_ESTOP);
     }
-    ctx.sendAck("CMD_CLEAR_ESTOP", cleared, resp);
 }
 
 void SafetyHandler::handleStop(CommandContext& ctx) {
@@ -96,11 +101,11 @@ void SafetyHandler::handleSetMode(JsonVariantConst payload, CommandContext& ctx)
     DBG_PRINTF("[SAFETY] SET_MODE mode=%s\n", modeStr);
 
     bool ok = true;
-    const char* error = nullptr;
+    ErrorCode errorCode = ErrorCode::OK;
 
     if (mode_.isEstopped()) {
         ok = false;
-        error = "in_estop";
+        errorCode = ErrorCode::IN_ESTOP;
     } else if (strcmp(modeStr, "IDLE") == 0) {
         mode_.disarm();
     } else if (strcmp(modeStr, "ARMED") == 0) {
@@ -110,14 +115,31 @@ void SafetyHandler::handleSetMode(JsonVariantConst payload, CommandContext& ctx)
         mode_.activate();
     } else {
         ok = false;
-        error = "unsupported_mode";
+        errorCode = ErrorCode::INVALID_PARAMETER;
     }
 
     JsonDocument resp;
     resp["mode"] = modeStr;
     resp["state"] = maraModeToString(mode_.mode());
-    if (!ok && error) {
-        resp["error"] = error;
+    if (ok) {
+        ctx.sendAck("CMD_SET_MODE", true, resp);
+    } else {
+        ctx.sendAck("CMD_SET_MODE", false, resp, errorCode);
     }
-    ctx.sendAck("CMD_SET_MODE", ok, resp);
+}
+
+void SafetyHandler::handleGetState(CommandContext& ctx) {
+    DBG_PRINTLN("[SAFETY] GET_STATE");
+
+    MaraMode current = mode_.mode();
+    bool armed = (current == MaraMode::ARMED || current == MaraMode::ACTIVE);
+    bool active = (current == MaraMode::ACTIVE);
+    bool estop = mode_.isEstopped();
+
+    JsonDocument resp;
+    resp["mode"] = maraModeToString(current);
+    resp["armed"] = armed;
+    resp["active"] = active;
+    resp["estop"] = estop;
+    ctx.sendAck("CMD_GET_STATE", true, resp);
 }

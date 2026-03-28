@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Awaitable, Callable, Dict, Any, Optional
 
@@ -17,6 +18,26 @@ class CommandStatus(Enum):
 
 
 @dataclass
+class RetryConfig:
+    """Configuration for exponential backoff retry behavior."""
+
+    base_delay_s: float = 0.05  # Initial delay before first retry
+    max_delay_s: float = 1.0  # Maximum delay cap
+    jitter_factor: float = 0.1  # ±10% randomization to prevent thundering herd
+
+    def calculate_backoff(self, retry_n: int) -> float:
+        """
+        Calculate backoff delay for given retry attempt.
+
+        Uses exponential backoff with jitter:
+            delay = min(base * 2^retry_n, max) ± jitter
+        """
+        delay = min(self.base_delay_s * (2**retry_n), self.max_delay_s)
+        jitter = delay * self.jitter_factor * (random.random() * 2 - 1)
+        return max(0.0, delay + jitter)
+
+
+@dataclass
 class PendingCommand:
     seq: int
     cmd_type: str
@@ -25,6 +46,33 @@ class PendingCommand:
     last_sent_ns: int
     retries: int = 0
     future: Optional[asyncio.Future] = None
+    timeout_s: float = 0.25  # Per-command timeout (can override global default)
+    next_retry_ns: int = 0  # When to attempt next retry (0 = immediate)
+
+    @property
+    def ack_ns(self) -> Optional[int]:
+        """Time when ACK was received (set externally after ack)."""
+        return getattr(self, "_ack_ns", None)
+
+    @ack_ns.setter
+    def ack_ns(self, value: int) -> None:
+        self._ack_ns = value
+
+    @property
+    def latency_ms(self) -> float:
+        """End-to-end latency from first send to ACK in milliseconds."""
+        ack = self.ack_ns
+        if ack is not None:
+            return (ack - self.first_sent_ns) / 1e6
+        return -1.0
+
+    @property
+    def last_hop_latency_ms(self) -> float:
+        """Latency from last send (after retries) to ACK in milliseconds."""
+        ack = self.ack_ns
+        if ack is not None:
+            return (ack - self.last_sent_ns) / 1e6
+        return -1.0
 
 
 class ReliableCommander:
@@ -37,6 +85,12 @@ class ReliableCommander:
     Supports two modes:
     - Reliable: Full tracking with ACK, retries, and timeout handling
     - Streaming: Fire-and-forget with optional binary encoding for low latency
+
+    Features:
+    - Per-command timeout configuration via command_defs
+    - Exponential backoff with jitter on retries
+    - Latency tracking (first-send-to-ack and last-hop)
+    - Structured event emission for JSONL flight recorder
 
     Event emission for JSONL flight recorder:
         on_event("cmd.sent", {...})
@@ -56,24 +110,33 @@ class ReliableCommander:
         max_retries: int = 3,
         on_event: Optional[Callable[[Dict[str, Any]], None]] = None,
         send_binary_func: Optional[Callable[[str, Dict[str, Any]], Awaitable[None]]] = None,
+        command_defs: Optional[Dict[str, Dict[str, Any]]] = None,
+        retry_config: Optional[RetryConfig] = None,
     ):
         """
         Args:
             send_func:
                 Async function that sends JSON command and returns sequence number.
                 Signature: async send_func(cmd_type, payload, seq_override) -> seq
-            timeout_s: Time to wait for ack before retry
+            timeout_s: Default time to wait for ack before retry
             max_retries: Number of retries before giving up
             on_event: Optional callback for structured events (JSONL-friendly)
             send_binary_func:
                 Optional async function for binary-encoded commands (streaming).
                 Signature: async send_binary_func(cmd_type, payload) -> None
+            command_defs:
+                Optional dict of command definitions. If a command has a 'timeout_s'
+                field, it overrides the default timeout for that command.
+            retry_config:
+                Optional RetryConfig for exponential backoff. If None, uses defaults.
         """
         self.send_func = send_func
         self.send_binary_func = send_binary_func
         self.timeout_s = float(timeout_s)
         self.max_retries = int(max_retries)
         self._on_event = on_event
+        self._command_defs = command_defs or {}
+        self._retry_config = retry_config or RetryConfig()
 
         self._pending: Dict[int, PendingCommand] = {}
         self._update_task: Optional[asyncio.Task] = None
@@ -84,6 +147,52 @@ class ReliableCommander:
         self.acks_received = 0
         self.timeouts = 0
         self.retries = 0
+
+        # Latency tracking
+        self._latencies_ms: list[float] = []  # Recent latencies for percentile calculation
+        self._max_latency_samples = 1000
+
+    # ---------------- Helpers ----------------
+
+    def _get_command_timeout(self, cmd_type: str) -> float:
+        """
+        Get timeout for a specific command type.
+
+        Looks up command in command_defs for per-command timeout override.
+        Falls back to global default timeout_s.
+        """
+        cmd_def = self._command_defs.get(cmd_type, {})
+        return float(cmd_def.get("timeout_s", self.timeout_s))
+
+    def _record_latency(self, latency_ms: float) -> None:
+        """Record a latency sample for percentile tracking."""
+        self._latencies_ms.append(latency_ms)
+        if len(self._latencies_ms) > self._max_latency_samples:
+            self._latencies_ms.pop(0)
+
+    def get_latency_percentiles(self) -> Dict[str, float]:
+        """
+        Get latency percentiles (P50, P95, P99).
+
+        Returns:
+            Dict with keys 'p50', 'p95', 'p99', 'count', or empty if no samples.
+        """
+        if not self._latencies_ms:
+            return {"p50": -1, "p95": -1, "p99": -1, "count": 0}
+
+        sorted_latencies = sorted(self._latencies_ms)
+        count = len(sorted_latencies)
+
+        def percentile(p: float) -> float:
+            idx = int(count * p / 100)
+            return sorted_latencies[min(idx, count - 1)]
+
+        return {
+            "p50": percentile(50),
+            "p95": percentile(95),
+            "p99": percentile(99),
+            "count": count,
+        }
 
     # ---------------- Event emission ----------------
 
@@ -108,6 +217,9 @@ class ReliableCommander:
         """
         Send a command and optionally wait for ack.
 
+        Per-command timeout is looked up from command_defs if available,
+        otherwise falls back to the global default timeout_s.
+
         Returns:
             (success, error_msg) if wait_for_ack else (True, None)
         """
@@ -118,6 +230,9 @@ class ReliableCommander:
 
         self.commands_sent += 1
 
+        # Look up per-command timeout
+        cmd_timeout = self._get_command_timeout(cmd_type)
+
         # Emit sent event regardless of ack mode
         self._emit(
             "cmd.sent",
@@ -125,7 +240,7 @@ class ReliableCommander:
             cmd_type=cmd_type,
             wait_for_ack=wait_for_ack,
             sent_ns=sent_ns,
-            timeout_s=self.timeout_s,
+            timeout_s=cmd_timeout,
             max_retries=self.max_retries,
             pending=len(self._pending),
         )
@@ -143,6 +258,7 @@ class ReliableCommander:
             first_sent_ns=sent_ns,
             last_sent_ns=sent_ns,
             future=future,
+            timeout_s=cmd_timeout,  # Store per-command timeout
         )
 
         try:
@@ -213,8 +329,13 @@ class ReliableCommander:
 
         self.acks_received += 1
 
-        first_latency_ms = (ack_ns - cmd.first_sent_ns) * 1e-6
-        last_latency_ms = (ack_ns - cmd.last_sent_ns) * 1e-6
+        # Set ack timestamp for latency tracking
+        cmd.ack_ns = ack_ns
+        first_latency_ms = cmd.latency_ms
+        last_latency_ms = cmd.last_hop_latency_ms
+
+        # Record latency for percentile tracking
+        self._record_latency(first_latency_ms)
 
         self._emit(
             "cmd.ack",
@@ -228,6 +349,7 @@ class ReliableCommander:
             last_sent_ns=cmd.last_sent_ns,
             first_latency_ms=first_latency_ms,
             last_latency_ms=last_latency_ms,
+            timeout_s=cmd.timeout_s,
             pending=len(self._pending),
         )
 
@@ -259,7 +381,7 @@ class ReliableCommander:
             await asyncio.sleep(interval_s)
 
     async def _update(self) -> None:
-        """Handle retries and timeouts."""
+        """Handle retries and timeouts with exponential backoff."""
         now_ns = time.monotonic_ns()
 
         timed_out: list[int] = []
@@ -273,10 +395,13 @@ class ReliableCommander:
                 stale.append(seq)
                 continue
 
+            # Use per-command timeout
             age_s = (now_ns - cmd.last_sent_ns) * 1e-9
-            if age_s > self.timeout_s:
+            if age_s > cmd.timeout_s:
                 if cmd.retries < self.max_retries:
-                    to_retry.append(cmd)
+                    # Check if we've waited long enough for backoff
+                    if cmd.next_retry_ns == 0 or now_ns >= cmd.next_retry_ns:
+                        to_retry.append(cmd)
                 else:
                     timed_out.append(seq)
 
@@ -296,11 +421,15 @@ class ReliableCommander:
             if cmd.future and not cmd.future.done():
                 cmd.future.set_result((False, "STALE"))
 
-        # Handle retries
+        # Handle retries with exponential backoff
         for cmd in to_retry:
             cmd.retries += 1
             cmd.last_sent_ns = now_ns
             self.retries += 1
+
+            # Calculate next retry time with exponential backoff
+            backoff_s = self._retry_config.calculate_backoff(cmd.retries)
+            cmd.next_retry_ns = now_ns + int(backoff_s * 1e9)
 
             self._emit(
                 "cmd.retry",
@@ -308,6 +437,8 @@ class ReliableCommander:
                 cmd_type=cmd.cmd_type,
                 retry_n=cmd.retries,
                 sent_ns=now_ns,
+                backoff_s=backoff_s,
+                timeout_s=cmd.timeout_s,
                 pending=len(self._pending),
             )
 
@@ -329,7 +460,7 @@ class ReliableCommander:
                 retries=cmd.retries,
                 first_sent_ns=cmd.first_sent_ns,
                 last_sent_ns=cmd.last_sent_ns,
-                timeout_s=self.timeout_s,
+                timeout_s=cmd.timeout_s,
                 pending=len(self._pending),
             )
 
@@ -346,7 +477,13 @@ class ReliableCommander:
                 cmd.future.set_result((False, "CLEARED"))
         self._pending.clear()
     
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> Dict[str, Any]:
+        """
+        Get commander statistics including latency percentiles.
+
+        Returns:
+            Dict with send/ack/timeout/retry counts and latency percentiles.
+        """
         return {
             "commands_sent": self.commands_sent,
             "commands_sent_binary": self.commands_sent_binary,
@@ -354,4 +491,5 @@ class ReliableCommander:
             "timeouts": self.timeouts,
             "retries": self.retries,
             "pending": self.pending_count(),
+            "latency": self.get_latency_percentiles(),
         }

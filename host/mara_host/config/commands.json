@@ -1249,6 +1249,30 @@
       "description": "Stop all motion (soft stop).",
       "payload": {}
     },
+    "CMD_GET_STATE": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Query current MCU state (mode, armed, active, estop).",
+      "payload": {},
+      "response": {
+        "mode": {
+          "type": "string",
+          "description": "Current mode: IDLE, ARMED, ACTIVE, ESTOP"
+        },
+        "armed": {
+          "type": "bool",
+          "description": "True if motors enabled"
+        },
+        "active": {
+          "type": "bool",
+          "description": "True if motion commands accepted"
+        },
+        "estop": {
+          "type": "bool",
+          "description": "True if emergency stop active"
+        }
+      }
+    },
     "CMD_IMU_READ": {
       "kind": "cmd",
       "direction": "host->mcu",

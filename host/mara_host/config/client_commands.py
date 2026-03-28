@@ -493,6 +493,11 @@ class RobotCommandsMixin:
         payload: dict[str, Any] = {}
         await self.send_json_cmd('CMD_STOP', payload)
 
+    async def cmd_get_state(self) -> None:
+        """Query current MCU state (mode, armed, active, estop). (CMD_GET_STATE)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_GET_STATE', payload)
+
     async def cmd_imu_read(self) -> None:
         """Request a one-shot IMU snapshot and return it directly in the ACK payload. (CMD_IMU_READ)"""
         payload: dict[str, Any] = {}

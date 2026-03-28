@@ -11,6 +11,7 @@
 #include "core/Event.h"
 #include "core/Clock.h"
 #include "core/IntentBuffer.h"
+#include "core/ErrorCodes.h"
 #include "command/ModeManager.h"
 
 /**
@@ -89,6 +90,44 @@ struct CommandContext {
         publishJson(std::move(out));
     }
 
+    /// Send error response with structured error code
+    void sendError(const char* cmd, ErrorCode code) {
+        if (!wantAck) return;
+
+        JsonDocument resp;
+        resp["src"] = "mcu";
+        resp["cmd"] = cmd;
+        resp["ok"] = false;
+        resp["error"] = errorCodeToString(code);
+        resp["error_code"] = static_cast<uint16_t>(code);
+        resp["seq"] = seq;
+
+        std::string out;
+        serializeJson(resp, out);
+        storeAck(cmdType, seq, out);
+        publishJson(std::move(out));
+    }
+
+    /// Send ACK response with structured error code (for failed operations)
+    void sendAck(const char* cmd, bool ok, JsonDocument& resp, ErrorCode code) {
+        if (!wantAck) return;
+
+        resp["src"] = "mcu";
+        resp["cmd"] = cmd;
+        resp["ok"] = ok;
+        resp["seq"] = seq;
+        if (!ok) {
+            resp["error"] = errorCodeToString(code);
+            resp["error_code"] = static_cast<uint16_t>(code);
+        }
+
+        std::string out;
+        serializeJson(resp, out);
+
+        storeAck(cmdType, seq, out);
+        publishJson(std::move(out));
+    }
+
     // -------------------------------------------------------------------------
     // State Guards
     // -------------------------------------------------------------------------
@@ -97,7 +136,7 @@ struct CommandContext {
         if (mode.mode() == MaraMode::IDLE) {
             return true;
         }
-        sendError(cmdName, "not_idle");
+        sendError(cmdName, ErrorCode::INVALID_STATE);
         return false;
     }
 
@@ -105,7 +144,7 @@ struct CommandContext {
         if (mode.canMove()) {
             return true;
         }
-        sendError(cmdName, "not_armed");
+        sendError(cmdName, ErrorCode::NOT_ARMED);
         return false;
     }
 

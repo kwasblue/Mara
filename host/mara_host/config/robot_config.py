@@ -28,6 +28,12 @@ from typing import Any, Dict, Iterator, List, Optional, Union
 
 import yaml
 
+from .robot_config_schema import (
+    ROBOT_CONFIG_SCHEMA,
+    ConfigValidationError,
+    validate_config_with_context,
+)
+
 
 @dataclass
 class ValidationReport:
@@ -234,6 +240,7 @@ class RobotConfig:
         cls,
         path: Union[str, Path],
         profile: Optional[str] = None,
+        validate: bool = True,
     ) -> "RobotConfig":
         """
         Load configuration from YAML file.
@@ -242,6 +249,7 @@ class RobotConfig:
             path: Path to YAML configuration file
             profile: Optional profile name to apply (e.g., "bench", "field", "sim")
                      Looks for profiles/<profile>.yaml relative to config file
+            validate: Whether to perform JSON schema validation (default True)
 
         Returns:
             RobotConfig instance
@@ -249,6 +257,7 @@ class RobotConfig:
         Raises:
             FileNotFoundError: If config file doesn't exist
             yaml.YAMLError: If YAML is malformed
+            ConfigValidationError: If config fails schema validation
         """
         path = Path(path)
         with open(path, "r") as f:
@@ -262,11 +271,41 @@ class RobotConfig:
                     profile_data = yaml.safe_load(f) or {}
                 data = cls._merge_dicts(data, profile_data)
 
+        # Validate against JSON schema
+        if validate:
+            errors = validate_config_with_context(data)
+            if errors:
+                error_list = "\n  ".join(errors)
+                raise ConfigValidationError(
+                    f"Config validation failed for {path}:\n  {error_list}",
+                    errors=errors,
+                )
+
         return cls._from_dict(data)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RobotConfig":
-        """Create config from dictionary."""
+    def from_dict(cls, data: Dict[str, Any], validate: bool = True) -> "RobotConfig":
+        """
+        Create config from dictionary.
+
+        Args:
+            data: Configuration dictionary
+            validate: Whether to perform JSON schema validation (default True)
+
+        Returns:
+            RobotConfig instance
+
+        Raises:
+            ConfigValidationError: If config fails schema validation
+        """
+        if validate:
+            errors = validate_config_with_context(data)
+            if errors:
+                error_list = "\n  ".join(errors)
+                raise ConfigValidationError(
+                    f"Config validation failed:\n  {error_list}",
+                    errors=errors,
+                )
         return cls._from_dict(data)
 
     @classmethod

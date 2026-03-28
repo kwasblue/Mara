@@ -4,6 +4,7 @@ Configuration module for mara_host.
 
 Main classes:
     RobotConfig - First-class configuration object for robot setup
+    ConfigValidationError - Raised when config fails schema validation
 """
 
 from .robot_config import (
@@ -16,6 +17,11 @@ from .robot_config import (
     SensorConfig,
     SensorDegradationConfig,
 )
+from .robot_config_schema import (
+    ConfigValidationError,
+    ROBOT_CONFIG_SCHEMA,
+    validate_config_with_context,
+)
 
 __all__ = [
     "RobotConfig",
@@ -26,4 +32,7 @@ __all__ = [
     "SettingsConfig",
     "SensorConfig",
     "SensorDegradationConfig",
+    "ConfigValidationError",
+    "ROBOT_CONFIG_SCHEMA",
+    "validate_config_with_context",
 ]

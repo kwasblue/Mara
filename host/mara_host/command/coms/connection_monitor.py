@@ -179,10 +179,13 @@ class ConnectionMonitor:
                     self.on_disconnect()
                 except Exception:
                     pass
-        elif (
-            old_state == ConnectionState.RECONNECTING
-            and new_state == ConnectionState.CONNECTED
+        elif new_state == ConnectionState.CONNECTED and old_state in (
+            ConnectionState.RECONNECTING,
+            ConnectionState.CONNECTING,
+            ConnectionState.DISCONNECTED,
         ):
+            # Fire on_reconnect for any transition TO connected state
+            # (including first connection, for backward compatibility)
             if self.on_reconnect:
                 try:
                     self.on_reconnect()

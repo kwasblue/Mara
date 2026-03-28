@@ -39,6 +39,7 @@ def test_robot_config_builds_sensor_abstractions_and_topics():
 def test_robot_config_warns_for_degradable_required_sensor_and_bad_policy():
     cfg = RobotConfig.from_dict(
         {
+            "name": "testbot",
             "transport": {"type": "serial", "port": "/dev/null"},
             "sensors": {
                 "imu": {
@@ -46,7 +47,8 @@ def test_robot_config_warns_for_degradable_required_sensor_and_bad_policy():
                     "degradation": {"required": True, "allow_missing": True, "stale_after_ms": -5},
                 }
             },
-        }
+        },
+        validate=False,  # Intentionally invalid config for testing validation warnings
     )
 
     report = cfg.validate_report()
@@ -59,6 +61,7 @@ def test_robot_config_warns_for_degradable_required_sensor_and_bad_policy():
 def test_create_robot_preserves_config_reference_for_incremental_sensor_lookup():
     cfg = RobotConfig.from_dict(
         {
+            "name": "testbot",
             "transport": {"type": "serial", "port": "/dev/null"},
             "sensors": {"imu": {}},
         }

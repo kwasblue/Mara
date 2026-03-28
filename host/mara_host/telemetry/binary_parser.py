@@ -222,4 +222,15 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                 pkt.ctrl_slots = ControlSlotsTelemetry(slots=slots)
             continue
 
+        # Fallback: try auto-discovered sections from registry
+        # This enables 1-file extensibility for new telemetry sections
+        try:
+            from .section_registry import parse_unknown_section
+            parsed = parse_unknown_section(section_id, body, ts_ms)
+            if parsed is not None:
+                # Store in raw dict under section ID key
+                pkt.raw[f"section_0x{section_id:02X}"] = parsed
+        except ImportError:
+            pass
+
     return pkt

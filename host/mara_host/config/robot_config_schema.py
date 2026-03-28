@@ -191,7 +191,7 @@ SENSOR_DEGRADATION_SCHEMA: Dict[str, Any] = {
         },
         "fallback": {
             "type": "string",
-            "enum": ["none", "last_value", "default", "interpolate"],
+            "enum": ["none", "last_value", "hold_last", "default", "interpolate"],
             "default": "none",
             "description": "Fallback behavior when sensor fails",
         },

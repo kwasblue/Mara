@@ -6,6 +6,7 @@ from mara_host.config import RobotConfig
 def test_robot_sensors_facade_builds_interfaces_from_config():
     cfg = RobotConfig.from_dict(
         {
+            "name": "testbot",
             "transport": {"type": "serial", "port": "/dev/null"},
             "sensors": {
                 "imu": {"type": "imu", "degradation": {"required": True, "allow_missing": True}},
@@ -28,6 +29,7 @@ def test_robot_sensors_facade_builds_interfaces_from_config():
 def test_robot_sensors_facade_updates_health_from_telemetry():
     cfg = RobotConfig.from_dict(
         {
+            "name": "testbot",
             "transport": {"type": "serial", "port": "/dev/null"},
             "sensors": {
                 "imu": {"type": "imu"},
@@ -69,6 +71,7 @@ def test_robot_sensors_facade_updates_health_from_telemetry():
 def test_robot_sensors_facade_enforces_explicit_stale_after_ms_policy():
     cfg = RobotConfig.from_dict(
         {
+            "name": "testbot",
             "transport": {"type": "serial", "port": "/dev/null"},
             "sensors": {
                 "imu": {
@@ -108,6 +111,7 @@ def test_robot_sensors_facade_enforces_explicit_stale_after_ms_policy():
 def test_robot_sensors_facade_evaluates_control_graph_requirements_against_policy():
     cfg = RobotConfig.from_dict(
         {
+            "name": "testbot",
             "transport": {"type": "serial", "port": "/dev/null"},
             "sensors": {
                 "imu": {
@@ -141,6 +145,7 @@ def test_robot_sensors_facade_evaluates_control_graph_requirements_against_polic
 def test_robot_sensors_facade_builds_generic_interface_for_lidar_when_configured():
     cfg = RobotConfig.from_dict(
         {
+            "name": "testbot",
             "transport": {"type": "serial", "port": "/dev/null"},
             "sensors": {
                 "front_lidar": {"type": "lidar", "topic": "telemetry.lidar"},

@@ -63,6 +63,7 @@ def test_robot_control_graph_service_binds_sensor_policy_provider():
 
     robot = RobotConfig.from_dict(
         {
+            "name": "testbot",
             "transport": {"type": "serial", "port": "/dev/null"},
             "sensors": {"imu": {"type": "imu"}},
         }

@@ -151,6 +151,48 @@ class TestSchemaValidation:
         errors = validate_config_with_context(data)
         assert len(errors) >= 1
 
+    def test_transport_typo_field_is_rejected(self):
+        """Stable transport schema should reject typo fields instead of silently ignoring them."""
+        data = {
+            "name": "test",
+            "transport": {
+                "type": "tcp",
+                "host": "localhost",
+                "tcpport": 3333,
+            },
+        }
+        errors = validate_config_with_context(data)
+        assert len(errors) >= 1
+        assert any("additional properties" in e.lower() or "tcpport" in e.lower() for e in errors)
+
+    def test_settings_typo_field_is_rejected(self):
+        """Stable settings schema should reject typo fields."""
+        data = {
+            "name": "test",
+            "settings": {
+                "telem_interval_ms": 100,
+            },
+        }
+        errors = validate_config_with_context(data)
+        assert len(errors) >= 1
+        assert any("additional properties" in e.lower() or "telem_interval_ms" in e.lower() for e in errors)
+
+    def test_sensor_specific_fields_remain_extensible(self):
+        """Sensor schema should still allow sensor-specific extension fields."""
+        data = {
+            "name": "test",
+            "sensors": {
+                "ultrasonic": {
+                    "kind": "ultrasonic",
+                    "trig_pin": 25,
+                    "echo_pin": 26,
+                    "custom_gain": 3,
+                },
+            },
+        }
+        errors = validate_config_with_context(data)
+        assert errors == []
+
     def test_invalid_drive_wheel_radius(self):
         """Wheel radius must be positive."""
         data = {
@@ -277,9 +319,30 @@ class TestRobotConfigLoad:
             RobotConfig.from_dict({"invalid": "config"})
 
     def test_from_dict_skip_validation(self):
-        """from_dict() can skip validation."""
+        """from_dict() can skip schema validation for trusted/incremental callers."""
         config = RobotConfig.from_dict({"invalid": "config"}, validate=False)
         assert config.name == "robot"
+
+    def test_validate_report_focuses_on_semantics_after_schema(self):
+        """validate_report() should focus on semantic/warning checks, not duplicate schema basics."""
+        config = RobotConfig.from_dict(
+            {
+                "name": "test_robot",
+                "features": {"motion": True},
+                "sensors": {
+                    "imu": {
+                        "kind": "imu",
+                        "enabled": False,
+                        "degradation": {"required": True},
+                    }
+                },
+            }
+        )
+
+        report = config.validate_report()
+        assert report.errors == []
+        assert any("motion is enabled but no drive config" in w for w in report.warnings)
+        assert any("disabled but marked required" in w for w in report.warnings)
 
 
 class TestExistingConfigs:
@@ -309,12 +372,29 @@ class TestConfigValidationError:
     """Test ConfigValidationError exception."""
 
     def test_error_has_errors_list(self):
-        """ConfigValidationError contains errors list."""
+        """ConfigValidationError contains errors list and formats them for display."""
         err = ConfigValidationError("Test error", errors=["error1", "error2"])
         assert err.errors == ["error1", "error2"]
-        assert "Test error" in str(err)
+        rendered = str(err)
+        assert "Test error" in rendered
+        assert "- error1" in rendered
+        assert "- error2" in rendered
 
     def test_error_without_errors_list(self):
         """ConfigValidationError works without errors list."""
         err = ConfigValidationError("Test error")
         assert err.errors == []
+        assert str(err) == "Test error"
+
+    def test_load_error_includes_summary_and_bullets(self, tmp_path):
+        """Load-time errors should render a concise summary plus bulletized details."""
+        config_path = tmp_path / "robot.yaml"
+        config_path.write_text(yaml.dump({"transport": {"type": "tcp"}}))
+
+        with pytest.raises(ConfigValidationError) as exc_info:
+            RobotConfig.load(config_path)
+
+        rendered = str(exc_info.value)
+        assert "Config validation failed for" in rendered
+        assert "error" in rendered.lower()
+        assert "- 'name' is a required property" in rendered or "- name:" in rendered

@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 # Transport configuration schema
 TRANSPORT_SCHEMA: Dict[str, Any] = {
     "type": "object",
+    "additionalProperties": False,
     "properties": {
         "type": {
             "type": "string",
@@ -68,6 +69,7 @@ TRANSPORT_SCHEMA: Dict[str, Any] = {
 # Drive configuration schema
 DRIVE_SCHEMA: Dict[str, Any] = {
     "type": "object",
+    "additionalProperties": False,
     "properties": {
         "type": {
             "type": "string",
@@ -114,6 +116,7 @@ FEATURES_SCHEMA: Dict[str, Any] = {
 # Encoder defaults schema
 ENCODER_DEFAULTS_SCHEMA: Dict[str, Any] = {
     "type": "object",
+    "additionalProperties": False,
     "properties": {
         "encoder_id": {
             "type": "integer",
@@ -140,6 +143,7 @@ ENCODER_DEFAULTS_SCHEMA: Dict[str, Any] = {
 # Settings configuration schema
 SETTINGS_SCHEMA: Dict[str, Any] = {
     "type": "object",
+    "additionalProperties": False,
     "properties": {
         "telemetry_interval_ms": {
             "type": "integer",
@@ -168,6 +172,7 @@ SETTINGS_SCHEMA: Dict[str, Any] = {
 # Sensor degradation configuration schema
 SENSOR_DEGRADATION_SCHEMA: Dict[str, Any] = {
     "type": "object",
+    "additionalProperties": False,
     "properties": {
         "required": {
             "type": "boolean",
@@ -364,8 +369,15 @@ class ConfigValidationError(Exception):
     """Raised when robot config fails schema validation."""
 
     def __init__(self, message: str, errors: List[str] = None):
-        super().__init__(message)
-        self.errors = errors or []
+        self.summary = message.strip()
+        self.errors = list(errors or [])
+        super().__init__(self.__str__())
+
+    def __str__(self) -> str:
+        if not self.errors:
+            return self.summary
+        bullet_list = "\n".join(f"  - {err}" for err in self.errors)
+        return f"{self.summary}\n{bullet_list}"
 
 
 __all__ = [

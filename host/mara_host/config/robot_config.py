@@ -275,9 +275,8 @@ class RobotConfig:
         if validate:
             errors = validate_config_with_context(data)
             if errors:
-                error_list = "\n  ".join(errors)
                 raise ConfigValidationError(
-                    f"Config validation failed for {path}:\n  {error_list}",
+                    f"Config validation failed for {path} ({len(errors)} error{'s' if len(errors) != 1 else ''})",
                     errors=errors,
                 )
 
@@ -301,9 +300,8 @@ class RobotConfig:
         if validate:
             errors = validate_config_with_context(data)
             if errors:
-                error_list = "\n  ".join(errors)
                 raise ConfigValidationError(
-                    f"Config validation failed:\n  {error_list}",
+                    f"Config validation failed ({len(errors)} error{'s' if len(errors) != 1 else ''})",
                     errors=errors,
                 )
         return cls._from_dict(data)
@@ -344,53 +342,19 @@ class RobotConfig:
     # --- Instance Methods ---
 
     def validate_report(self) -> ValidationReport:
-        """Validate configuration and return structured errors and warnings."""
+        """
+        Validate configuration and return structured errors and warnings.
+
+        JSON schema handles structural constraints (types, required fields, enums,
+        numeric ranges) during load/from_dict validation. This report is kept for
+        semantic checks, hardware-aware warnings, and cross-field policy checks
+        that are awkward or undesirable to encode directly in the schema.
+        """
         report = ValidationReport()
-
-        # Transport validation
-        if self.transport.type == "serial":
-            if not self.transport.port:
-                report.errors.append("transport.port is required for serial connection")
-        elif self.transport.type == "tcp":
-            if not self.transport.host:
-                report.errors.append("transport.host is required for TCP connection")
-            if self.transport.tcp_port <= 0 or self.transport.tcp_port > 65535:
-                report.errors.append("transport.tcp_port must be between 1 and 65535")
-        elif self.transport.type == "ble":
-            if not self.transport.ble_name:
-                report.errors.append("transport.ble_name is required for BLE connection")
-        elif self.transport.type not in ("serial", "tcp", "ble"):
-            report.errors.append(
-                f"transport.type must be 'serial', 'tcp', or 'ble', got '{self.transport.type}'"
-            )
-
-        if self.transport.baudrate <= 0:
-            report.errors.append("transport.baudrate must be positive")
-
-        # Drive validation
-        if self.drive:
-            if self.drive.wheel_radius <= 0:
-                report.errors.append("drive.wheel_radius must be positive")
-            if self.drive.wheel_base <= 0:
-                report.errors.append("drive.wheel_base must be positive")
-            if self.drive.max_linear_vel <= 0:
-                report.errors.append("drive.max_linear_vel must be positive")
-            if self.drive.max_angular_vel <= 0:
-                report.errors.append("drive.max_angular_vel must be positive")
-
-        # Settings validation
-        if self.settings.telemetry_interval_ms < 10:
-            report.errors.append("settings.telemetry_interval_ms should be >= 10ms")
-        if self.settings.control_rate_hz <= 0:
-            report.errors.append("settings.control_rate_hz must be positive")
-        if self.settings.pwm_freq_hz <= 0:
-            report.errors.append("settings.pwm_freq_hz must be positive")
 
         # Feature coherence
         if self.features.motion and not self.drive:
             report.warnings.append("features.motion is enabled but no drive config is defined")
-        if self.features.encoder and self.encoder_defaults.counts_per_rev is not None and self.encoder_defaults.counts_per_rev <= 0:
-            report.errors.append("encoder_defaults.counts_per_rev must be positive when provided")
 
         # Best-effort boot-pin checks for host-managed component configs
         for path, pin in self._iter_config_pins(self.raw):
@@ -401,8 +365,8 @@ class RobotConfig:
 
         # Sensor abstraction + graceful degradation checks
         for sensor in self.sensors.values():
-            if sensor.transport not in {"telemetry", "command", "service"}:
-                report.errors.append(f"sensors.{sensor.name}.transport must be telemetry, command, or service")
+            # Keep policy-shape sanity here too so validate=False callers still get
+            # meaningful errors from validate_report() on intentionally unvalidated configs.
             if sensor.degradation.stale_after_ms is not None and sensor.degradation.stale_after_ms <= 0:
                 report.errors.append(f"sensors.{sensor.name}.degradation.stale_after_ms must be positive")
             if sensor.degradation.required and sensor.degradation.allow_missing:

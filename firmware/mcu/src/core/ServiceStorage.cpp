@@ -89,6 +89,7 @@ void ServiceStorage::initRouter() {
 void ServiceStorage::initCommands() {
     commands = new CommandRegistry(bus, mode, motion);
     commands->setIntentBuffer(&intents);
+    commands->setPersistence(&persistence);
     commands->setHandlerRegistry(&HandlerRegistry::instance());  // Explicit wiring
 
     // Create handlers
@@ -191,6 +192,7 @@ ServiceContext ServiceStorage::buildContext() {
     ctx.router    = router;
     ctx.commands  = commands;
     ctx.telemetry = &telemetry;
+    ctx.persistence = &persistence;
 
     // Tier 5
     ctx.control = control;

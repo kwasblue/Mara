@@ -30,9 +30,9 @@ ControlModule::ControlModule(
 }
 
 void ControlModule::setup() {
-    const char* restore_error = nullptr;
-    graph_.restore(restore_error);
-    (void)restore_error;
+    // Intentionally do not restore persisted control graphs here.
+    // The first MCU persistence slice is diagnostics/config-mirror only;
+    // operational graphs must be re-uploaded explicitly by an operator.
 
     // Register JSON telemetry providers for control system visibility
     if (telemetry_) {

@@ -42,8 +42,8 @@ SECTION_INFO = {
     0x01: {
         "name": "TELEM_IMU",
         "description": "IMU sensor data (accel, gyro, temp)",
-        "format": "online(u8) ok(u8) ax(i16) ay(i16) az(i16) gx(i16) gy(i16) gz(i16) temp(i16)",
-        "size": 18,
+        "format": "online(u8) ok(u8) ax_mg(i16) ay_mg(i16) az_mg(i16) gx_mdps(i16) gy_mdps(i16) gz_mdps(i16) temp_c_centi(i16)",
+        "size": 16,
     },
     0x02: {
         "name": "TELEM_ULTRASONIC",
@@ -66,7 +66,7 @@ SECTION_INFO = {
     0x05: {
         "name": "TELEM_STEPPER0",
         "description": "Stepper motor 0 state",
-        "format": "motor_id(i8) attached(u8) enabled(u8) moving(u8) dir(u8) steps(i32) speed(i16)",
+        "format": "motor_id(i8) attached(u8) enabled(u8) moving(u8) dir_forward(u8) last_cmd_steps(i32) speed_centi(i16)",
         "size": 11,
     },
     0x06: {
@@ -79,30 +79,30 @@ SECTION_INFO = {
         "name": "TELEM_PERF",
         "description": "MCU performance and watchdog metrics",
         "format": "last_fault(u8) hb_count(u32) hb_timeouts(u32) hb_recoveries(u32) hb_max_gap_ms(u32) motion_cmds(u32) motion_timeouts(u32) motion_max_gap_ms(u32) iterations(u32) overruns(u32) avg_total_us(u16) peak_total_us(u16) pkt_last_bytes(u16) pkt_max_bytes(u16) pkt_sent(u32) pkt_bytes(u32) pkt_dropped_sections(u32) pkt_last_sections(u8) pkt_max_sections(u8) pkt_buffered(u8)",
-        "size": 56,
+        "size": 60,
     },
     0x08: {
         "name": "TELEM_SENSOR_HEALTH",
         "description": "Compact sensor health and degraded-state summary",
-        "format": "count(u8) [sensor_kind(u8) sensor_id(u8) flags(u8) detail(u8)]*",
+        "format": "",
         "size": None,
     },
     0x10: {
         "name": "TELEM_CTRL_SIGNALS",
         "description": "Control signal bus values",
-        "format": "count(u16) [id(u16) value(f32) ts_ms(u32)]*",
+        "format": "",
         "size": None,
     },
     0x11: {
         "name": "TELEM_CTRL_OBSERVERS",
         "description": "Observer state estimates",
-        "format": "slot_count(u8) [slot(u8) enabled(u8) num_states(u8) states(f32)*]*",
+        "format": "",
         "size": None,
     },
     0x12: {
         "name": "TELEM_CTRL_SLOTS",
         "description": "Control slot status",
-        "format": "slot_count(u8) [slot(u8) enabled(u8) ok(u8) run_count(u32)]*",
+        "format": "",
         "size": None,
     },
 }

@@ -184,6 +184,25 @@ TOOLS: list[ToolDef] = [
         method="clear",
         requires_arm=False,
     ),
+    ToolDef(
+        name="mcu_diagnostics_query",
+        description="Query persisted MCU diagnostics and mirrored persistence metadata directly from firmware.",
+        category="persistence",
+        service="mcu_diagnostics_service",
+        method="query",
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="mcu_diagnostics_reset",
+        description="Reset persisted MCU diagnostics counters on the MCU. Optionally clear host-side recorded snapshots too.",
+        category="persistence",
+        service="mcu_diagnostics_service",
+        method="reset",
+        params=(
+            ToolParam("clear_host_records", "boolean", "Also clear host-side persisted diagnostic snapshots.", required=False, default=False),
+        ),
+        requires_arm=False,
+    ),
 
     # ─────────────────────────────────────────────────────────────────────────
     # State Control Tools (use StateService for convergence with CLI/GUI)

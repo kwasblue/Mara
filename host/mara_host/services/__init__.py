@@ -89,6 +89,8 @@ _EXPORTS = {
     "ReplayService": "recording",
     "RecordingConfig": "recording",
     "SessionInfo": "recording",
+    # Persistence
+    "McuDiagnosticsService": "persistence",
 }
 
 # Cache for imported modules

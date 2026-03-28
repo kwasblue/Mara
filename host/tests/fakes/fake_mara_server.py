@@ -38,6 +38,28 @@ class FakeMaraTcpServer:
         self._thread_ready = None
         self._control_graph: dict[str, Any] | None = None
         self._control_graph_enabled: bool = False
+        self._mcu_persistence_snapshot: dict[str, Any] = {
+            "ready": True,
+            "diagnostics": {
+                "boot_count": 3,
+                "last_boot_ms": 25,
+                "last_reset_reason": 7,
+                "last_fault": 3,
+                "last_fault_ms": 88,
+                "host_timeout_count": 2,
+                "last_host_timeout_ms": 50,
+                "motion_timeout_count": 1,
+                "last_motion_timeout_ms": 60,
+                "host_recovery_count": 1,
+                "estop_count": 1,
+                "last_estop_ms": 88,
+            },
+            "config_mirror": {
+                "valid": True,
+                "version": 1,
+                "network": {"device_name": "fake-mara"},
+            },
+        }
 
     async def start(self):
         self.server = await asyncio.start_server(self._handle_client, self.host, self.port)
@@ -208,6 +230,27 @@ class FakeMaraTcpServer:
                     ack.setdefault("schema_version", graph.get("schema_version", 0))
                     ack.setdefault("slot_count", len(graph.get("slots", [])))
                     ack.setdefault("slots", slots)
+                elif cmd_type == "CMD_MCU_DIAGNOSTICS_QUERY":
+                    ack.update(json.loads(json.dumps(self._mcu_persistence_snapshot)))
+                elif cmd_type == "CMD_MCU_DIAGNOSTICS_RESET":
+                    diagnostics = self._mcu_persistence_snapshot["diagnostics"]
+                    diagnostics.update(
+                        {
+                            "last_fault": 0,
+                            "last_fault_ms": 0,
+                            "host_timeout_count": 0,
+                            "last_host_timeout_ms": 0,
+                            "motion_timeout_count": 0,
+                            "last_motion_timeout_ms": 0,
+                            "host_recovery_count": 0,
+                            "estop_count": 0,
+                            "last_estop_ms": 0,
+                        }
+                    )
+                    ack.setdefault("reset", True)
+                    ack.setdefault("ready", self._mcu_persistence_snapshot.get("ready", False))
+                    ack.setdefault("diagnostics", json.loads(json.dumps(diagnostics)))
+                    ack.setdefault("snapshot", json.loads(json.dumps(self._mcu_persistence_snapshot)))
                 await self._send_frame(writer, protocol.MSG_CMD_JSON, json.dumps(ack).encode("utf-8"))
 
     async def _send_frame(self, writer: asyncio.StreamWriter, msg_type: int, payload: bytes = b""):

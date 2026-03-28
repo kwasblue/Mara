@@ -70,6 +70,8 @@ enum class CmdType {
     IMU_READ,
     LED_OFF,
     LED_ON,
+    MCU_DIAGNOSTICS_QUERY,
+    MCU_DIAGNOSTICS_RESET,
     OBSERVER_CONFIG,
     OBSERVER_ENABLE,
     OBSERVER_RESET,
@@ -91,8 +93,12 @@ enum class CmdType {
     TELEM_SET_INTERVAL,
     TELEM_SET_RATE,
     ULTRASONIC_ATTACH,
-    ULTRASONIC_READ,
     ULTRASONIC_DETACH,
+    ULTRASONIC_READ,
+    WIFI_DISCONNECT,
+    WIFI_JOIN,
+    WIFI_SCAN,
+    WIFI_STATUS,
     UNKNOWN
 };
 
@@ -162,6 +168,8 @@ inline CmdType cmdTypeFromString(const std::string& s) {
     if (s == "CMD_IMU_READ") return CmdType::IMU_READ;
     if (s == "CMD_LED_OFF") return CmdType::LED_OFF;
     if (s == "CMD_LED_ON") return CmdType::LED_ON;
+    if (s == "CMD_MCU_DIAGNOSTICS_QUERY") return CmdType::MCU_DIAGNOSTICS_QUERY;
+    if (s == "CMD_MCU_DIAGNOSTICS_RESET") return CmdType::MCU_DIAGNOSTICS_RESET;
     if (s == "CMD_OBSERVER_CONFIG") return CmdType::OBSERVER_CONFIG;
     if (s == "CMD_OBSERVER_ENABLE") return CmdType::OBSERVER_ENABLE;
     if (s == "CMD_OBSERVER_RESET") return CmdType::OBSERVER_RESET;
@@ -183,8 +191,12 @@ inline CmdType cmdTypeFromString(const std::string& s) {
     if (s == "CMD_TELEM_SET_INTERVAL") return CmdType::TELEM_SET_INTERVAL;
     if (s == "CMD_TELEM_SET_RATE") return CmdType::TELEM_SET_RATE;
     if (s == "CMD_ULTRASONIC_ATTACH") return CmdType::ULTRASONIC_ATTACH;
-    if (s == "CMD_ULTRASONIC_READ") return CmdType::ULTRASONIC_READ;
     if (s == "CMD_ULTRASONIC_DETACH") return CmdType::ULTRASONIC_DETACH;
+    if (s == "CMD_ULTRASONIC_READ") return CmdType::ULTRASONIC_READ;
+    if (s == "CMD_WIFI_DISCONNECT") return CmdType::WIFI_DISCONNECT;
+    if (s == "CMD_WIFI_JOIN") return CmdType::WIFI_JOIN;
+    if (s == "CMD_WIFI_SCAN") return CmdType::WIFI_SCAN;
+    if (s == "CMD_WIFI_STATUS") return CmdType::WIFI_STATUS;
     return CmdType::UNKNOWN;
 }
 
@@ -255,6 +267,8 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::IMU_READ: return "CMD_IMU_READ";
         case CmdType::LED_OFF: return "CMD_LED_OFF";
         case CmdType::LED_ON: return "CMD_LED_ON";
+        case CmdType::MCU_DIAGNOSTICS_QUERY: return "CMD_MCU_DIAGNOSTICS_QUERY";
+        case CmdType::MCU_DIAGNOSTICS_RESET: return "CMD_MCU_DIAGNOSTICS_RESET";
         case CmdType::OBSERVER_CONFIG: return "CMD_OBSERVER_CONFIG";
         case CmdType::OBSERVER_ENABLE: return "CMD_OBSERVER_ENABLE";
         case CmdType::OBSERVER_RESET: return "CMD_OBSERVER_RESET";
@@ -276,8 +290,12 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::TELEM_SET_INTERVAL: return "CMD_TELEM_SET_INTERVAL";
         case CmdType::TELEM_SET_RATE: return "CMD_TELEM_SET_RATE";
         case CmdType::ULTRASONIC_ATTACH: return "CMD_ULTRASONIC_ATTACH";
-        case CmdType::ULTRASONIC_READ: return "CMD_ULTRASONIC_READ";
         case CmdType::ULTRASONIC_DETACH: return "CMD_ULTRASONIC_DETACH";
+        case CmdType::ULTRASONIC_READ: return "CMD_ULTRASONIC_READ";
+        case CmdType::WIFI_DISCONNECT: return "CMD_WIFI_DISCONNECT";
+        case CmdType::WIFI_JOIN: return "CMD_WIFI_JOIN";
+        case CmdType::WIFI_SCAN: return "CMD_WIFI_SCAN";
+        case CmdType::WIFI_STATUS: return "CMD_WIFI_STATUS";
         default: return "UNKNOWN";
     }
 }

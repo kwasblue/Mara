@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from mara_host.core.result import ServiceResult
 from mara_host.services.control.service_base import ConfigurableService
-from mara_host.tools.schema.control_graph.schema import normalize_graph_config, ControlGraphValidationError
+from mara_host.services.persistence.store import ControlGraphStore
+from mara_host.tools.schema.control_graph.schema import (
+    ControlGraphConfig,
+    ControlGraphValidationError,
+    normalize_graph_config,
+    normalize_graph_model,
+)
 
 
 class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
@@ -15,14 +21,16 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         self,
         client,
         sensor_policy_provider: Callable[[], Any] | None = None,
+        persistence_store: ControlGraphStore | None = None,
     ):
         super().__init__(client)
-        self._cached_graph: dict[str, Any] | None = None
+        self._cached_graph_model: ControlGraphConfig | None = None
         self._cached_policy: dict[str, Any] | None = None
         self._sensor_policy_provider = sensor_policy_provider
+        self._persistence_store = persistence_store
 
     @staticmethod
-    def _graph_matches_status(status_payload: dict[str, Any], graph: dict[str, Any]) -> bool:
+    def _graph_matches_status(status_payload: dict[str, Any], graph: Mapping[str, Any]) -> bool:
         slots = status_payload.get("slots")
         expected_slots = graph.get("slots", [])
         if not status_payload.get("present"):
@@ -72,7 +80,7 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
     def bind_sensor_policy_provider(self, provider: Callable[[], Any] | None) -> None:
         self._sensor_policy_provider = provider
 
-    def _evaluate_graph_policy(self, graph: dict[str, Any]) -> dict[str, Any] | None:
+    def _evaluate_graph_policy(self, graph: Mapping[str, Any]) -> dict[str, Any] | None:
         if self._sensor_policy_provider is None:
             self._cached_policy = None
             return None
@@ -86,19 +94,32 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         return policy
 
     @property
+    def cached_graph_model(self) -> ControlGraphConfig | None:
+        return self._cached_graph_model
+
+    @property
     def cached_graph(self) -> dict[str, Any] | None:
-        return self._cached_graph
+        return self._cached_graph_model.to_dict() if self._cached_graph_model is not None else None
 
     @property
     def cached_policy(self) -> dict[str, Any] | None:
         return self._cached_policy
 
-    async def upload(self, graph: dict[str, Any]) -> ServiceResult:
+    @property
+    def persistence_store(self) -> ControlGraphStore | None:
+        return self._persistence_store
+
+    @staticmethod
+    def _graph_for_safe_restore(graph: ControlGraphConfig) -> ControlGraphConfig:
+        return graph.with_enabled(False)
+
+    async def upload(self, graph: dict[str, Any] | ControlGraphConfig) -> ServiceResult:
         try:
-            normalized = normalize_graph_config(graph)
+            normalized_model = normalize_graph_model(graph)
         except ControlGraphValidationError as exc:
             return ServiceResult.failure(error=str(exc))
 
+        normalized = normalized_model.to_dict()
         policy = self._evaluate_graph_policy(normalized)
 
         result = await self._send_reliable_with_ack_payload(
@@ -110,14 +131,16 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         if not result.ok:
             return result
 
-        self._cached_graph = normalized
+        self._cached_graph_model = normalized_model
+        if self._persistence_store is not None:
+            self._persistence_store.save_graph(normalized_model)
         payload = dict(result.data or {})
         payload.setdefault("graph", normalized)
         if policy is not None:
             payload["policy"] = policy
         return ServiceResult.success(data=payload)
 
-    async def apply(self, graph: dict[str, Any], enable: bool = True) -> ServiceResult:
+    async def apply(self, graph: dict[str, Any] | ControlGraphConfig, enable: bool = True) -> ServiceResult:
         upload_result = await self.upload(graph)
         if not upload_result.ok:
             return upload_result
@@ -128,7 +151,7 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         if policy is not None and policy["blocking"]:
             return ServiceResult.failure(
                 error="Control graph blocked by sensor policy",
-                data={"graph": self._cached_graph, "policy": policy},
+                data={"graph": self.cached_graph, "policy": policy},
             )
 
         enable_result = await self.enable(True)
@@ -140,7 +163,7 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
             return status_result
 
         status_payload = dict(status_result.data or {})
-        if not self._graph_matches_status(status_payload, self._cached_graph or {}):
+        if not self._graph_matches_status(status_payload, self.cached_graph or {}):
             return ServiceResult.failure(
                 error="Control graph apply did not persist on MCU; graph-status disagrees with upload"
             )
@@ -148,7 +171,7 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         payload = dict(upload_result.data or {})
         payload.update(enable_result.data or {})
         payload.update(status_payload)
-        payload.setdefault("graph", self._cached_graph)
+        payload.setdefault("graph", self.cached_graph)
         payload.setdefault("applied", True)
         if self._cached_policy is not None:
             payload["policy"] = self._cached_policy
@@ -163,19 +186,21 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         )
         if not result.ok:
             return result
-        self._cached_graph = None
+        self._cached_graph_model = None
         self._cached_policy = None
+        if self._persistence_store is not None:
+            self._persistence_store.clear()
         payload = dict(result.data or {})
         payload.setdefault("cleared", True)
         return ServiceResult.success(data=payload)
 
     async def enable(self, enable: bool = True) -> ServiceResult:
-        if enable and self._cached_graph is not None:
-            policy = self._evaluate_graph_policy(self._cached_graph)
+        if enable and self.cached_graph is not None:
+            policy = self._evaluate_graph_policy(self.cached_graph)
             if policy is not None and policy["blocking"]:
                 return ServiceResult.failure(
                     error="Control graph enable blocked by sensor policy",
-                    data={"graph": self._cached_graph, "policy": policy},
+                    data={"graph": self.cached_graph, "policy": policy},
                 )
 
         result = await self._send_reliable_with_ack_payload(
@@ -186,13 +211,12 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         )
         if not result.ok:
             return result
-        if self._cached_graph is not None:
-            for slot in self._cached_graph.get("slots", []):
-                slot["enabled"] = enable
+        if self._cached_graph_model is not None:
+            self._cached_graph_model = self._cached_graph_model.with_enabled(enable)
         payload = dict(result.data or {})
         payload.setdefault("enabled", enable)
-        if self._cached_graph is not None:
-            payload.setdefault("graph", self._cached_graph)
+        if self.cached_graph is not None:
+            payload.setdefault("graph", self.cached_graph)
         if self._cached_policy is not None:
             payload["policy"] = self._cached_policy
         return ServiceResult.success(data=payload)
@@ -211,10 +235,35 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
             return result
 
         payload = dict(result.data or {})
-        if self._cached_graph is not None and "graph" not in payload:
-            payload["graph"] = self._cached_graph
-        if self._cached_graph is not None:
-            policy = self._evaluate_graph_policy(self._cached_graph)
+        if self.cached_graph is not None and "graph" not in payload:
+            payload["graph"] = self.cached_graph
+        if self.cached_graph is not None:
+            policy = self._evaluate_graph_policy(self.cached_graph)
             if policy is not None:
                 payload["policy"] = policy
+        return ServiceResult.success(data=payload)
+
+    async def restore_from_persistence(self) -> ServiceResult:
+        if self._persistence_store is None:
+            return ServiceResult.failure(error="Control graph persistence store is not configured")
+
+        graph = self._persistence_store.load_graph_model()
+        if graph is None:
+            return ServiceResult.failure(error="No persisted control graph found")
+
+        safe_graph = self._graph_for_safe_restore(graph)
+        upload_result = await self.upload(safe_graph)
+        if not upload_result.ok:
+            return upload_result
+
+        disable_result = await self.enable(False)
+        if not disable_result.ok:
+            return disable_result
+
+        payload = dict(upload_result.data or {})
+        payload.update(disable_result.data or {})
+        payload["restored"] = True
+        payload["restored_safely"] = True
+        payload["graph"] = safe_graph.to_dict()
+        payload["restored_from_enabled_state"] = any(slot.enabled for slot in graph.slots)
         return ServiceResult.success(data=payload)

@@ -281,6 +281,16 @@ class RobotCommandsMixin:
         payload: dict[str, Any] = {}
         await self.send_json_cmd('CMD_CTRL_GRAPH_STATUS', payload)
 
+    async def cmd_mcu_diagnostics_query(self) -> None:
+        """Query persisted MCU diagnostics and mirrored persistence metadata. (CMD_MCU_DIAGNOSTICS_QUERY)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_MCU_DIAGNOSTICS_QUERY', payload)
+
+    async def cmd_mcu_diagnostics_reset(self) -> None:
+        """Reset persisted MCU diagnostics counters while preserving boot identity fields. (CMD_MCU_DIAGNOSTICS_RESET)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_MCU_DIAGNOSTICS_RESET', payload)
+
     async def cmd_dc_set_speed(self, motor_id: int, speed: float) -> None:
         """Set DC motor speed and direction for a given motor ID. (CMD_DC_SET_SPEED)"""
         payload: dict[str, Any] = {}
@@ -607,4 +617,27 @@ class RobotCommandsMixin:
         payload: dict[str, Any] = {}
         payload['level'] = level
         await self.send_json_cmd('CMD_SET_LOG_LEVEL', payload)
+
+    async def cmd_wifi_scan(self) -> None:
+        """Scan for available WiFi networks. (CMD_WIFI_SCAN)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_WIFI_SCAN', payload)
+
+    async def cmd_wifi_join(self, ssid: str, password: Optional[str] = None) -> None:
+        """Connect to a WiFi network. (CMD_WIFI_JOIN)"""
+        payload: dict[str, Any] = {}
+        payload['ssid'] = ssid
+        if password is not None:
+            payload['password'] = password
+        await self.send_json_cmd('CMD_WIFI_JOIN', payload)
+
+    async def cmd_wifi_disconnect(self) -> None:
+        """Disconnect from current WiFi network. (CMD_WIFI_DISCONNECT)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_WIFI_DISCONNECT', payload)
+
+    async def cmd_wifi_status(self) -> None:
+        """Get current WiFi connection status. (CMD_WIFI_STATUS)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_WIFI_STATUS', payload)
 

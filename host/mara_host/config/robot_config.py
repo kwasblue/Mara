@@ -206,6 +206,44 @@ class SensorConfig:
 
 
 @dataclass
+class PersistencePolicy:
+    """Policy for one persistable artifact family."""
+
+    enabled: bool = False
+    backend: str = "host_file"
+    restore: bool = True
+    restore_live_state: bool = False
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "PersistencePolicy":
+        return cls(
+            enabled=bool(data.get("enabled", False)),
+            backend=str(data.get("backend", "host_file")),
+            restore=bool(data.get("restore", True)),
+            restore_live_state=bool(data.get("restore_live_state", False)),
+        )
+
+
+@dataclass
+class PersistenceConfig:
+    """Host/MCU persistence policy for safe restorable artifacts."""
+
+    root_dir: str = ".mara/persistence"
+    control_graph: PersistencePolicy = field(default_factory=PersistencePolicy)
+    calibrations: PersistencePolicy = field(default_factory=PersistencePolicy)
+    diagnostics: PersistencePolicy = field(default_factory=PersistencePolicy)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "PersistenceConfig":
+        return cls(
+            root_dir=str(data.get("root_dir", ".mara/persistence")),
+            control_graph=PersistencePolicy.from_dict(data.get("control_graph", {})),
+            calibrations=PersistencePolicy.from_dict(data.get("calibrations", {})),
+            diagnostics=PersistencePolicy.from_dict(data.get("diagnostics", {})),
+        )
+
+
+@dataclass
 class RobotConfig:
     """
     First-class configuration object for robot setup.
@@ -229,6 +267,7 @@ class RobotConfig:
     features: FeaturesConfig = field(default_factory=FeaturesConfig)
     encoder_defaults: EncoderDefaults = field(default_factory=EncoderDefaults)
     settings: SettingsConfig = field(default_factory=SettingsConfig)
+    persistence: PersistenceConfig = field(default_factory=PersistenceConfig)
     sensors: Dict[str, SensorConfig] = field(default_factory=dict)
     components: Dict[str, Any] = field(default_factory=dict)
     raw: Dict[str, Any] = field(default_factory=dict)
@@ -314,6 +353,7 @@ class RobotConfig:
         features_data = data.get("features", {})
         encoder_data = data.get("encoder_defaults", {})
         settings_data = data.get("settings", {})
+        persistence_data = data.get("persistence", {})
         sensors_data = data.get("sensors", {})
 
         return cls(
@@ -323,6 +363,7 @@ class RobotConfig:
             features=FeaturesConfig.from_dict(features_data),
             encoder_defaults=EncoderDefaults.from_dict(encoder_data),
             settings=SettingsConfig.from_dict(settings_data),
+            persistence=PersistenceConfig.from_dict(persistence_data),
             sensors={name: SensorConfig.from_entry(name, entry) for name, entry in sensors_data.items()},
             components=data.get("components", {}),
             raw=data,
@@ -362,6 +403,23 @@ class RobotConfig:
                 report.warnings.append(f"{path} uses boot-sensitive GPIO {pin}")
             if pin in {34, 35, 36, 39} and self._pin_path_is_outputish(path):
                 report.errors.append(f"{path} uses input-only GPIO {pin} for an output-like field")
+
+        # Persistence policy safety checks
+        for name, policy in {
+            "control_graph": self.persistence.control_graph,
+            "calibrations": self.persistence.calibrations,
+            "diagnostics": self.persistence.diagnostics,
+        }.items():
+            if policy.backend not in {"none", "host_file", "mcu"}:
+                report.errors.append(f"persistence.{name}.backend must be one of: none, host_file, mcu")
+            if policy.restore_live_state:
+                report.errors.append(
+                    f"persistence.{name}.restore_live_state must remain false; live armed/active state is never restorable"
+                )
+            if not policy.enabled and policy.restore:
+                report.warnings.append(
+                    f"persistence.{name}.restore=true but persistence is disabled; restore will be ignored"
+                )
 
         # Sensor abstraction + graceful degradation checks
         for sensor in self.sensors.values():

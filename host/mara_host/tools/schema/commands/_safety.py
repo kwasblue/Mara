@@ -1,89 +1,74 @@
 # schema/commands/_safety.py
 """Safety and state machine command definitions."""
 
-SAFETY_COMMANDS: dict[str, dict] = {
-    "CMD_GET_IDENTITY": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Get device identity and capabilities (firmware version, build config, features).",
-        "payload": {},
-        "timeout_s": 2.0,  # Identity query may take longer on boot
-    },
+from __future__ import annotations
 
-    "CMD_HEARTBEAT": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Host heartbeat to maintain connection. Resets host timeout watchdog.",
-        "payload": {},
-        # Uses default timeout (fast command)
-    },
+from .core import CommandDef, FieldDef, export_command_dicts
 
-    "CMD_ARM": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Transition from IDLE to ARMED. Motors enabled but not accepting motion.",
-        "payload": {},
-        "timeout_s": 0.5,  # State transitions may take slightly longer
-    },
 
-    "CMD_DISARM": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Transition from ARMED to IDLE. Motors disabled.",
-        "payload": {},
-        "timeout_s": 0.5,
-    },
-
-    "CMD_ACTIVATE": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Transition from ARMED to ACTIVE. Motion commands now accepted.",
-        "payload": {},
-        "timeout_s": 0.5,
-    },
-
-    "CMD_DEACTIVATE": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Transition from ACTIVE to ARMED. Stops motion, still armed.",
-        "payload": {},
-        "timeout_s": 0.5,
-    },
-
-    "CMD_ESTOP": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Emergency stop, immediately disable motion.",
-        "payload": {},
-        # Uses default timeout - ESTOP must be fast
-    },
-
-    "CMD_CLEAR_ESTOP": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Clear ESTOP and return to IDLE mode.",
-        "payload": {},
-        "timeout_s": 0.5,
-    },
-
-    "CMD_STOP": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Stop all motion (soft stop).",
-        "payload": {},
-        # Uses default timeout - STOP must be fast
-    },
-
-    "CMD_GET_STATE": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Query current MCU state (mode, armed, active, estop).",
-        "payload": {},
-        "response": {
-            "mode": {"type": "string", "description": "Current mode: IDLE, ARMED, ACTIVE, ESTOP"},
-            "armed": {"type": "bool", "description": "True if motors enabled"},
-            "active": {"type": "bool", "description": "True if motion commands accepted"},
-            "estop": {"type": "bool", "description": "True if emergency stop active"},
+SAFETY_COMMAND_OBJECTS: dict[str, CommandDef] = {
+    "CMD_GET_IDENTITY": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Get device identity and capabilities (firmware version, build config, features).",
+        timeout_s=2.0,
+    ),
+    "CMD_HEARTBEAT": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Host heartbeat to maintain connection. Resets host timeout watchdog.",
+    ),
+    "CMD_ARM": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Transition from IDLE to ARMED. Motors enabled but not accepting motion.",
+        timeout_s=0.5,
+    ),
+    "CMD_DISARM": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Transition from ARMED to IDLE. Motors disabled.",
+        timeout_s=0.5,
+    ),
+    "CMD_ACTIVATE": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Transition from ARMED to ACTIVE. Motion commands now accepted.",
+        timeout_s=0.5,
+    ),
+    "CMD_DEACTIVATE": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Transition from ACTIVE to ARMED. Stops motion, still armed.",
+        timeout_s=0.5,
+    ),
+    "CMD_ESTOP": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Emergency stop, immediately disable motion.",
+    ),
+    "CMD_CLEAR_ESTOP": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Clear ESTOP and return to IDLE mode.",
+        timeout_s=0.5,
+    ),
+    "CMD_STOP": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Stop all motion (soft stop).",
+    ),
+    "CMD_GET_STATE": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Query current MCU state (mode, armed, active, estop).",
+        response={
+            "mode": FieldDef(type="string", description="Current mode: IDLE, ARMED, ACTIVE, ESTOP"),
+            "armed": FieldDef(type="bool", description="True if motors enabled"),
+            "active": FieldDef(type="bool", description="True if motion commands accepted"),
+            "estop": FieldDef(type="bool", description="True if emergency stop active"),
         },
-    },
+    ),
 }
+
+SAFETY_COMMANDS: dict[str, dict] = export_command_dicts(SAFETY_COMMAND_OBJECTS)

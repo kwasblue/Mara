@@ -86,6 +86,7 @@ public:
     // Callback
     void onStop(StopCallback cb) { stopCallback_ = cb; }
     void onEmergencyStop(StopCallback cb) { emergencyStopCallback_ = cb; }
+    void onPersistentStateChanged(StopCallback cb) { persistentStateCallback_ = cb; }
 
     // Clock injection for testability
     void setClock(mara::IClock* clk) { clock_ = clk; }
@@ -110,6 +111,7 @@ private:
 
     StopCallback stopCallback_;
     StopCallback emergencyStopCallback_;
+    StopCallback persistentStateCallback_;
     mara::IClock* clock_ = nullptr;
 
     uint32_t now_ms() const {

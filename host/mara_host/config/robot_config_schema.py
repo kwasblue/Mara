@@ -203,6 +203,32 @@ SENSOR_DEGRADATION_SCHEMA: Dict[str, Any] = {
     },
 }
 
+PERSISTENCE_POLICY_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "enabled": {"type": "boolean", "default": False},
+        "backend": {
+            "type": "string",
+            "enum": ["none", "host_file", "mcu"],
+            "default": "host_file",
+        },
+        "restore": {"type": "boolean", "default": True},
+        "restore_live_state": {"type": "boolean", "default": False},
+    },
+}
+
+PERSISTENCE_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "root_dir": {"type": "string"},
+        "control_graph": PERSISTENCE_POLICY_SCHEMA,
+        "calibrations": PERSISTENCE_POLICY_SCHEMA,
+        "diagnostics": PERSISTENCE_POLICY_SCHEMA,
+    },
+}
+
 # Individual sensor configuration schema
 SENSOR_SCHEMA: Dict[str, Any] = {
     "type": "object",
@@ -302,6 +328,7 @@ ROBOT_CONFIG_SCHEMA: Dict[str, Any] = {
         "features": FEATURES_SCHEMA,
         "encoder_defaults": ENCODER_DEFAULTS_SCHEMA,
         "settings": SETTINGS_SCHEMA,
+        "persistence": PERSISTENCE_SCHEMA,
         "sensors": {
             "type": "object",
             "additionalProperties": SENSOR_SCHEMA,
@@ -386,6 +413,8 @@ __all__ = [
     "DRIVE_SCHEMA",
     "FEATURES_SCHEMA",
     "SETTINGS_SCHEMA",
+    "PERSISTENCE_POLICY_SCHEMA",
+    "PERSISTENCE_SCHEMA",
     "SENSOR_SCHEMA",
     "JOINT_SCHEMA",
     "validate_config_with_context",

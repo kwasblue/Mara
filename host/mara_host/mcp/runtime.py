@@ -453,6 +453,12 @@ class MaraRuntime:
         raise RuntimeError("Not connected")
 
     @property
+    def mcu_diagnostics_service(self):
+        if self._ctx:
+            return self._ctx.mcu_diagnostics_service
+        raise RuntimeError("Not connected")
+
+    @property
     def client(self):
         if self._ctx:
             return self._ctx.client

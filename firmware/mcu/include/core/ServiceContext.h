@@ -104,6 +104,9 @@ namespace mara {
     class TransportRegistry;
     class ActuatorRegistry;
 }
+namespace persistence {
+    class McuPersistence;
+}
 
 namespace mara {
 
@@ -213,6 +216,7 @@ struct ServiceContext {
     SensorRegistry*    sensorRegistry    = nullptr;
     TransportRegistry* transportRegistry = nullptr;
     ActuatorRegistry*  actuatorRegistry  = nullptr;
+    persistence::McuPersistence* persistence = nullptr;
 
     // =========================================================================
     // Convenience methods for null-safety

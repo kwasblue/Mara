@@ -119,6 +119,7 @@ class CLIContext:
         self._control_graph_service: Optional["ControlGraphService"] = None
         self._controller_service: Optional["ControllerService"] = None
         self._pid_service: Optional["PidService"] = None
+        self._mcu_diagnostics_service = None
         self._policy_robot = None
 
     @classmethod
@@ -205,6 +206,10 @@ class CLIContext:
             self._telemetry.stop()
             self._telemetry = None
 
+        if self._mcu_diagnostics_service is not None:
+            self._mcu_diagnostics_service.close()
+            self._mcu_diagnostics_service = None
+
         if self._connection:
             await self._connection.disconnect()
             self._connection = None
@@ -225,6 +230,7 @@ class CLIContext:
         self._control_graph_service = None
         self._controller_service = None
         self._pid_service = None
+        self._mcu_diagnostics_service = None
         self._policy_robot = None
 
     async def __aenter__(self) -> "CLIContext":
@@ -258,6 +264,28 @@ class CLIContext:
             self._policy_robot._bus = getattr(self._client, "bus", None)
             self._policy_robot._connected = self.is_connected
         return self._policy_robot.sensors
+
+    def _control_graph_persistence_store(self):
+        config = self._resolve_robot_config()
+        persistence = getattr(config, "persistence", None)
+        if persistence is None:
+            return None
+        policy = persistence.control_graph
+        if not policy.enabled or policy.backend == "none":
+            return None
+        from mara_host.services.persistence.store import ControlGraphStore
+        return ControlGraphStore(persistence.root_dir)
+
+    def _diagnostic_persistence_store(self):
+        config = self._resolve_robot_config()
+        persistence = getattr(config, "persistence", None)
+        if persistence is None:
+            return None
+        policy = persistence.diagnostics
+        if not policy.enabled or policy.backend == "none":
+            return None
+        from mara_host.services.persistence.store import DiagnosticRecordStore
+        return DiagnosticRecordStore(persistence.root_dir)
 
     @property
     def client(self) -> "MaraClient":
@@ -369,6 +397,7 @@ class CLIContext:
             self._control_graph_service = ControlGraphService(
                 self.client,
                 sensor_policy_provider=self._sensor_policy_provider,
+                persistence_store=self._control_graph_persistence_store(),
             )
         return self._control_graph_service
 
@@ -379,6 +408,17 @@ class CLIContext:
             from mara_host.services.control.controller_service import ControllerService
             self._controller_service = ControllerService(self.client)
         return self._controller_service
+
+    @property
+    def mcu_diagnostics_service(self):
+        """Get or create the MCU diagnostics persistence service."""
+        if self._mcu_diagnostics_service is None:
+            from mara_host.services.persistence import McuDiagnosticsService
+            self._mcu_diagnostics_service = McuDiagnosticsService(
+                self.client,
+                diagnostics_store=self._diagnostic_persistence_store(),
+            )
+        return self._mcu_diagnostics_service
 
     @property
     def pid_service(self) -> "PidService":

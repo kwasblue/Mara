@@ -22,6 +22,9 @@ class ModeManager;
 class MotionController;
 class ControlModule;
 class HandlerRegistry;
+namespace persistence {
+class McuPersistence;
+}
 
 /**
  * Command Registry - Central dispatcher for all commands.
@@ -79,6 +82,11 @@ public:
      * If not set, falls back to HandlerRegistry::instance().
      */
     void setHandlerRegistry(HandlerRegistry* hr) { handlerRegistry_ = hr; }
+
+    /**
+     * Set MCU persistence surface for command handlers that query/reset diagnostics.
+     */
+    void setPersistence(persistence::McuPersistence* persistence) { ctx_.persistence = persistence; }
 
     /**
      * Process incoming JSON command.

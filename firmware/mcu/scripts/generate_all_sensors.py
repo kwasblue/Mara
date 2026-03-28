@@ -10,10 +10,30 @@ Usage:
   OR manual: python scripts/generate_all_sensors.py
 """
 
+import inspect
 import re
 from pathlib import Path
 
-SENSOR_DIR = Path(__file__).parent.parent / "include" / "sensor"
+
+def _resolve_script_path() -> Path:
+    """Resolve this script path even when PlatformIO/SCons omits __file__."""
+    file_value = globals().get("__file__")
+    if file_value:
+        return Path(file_value).resolve()
+
+    source_file = inspect.getsourcefile(lambda: None) or inspect.getfile(lambda: None)
+    if source_file and source_file != "<string>":
+        return Path(source_file).resolve()
+
+    candidate = (Path.cwd() / "scripts" / "generate_all_sensors.py").resolve()
+    if candidate.exists():
+        return candidate
+
+    raise RuntimeError("Unable to resolve generate_all_sensors.py path")
+
+
+SCRIPT_PATH = _resolve_script_path()
+SENSOR_DIR = SCRIPT_PATH.parent.parent / "include" / "sensor"
 OUTPUT_FILE = SENSOR_DIR / "AllSensors.h"
 
 HEADER_TEMPLATE = """\

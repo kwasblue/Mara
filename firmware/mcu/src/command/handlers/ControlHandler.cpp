@@ -4,6 +4,7 @@
 #include "command/handlers/ControlHandler.h"
 #include "command/decoders/ControlDecoders.h"
 #include "core/Debug.h"
+#include "persistence/McuPersistence.h"
 
 // -------------------------------------------------------------------------
 // Signal Commands
@@ -404,5 +405,38 @@ void ControlHandler::handleGraphStatus(CommandContext& ctx) {
             out["error"] = runtime.error;
         }
     }
+    ctx.sendAck(ACK, true, resp);
+}
+
+void ControlHandler::handleMcuDiagnosticsQuery(CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_MCU_DIAGNOSTICS_QUERY";
+
+    if (!ctx.persistence) {
+        ctx.sendError(ACK, "persistence_unavailable");
+        return;
+    }
+
+    JsonDocument resp;
+    ctx.persistence->fillSnapshot(resp.to<JsonObject>());
+    ctx.sendAck(ACK, true, resp);
+}
+
+void ControlHandler::handleMcuDiagnosticsReset(CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_MCU_DIAGNOSTICS_RESET";
+
+    if (!ctx.persistence) {
+        ctx.sendError(ACK, "persistence_unavailable");
+        return;
+    }
+
+    ctx.persistence->resetDiagnostics(ctx.now_ms());
+
+    JsonDocument resp;
+    resp["reset"] = true;
+    JsonObject snapshot = resp["snapshot"].to<JsonObject>();
+    ctx.persistence->fillSnapshot(snapshot);
+    resp["ready"] = ctx.persistence->ready();
+    JsonObject diagnostics = resp["diagnostics"].to<JsonObject>();
+    ctx.persistence->fillDiagnostics(diagnostics);
     ctx.sendAck(ACK, true, resp);
 }

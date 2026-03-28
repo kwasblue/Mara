@@ -16,6 +16,8 @@ from .robot_config import (
     SettingsConfig,
     SensorConfig,
     SensorDegradationConfig,
+    PersistenceConfig,
+    PersistencePolicy,
 )
 from .robot_config_schema import (
     ConfigValidationError,
@@ -32,6 +34,8 @@ __all__ = [
     "SettingsConfig",
     "SensorConfig",
     "SensorDegradationConfig",
+    "PersistenceConfig",
+    "PersistencePolicy",
     "ConfigValidationError",
     "ROBOT_CONFIG_SCHEMA",
     "validate_config_with_context",

@@ -19,8 +19,11 @@ class TestSchemaPackageStructure:
     def test_commands_importable(self):
         """COMMANDS dict should be importable from schema."""
         from mara_host.tools.schema import COMMANDS
+        from mara_host.tools.schema.commands import COMMAND_OBJECTS
         assert isinstance(COMMANDS, dict)
+        assert isinstance(COMMAND_OBJECTS, dict)
         assert len(COMMANDS) > 0
+        assert len(COMMAND_OBJECTS) > 0
 
     def test_all_schema_exports_available(self):
         """All expected exports should be available from schema."""
@@ -34,6 +37,7 @@ class TestSchemaPackageStructure:
             CAN_MESSAGES,
             PINS,
         )
+        from mara_host.tools.schema.commands import COMMAND_OBJECTS
         # Just verify they're importable and not None
         assert COMMANDS is not None
         assert BINARY_COMMANDS is not None
@@ -43,6 +47,7 @@ class TestSchemaPackageStructure:
         assert GPIO_CHANNELS is not None
         assert CAN_MESSAGES is not None
         assert PINS is not None
+        assert COMMAND_OBJECTS is not None
 
 
 class TestCommandsDomainFiles:
@@ -51,8 +56,8 @@ class TestCommandsDomainFiles:
     def test_commands_has_expected_count(self):
         """COMMANDS should have expected number of commands."""
         from mara_host.tools.schema import COMMANDS
-        # Total should be 92 commands across all domains (including WiFi commands)
-        assert len(COMMANDS) == 92, f"Expected 92 commands, got {len(COMMANDS)}"
+        # Total should be 94 commands across all domains (including WiFi and MCU diagnostics commands)
+        assert len(COMMANDS) == 94, f"Expected 94 commands, got {len(COMMANDS)}"
 
     def test_individual_domain_exports(self):
         """Individual domain exports should be available."""
@@ -60,6 +65,7 @@ class TestCommandsDomainFiles:
             SAFETY_COMMANDS,
             RATE_COMMANDS,
             CONTROL_COMMANDS,
+            CONTROL_COMMAND_OBJECTS,
             MOTION_COMMANDS,
             GPIO_COMMANDS,
             SERVO_COMMANDS,
@@ -74,7 +80,8 @@ class TestCommandsDomainFiles:
         # Verify expected counts per domain
         assert len(SAFETY_COMMANDS) == 10, f"SAFETY: expected 10, got {len(SAFETY_COMMANDS)}"
         assert len(RATE_COMMANDS) == 4, f"RATE: expected 4, got {len(RATE_COMMANDS)}"
-        assert len(CONTROL_COMMANDS) == 17, f"CONTROL: expected 17, got {len(CONTROL_COMMANDS)}"
+        assert len(CONTROL_COMMANDS) == 19, f"CONTROL: expected 19, got {len(CONTROL_COMMANDS)}"
+        assert len(CONTROL_COMMAND_OBJECTS) == 19, f"CONTROL_OBJECTS: expected 19, got {len(CONTROL_COMMAND_OBJECTS)}"
         assert len(MOTION_COMMANDS) == 2, f"MOTION: expected 2, got {len(MOTION_COMMANDS)}"
         assert len(GPIO_COMMANDS) == 7, f"GPIO: expected 7, got {len(GPIO_COMMANDS)}"
         assert len(SERVO_COMMANDS) == 4, f"SERVO: expected 4, got {len(SERVO_COMMANDS)}"
@@ -233,6 +240,24 @@ class TestSampleCommands:
         from mara_host.tools.schema.commands import SAFETY_COMMANDS
         assert "CMD_GET_IDENTITY" in SAFETY_COMMANDS
         assert SAFETY_COMMANDS["CMD_GET_IDENTITY"]["direction"] == "host->mcu"
+
+    def test_control_command_objects_export_exists(self):
+        """Typed control command objects should export alongside legacy dicts."""
+        from mara_host.tools.schema.commands import CONTROL_COMMAND_OBJECTS
+
+        spec = CONTROL_COMMAND_OBJECTS["CMD_CTRL_GRAPH_UPLOAD"]
+        assert spec.direction == "host->mcu"
+        assert spec.payload["graph"].type == "object"
+
+    def test_typed_metadata_exports_preserve_legacy_shape(self):
+        """Typed timeout/response metadata should still export in legacy dict form."""
+        from mara_host.tools.schema.commands import SAFETY_COMMAND_OBJECTS, SAFETY_COMMANDS, WIFI_COMMAND_OBJECTS, WIFI_COMMANDS
+
+        assert SAFETY_COMMAND_OBJECTS["CMD_GET_IDENTITY"].timeout_s == 2.0
+        assert SAFETY_COMMANDS["CMD_GET_IDENTITY"]["timeout_s"] == 2.0
+        assert WIFI_COMMAND_OBJECTS["CMD_WIFI_STATUS"].response["connected"].type == "bool"
+        assert WIFI_COMMANDS["CMD_WIFI_STATUS"]["response"]["connected"]["type"] == "bool"
+        assert WIFI_COMMANDS["CMD_WIFI_SCAN"]["response"]["networks"]["items"]["ssid"]["type"] == "string"
 
     def test_heartbeat_command_exists(self):
         """CMD_HEARTBEAT should exist in safety commands."""

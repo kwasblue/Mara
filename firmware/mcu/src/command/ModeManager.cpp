@@ -33,6 +33,7 @@ void ModeManager::begin() {
         }
     }
     mode_ = MaraMode::DISCONNECTED;
+    if (persistentStateCallback_) persistentStateCallback_();
 }
 
 void ModeManager::update(uint32_t now_ms) {
@@ -53,6 +54,7 @@ void ModeManager::update(uint32_t now_ms) {
             if (dt > stats_.max_host_gap_ms) stats_.max_host_gap_ms = dt;
             stats_.last_fault = 1;
             lastHostHeartbeat_ = now_ms;
+            if (persistentStateCallback_) persistentStateCallback_();
         }
     }
 
@@ -68,6 +70,7 @@ void ModeManager::update(uint32_t now_ms) {
             if (dtm > stats_.max_motion_gap_ms) stats_.max_motion_gap_ms = dtm;
             stats_.last_fault = 2;
             lastMotionCmd_ = now_ms;
+            if (persistentStateCallback_) persistentStateCallback_();
         }
     }
 
@@ -103,6 +106,7 @@ void ModeManager::onHostHeartbeat(uint32_t now_ms) {
     stopLatched_ = false;
     if (!hostEverSeen_) hostEverSeen_ = true;
     if (mode_ == MaraMode::DISCONNECTED) mode_ = MaraMode::IDLE;
+    if (persistentStateCallback_) persistentStateCallback_();
 }
 
 void ModeManager::onMotionCommand(uint32_t now_ms, float vx, float omega) {
@@ -132,7 +136,7 @@ void ModeManager::arm() { mara::CriticalSection lock(lock_); stopLatched_ = fals
 void ModeManager::activate() { mara::CriticalSection lock(lock_); stopLatched_ = false; if (mode_ == MaraMode::ARMED) { lastMotionCmd_ = now_ms(); mode_ = MaraMode::ACTIVE; } }
 void ModeManager::deactivate() { mara::CriticalSection lock(lock_); if (mode_ == MaraMode::ACTIVE) { triggerStop(); mode_ = MaraMode::ARMED; lastMotionCmd_ = now_ms(); } }
 void ModeManager::disarm() { mara::CriticalSection lock(lock_); if (mode_ == MaraMode::ARMED || mode_ == MaraMode::ACTIVE) { triggerStop(); mode_ = MaraMode::IDLE; } }
-void ModeManager::estop() { mara::CriticalSection lock(lock_); triggerStop(); triggerEmergencyStop(); mode_ = MaraMode::ESTOPPED; stats_.last_fault = 3; }
+void ModeManager::estop() { mara::CriticalSection lock(lock_); triggerStop(); triggerEmergencyStop(); mode_ = MaraMode::ESTOPPED; stats_.last_fault = 3; if (persistentStateCallback_) persistentStateCallback_(); }
 
 bool ModeManager::clearEstop() {
     mara::CriticalSection lock(lock_);
@@ -140,6 +144,7 @@ bool ModeManager::clearEstop() {
     if (!isEstopped()) return true;
     if (cfg_.estop_pin >= 0 && halGpio_ && halGpio_->digitalRead(cfg_.estop_pin) == 0) return false;
     mode_ = MaraMode::IDLE;
+    if (persistentStateCallback_) persistentStateCallback_();
     return true;
 }
 

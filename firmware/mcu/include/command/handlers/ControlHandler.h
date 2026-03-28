@@ -34,6 +34,8 @@ public:
             case CmdType::CTRL_GRAPH_CLEAR:
             case CmdType::CTRL_GRAPH_ENABLE:
             case CmdType::CTRL_GRAPH_STATUS:
+            case CmdType::MCU_DIAGNOSTICS_QUERY:
+            case CmdType::MCU_DIAGNOSTICS_RESET:
                 return true;
             default:
                 return false;
@@ -59,6 +61,8 @@ public:
             case CmdType::CTRL_GRAPH_CLEAR:           handleGraphClear(ctx); break;
             case CmdType::CTRL_GRAPH_ENABLE:          handleGraphEnable(payload, ctx); break;
             case CmdType::CTRL_GRAPH_STATUS:          handleGraphStatus(ctx); break;
+            case CmdType::MCU_DIAGNOSTICS_QUERY:      handleMcuDiagnosticsQuery(ctx); break;
+            case CmdType::MCU_DIAGNOSTICS_RESET:      handleMcuDiagnosticsReset(ctx); break;
             default:
                 break;
         }
@@ -86,4 +90,6 @@ private:
     void handleGraphClear(CommandContext& ctx);
     void handleGraphEnable(JsonVariantConst payload, CommandContext& ctx);
     void handleGraphStatus(CommandContext& ctx);
+    void handleMcuDiagnosticsQuery(CommandContext& ctx);
+    void handleMcuDiagnosticsReset(CommandContext& ctx);
 };

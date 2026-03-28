@@ -35,8 +35,8 @@ inline uint8_t id(SectionId s) {
 // All multi-byte values are little-endian
 // -----------------------------------------------------------------------------
 //
-// TELEM_IMU: online(u8) ok(u8) ax(i16) ay(i16) az(i16) gx(i16) gy(i16) gz(i16) temp(i16)
-//   Size: 18 bytes
+// TELEM_IMU: online(u8) ok(u8) ax_mg(i16) ay_mg(i16) az_mg(i16) gx_mdps(i16) gy_mdps(i16) gz_mdps(i16) temp_c_centi(i16)
+//   Size: 16 bytes
 //
 // TELEM_ULTRASONIC: sensor_id(u8) attached(u8) ok(u8) dist_mm(u16)
 //   Size: 5 bytes
@@ -47,25 +47,25 @@ inline uint8_t id(SectionId s) {
 // TELEM_ENCODER0: ticks(i32)
 //   Size: 4 bytes
 //
-// TELEM_STEPPER0: motor_id(i8) attached(u8) enabled(u8) moving(u8) dir(u8) steps(i32) speed(i16)
+// TELEM_STEPPER0: motor_id(i8) attached(u8) enabled(u8) moving(u8) dir_forward(u8) last_cmd_steps(i32) speed_centi(i16)
 //   Size: 11 bytes
 //
 // TELEM_DC_MOTOR0: attached(u8) speed_centi(i16)
 //   Size: 3 bytes
 //
 // TELEM_PERF: last_fault(u8) hb_count(u32) hb_timeouts(u32) hb_recoveries(u32) hb_max_gap_ms(u32) motion_cmds(u32) motion_timeouts(u32) motion_max_gap_ms(u32) iterations(u32) overruns(u32) avg_total_us(u16) peak_total_us(u16) pkt_last_bytes(u16) pkt_max_bytes(u16) pkt_sent(u32) pkt_bytes(u32) pkt_dropped_sections(u32) pkt_last_sections(u8) pkt_max_sections(u8) pkt_buffered(u8)
-//   Size: 56 bytes
+//   Size: 60 bytes
 //
-// TELEM_SENSOR_HEALTH: count(u8) [sensor_kind(u8) sensor_id(u8) flags(u8) detail(u8)]*
+// TELEM_SENSOR_HEALTH: 
 //   Size: variable
 //
-// TELEM_CTRL_SIGNALS: count(u16) [id(u16) value(f32) ts_ms(u32)]*
+// TELEM_CTRL_SIGNALS: 
 //   Size: variable
 //
-// TELEM_CTRL_OBSERVERS: slot_count(u8) [slot(u8) enabled(u8) num_states(u8) states(f32)*]*
+// TELEM_CTRL_OBSERVERS: 
 //   Size: variable
 //
-// TELEM_CTRL_SLOTS: slot_count(u8) [slot(u8) enabled(u8) ok(u8) run_count(u32)]*
+// TELEM_CTRL_SLOTS: 
 //   Size: variable
 //
 

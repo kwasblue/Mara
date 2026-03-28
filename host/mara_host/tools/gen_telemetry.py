@@ -8,10 +8,30 @@ Generates:
 """
 
 from mara_host.tools.schema import TELEMETRY_SECTIONS, CPP_TELEMETRY_DIR, PY_TELEMETRY_DIR
+from mara_host.tools.schema.telemetry.core import TelemetrySectionDef
 
 # Output paths
 CPP_OUT = CPP_TELEMETRY_DIR / "TelemetrySections.h"
 PY_OUT = PY_TELEMETRY_DIR / "telemetry_sections.py"
+
+
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+
+def _section_items():
+    """Yield telemetry sections in stable section-id order."""
+    normalized = []
+    for name, spec in TELEMETRY_SECTIONS.items():
+        if isinstance(spec, TelemetrySectionDef):
+            legacy = spec.to_legacy_dict()
+        elif isinstance(spec, dict):
+            legacy = spec
+        else:
+            raise TypeError(f"{name}: unsupported telemetry spec type {type(spec).__name__}")
+        normalized.append((name, legacy))
+
+    return sorted(normalized, key=lambda item: item[1]["id"])
 
 
 # -----------------------------------------------------------------------------
@@ -37,7 +57,7 @@ def generate_cpp_header() -> str:
     # Generate section ID constants
     lines.append("// Section IDs (must match Python telemetry_sections.py)")
     lines.append("enum class SectionId : uint8_t {")
-    for name, spec in TELEMETRY_SECTIONS.items():
+    for name, spec in _section_items():
         section_id = spec["id"]
         desc = spec.get("description", "")
         lines.append(f"    {name.ljust(20)} = 0x{section_id:02X},  // {desc}")
@@ -57,10 +77,10 @@ def generate_cpp_header() -> str:
     lines.append("// All multi-byte values are little-endian")
     lines.append("// -----------------------------------------------------------------------------")
     lines.append("//")
-    for name, spec in TELEMETRY_SECTIONS.items():
+    for name, spec in _section_items():
         fmt = spec.get("format", "")
         size = spec.get("size")
-        size_str = f"{size} bytes" if size else "variable"
+        size_str = f"{size} bytes" if size is not None else "variable"
         lines.append(f"// {name}: {fmt}")
         lines.append(f"//   Size: {size_str}")
         lines.append("//")
@@ -91,7 +111,7 @@ def generate_py_module() -> str:
 
     # Generate section ID constants
     lines.append("# Sensor telemetry sections")
-    for name, spec in TELEMETRY_SECTIONS.items():
+    for name, spec in _section_items():
         if spec["id"] < 0x10:
             section_id = spec["id"]
             desc = spec.get("description", "")
@@ -99,7 +119,7 @@ def generate_py_module() -> str:
 
     lines.append("")
     lines.append("# Control telemetry sections")
-    for name, spec in TELEMETRY_SECTIONS.items():
+    for name, spec in _section_items():
         if spec["id"] >= 0x10:
             section_id = spec["id"]
             desc = spec.get("description", "")
@@ -109,7 +129,7 @@ def generate_py_module() -> str:
 
     # Generate __all__
     lines.append("__all__ = [")
-    for name in TELEMETRY_SECTIONS.keys():
+    for name, _ in _section_items():
         lines.append(f'    "{name}",')
     lines.append("]")
     lines.append("")
@@ -118,7 +138,7 @@ def generate_py_module() -> str:
     lines.append("")
     lines.append("# Section metadata for introspection")
     lines.append("SECTION_INFO = {")
-    for name, spec in TELEMETRY_SECTIONS.items():
+    for name, spec in _section_items():
         section_id = spec["id"]
         desc = spec.get("description", "")
         fmt = spec.get("format", "")
@@ -144,7 +164,7 @@ def main():
 
     # Validate TELEMETRY_SECTIONS
     seen_ids = set()
-    for name, spec in TELEMETRY_SECTIONS.items():
+    for name, spec in _section_items():
         section_id = spec.get("id")
         if section_id is None:
             raise ValueError(f"{name}: missing id")

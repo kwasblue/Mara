@@ -1,8 +1,12 @@
 from mara_host.tools.schema.control_graph.schema import (
     GRAPH_SCHEMA_VERSION,
     ControlGraphValidationError,
+    GraphNodeConfig,
+    GraphSlotConfig,
+    ControlGraphConfig,
     graph_json_schema,
     normalize_graph_config,
+    normalize_graph_model,
 )
 
 
@@ -30,6 +34,44 @@ def test_normalize_graph_config_applies_defaults() -> None:
     assert out["slots"][0]["rate_hz"] is None
     assert out["slots"][0]["source"]["type"] == "imu_axis"
     assert out["slots"][0]["sink"]["type"] == "servo_angle"
+
+
+def test_normalize_graph_model_returns_typed_objects() -> None:
+    model = normalize_graph_model(
+        {
+            "slots": [
+                {
+                    "id": "const_gpio",
+                    "source": {"type": "constant", "params": {"value": 1.0}},
+                    "sink": {"type": "gpio_write", "params": {"channel": 0}},
+                }
+            ]
+        }
+    )
+
+    assert isinstance(model, ControlGraphConfig)
+    assert model.schema_version == GRAPH_SCHEMA_VERSION
+    assert isinstance(model.slots[0], GraphSlotConfig)
+    assert isinstance(model.slots[0].source, GraphNodeConfig)
+    assert model.slots[0].sink is not None
+    assert model.to_dict()["slots"][0]["sink"]["type"] == "gpio_write"
+
+
+def test_normalize_graph_config_accepts_typed_objects_as_compat_input() -> None:
+    model = ControlGraphConfig(
+        slots=(
+            GraphSlotConfig(
+                id="typed",
+                source=GraphNodeConfig(type="constant", params={"value": 0.5}),
+                sink=GraphNodeConfig(type="gpio_write", params={"channel": 1}),
+            ),
+        )
+    )
+
+    out = normalize_graph_config(model)
+    assert out["schema_version"] == GRAPH_SCHEMA_VERSION
+    assert out["slots"][0]["id"] == "typed"
+    assert out["slots"][0]["sink"]["params"]["channel"] == 1
 
 
 def test_normalize_graph_config_rejects_unknown_type() -> None:

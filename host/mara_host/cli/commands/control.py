@@ -132,6 +132,25 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     add_transport_args(graph_clear_p)
     graph_clear_p.set_defaults(func=cmd_graph_clear)
 
+    diag_query_p = ctrl_sub.add_parser(
+        "mcu-diagnostics-query",
+        help="Query persisted MCU diagnostics and config mirror state",
+    )
+    add_transport_args(diag_query_p)
+    diag_query_p.set_defaults(func=cmd_mcu_diagnostics_query)
+
+    diag_reset_p = ctrl_sub.add_parser(
+        "mcu-diagnostics-reset",
+        help="Reset persisted MCU diagnostics counters",
+    )
+    diag_reset_p.add_argument(
+        "--clear-host-records",
+        action="store_true",
+        help="Also clear host-side persisted diagnostic snapshots",
+    )
+    add_transport_args(diag_reset_p)
+    diag_reset_p.set_defaults(func=cmd_mcu_diagnostics_reset)
+
     # ==================== Controller Slot Commands ====================
 
     # controller config
@@ -399,6 +418,28 @@ async def cmd_graph_clear(args: argparse.Namespace, ctx: CLIContext) -> int:
     result = await ctx.control_graph_service.clear()
     if result.ok:
         print_success("Control graph cleared")
+        console.print_json(data=result.data)
+        return 0
+    print_error(f"Failed: {result.error}")
+    return 1
+
+
+@run_with_context
+async def cmd_mcu_diagnostics_query(args: argparse.Namespace, ctx: CLIContext) -> int:
+    result = await ctx.mcu_diagnostics_service.query()
+    if result.ok:
+        print_info("MCU diagnostics snapshot")
+        console.print_json(data=result.data)
+        return 0
+    print_error(f"Failed: {result.error}")
+    return 1
+
+
+@run_with_context
+async def cmd_mcu_diagnostics_reset(args: argparse.Namespace, ctx: CLIContext) -> int:
+    result = await ctx.mcu_diagnostics_service.reset(clear_host_records=args.clear_host_records)
+    if result.ok:
+        print_success("MCU diagnostics reset")
         console.print_json(data=result.data)
         return 0
     print_error(f"Failed: {result.error}")

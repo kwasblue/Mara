@@ -44,6 +44,7 @@ class ConnectionConfig:
 
     # Client options
     connection_timeout_s: float = 6.0
+    handshake_timeout_s: float = 4.0
     heartbeat_interval_s: float = 0.2
     require_version_match: bool = True
 
@@ -124,6 +125,7 @@ class ConnectionService:
             heartbeat_interval_s=heartbeat_interval,
             connection_timeout_s=connection_timeout,
             command_timeout_s=command_timeout,
+            handshake_timeout_s=self.config.handshake_timeout_s,
             require_version_match=self.config.require_version_match,
             log_level=self.config.log_level,
             log_dir=self.config.log_dir,

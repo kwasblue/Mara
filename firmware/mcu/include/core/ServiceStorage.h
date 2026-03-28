@@ -46,6 +46,7 @@
 #include "module/IdentityModule.h"
 #include "module/TelemetryModule.h"
 #include "module/ControlModule.h"
+#include "persistence/McuPersistence.h"
 
 namespace mara {
 
@@ -173,6 +174,7 @@ struct ServiceStorage {
 
     // Telemetry depends on bus
     TelemetryModule telemetry{bus};
+    persistence::McuPersistence persistence;
 
     // =========================================================================
     // Tier 5: Orchestration

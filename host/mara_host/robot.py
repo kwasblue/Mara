@@ -177,6 +177,7 @@ class Robot:
         self._sensors = None
         self._config = None
         self._control_graph_service = None
+        self._mcu_diagnostics_service = None
 
     def _setup(self) -> None:
         """Initialize transport, bus, and client (called by connect)."""
@@ -199,7 +200,12 @@ class Robot:
 
         # Create event bus and client
         self._bus = EventBus()
-        self._client = MaraClient(self._transport, self._bus)
+        handshake_timeout_s = 4.0 if (self._port or self._ble_name) else 5.0
+        self._client = MaraClient(
+            self._transport,
+            self._bus,
+            handshake_timeout_s=handshake_timeout_s,
+        )
 
     # -------------------------------------------------------------------------
     # Lifecycle
@@ -232,6 +238,10 @@ class Robot:
         """
         if not self._connected:
             return
+
+        if self._mcu_diagnostics_service is not None:
+            self._mcu_diagnostics_service.close()
+            self._mcu_diagnostics_service = None
 
         if self._client:
             await self._client.stop()
@@ -295,6 +305,26 @@ class Robot:
         if self._config is None:
             return None
         return self.sensors
+
+    def _control_graph_persistence_store(self):
+        persistence = getattr(self._config, "persistence", None)
+        if persistence is None:
+            return None
+        policy = persistence.control_graph
+        if not policy.enabled or policy.backend == "none":
+            return None
+        from .services.persistence.store import ControlGraphStore
+        return ControlGraphStore(persistence.root_dir)
+
+    def _diagnostic_persistence_store(self):
+        persistence = getattr(self._config, "persistence", None)
+        if persistence is None:
+            return None
+        policy = persistence.diagnostics
+        if not policy.enabled or policy.backend == "none":
+            return None
+        from .services.persistence.store import DiagnosticRecordStore
+        return DiagnosticRecordStore(persistence.root_dir)
 
     @property
     def capabilities(self) -> list[str]:
@@ -396,8 +426,20 @@ class Robot:
             self._control_graph_service = ControlGraphService(
                 self.client,
                 sensor_policy_provider=self._sensor_policy_provider,
+                persistence_store=self._control_graph_persistence_store(),
             )
         return self._control_graph_service
+
+    @property
+    def mcu_diagnostics_service(self):
+        """Service for reading persisted MCU diagnostics from telemetry."""
+        if self._mcu_diagnostics_service is None:
+            from .services.persistence import McuDiagnosticsService
+            self._mcu_diagnostics_service = McuDiagnosticsService(
+                self.client,
+                diagnostics_store=self._diagnostic_persistence_store(),
+            )
+        return self._mcu_diagnostics_service
 
     # -------------------------------------------------------------------------
     # Event Subscription

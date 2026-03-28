@@ -7,6 +7,7 @@
 #include "motor/DcMotorManager.h"
 #include "motor/StepperManager.h"
 #include "config/MaraConfig.h"
+#include "persistence/McuPersistence.h"
 
 namespace {
 
@@ -33,6 +34,13 @@ public:
 
         ctx.mode->configure(config);
         ctx.mode->begin();
+        if (ctx.persistence) {
+            ctx.persistence->begin(maraCfg, millis());
+            ctx.persistence->updateFromMode(*ctx.mode, millis());
+            ctx.mode->onPersistentStateChanged([mode = ctx.mode, persist = ctx.persistence]() {
+                persist->updateFromMode(*mode, millis());
+            });
+        }
 
         // Set up stop callback (normal deactivation, timeout, etc.)
         ctx.mode->onStop([ctx]() {

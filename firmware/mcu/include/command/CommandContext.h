@@ -14,6 +14,10 @@
 #include "core/ErrorCodes.h"
 #include "command/ModeManager.h"
 
+namespace persistence {
+class McuPersistence;
+}
+
 /**
  * Context passed to command handlers.
  * Provides access to shared state and helper methods for ACK/error responses.
@@ -29,6 +33,7 @@ struct CommandContext {
     ModeManager& mode;
     mara::IClock* clock = nullptr;      // Time abstraction (optional, falls back to millis())
     mara::IntentBuffer* intents = nullptr;  // Intent buffer for command-to-actuator separation
+    persistence::McuPersistence* persistence = nullptr;
 
     // ACK cache for duplicate detection
     static constexpr int kAckCacheSize = 8;

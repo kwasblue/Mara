@@ -7,9 +7,8 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
-          "default": 0,
-          "description": "Camera ID for multi-camera setups."
+          "description": "Camera ID for multi-camera setups.",
+          "default": 0
         }
       }
     },
@@ -20,7 +19,6 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         }
       }
@@ -32,15 +30,14 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "size": {
           "type": "int",
           "required": true,
+          "description": "Frame size enum (0=QQVGA to 13=UXGA).",
           "min": 0,
-          "max": 13,
-          "description": "Frame size enum (0=QQVGA to 13=UXGA)."
+          "max": 13
         }
       }
     },
@@ -51,15 +48,14 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "quality": {
           "type": "int",
           "required": true,
+          "description": "JPEG quality (4-63, lower is better).",
           "min": 4,
-          "max": 63,
-          "description": "JPEG quality (4-63, lower is better)."
+          "max": 63
         }
       }
     },
@@ -70,15 +66,14 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "brightness": {
           "type": "int",
           "required": true,
+          "description": "Brightness level (-2 to 2).",
           "min": -2,
-          "max": 2,
-          "description": "Brightness level (-2 to 2)."
+          "max": 2
         }
       }
     },
@@ -89,15 +84,14 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "contrast": {
           "type": "int",
           "required": true,
+          "description": "Contrast level (-2 to 2).",
           "min": -2,
-          "max": 2,
-          "description": "Contrast level (-2 to 2)."
+          "max": 2
         }
       }
     },
@@ -108,15 +102,14 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "saturation": {
           "type": "int",
           "required": true,
+          "description": "Saturation level (-2 to 2).",
           "min": -2,
-          "max": 2,
-          "description": "Saturation level (-2 to 2)."
+          "max": 2
         }
       }
     },
@@ -127,15 +120,14 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "sharpness": {
           "type": "int",
           "required": true,
+          "description": "Sharpness level (-2 to 2).",
           "min": -2,
-          "max": 2,
-          "description": "Sharpness level (-2 to 2)."
+          "max": 2
         }
       }
     },
@@ -146,20 +138,17 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "hmirror": {
           "type": "bool",
-          "required": false,
-          "default": false,
-          "description": "Horizontal mirror."
+          "description": "Horizontal mirror.",
+          "default": false
         },
         "vflip": {
           "type": "bool",
-          "required": false,
-          "default": false,
-          "description": "Vertical flip."
+          "description": "Vertical flip.",
+          "default": false
         }
       }
     },
@@ -170,7 +159,6 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "enabled": {
@@ -180,11 +168,10 @@
         },
         "mode": {
           "type": "int",
-          "required": false,
+          "description": "WB mode: 0=Auto, 1=Sunny, 2=Cloudy, 3=Office, 4=Home.",
           "default": 0,
           "min": 0,
-          "max": 4,
-          "description": "WB mode: 0=Auto, 1=Sunny, 2=Cloudy, 3=Office, 4=Home."
+          "max": 4
         }
       }
     },
@@ -195,7 +182,6 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "auto": {
@@ -205,11 +191,10 @@
         },
         "value": {
           "type": "int",
-          "required": false,
+          "description": "Manual exposure value (when auto=false).",
           "default": 300,
           "min": 0,
-          "max": 1200,
-          "description": "Manual exposure value (when auto=false)."
+          "max": 1200
         }
       }
     },
@@ -220,7 +205,6 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "auto": {
@@ -230,19 +214,17 @@
         },
         "value": {
           "type": "int",
-          "required": false,
+          "description": "Manual gain value (when auto=false).",
           "default": 0,
           "min": 0,
-          "max": 30,
-          "description": "Manual gain value (when auto=false)."
+          "max": 30
         },
         "ceiling": {
           "type": "int",
-          "required": false,
+          "description": "Gain ceiling (0=2x to 6=128x).",
           "default": 2,
           "min": 0,
-          "max": 6,
-          "description": "Gain ceiling (0=2x to 6=128x)."
+          "max": 6
         }
       }
     },
@@ -253,18 +235,17 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "state": {
           "type": "string",
           "required": true,
+          "description": "Flash state: on, off, or toggle.",
           "enum": [
             "on",
             "off",
             "toggle"
-          ],
-          "description": "Flash state: on, off, or toggle."
+          ]
         }
       }
     },
@@ -275,12 +256,12 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "preset": {
           "type": "string",
           "required": true,
+          "description": "Preset name.",
           "enum": [
             "default",
             "streaming",
@@ -288,8 +269,7 @@
             "fast",
             "night",
             "ml_inference"
-          ],
-          "description": "Preset name."
+          ]
         }
       }
     },
@@ -300,24 +280,21 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "mode": {
           "type": "string",
-          "required": false,
+          "description": "Capture mode.",
           "default": "polling",
           "enum": [
             "polling",
             "streaming"
-          ],
-          "description": "Capture mode."
+          ]
         },
         "fps": {
           "type": "float",
-          "required": false,
-          "default": 10.0,
-          "description": "Target frame rate (polling mode)."
+          "description": "Target frame rate (polling mode).",
+          "default": 10.0
         }
       }
     },
@@ -328,7 +305,6 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         }
       }
@@ -340,14 +316,12 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "publish": {
           "type": "bool",
-          "required": false,
-          "default": true,
-          "description": "Publish frame to event bus."
+          "description": "Publish frame to event bus.",
+          "default": true
         }
       }
     },
@@ -358,24 +332,21 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "output_dir": {
           "type": "string",
-          "required": false,
-          "default": "recordings",
-          "description": "Output directory for recordings."
+          "description": "Output directory for recordings.",
+          "default": "recordings"
         },
         "format": {
           "type": "string",
-          "required": false,
+          "description": "Recording format.",
           "default": "video",
           "enum": [
             "video",
             "frames"
-          ],
-          "description": "Recording format."
+          ]
         }
       }
     },
@@ -386,7 +357,6 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         }
       }
@@ -398,7 +368,6 @@
       "payload": {
         "camera_id": {
           "type": "int",
-          "required": false,
           "default": 0
         },
         "enabled": {
@@ -408,11 +377,10 @@
         },
         "sensitivity": {
           "type": "int",
-          "required": false,
+          "description": "Motion sensitivity (1-100).",
           "default": 30,
           "min": 1,
-          "max": 100,
-          "description": "Motion sensitivity (1-100)."
+          "max": 100
         }
       }
     },
@@ -434,19 +402,18 @@
         "signal_kind": {
           "type": "string",
           "required": true,
+          "description": "Signal kind: REF = reference/setpoint, MEAS = measurement/feedback, OUT = control output, EST = state estimate.",
           "enum": [
             "REF",
             "MEAS",
             "OUT",
             "EST"
-          ],
-          "description": "Signal kind: REF = reference/setpoint, MEAS = measurement/feedback, OUT = control output, EST = state estimate."
+          ]
         },
         "initial": {
           "type": "float",
-          "required": false,
-          "default": 0.0,
-          "description": "Initial value."
+          "description": "Initial value.",
+          "default": 0.0
         }
       }
     },
@@ -510,94 +477,83 @@
         "slot": {
           "type": "int",
           "required": true,
+          "description": "Slot index (0-7).",
           "min": 0,
-          "max": 7,
-          "description": "Slot index (0-7)."
+          "max": 7
         },
         "controller_type": {
           "type": "string",
           "required": true,
+          "description": "Controller type: PID or STATE_SPACE.",
           "enum": [
             "PID",
             "STATE_SPACE",
             "SS"
-          ],
-          "description": "Controller type: PID or STATE_SPACE."
+          ]
         },
         "rate_hz": {
           "type": "int",
-          "required": false,
+          "description": "Controller update rate in Hz.",
           "default": 100,
           "min": 1,
-          "max": 1000,
-          "description": "Controller update rate in Hz."
+          "max": 1000
         },
         "ref_id": {
           "type": "int",
-          "required": false,
           "description": "Signal ID for reference/setpoint (PID mode)."
         },
         "meas_id": {
           "type": "int",
-          "required": false,
           "description": "Signal ID for measurement/feedback (PID mode)."
         },
         "out_id": {
           "type": "int",
-          "required": false,
           "description": "Signal ID for control output (PID mode)."
         },
         "num_states": {
           "type": "int",
-          "required": false,
+          "description": "Number of state variables (STATE_SPACE mode).",
           "default": 2,
           "min": 1,
-          "max": 6,
-          "description": "Number of state variables (STATE_SPACE mode)."
+          "max": 6
         },
         "num_inputs": {
           "type": "int",
-          "required": false,
+          "description": "Number of control inputs (STATE_SPACE mode).",
           "default": 1,
           "min": 1,
-          "max": 2,
-          "description": "Number of control inputs (STATE_SPACE mode)."
+          "max": 2
         },
         "state_ids": {
           "type": "array",
+          "description": "Signal IDs for state measurements (STATE_SPACE mode).",
           "items": {
             "type": "int"
-          },
-          "required": false,
-          "description": "Signal IDs for state measurements (STATE_SPACE mode)."
+          }
         },
         "ref_ids": {
           "type": "array",
+          "description": "Signal IDs for state references (STATE_SPACE mode).",
           "items": {
             "type": "int"
-          },
-          "required": false,
-          "description": "Signal IDs for state references (STATE_SPACE mode)."
+          }
         },
         "output_ids": {
           "type": "array",
+          "description": "Signal IDs for control outputs (STATE_SPACE mode).",
           "items": {
             "type": "int"
-          },
-          "required": false,
-          "description": "Signal IDs for control outputs (STATE_SPACE mode)."
+          }
         },
         "require_armed": {
           "type": "bool",
-          "required": false,
-          "default": true,
-          "description": "Only run when robot is armed."
+          "description": "Only run when robot is armed.",
+          "default": true
         },
         "require_active": {
           "type": "bool",
-          "required": false,
-          "default": true,
-          "description": "Only run when robot is active."
+          "description": "Only run when robot is active.",
+          "default": true
         }
       }
     },
@@ -609,9 +565,9 @@
         "slot": {
           "type": "int",
           "required": true,
+          "description": "Slot index (0-7).",
           "min": 0,
-          "max": 7,
-          "description": "Slot index (0-7)."
+          "max": 7
         },
         "enable": {
           "type": "bool",
@@ -628,9 +584,9 @@
         "slot": {
           "type": "int",
           "required": true,
+          "description": "Slot index (0-7).",
           "min": 0,
-          "max": 7,
-          "description": "Slot index (0-7)."
+          "max": 7
         },
         "key": {
           "type": "string",
@@ -647,9 +603,9 @@
         "slot": {
           "type": "int",
           "required": true,
+          "description": "Slot index (0-7).",
           "min": 0,
-          "max": 7,
-          "description": "Slot index (0-7)."
+          "max": 7
         }
       }
     },
@@ -661,9 +617,9 @@
         "slot": {
           "type": "int",
           "required": true,
+          "description": "Slot index (0-7).",
           "min": 0,
-          "max": 7,
-          "description": "Slot index (0-7)."
+          "max": 7
         },
         "key": {
           "type": "string",
@@ -685,9 +641,9 @@
         "slot": {
           "type": "int",
           "required": true,
+          "description": "Slot index (0-7).",
           "min": 0,
-          "max": 7,
-          "description": "Slot index (0-7)."
+          "max": 7
         },
         "key": {
           "type": "string",
@@ -696,11 +652,11 @@
         },
         "values": {
           "type": "array",
+          "required": true,
+          "description": "Array of float values. For K/Kr: row-major order [k00,k01,...,k10,k11,...]. For Ki: one per output.",
           "items": {
             "type": "float"
-          },
-          "required": true,
-          "description": "Array of float values. For K/Kr: row-major order [k00,k01,...,k10,k11,...]. For Ki: one per output."
+          }
         }
       }
     },
@@ -712,9 +668,9 @@
         "slot": {
           "type": "int",
           "required": true,
+          "description": "Slot index (0-7).",
           "min": 0,
-          "max": 7,
-          "description": "Slot index (0-7)."
+          "max": 7
         }
       }
     },
@@ -752,6 +708,18 @@
       "kind": "cmd",
       "direction": "host->mcu",
       "description": "Get status of the stored runtime control graph.",
+      "payload": {}
+    },
+    "CMD_MCU_DIAGNOSTICS_QUERY": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Query persisted MCU diagnostics and mirrored persistence metadata.",
+      "payload": {}
+    },
+    "CMD_MCU_DIAGNOSTICS_RESET": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Reset persisted MCU diagnostics counters while preserving boot identity fields.",
       "payload": {}
     },
     "CMD_DC_SET_SPEED": {
@@ -910,7 +878,6 @@
         },
         "mode": {
           "type": "string",
-          "required": false,
           "default": "output",
           "enum": [
             "output",
@@ -934,8 +901,7 @@
           "required": true
         },
         "freq_hz": {
-          "type": "float",
-          "required": false
+          "type": "float"
         }
       }
     },
@@ -973,7 +939,6 @@
         },
         "frame": {
           "type": "string",
-          "required": false,
           "default": "robot",
           "enum": [
             "robot",
@@ -990,63 +955,61 @@
         "slot": {
           "type": "int",
           "required": true,
+          "description": "Observer slot index (0-3).",
           "min": 0,
-          "max": 3,
-          "description": "Observer slot index (0-3)."
+          "max": 3
         },
         "num_states": {
           "type": "int",
           "required": true,
+          "description": "Number of states to estimate.",
           "min": 1,
-          "max": 6,
-          "description": "Number of states to estimate."
+          "max": 6
         },
         "num_inputs": {
           "type": "int",
-          "required": false,
+          "description": "Number of control inputs (u).",
           "default": 1,
           "min": 1,
-          "max": 2,
-          "description": "Number of control inputs (u)."
+          "max": 2
         },
         "num_outputs": {
           "type": "int",
           "required": true,
+          "description": "Number of measurements (y).",
           "min": 1,
-          "max": 4,
-          "description": "Number of measurements (y)."
+          "max": 4
         },
         "rate_hz": {
           "type": "int",
-          "required": false,
+          "description": "Observer update rate in Hz.",
           "default": 200,
           "min": 50,
-          "max": 1000,
-          "description": "Observer update rate in Hz."
+          "max": 1000
         },
         "input_ids": {
           "type": "array",
+          "required": true,
+          "description": "Signal IDs for control inputs (u).",
           "items": {
             "type": "int"
-          },
-          "required": true,
-          "description": "Signal IDs for control inputs (u)."
+          }
         },
         "output_ids": {
           "type": "array",
+          "required": true,
+          "description": "Signal IDs for measurements (y).",
           "items": {
             "type": "int"
-          },
-          "required": true,
-          "description": "Signal IDs for measurements (y)."
+          }
         },
         "estimate_ids": {
           "type": "array",
+          "required": true,
+          "description": "Signal IDs where state estimates (x\u0302) are written.",
           "items": {
             "type": "int"
-          },
-          "required": true,
-          "description": "Signal IDs where state estimates (x\u0302) are written."
+          }
         }
       }
     },
@@ -1116,21 +1079,21 @@
         "key": {
           "type": "string",
           "required": true,
+          "description": "Matrix name.",
           "enum": [
             "A",
             "B",
             "C",
             "L"
-          ],
-          "description": "Matrix name."
+          ]
         },
         "values": {
           "type": "array",
+          "required": true,
+          "description": "Matrix values in row-major order.",
           "items": {
             "type": "float"
-          },
-          "required": true,
-          "description": "Matrix values in row-major order."
+          }
         }
       }
     },
@@ -1161,9 +1124,9 @@
         "hz": {
           "type": "int",
           "required": true,
+          "description": "Control loop frequency in Hz.",
           "min": 5,
-          "max": 200,
-          "description": "Control loop frequency in Hz."
+          "max": 200
         }
       }
     },
@@ -1175,9 +1138,9 @@
         "hz": {
           "type": "int",
           "required": true,
+          "description": "Safety loop frequency in Hz.",
           "min": 20,
-          "max": 500,
-          "description": "Safety loop frequency in Hz."
+          "max": 500
         }
       }
     },
@@ -1189,9 +1152,9 @@
         "hz": {
           "type": "int",
           "required": true,
+          "description": "Telemetry loop frequency in Hz.",
           "min": 1,
-          "max": 50,
-          "description": "Telemetry loop frequency in Hz."
+          "max": 50
         }
       }
     },
@@ -1199,7 +1162,8 @@
       "kind": "cmd",
       "direction": "host->mcu",
       "description": "Get device identity and capabilities (firmware version, build config, features).",
-      "payload": {}
+      "payload": {},
+      "timeout_s": 2.0
     },
     "CMD_HEARTBEAT": {
       "kind": "cmd",
@@ -1211,25 +1175,29 @@
       "kind": "cmd",
       "direction": "host->mcu",
       "description": "Transition from IDLE to ARMED. Motors enabled but not accepting motion.",
-      "payload": {}
+      "payload": {},
+      "timeout_s": 0.5
     },
     "CMD_DISARM": {
       "kind": "cmd",
       "direction": "host->mcu",
       "description": "Transition from ARMED to IDLE. Motors disabled.",
-      "payload": {}
+      "payload": {},
+      "timeout_s": 0.5
     },
     "CMD_ACTIVATE": {
       "kind": "cmd",
       "direction": "host->mcu",
       "description": "Transition from ARMED to ACTIVE. Motion commands now accepted.",
-      "payload": {}
+      "payload": {},
+      "timeout_s": 0.5
     },
     "CMD_DEACTIVATE": {
       "kind": "cmd",
       "direction": "host->mcu",
       "description": "Transition from ACTIVE to ARMED. Stops motion, still armed.",
-      "payload": {}
+      "payload": {},
+      "timeout_s": 0.5
     },
     "CMD_ESTOP": {
       "kind": "cmd",
@@ -1241,7 +1209,8 @@
       "kind": "cmd",
       "direction": "host->mcu",
       "description": "Clear ESTOP and return to IDLE mode.",
-      "payload": {}
+      "payload": {},
+      "timeout_s": 0.5
     },
     "CMD_STOP": {
       "kind": "cmd",
@@ -1301,6 +1270,18 @@
       "kind": "cmd",
       "direction": "host->mcu",
       "description": "Trigger a single ultrasonic distance measurement.",
+      "payload": {
+        "sensor_id": {
+          "type": "int",
+          "required": true,
+          "default": 0
+        }
+      }
+    },
+    "CMD_ULTRASONIC_DETACH": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Detach an ultrasonic sensor and clear its cached state.",
       "payload": {
         "sensor_id": {
           "type": "int",
@@ -1370,12 +1351,10 @@
         },
         "min_us": {
           "type": "int",
-          "required": false,
           "default": 1000
         },
         "max_us": {
           "type": "int",
-          "required": false,
           "default": 2000
         }
       }
@@ -1406,9 +1385,8 @@
         },
         "duration_ms": {
           "type": "int",
-          "required": false,
-          "default": 0,
-          "description": "Interpolation duration in milliseconds (0 = immediate)."
+          "description": "Interpolation duration in milliseconds (0 = immediate).",
+          "default": 0
         }
       }
     },
@@ -1442,7 +1420,6 @@
         },
         "speed_steps_s": {
           "type": "float",
-          "required": false,
           "default": 1000.0
         }
       }
@@ -1469,7 +1446,6 @@
         },
         "enable": {
           "type": "bool",
-          "required": false,
           "default": true
         }
       }
@@ -1494,14 +1470,86 @@
         "level": {
           "type": "string",
           "required": true,
+          "default": "info",
           "enum": [
             "debug",
             "info",
             "warn",
             "error",
             "off"
-          ],
-          "default": "info"
+          ]
+        }
+      }
+    },
+    "CMD_WIFI_SCAN": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Scan for available WiFi networks.",
+      "payload": {},
+      "timeout_s": 10.0,
+      "response": {
+        "networks": {
+          "type": "array",
+          "description": "List of discovered networks",
+          "items": {
+            "ssid": {
+              "type": "string"
+            },
+            "rssi": {
+              "type": "int"
+            },
+            "encrypted": {
+              "type": "bool"
+            }
+          }
+        }
+      }
+    },
+    "CMD_WIFI_JOIN": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Connect to a WiFi network.",
+      "payload": {
+        "ssid": {
+          "type": "string",
+          "required": true,
+          "description": "Network SSID to connect to"
+        },
+        "password": {
+          "type": "string",
+          "description": "Network password (omit for open networks)"
+        }
+      },
+      "timeout_s": 15.0
+    },
+    "CMD_WIFI_DISCONNECT": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Disconnect from current WiFi network.",
+      "payload": {},
+      "timeout_s": 2.0
+    },
+    "CMD_WIFI_STATUS": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Get current WiFi connection status.",
+      "payload": {},
+      "response": {
+        "connected": {
+          "type": "bool",
+          "description": "True if connected to a network"
+        },
+        "ssid": {
+          "type": "string",
+          "description": "Current network SSID"
+        },
+        "rssi": {
+          "type": "int",
+          "description": "Signal strength in dBm"
+        },
+        "ip": {
+          "type": "string",
+          "description": "Assigned IP address"
         }
       }
     }

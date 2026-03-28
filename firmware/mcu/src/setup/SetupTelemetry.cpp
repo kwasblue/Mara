@@ -15,6 +15,7 @@
 #include "motor/StepperManager.h"
 #include "motor/DcMotorManager.h"
 #include "telemetry/TelemetrySections.h"
+#include "persistence/McuPersistence.h"
 #include <algorithm>
 
 namespace {
@@ -241,6 +242,16 @@ public:
                     out.push_back(pkt.last_section_count);
                     out.push_back(pkt.max_section_count);
                     out.push_back(static_cast<uint8_t>(std::min<uint16_t>(pkt.buffered_packets, 255)));
+                }
+            );
+        }
+
+        if (ctx.persistence && ctx.mode) {
+            ctx.telemetry->registerProvider(
+                "persistence",
+                [&ctx](ArduinoJson::JsonObject node) {
+                    ctx.persistence->updateFromMode(*ctx.mode, millis());
+                    ctx.persistence->fillTelemetry(node);
                 }
             );
         }

@@ -1,63 +1,56 @@
 # schema/commands/_wifi.py
 """WiFi configuration command definitions."""
 
-WIFI_COMMANDS: dict[str, dict] = {
-    "CMD_WIFI_SCAN": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Scan for available WiFi networks.",
-        "payload": {},
-        "timeout_s": 10.0,  # WiFi scan can take several seconds
-        "response": {
-            "networks": {
-                "type": "array",
-                "description": "List of discovered networks",
-                "items": {
-                    "ssid": {"type": "string"},
-                    "rssi": {"type": "int"},
-                    "encrypted": {"type": "bool"},
+from __future__ import annotations
+
+from .core import CommandDef, FieldDef, export_command_dicts
+
+
+WIFI_COMMAND_OBJECTS: dict[str, CommandDef] = {
+    "CMD_WIFI_SCAN": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Scan for available WiFi networks.",
+        timeout_s=10.0,
+        response={
+            "networks": FieldDef(
+                type="array",
+                description="List of discovered networks",
+                items={
+                    "ssid": FieldDef(type="string"),
+                    "rssi": FieldDef(type="int"),
+                    "encrypted": FieldDef(type="bool"),
                 },
-            },
+            ),
         },
-    },
-
-    "CMD_WIFI_JOIN": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Connect to a WiFi network.",
-        "payload": {
-            "ssid": {
-                "type": "string",
-                "required": True,
-                "description": "Network SSID to connect to",
-            },
-            "password": {
-                "type": "string",
-                "required": False,
-                "description": "Network password (omit for open networks)",
-            },
+    ),
+    "CMD_WIFI_JOIN": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Connect to a WiFi network.",
+        payload={
+            "ssid": FieldDef(type="string", required=True, description="Network SSID to connect to"),
+            "password": FieldDef(type="string", description="Network password (omit for open networks)"),
         },
-        "timeout_s": 15.0,  # WiFi connection can take 10+ seconds
-    },
-
-    "CMD_WIFI_DISCONNECT": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Disconnect from current WiFi network.",
-        "payload": {},
-        "timeout_s": 2.0,
-    },
-
-    "CMD_WIFI_STATUS": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Get current WiFi connection status.",
-        "payload": {},
-        "response": {
-            "connected": {"type": "bool", "description": "True if connected to a network"},
-            "ssid": {"type": "string", "description": "Current network SSID"},
-            "rssi": {"type": "int", "description": "Signal strength in dBm"},
-            "ip": {"type": "string", "description": "Assigned IP address"},
+        timeout_s=15.0,
+    ),
+    "CMD_WIFI_DISCONNECT": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Disconnect from current WiFi network.",
+        timeout_s=2.0,
+    ),
+    "CMD_WIFI_STATUS": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Get current WiFi connection status.",
+        response={
+            "connected": FieldDef(type="bool", description="True if connected to a network"),
+            "ssid": FieldDef(type="string", description="Current network SSID"),
+            "rssi": FieldDef(type="int", description="Signal strength in dBm"),
+            "ip": FieldDef(type="string", description="Assigned IP address"),
         },
-    },
+    ),
 }
+
+WIFI_COMMANDS: dict[str, dict] = export_command_dicts(WIFI_COMMAND_OBJECTS)

@@ -119,13 +119,13 @@ public:
     };
 
     bool upload(JsonVariantConst graph, const char*& error) {
+        // Safety policy: keep control-graph uploads volatile for now.
+        // Persisting executable control behavior on the MCU is deferred until
+        // we have an explicit operator-controlled restore flow.
         if (!uploadInMemory_(graph, error)) {
             return false;
         }
-        if (!savePersistedGraph_(graph, error)) {
-            clearInMemory_();
-            return false;
-        }
+        clearPersistedGraph_();
         error = nullptr;
         return true;
     }

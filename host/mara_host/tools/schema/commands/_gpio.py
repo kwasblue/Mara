@@ -1,76 +1,55 @@
 # schema/commands/_gpio.py
 """LED, GPIO, and PWM command definitions."""
 
-GPIO_COMMANDS: dict[str, dict] = {
-    # LED
-    "CMD_LED_ON": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Turn status LED on.",
-        "payload": {},
-    },
+from __future__ import annotations
 
-    "CMD_LED_OFF": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Turn status LED off.",
-        "payload": {},
-    },
+from .core import CommandDef, FieldDef, export_command_dicts
 
-    # GPIO
-    "CMD_GPIO_WRITE": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Write a digital value to a logical GPIO channel.",
-        "payload": {
-            "channel": {"type": "int", "required": True},
-            "value": {"type": "int", "required": True},
+
+GPIO_COMMAND_OBJECTS: dict[str, CommandDef] = {
+    "CMD_LED_ON": CommandDef(kind="cmd", direction="host->mcu", description="Turn status LED on."),
+    "CMD_LED_OFF": CommandDef(kind="cmd", direction="host->mcu", description="Turn status LED off."),
+    "CMD_GPIO_WRITE": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Write a digital value to a logical GPIO channel.",
+        payload={
+            "channel": FieldDef(type="int", required=True),
+            "value": FieldDef(type="int", required=True),
         },
-    },
-
-    "CMD_GPIO_READ": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Read a digital value from a logical GPIO channel.",
-        "payload": {
-            "channel": {"type": "int", "required": True},
+    ),
+    "CMD_GPIO_READ": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Read a digital value from a logical GPIO channel.",
+        payload={"channel": FieldDef(type="int", required=True)},
+    ),
+    "CMD_GPIO_TOGGLE": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Toggle a logical GPIO channel.",
+        payload={"channel": FieldDef(type="int", required=True)},
+    ),
+    "CMD_GPIO_REGISTER_CHANNEL": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Register or re-map a logical GPIO channel to a physical pin.",
+        payload={
+            "channel": FieldDef(type="int", required=True),
+            "pin": FieldDef(type="int", required=True),
+            "mode": FieldDef(type="string", default="output", enum=("output", "input", "input_pullup")),
         },
-    },
-
-    "CMD_GPIO_TOGGLE": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Toggle a logical GPIO channel.",
-        "payload": {
-            "channel": {"type": "int", "required": True},
+    ),
+    "CMD_PWM_SET": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Set PWM duty cycle for a logical channel.",
+        payload={
+            "channel": FieldDef(type="int", required=True),
+            "duty": FieldDef(type="float", required=True),
+            "freq_hz": FieldDef(type="float"),
         },
-    },
-
-    "CMD_GPIO_REGISTER_CHANNEL": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Register or re-map a logical GPIO channel to a physical pin.",
-        "payload": {
-            "channel": {"type": "int", "required": True},
-            "pin": {"type": "int", "required": True},
-            "mode": {
-                "type": "string",
-                "required": False,
-                "default": "output",
-                "enum": ["output", "input", "input_pullup"],
-            },
-        },
-    },
-
-    # PWM
-    "CMD_PWM_SET": {
-        "kind": "cmd",
-        "direction": "host->mcu",
-        "description": "Set PWM duty cycle for a logical channel.",
-        "payload": {
-            "channel": {"type": "int", "required": True},
-            "duty": {"type": "float", "required": True},
-            "freq_hz": {"type": "float", "required": False},
-        },
-    },
+    ),
 }
+
+GPIO_COMMANDS: dict[str, dict] = export_command_dicts(GPIO_COMMAND_OBJECTS)

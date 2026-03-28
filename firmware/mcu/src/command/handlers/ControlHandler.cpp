@@ -397,7 +397,9 @@ void ControlHandler::handleGraphStatus(CommandContext& ctx) {
         out["valid"] = runtime.valid;
         out["run_count"] = runtime.run_count;
         out["last_run_ms"] = runtime.last_run_ms;
-        out["last_output_high"] = runtime.last_output_high;
+        out["sink_count"] = runtime.sink_count;
+        // For backwards compatibility, report first sink's output state
+        out["last_output_high"] = (runtime.sink_count > 0) ? runtime.sinks[0].last_output_high : false;
         if (runtime.error[0]) {
             out["error"] = runtime.error;
         }

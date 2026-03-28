@@ -45,6 +45,23 @@ public:
         Lowpass,
         DeltaGate,
         SlewRate,
+        // New transforms
+        Abs,
+        Negate,
+        Map,
+        Hysteresis,
+        Median,
+        Threshold,
+        Toggle,
+        Oscillator,
+        Pulse,
+        Derivative,
+        Integrator,
+        Proportional,  // Alias for Scale
+        // Taps/MISO
+        Tap,
+        Recall,
+        Sum,
     };
 
     enum class SinkKind : uint8_t {
@@ -55,26 +72,50 @@ public:
 
     struct TransformRuntime {
         TransformKind kind = TransformKind::Unsupported;
-        float a = 0.0f;
-        float b = 0.0f;
-        uint32_t t_ms = 0;
+        float a = 0.0f;      // Primary param (factor, threshold, min, alpha, freq, etc.)
+        float b = 0.0f;      // Secondary param (max, state, phase, prev_value, etc.)
+        float c = 0.0f;      // Tertiary param (hysteresis off_threshold, etc.)
+        float d = 0.0f;      // Extra state (median buffer sum, etc.)
+        uint32_t t_ms = 0;   // Timestamp for time-based transforms
         bool initialized = false;
+        bool toggle_state = false;  // For toggle transform
+        static constexpr uint8_t MEDIAN_WINDOW = 5;
+        float median_buf[MEDIAN_WINDOW] = {0};
+        uint8_t median_idx = 0;
+        uint8_t median_count = 0;
+        // Tap/MISO support
+        char tap_name[12] = {0};           // Name for tap/recall
+        static constexpr uint8_t MAX_SUM_INPUTS = 4;
+        char sum_inputs[MAX_SUM_INPUTS][12] = {{0}};  // Names for sum inputs
+        uint8_t sum_input_count = 0;
+    };
+
+    struct SinkRuntime {
+        SinkKind kind = SinkKind::Unsupported;
+        int channel = -1;      // For GPIO
+        int servo_id = -1;     // For Servo
+        bool last_output_high = false;
     };
 
     struct SlotRuntime {
         bool valid = false;
         SourceKind source = SourceKind::Unsupported;
-        SinkKind sink = SinkKind::Unsupported;
         char imu_axis[8] = {0};
         float source_value = 0.0f;
-        int sink_channel = -1;
-        int sink_servo_id = -1;
         uint8_t transform_count = 0;
         TransformRuntime transforms[MAX_TRANSFORMS]{};
         uint32_t last_run_ms = 0;
         uint32_t run_count = 0;
-        bool last_output_high = false;
         char error[24] = {0};
+        // Multi-sink support (SIMO)
+        static constexpr uint8_t MAX_SINKS = 4;
+        SinkRuntime sinks[MAX_SINKS]{};
+        uint8_t sink_count = 0;
+        // Tap storage for MISO
+        static constexpr uint8_t MAX_TAPS = 8;
+        char tap_names[MAX_TAPS][12] = {{0}};
+        float tap_values[MAX_TAPS] = {0};
+        uint8_t tap_count = 0;
     };
 
     bool upload(JsonVariantConst graph, const char*& error) {
@@ -237,14 +278,25 @@ private:
             out.rate_hz = static_cast<uint16_t>(slot["rate_hz"] | 0);
 
             JsonObjectConst source = slot["source"].as<JsonObjectConst>();
-            JsonObjectConst sink = slot["sink"].as<JsonObjectConst>();
-            if (!source || !sink) {
+            // Support both single sink (object) and multiple sinks (array)
+            JsonVariantConst sinkVariant = slot["sink"].isNull() ? slot["sinks"] : slot["sink"];
+            if (!source || sinkVariant.isNull()) {
                 error = "source_and_sink_required";
                 clearInMemory_();
                 return false;
             }
             copyString_(out.source_type, sizeof(out.source_type), source["type"] | "");
-            copyString_(out.sink_type, sizeof(out.sink_type), sink["type"] | "");
+            // For summary, show first sink type or "multi" if array
+            if (sinkVariant.is<JsonArrayConst>()) {
+                JsonArrayConst arr = sinkVariant.as<JsonArrayConst>();
+                if (arr.size() > 1) {
+                    copyString_(out.sink_type, sizeof(out.sink_type), "multi");
+                } else if (arr.size() == 1) {
+                    copyString_(out.sink_type, sizeof(out.sink_type), arr[0]["type"] | "");
+                }
+            } else {
+                copyString_(out.sink_type, sizeof(out.sink_type), sinkVariant["type"] | "");
+            }
 
             JsonArrayConst transforms = slot["transforms"].as<JsonArrayConst>();
             out.transform_count = transforms ? static_cast<uint8_t>(transforms.size()) : 0;
@@ -254,7 +306,7 @@ private:
                 return false;
             }
 
-            if (!parseSlot_(source, transforms, sink, runtime, error)) {
+            if (!parseSlot_(source, transforms, sinkVariant, runtime, error)) {
                 clearInMemory_();
                 return false;
             }
@@ -333,6 +385,32 @@ private:
         return v < lo ? lo : (v > hi ? hi : v);
     }
 
+    // Tap storage helpers
+    static int findTap_(SlotRuntime& slot, const char* name) {
+        for (uint8_t i = 0; i < slot.tap_count; ++i) {
+            if (strcmp(slot.tap_names[i], name) == 0) return i;
+        }
+        return -1;
+    }
+
+    static bool storeTap_(SlotRuntime& slot, const char* name, float value) {
+        int idx = findTap_(slot, name);
+        if (idx >= 0) {
+            slot.tap_values[idx] = value;
+            return true;
+        }
+        if (slot.tap_count >= SlotRuntime::MAX_TAPS) return false;
+        copyString_(slot.tap_names[slot.tap_count], sizeof(slot.tap_names[0]), name);
+        slot.tap_values[slot.tap_count] = value;
+        slot.tap_count++;
+        return true;
+    }
+
+    static float recallTap_(SlotRuntime& slot, const char* name, float fallback = 0.0f) {
+        int idx = findTap_(slot, name);
+        return (idx >= 0) ? slot.tap_values[idx] : fallback;
+    }
+
     static float computePitchDeg_(const ImuManager::Sample& s) {
         return atan2f(s.ay_g, sqrtf((s.ax_g * s.ax_g) + (s.az_g * s.az_g))) * 57.2957795f;
     }
@@ -341,7 +419,31 @@ private:
         return atan2f(-s.ax_g, s.az_g) * 57.2957795f;
     }
 
-    bool parseSlot_(JsonObjectConst source, JsonArrayConst transforms, JsonObjectConst sink, SlotRuntime& out, const char*& error) {
+    bool parseSink_(JsonObjectConst sink, SinkRuntime& out, const char*& error) {
+        const char* sink_type = sink["type"] | "";
+        JsonObjectConst sink_params = sink["params"].as<JsonObjectConst>();
+        if (strcmp(sink_type, "gpio_write") == 0) {
+            out.kind = SinkKind::GpioWrite;
+            out.channel = sink_params["channel"] | -1;
+            if (out.channel < 0) {
+                error = "invalid_gpio_channel";
+                return false;
+            }
+        } else if (strcmp(sink_type, "servo_angle") == 0) {
+            out.kind = SinkKind::ServoAngle;
+            out.servo_id = sink_params["servo_id"] | -1;
+            if (out.servo_id < 0) {
+                error = "invalid_servo_id";
+                return false;
+            }
+        } else {
+            error = "unsupported_sink";
+            return false;
+        }
+        return true;
+    }
+
+    bool parseSlot_(JsonObjectConst source, JsonArrayConst transforms, JsonVariantConst sinkVariant, SlotRuntime& out, const char*& error) {
         const char* source_type = source["type"] | "";
         JsonObjectConst source_params = source["params"].as<JsonObjectConst>();
         if (strcmp(source_type, "constant") == 0) {
@@ -365,9 +467,9 @@ private:
             JsonObjectConst params = transform["params"].as<JsonObjectConst>();
             TransformRuntime& tr = out.transforms[out.transform_count++];
 
-            if (strcmp(t, "scale") == 0) {
-                tr.kind = TransformKind::Scale;
-                tr.a = params["factor"] | 1.0f;
+            if (strcmp(t, "scale") == 0 || strcmp(t, "proportional") == 0) {
+                tr.kind = TransformKind::Scale;  // proportional is alias for scale
+                tr.a = params["factor"] | (params["gain"] | 1.0f);  // accept either param name
             } else if (strcmp(t, "offset") == 0) {
                 tr.kind = TransformKind::Offset;
                 tr.a = params["value"] | 0.0f;
@@ -394,30 +496,130 @@ private:
                 tr.b = 0.0f;
                 tr.t_ms = 0;
                 tr.initialized = false;
+            } else if (strcmp(t, "abs") == 0) {
+                tr.kind = TransformKind::Abs;
+            } else if (strcmp(t, "negate") == 0) {
+                tr.kind = TransformKind::Negate;
+            } else if (strcmp(t, "map") == 0) {
+                tr.kind = TransformKind::Map;
+                tr.a = params["in_min"] | 0.0f;
+                tr.b = params["in_max"] | 1.0f;
+                tr.c = params["out_min"] | 0.0f;
+                tr.d = params["out_max"] | 1.0f;
+            } else if (strcmp(t, "hysteresis") == 0) {
+                tr.kind = TransformKind::Hysteresis;
+                tr.a = params["on_threshold"] | 0.5f;
+                tr.c = params["off_threshold"] | 0.3f;
+                tr.toggle_state = false;
+            } else if (strcmp(t, "median") == 0) {
+                tr.kind = TransformKind::Median;
+                tr.median_idx = 0;
+                tr.median_count = 0;
+            } else if (strcmp(t, "threshold") == 0) {
+                tr.kind = TransformKind::Threshold;
+                tr.a = params["cutoff"] | 0.5f;
+                tr.b = params["output_low"] | 0.0f;
+                tr.c = params["output_high"] | 1.0f;
+            } else if (strcmp(t, "toggle") == 0) {
+                tr.kind = TransformKind::Toggle;
+                tr.a = params["threshold"] | 0.5f;
+                tr.toggle_state = false;
+                tr.initialized = false;
+            } else if (strcmp(t, "oscillator") == 0) {
+                tr.kind = TransformKind::Oscillator;
+                tr.a = params["frequency"] | 1.0f;
+                tr.b = params["amplitude"] | 1.0f;
+                tr.c = params["offset"] | 0.0f;
+                tr.d = 0.0f;  // phase
+                tr.t_ms = 0;
+                tr.initialized = false;
+            } else if (strcmp(t, "pulse") == 0) {
+                tr.kind = TransformKind::Pulse;
+                tr.a = params["interval_ms"] | 1000.0f;
+                tr.b = params["duration_ms"] | 100.0f;
+                tr.c = params["value"] | 1.0f;
+                tr.t_ms = 0;
+                tr.initialized = false;
+            } else if (strcmp(t, "derivative") == 0) {
+                tr.kind = TransformKind::Derivative;
+                tr.a = params["gain"] | 1.0f;
+                tr.b = 0.0f;  // previous value
+                tr.t_ms = 0;
+                tr.initialized = false;
+            } else if (strcmp(t, "integrator") == 0) {
+                tr.kind = TransformKind::Integrator;
+                tr.a = params["gain"] | 1.0f;
+                tr.b = params["min"] | -1000.0f;  // anti-windup lower bound
+                tr.c = params["max"] | 1000.0f;   // anti-windup upper bound
+                tr.d = 0.0f;  // accumulated value
+                tr.t_ms = 0;
+                tr.initialized = false;
+            } else if (strcmp(t, "tap") == 0) {
+                tr.kind = TransformKind::Tap;
+                copyString_(tr.tap_name, sizeof(tr.tap_name), params["name"] | "");
+                if (!tr.tap_name[0]) {
+                    error = "tap_name_required";
+                    return false;
+                }
+            } else if (strcmp(t, "recall") == 0) {
+                tr.kind = TransformKind::Recall;
+                copyString_(tr.tap_name, sizeof(tr.tap_name), params["name"] | "");
+                if (!tr.tap_name[0]) {
+                    error = "recall_name_required";
+                    return false;
+                }
+            } else if (strcmp(t, "sum") == 0) {
+                tr.kind = TransformKind::Sum;
+                tr.sum_input_count = 0;
+                JsonArrayConst inputs = params["inputs"].as<JsonArrayConst>();
+                if (!inputs || inputs.size() == 0) {
+                    error = "sum_inputs_required";
+                    return false;
+                }
+                for (JsonVariantConst inp : inputs) {
+                    if (tr.sum_input_count >= TransformRuntime::MAX_SUM_INPUTS) {
+                        error = "too_many_sum_inputs";
+                        return false;
+                    }
+                    const char* name = inp.as<const char*>();
+                    if (!name || !name[0]) {
+                        error = "sum_input_name_invalid";
+                        return false;
+                    }
+                    copyString_(tr.sum_inputs[tr.sum_input_count], sizeof(tr.sum_inputs[0]), name);
+                    tr.sum_input_count++;
+                }
             } else {
                 error = "unsupported_transform";
                 return false;
             }
         }
 
-        const char* sink_type = sink["type"] | "";
-        JsonObjectConst sink_params = sink["params"].as<JsonObjectConst>();
-        if (strcmp(sink_type, "gpio_write") == 0) {
-            out.sink = SinkKind::GpioWrite;
-            out.sink_channel = sink_params["channel"] | -1;
-            if (out.sink_channel < 0) {
-                error = "invalid_gpio_channel";
+        // Parse sinks (supports single sink object or array of sinks)
+        out.sink_count = 0;
+        if (sinkVariant.is<JsonArrayConst>()) {
+            JsonArrayConst sinks = sinkVariant.as<JsonArrayConst>();
+            if (sinks.size() == 0) {
+                error = "empty_sinks_array";
                 return false;
             }
-        } else if (strcmp(sink_type, "servo_angle") == 0) {
-            out.sink = SinkKind::ServoAngle;
-            out.sink_servo_id = sink_params["servo_id"] | -1;
-            if (out.sink_servo_id < 0) {
-                error = "invalid_servo_id";
+            if (sinks.size() > SlotRuntime::MAX_SINKS) {
+                error = "too_many_sinks";
                 return false;
             }
+            for (JsonObjectConst s : sinks) {
+                if (!parseSink_(s, out.sinks[out.sink_count], error)) {
+                    return false;
+                }
+                out.sink_count++;
+            }
+        } else if (sinkVariant.is<JsonObjectConst>()) {
+            if (!parseSink_(sinkVariant.as<JsonObjectConst>(), out.sinks[0], error)) {
+                return false;
+            }
+            out.sink_count = 1;
         } else {
-            error = "unsupported_sink";
+            error = "sink_must_be_object_or_array";
             return false;
         }
 
@@ -504,6 +706,153 @@ private:
                     }
                     value = tr.b;
                     break;
+                case TransformKind::Abs:
+                    value = fabsf(value);
+                    break;
+                case TransformKind::Negate:
+                    value = -value;
+                    break;
+                case TransformKind::Map: {
+                    // Linear interpolation: map [in_min, in_max] to [out_min, out_max]
+                    const float in_min = tr.a, in_max = tr.b;
+                    const float out_min = tr.c, out_max = tr.d;
+                    const float in_range = in_max - in_min;
+                    if (fabsf(in_range) < 1e-6f) {
+                        value = out_min;
+                    } else {
+                        value = out_min + (value - in_min) * (out_max - out_min) / in_range;
+                    }
+                    break;
+                }
+                case TransformKind::Hysteresis: {
+                    // Schmitt trigger: on_threshold (a), off_threshold (c)
+                    if (tr.toggle_state) {
+                        if (value < tr.c) tr.toggle_state = false;
+                    } else {
+                        if (value > tr.a) tr.toggle_state = true;
+                    }
+                    value = tr.toggle_state ? 1.0f : 0.0f;
+                    break;
+                }
+                case TransformKind::Median: {
+                    // Rolling median filter
+                    tr.median_buf[tr.median_idx] = value;
+                    tr.median_idx = (tr.median_idx + 1) % TransformRuntime::MEDIAN_WINDOW;
+                    if (tr.median_count < TransformRuntime::MEDIAN_WINDOW) tr.median_count++;
+
+                    // Sort copy to find median
+                    float sorted[TransformRuntime::MEDIAN_WINDOW];
+                    for (uint8_t j = 0; j < tr.median_count; ++j) sorted[j] = tr.median_buf[j];
+                    for (uint8_t j = 0; j < tr.median_count - 1; ++j) {
+                        for (uint8_t k = j + 1; k < tr.median_count; ++k) {
+                            if (sorted[k] < sorted[j]) {
+                                const float tmp = sorted[j];
+                                sorted[j] = sorted[k];
+                                sorted[k] = tmp;
+                            }
+                        }
+                    }
+                    value = sorted[tr.median_count / 2];
+                    break;
+                }
+                case TransformKind::Threshold:
+                    // Binary output: output_low (b) if below cutoff (a), output_high (c) otherwise
+                    value = (value >= tr.a) ? tr.c : tr.b;
+                    break;
+                case TransformKind::Toggle: {
+                    // Toggle state when input crosses threshold
+                    const bool above = value >= tr.a;
+                    if (!tr.initialized) {
+                        tr.initialized = true;
+                        tr.b = above ? 1.0f : 0.0f;  // track previous above state
+                    } else {
+                        const bool was_above = tr.b > 0.5f;
+                        if (above && !was_above) {
+                            tr.toggle_state = !tr.toggle_state;
+                        }
+                        tr.b = above ? 1.0f : 0.0f;
+                    }
+                    value = tr.toggle_state ? 1.0f : 0.0f;
+                    break;
+                }
+                case TransformKind::Oscillator: {
+                    // Sine wave generator: freq (a), amplitude (b), offset (c), phase (d)
+                    if (!tr.initialized) {
+                        tr.t_ms = now_ms;
+                        tr.d = 0.0f;
+                        tr.initialized = true;
+                    }
+                    const uint32_t dt_ms = (now_ms >= tr.t_ms) ? (now_ms - tr.t_ms) : 0;
+                    tr.d += tr.a * dt_ms * 0.001f * 2.0f * 3.14159265f;  // phase += freq * dt * 2π
+                    if (tr.d > 6.28318530f) tr.d -= 6.28318530f;
+                    tr.t_ms = now_ms;
+                    value = tr.c + tr.b * sinf(tr.d);
+                    break;
+                }
+                case TransformKind::Pulse: {
+                    // Emit pulses: interval_ms (a), duration_ms (b), value (c)
+                    if (!tr.initialized) {
+                        tr.t_ms = now_ms;
+                        tr.initialized = true;
+                    }
+                    const uint32_t elapsed = (now_ms >= tr.t_ms) ? (now_ms - tr.t_ms) : 0;
+                    const uint32_t interval = static_cast<uint32_t>(tr.a);
+                    const uint32_t duration = static_cast<uint32_t>(tr.b);
+                    const uint32_t phase = interval > 0 ? (elapsed % interval) : 0;
+                    value = (phase < duration) ? tr.c : 0.0f;
+                    break;
+                }
+                case TransformKind::Derivative: {
+                    // Rate of change: gain (a), prev_value (b)
+                    if (!tr.initialized) {
+                        tr.b = value;
+                        tr.t_ms = now_ms;
+                        tr.initialized = true;
+                        value = 0.0f;
+                    } else {
+                        const uint32_t dt_ms = (now_ms >= tr.t_ms) ? (now_ms - tr.t_ms) : 1;
+                        const float dt_s = dt_ms * 0.001f;
+                        const float dv = value - tr.b;
+                        tr.b = value;
+                        tr.t_ms = now_ms;
+                        value = (dt_s > 0.0f) ? (tr.a * dv / dt_s) : 0.0f;
+                    }
+                    break;
+                }
+                case TransformKind::Integrator: {
+                    // Accumulate input over time: gain (a), min (b), max (c), accumulated (d)
+                    if (!tr.initialized) {
+                        tr.d = 0.0f;
+                        tr.t_ms = now_ms;
+                        tr.initialized = true;
+                    } else {
+                        const uint32_t dt_ms = (now_ms >= tr.t_ms) ? (now_ms - tr.t_ms) : 1;
+                        const float dt_s = dt_ms * 0.001f;
+                        tr.d += tr.a * value * dt_s;
+                        // Anti-windup clamping
+                        tr.d = clamp_(tr.d, tr.b, tr.c);
+                        tr.t_ms = now_ms;
+                    }
+                    value = tr.d;
+                    break;
+                }
+                case TransformKind::Tap:
+                    // Save current value to named storage, pass through unchanged
+                    storeTap_(slot, tr.tap_name, value);
+                    break;
+                case TransformKind::Recall:
+                    // Replace pipeline value with stored tap
+                    value = recallTap_(slot, tr.tap_name, value);
+                    break;
+                case TransformKind::Sum: {
+                    // Sum multiple stored tap values
+                    float sum = 0.0f;
+                    for (uint8_t j = 0; j < tr.sum_input_count; ++j) {
+                        sum += recallTap_(slot, tr.sum_inputs[j], 0.0f);
+                    }
+                    value = sum;
+                    break;
+                }
                 default:
                     break;
             }
@@ -512,22 +861,25 @@ private:
     }
 
     void writeSink_(SlotRuntime& slot, GpioManager* gpio, ServoManager* servo, float value) {
-        switch (slot.sink) {
-            case SinkKind::GpioWrite: {
-                if (!gpio) break;
-                const bool high = value > 0.5f;
-                gpio->write(slot.sink_channel, high ? 1 : 0);
-                slot.last_output_high = high;
-                break;
+        for (uint8_t i = 0; i < slot.sink_count; ++i) {
+            SinkRuntime& sink = slot.sinks[i];
+            switch (sink.kind) {
+                case SinkKind::GpioWrite: {
+                    if (!gpio) break;
+                    const bool high = value > 0.5f;
+                    gpio->write(sink.channel, high ? 1 : 0);
+                    sink.last_output_high = high;
+                    break;
+                }
+                case SinkKind::ServoAngle: {
+                    if (!servo) break;
+                    servo->setAngle(sink.servo_id, clamp_(value, 0.0f, 180.0f));
+                    sink.last_output_high = value > 90.0f;
+                    break;
+                }
+                default:
+                    break;
             }
-            case SinkKind::ServoAngle: {
-                if (!servo) break;
-                servo->setAngle(slot.sink_servo_id, clamp_(value, 0.0f, 180.0f));
-                slot.last_output_high = value > 90.0f;
-                break;
-            }
-            default:
-                break;
         }
     }
 

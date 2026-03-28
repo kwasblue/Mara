@@ -60,6 +60,10 @@ class ParamDef:
     def enum_param(cls, name: str, *, values: list[Any], **kwargs: Any) -> "ParamDef":
         return cls(name=name, type="enum", enum=values, **kwargs)
 
+    @classmethod
+    def string_list(cls, name: str, **kwargs: Any) -> "ParamDef":
+        return cls(name=name, type="string_list", **kwargs)
+
 
 @dataclass(frozen=True)
 class GraphTypeDef:

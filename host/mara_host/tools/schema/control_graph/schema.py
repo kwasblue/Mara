@@ -103,8 +103,18 @@ def graph_json_schema() -> dict[str, Any]:
                         "default": [],
                     },
                     "sink": _kind_schema(SINK_DEFS, "sink"),
+                    "sinks": {
+                        "type": "array",
+                        "items": _kind_schema(SINK_DEFS, "sink"),
+                        "minItems": 1,
+                        "maxItems": 4,
+                    },
                 },
-                "required": ["id", "source", "sink"],
+                "required": ["id", "source"],
+                "oneOf": [
+                    {"required": ["sink"]},
+                    {"required": ["sinks"]},
+                ],
             },
             "source": {kind: {"type": "object"} for kind in SOURCE_DEFS},
             "transform": {kind: {"type": "object"} for kind in TRANSFORM_DEFS},
@@ -206,7 +216,7 @@ def normalize_graph_config(config: GraphConfig) -> GraphConfig:
         if not isinstance(slot, dict):
             raise ControlGraphValidationError(f"{path} must be an object")
 
-        extra = set(slot) - {"id", "enabled", "rate_hz", "source", "transforms", "sink"}
+        extra = set(slot) - {"id", "enabled", "rate_hz", "source", "transforms", "sink", "sinks"}
         if extra:
             raise ControlGraphValidationError(f"{path} has unexpected fields: {sorted(extra)}")
 
@@ -227,7 +237,28 @@ def normalize_graph_config(config: GraphConfig) -> GraphConfig:
                 raise ControlGraphValidationError(f"{path}.rate_hz must be > 0")
 
         source = _normalize_node(slot.get("source"), SOURCE_DEFS, f"{path}.source")
-        sink = _normalize_node(slot.get("sink"), SINK_DEFS, f"{path}.sink")
+
+        # Support both single sink and array of sinks (SIMO)
+        has_sink = "sink" in slot
+        has_sinks = "sinks" in slot
+        if has_sink and has_sinks:
+            raise ControlGraphValidationError(f"{path} cannot have both 'sink' and 'sinks'")
+        if not has_sink and not has_sinks:
+            raise ControlGraphValidationError(f"{path} must have either 'sink' or 'sinks'")
+
+        sinks: list[dict[str, Any]] = []
+        if has_sink:
+            sinks = [_normalize_node(slot.get("sink"), SINK_DEFS, f"{path}.sink")]
+        else:
+            sinks_in = slot.get("sinks")
+            if not isinstance(sinks_in, list) or len(sinks_in) == 0:
+                raise ControlGraphValidationError(f"{path}.sinks must be a non-empty array")
+            if len(sinks_in) > 4:
+                raise ControlGraphValidationError(f"{path}.sinks cannot have more than 4 items")
+            sinks = [
+                _normalize_node(s, SINK_DEFS, f"{path}.sinks[{s_idx}]")
+                for s_idx, s in enumerate(sinks_in)
+            ]
 
         transforms_in = slot.get("transforms", [])
         if not isinstance(transforms_in, list):
@@ -237,16 +268,19 @@ def normalize_graph_config(config: GraphConfig) -> GraphConfig:
             for t_idx, node in enumerate(transforms_in)
         ]
 
-        slots_out.append(
-            {
-                "id": slot_id,
-                "enabled": enabled,
-                "rate_hz": rate_hz,
-                "source": source,
-                "transforms": transforms,
-                "sink": sink,
-            }
-        )
+        # Use "sink" for single, "sinks" for multiple (backwards compatible)
+        slot_out: dict[str, Any] = {
+            "id": slot_id,
+            "enabled": enabled,
+            "rate_hz": rate_hz,
+            "source": source,
+            "transforms": transforms,
+        }
+        if len(sinks) == 1:
+            slot_out["sink"] = sinks[0]
+        else:
+            slot_out["sinks"] = sinks
+        slots_out.append(slot_out)
 
     return {
         "schema_version": GRAPH_SCHEMA_VERSION,

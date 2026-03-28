@@ -13,6 +13,8 @@ from .robot_config import (
     FeaturesConfig,
     EncoderDefaults,
     SettingsConfig,
+    SensorConfig,
+    SensorDegradationConfig,
 )
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "FeaturesConfig",
     "EncoderDefaults",
     "SettingsConfig",
+    "SensorConfig",
+    "SensorDegradationConfig",
 ]

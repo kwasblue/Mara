@@ -29,7 +29,7 @@ class FakeMaraTcpServer:
             "firmware": "fake-fw",
             "schema_version": 1,
             "capabilities": 0,
-            "features": ["gpio", "encoder", "imu", "servo"],
+            "features": ["gpio", "encoder", "imu", "servo", "ultrasonic"],
             "board": "fake-esp32",
             "name": "fake-mara",
         }
@@ -148,6 +148,8 @@ class FakeMaraTcpServer:
                 elif cmd_type == "CMD_ULTRASONIC_READ":
                     ack.setdefault("sensor_id", cmd.get("sensor_id", 0))
                     ack.setdefault("distance_cm", 42.5)
+                elif cmd_type == "CMD_ULTRASONIC_DETACH":
+                    ack.setdefault("sensor_id", cmd.get("sensor_id", 0))
                 elif cmd_type == "CMD_IMU_READ":
                     ack.setdefault("online", True)
                     ack.setdefault("ax_g", 0.01)

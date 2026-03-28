@@ -192,15 +192,22 @@ def cmd_validate(args: argparse.Namespace) -> int:
             from mara_host.config.robot_config import RobotConfig
 
             config = RobotConfig.load(str(config_file))
-            validation_errors = config.validate()
+            report = config.validate_report()
 
-            if validation_errors:
+            if report.errors:
                 console.print("[red]invalid[/red]")
-                for err in validation_errors:
+                for err in report.errors:
                     console.print(f"    [red]\u2717[/red] {err}")
+                for warning in report.warnings:
+                    console.print(f"    [yellow]![/yellow] {warning}")
                 errors += 1
             else:
-                console.print("[green]valid[/green]")
+                status = "[green]valid[/green]"
+                if report.warnings:
+                    status += " [yellow](with warnings)[/yellow]"
+                console.print(status)
+                for warning in report.warnings:
+                    console.print(f"    [yellow]![/yellow] {warning}")
 
         except Exception as e:
             console.print(f"[red]error[/red]")

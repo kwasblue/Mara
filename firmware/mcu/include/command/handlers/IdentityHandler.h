@@ -50,14 +50,21 @@ private:
         // Add features based on capability bits
         if (caps & mara::DeviceCap::UART) features.add("uart");
         if (caps & mara::DeviceCap::WIFI) features.add("wifi");
+        if (caps & mara::DeviceCap::BLE) features.add("ble");
+        if (caps & mara::DeviceCap::MQTT) features.add("mqtt");
         if (caps & mara::DeviceCap::DC_MOTOR) features.add("dc_motor");
         if (caps & mara::DeviceCap::SERVO) features.add("servo");
         if (caps & mara::DeviceCap::STEPPER) features.add("stepper");
+        if (caps & mara::DeviceCap::MOTION_CTRL) features.add("motion_ctrl");
         if (caps & mara::DeviceCap::ENCODER) features.add("encoder");
         if (caps & mara::DeviceCap::IMU) features.add("imu");
-        if (caps & mara::DeviceCap::TELEMETRY) features.add("telemetry");
+        if (caps & mara::DeviceCap::LIDAR) features.add("lidar");
+        if (caps & mara::DeviceCap::ULTRASONIC) features.add("ultrasonic");
         if (caps & mara::DeviceCap::SIGNAL_BUS) features.add("signal_bus");
         if (caps & mara::DeviceCap::CONTROL_KERNEL) features.add("control_kernel");
+        if (caps & mara::DeviceCap::TELEMETRY) features.add("telemetry");
+        if (caps & mara::DeviceCap::GPIO) features.add("gpio");
+        if (caps & mara::DeviceCap::PWM) features.add("pwm");
 
         ctx.sendAck("CMD_GET_IDENTITY", true, resp);
     }

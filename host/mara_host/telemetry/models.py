@@ -1,7 +1,7 @@
 # telemetry/models.py
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
 
@@ -32,7 +32,7 @@ class LidarTelemetry:
     online: bool
     ok: bool
     distance_m: Optional[float] = None
-    signal: Optional[float] = None  # MCU doesn't send this yet; fine as optional
+    signal: Optional[float] = None
     ts_ms: Optional[int] = None
 
 
@@ -60,28 +60,63 @@ class DcMotorTelemetry:
     ts_ms: int
     motor_id: Optional[int] = None
     attached: Optional[bool] = None
-
     in1_pin: Optional[int] = None
     in2_pin: Optional[int] = None
     pwm_pin: Optional[int] = None
     ledc_channel: Optional[int] = None
-
     gpio_ch_in1: Optional[int] = None
     gpio_ch_in2: Optional[int] = None
     pwm_ch: Optional[int] = None
-
-    speed: Optional[float] = None          # -1.0..+1.0
+    speed: Optional[float] = None
     freq_hz: Optional[float] = None
     resolution_bits: Optional[int] = None
 
 
-# -----------------------------------------------------------------------------
-# Control System Telemetry
-# -----------------------------------------------------------------------------
+@dataclass
+class PerformanceTelemetry:
+    ts_ms: int
+    last_fault: int
+    hb_count: int
+    hb_timeouts: int
+    hb_recoveries: int
+    hb_max_gap_ms: int
+    motion_cmds: int
+    motion_timeouts: int
+    motion_max_gap_ms: int
+    iterations: int
+    overruns: int
+    avg_total_us: int
+    peak_total_us: int
+    pkt_last_bytes: int
+    pkt_max_bytes: int
+    pkt_sent: int
+    pkt_bytes: int
+    pkt_dropped_sections: int
+    pkt_last_sections: int
+    pkt_max_sections: int
+    pkt_buffered: int
+
+
+@dataclass
+class SensorHealthEntryTelemetry:
+    kind: str
+    sensor_id: int
+    present: bool
+    healthy: bool
+    degraded: bool
+    stale: bool
+    detail: int = 0
+    flags: int = 0
+
+
+@dataclass
+class SensorHealthTelemetry:
+    ts_ms: int
+    sensors: list[SensorHealthEntryTelemetry] = field(default_factory=list)
+
 
 @dataclass
 class SignalTelemetry:
-    """Single signal from the signal bus."""
     id: int
     name: str
     value: float
@@ -90,29 +125,25 @@ class SignalTelemetry:
 
 @dataclass
 class ControlSignalsTelemetry:
-    """All signals from the signal bus."""
-    signals: list  # List[SignalTelemetry]
+    signals: list
     count: int
 
 
 @dataclass
 class ObserverTelemetry:
-    """Single observer state estimate."""
     slot: int
     enabled: bool
     update_count: int
-    states: list  # List[float] - x_hat estimates
+    states: list
 
 
 @dataclass
 class ControlObserversTelemetry:
-    """All observer states."""
-    observers: list  # List[ObserverTelemetry]
+    observers: list
 
 
 @dataclass
 class ControlSlotTelemetry:
-    """Single control slot status."""
     slot: int
     enabled: bool
     ok: bool
@@ -122,24 +153,21 @@ class ControlSlotTelemetry:
 
 @dataclass
 class ControlSlotsTelemetry:
-    """All control slot statuses."""
-    slots: list  # List[ControlSlotTelemetry]
+    slots: list
 
 
 @dataclass
 class TelemetryPacket:
     ts_ms: int
     raw: Dict[str, Any]
-
     imu: Optional[ImuTelemetry] = None
     ultrasonic: Optional[UltrasonicTelemetry] = None
     lidar: Optional[LidarTelemetry] = None
-
     encoder0: Optional[EncoderTelemetry] = None
     stepper0: Optional[StepperTelemetry] = None
     dc_motor0: Optional[DcMotorTelemetry] = None
-
-    # Control system telemetry
+    perf: Optional[PerformanceTelemetry] = None
+    sensor_health: Optional[SensorHealthTelemetry] = None
     ctrl_signals: Optional[ControlSignalsTelemetry] = None
     ctrl_observers: Optional[ControlObserversTelemetry] = None
     ctrl_slots: Optional[ControlSlotsTelemetry] = None
@@ -152,6 +180,9 @@ __all__ = [
     "EncoderTelemetry",
     "StepperTelemetry",
     "DcMotorTelemetry",
+    "PerformanceTelemetry",
+    "SensorHealthEntryTelemetry",
+    "SensorHealthTelemetry",
     "SignalTelemetry",
     "ControlSignalsTelemetry",
     "ObserverTelemetry",

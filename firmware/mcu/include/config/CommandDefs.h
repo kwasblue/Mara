@@ -92,6 +92,7 @@ enum class CmdType {
     TELEM_SET_RATE,
     ULTRASONIC_ATTACH,
     ULTRASONIC_READ,
+    ULTRASONIC_DETACH,
     UNKNOWN
 };
 
@@ -183,6 +184,7 @@ inline CmdType cmdTypeFromString(const std::string& s) {
     if (s == "CMD_TELEM_SET_RATE") return CmdType::TELEM_SET_RATE;
     if (s == "CMD_ULTRASONIC_ATTACH") return CmdType::ULTRASONIC_ATTACH;
     if (s == "CMD_ULTRASONIC_READ") return CmdType::ULTRASONIC_READ;
+    if (s == "CMD_ULTRASONIC_DETACH") return CmdType::ULTRASONIC_DETACH;
     return CmdType::UNKNOWN;
 }
 
@@ -275,6 +277,7 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::TELEM_SET_RATE: return "CMD_TELEM_SET_RATE";
         case CmdType::ULTRASONIC_ATTACH: return "CMD_ULTRASONIC_ATTACH";
         case CmdType::ULTRASONIC_READ: return "CMD_ULTRASONIC_READ";
+        case CmdType::ULTRASONIC_DETACH: return "CMD_ULTRASONIC_DETACH";
         default: return "UNKNOWN";
     }
 }

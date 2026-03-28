@@ -5,6 +5,7 @@ from mara_host.telemetry.binary_parser import (
     TELEM_IMU,
     TELEM_ULTRASONIC,
     TELEM_ENCODER0,
+    TELEM_SENSOR_HEALTH,
 )
 
 def build_sectioned_packet(ts_ms: int, seq: int, sections: list[tuple[int, bytes]], ver: int = 1) -> bytes:
@@ -69,6 +70,35 @@ def test_bin_telem_multiple_sections():
     assert pkt.imu is not None
     assert pkt.encoder0 is not None
     assert pkt.encoder0.ticks == -123
+
+def test_bin_telem_sensor_health_parses():
+    ts_ms = 314
+    seq = 9
+
+    # count=2, then (kind, sensor_id, flags, detail)*
+    # imu healthy+present, ultrasonic present+degraded detail=2
+    body = bytes([
+        2,
+        1, 0, 0x03, 0,
+        2, 0, 0x05, 2,
+    ])
+    payload = build_sectioned_packet(ts_ms, seq, [(TELEM_SENSOR_HEALTH, body)])
+    pkt = parse_telemetry_bin(payload)
+
+    assert pkt.sensor_health is not None
+    assert len(pkt.sensor_health.sensors) == 2
+    imu = pkt.sensor_health.sensors[0]
+    ultra = pkt.sensor_health.sensors[1]
+    assert imu.kind == "imu"
+    assert imu.present is True
+    assert imu.healthy is True
+    assert imu.degraded is False
+    assert ultra.kind == "ultrasonic"
+    assert ultra.present is True
+    assert ultra.healthy is False
+    assert ultra.degraded is True
+    assert ultra.detail == 2
+
 
 def test_bin_telem_unknown_section_is_ignored():
     ts_ms = 1

@@ -95,17 +95,17 @@ struct DeviceManifest {
 inline uint32_t buildDeviceCaps() {
     uint32_t caps = 0;
 
-    // Protocol capabilities (using constexpr, evaluated at compile time)
-    if constexpr ((Version::CAPABILITIES & Version::Caps::BINARY_PROTOCOL) != 0) {
+    // Protocol capabilities (constexpr expressions folded by the compiler)
+    if ((Version::CAPABILITIES & Version::Caps::BINARY_PROTOCOL) != 0) {
         caps |= DeviceCap::BINARY_PROTOCOL;
     }
-    if constexpr ((Version::CAPABILITIES & Version::Caps::INTENT_BUFFERING) != 0) {
+    if ((Version::CAPABILITIES & Version::Caps::INTENT_BUFFERING) != 0) {
         caps |= DeviceCap::INTENT_BUFFERING;
     }
-    if constexpr ((Version::CAPABILITIES & Version::Caps::STATE_SPACE_CTRL) != 0) {
+    if ((Version::CAPABILITIES & Version::Caps::STATE_SPACE_CTRL) != 0) {
         caps |= DeviceCap::STATE_SPACE_CTRL;
     }
-    if constexpr ((Version::CAPABILITIES & Version::Caps::OBSERVERS) != 0) {
+    if ((Version::CAPABILITIES & Version::Caps::OBSERVERS) != 0) {
         caps |= DeviceCap::OBSERVERS;
     }
 

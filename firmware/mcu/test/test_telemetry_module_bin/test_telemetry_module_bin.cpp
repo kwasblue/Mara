@@ -6,6 +6,10 @@
 #include "core/Event.h"
 #include "module/TelemetryModule.h"
 
+// Native env does not build src/ by default; pull in the shared stubs so
+// TelemetryModule links against the current test harness.
+#include "../common/NativeStubs.cpp"
+
 // ---- capture helper ----
 static bool  g_has_evt = false;
 static Event g_last_evt{};

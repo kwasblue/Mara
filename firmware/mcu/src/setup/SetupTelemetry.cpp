@@ -15,8 +15,88 @@
 #include "motor/StepperManager.h"
 #include "motor/DcMotorManager.h"
 #include "telemetry/TelemetrySections.h"
+#include <algorithm>
 
 namespace {
+
+enum SensorHealthFlags : uint8_t {
+    SENSOR_PRESENT  = 1 << 0,
+    SENSOR_HEALTHY  = 1 << 1,
+    SENSOR_DEGRADED = 1 << 2,
+    SENSOR_STALE    = 1 << 3,
+};
+
+enum SensorKindCode : uint8_t {
+    SENSOR_KIND_IMU = 1,
+    SENSOR_KIND_ULTRASONIC = 2,
+    SENSOR_KIND_LIDAR = 3,
+    SENSOR_KIND_ENCODER = 4,
+};
+
+struct SensorHealthEntry {
+    uint8_t kind = 0;
+    uint8_t sensor_id = 0;
+    uint8_t flags = 0;
+    uint8_t detail = 0;
+};
+
+static SensorHealthEntry buildImuHealth(ImuManager* imu) {
+    SensorHealthEntry entry{};
+    entry.kind = SENSOR_KIND_IMU;
+    if (!imu) return entry;
+    entry.flags |= SENSOR_PRESENT;
+    if (!imu->isOnline()) {
+        entry.flags |= SENSOR_DEGRADED;
+        entry.detail = 1;
+        return entry;
+    }
+    ImuManager::Sample sample;
+    if (imu->readSample(sample)) {
+        entry.flags |= SENSOR_HEALTHY;
+    } else {
+        entry.flags |= SENSOR_DEGRADED;
+        entry.detail = 2;
+    }
+    return entry;
+}
+
+static SensorHealthEntry buildUltrasonicHealth(UltrasonicManager* ultrasonic, uint8_t sensor_id = 0) {
+    SensorHealthEntry entry{};
+    entry.kind = SENSOR_KIND_ULTRASONIC;
+    entry.sensor_id = sensor_id;
+    if (!ultrasonic || !ultrasonic->isAttached(sensor_id)) {
+        entry.detail = 1;
+        return entry;
+    }
+    entry.flags |= SENSOR_PRESENT;
+    const float dist_cm = ultrasonic->readDistanceCm(sensor_id);
+    if (dist_cm >= 0.0f) {
+        entry.flags |= SENSOR_HEALTHY;
+    } else {
+        entry.flags |= SENSOR_DEGRADED;
+        entry.detail = 2;
+    }
+    return entry;
+}
+
+static SensorHealthEntry buildLidarHealth(LidarManager* lidar) {
+    SensorHealthEntry entry{};
+    entry.kind = SENSOR_KIND_LIDAR;
+    if (!lidar) return entry;
+    if (!lidar->isOnline()) {
+        entry.detail = 1;
+        return entry;
+    }
+    entry.flags |= SENSOR_PRESENT;
+    LidarManager::Sample sample;
+    if (lidar->readSample(sample)) {
+        entry.flags |= SENSOR_HEALTHY;
+    } else {
+        entry.flags |= SENSOR_DEGRADED;
+        entry.detail = 2;
+    }
+    return entry;
+}
 
 class SetupTelemetryModule : public mara::ISetupModule {
 public:
@@ -79,6 +159,11 @@ public:
                 // Statistics
                 node["iterations"] = t.iterations;
                 node["overruns"]   = t.overruns;
+                node["avg_total_us"] = t.avg_total_us;
+                node["avg_control_us"] = t.avg_control_us;
+                node["avg_telemetry_us"] = t.avg_telemetry_us;
+                node["avg_host_us"] = t.avg_host_us;
+                node["runtime_ms"] = static_cast<uint32_t>(t.total_runtime_us / 1000ULL);
 
                 // FreeRTOS control task stats (if running)
                 node["freertos_ctrl"] = mara::isControlTaskRunning();
@@ -88,6 +173,135 @@ public:
                     node["ctrl_task_peak_us"]  = stats.max_exec_us;
                     node["ctrl_task_iters"]    = stats.iterations;
                     node["ctrl_task_overruns"] = stats.overruns;
+                }
+            }
+        );
+
+        if (ctx.mode) {
+            ModeManager* mode = ctx.mode;
+            TelemetryModule* telemetry = ctx.telemetry;
+            ctx.telemetry->registerProvider(
+                "perf",
+                [mode, telemetry](ArduinoJson::JsonObject node) {
+                    const auto& wd = mode->watchdogStats();
+                    const auto& pkt = telemetry->packetStats();
+                    const auto& t = mara::getLoopTiming();
+                    node["hb_count"] = wd.host_heartbeat_count;
+                    node["hb_timeouts"] = wd.host_timeout_count;
+                    node["hb_recoveries"] = wd.host_recovery_count;
+                    node["hb_max_gap_ms"] = wd.max_host_gap_ms;
+                    node["motion_cmds"] = wd.motion_command_count;
+                    node["motion_timeouts"] = wd.motion_timeout_count;
+                    node["motion_max_gap_ms"] = wd.max_motion_gap_ms;
+                    node["last_fault"] = wd.last_fault;
+                    node["pkt_sent"] = pkt.sent_packets;
+                    node["pkt_bytes"] = pkt.sent_bytes;
+                    node["pkt_last_bytes"] = pkt.last_packet_bytes;
+                    node["pkt_max_bytes"] = pkt.max_packet_bytes;
+                    node["pkt_dropped_sections"] = pkt.dropped_sections;
+                    node["pkt_buffered"] = pkt.buffered_packets;
+                    node["loop_avg_total_us"] = t.avg_total_us;
+                    node["loop_total_peak_us"] = t.total_peak_us;
+                }
+            );
+
+            ctx.telemetry->registerBinProvider(
+                TelemetrySections::id(TelemetrySections::SectionId::TELEM_PERF),
+                [mode, telemetry](std::vector<uint8_t>& out) {
+                    const auto& wd = mode->watchdogStats();
+                    const auto& pkt = telemetry->packetStats();
+                    const auto& t = mara::getLoopTiming();
+                    auto put_u16 = [&out](uint16_t v) {
+                        out.push_back(static_cast<uint8_t>(v & 0xFF));
+                        out.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
+                    };
+                    auto put_u32 = [&out](uint32_t v) {
+                        out.push_back(static_cast<uint8_t>(v & 0xFF));
+                        out.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
+                        out.push_back(static_cast<uint8_t>((v >> 16) & 0xFF));
+                        out.push_back(static_cast<uint8_t>((v >> 24) & 0xFF));
+                    };
+                    out.push_back(wd.last_fault);
+                    put_u32(wd.host_heartbeat_count);
+                    put_u32(wd.host_timeout_count);
+                    put_u32(wd.host_recovery_count);
+                    put_u32(wd.max_host_gap_ms);
+                    put_u32(wd.motion_command_count);
+                    put_u32(wd.motion_timeout_count);
+                    put_u32(wd.max_motion_gap_ms);
+                    put_u32(t.iterations);
+                    put_u32(t.overruns);
+                    put_u16(static_cast<uint16_t>(std::min<uint32_t>(t.avg_total_us, 0xFFFF)));
+                    put_u16(static_cast<uint16_t>(std::min<uint32_t>(t.total_peak_us, 0xFFFF)));
+                    put_u16(pkt.last_packet_bytes);
+                    put_u16(pkt.max_packet_bytes);
+                    put_u32(pkt.sent_packets);
+                    put_u32(pkt.sent_bytes);
+                    put_u32(pkt.dropped_sections);
+                    out.push_back(pkt.last_section_count);
+                    out.push_back(pkt.max_section_count);
+                    out.push_back(static_cast<uint8_t>(std::min<uint16_t>(pkt.buffered_packets, 255)));
+                }
+            );
+        }
+
+        ctx.telemetry->registerProvider(
+            "sensor_health",
+            [&ctx](ArduinoJson::JsonObject node) {
+                ArduinoJson::JsonArray sensors = node["sensors"].to<ArduinoJson::JsonArray>();
+                if (ctx.imu) {
+                    const SensorHealthEntry imu = buildImuHealth(ctx.imu);
+                    ArduinoJson::JsonObject item = sensors.add<ArduinoJson::JsonObject>();
+                    item["kind"] = "imu";
+                    item["sensor_id"] = imu.sensor_id;
+                    item["present"] = (imu.flags & SENSOR_PRESENT) != 0;
+                    item["healthy"] = (imu.flags & SENSOR_HEALTHY) != 0;
+                    item["degraded"] = (imu.flags & SENSOR_DEGRADED) != 0;
+                    item["stale"] = (imu.flags & SENSOR_STALE) != 0;
+                    item["detail"] = imu.detail;
+                    item["flags"] = imu.flags;
+                }
+                if (ctx.ultrasonic) {
+                    const SensorHealthEntry ultrasonic = buildUltrasonicHealth(ctx.ultrasonic, 0);
+                    ArduinoJson::JsonObject item = sensors.add<ArduinoJson::JsonObject>();
+                    item["kind"] = "ultrasonic";
+                    item["sensor_id"] = ultrasonic.sensor_id;
+                    item["present"] = (ultrasonic.flags & SENSOR_PRESENT) != 0;
+                    item["healthy"] = (ultrasonic.flags & SENSOR_HEALTHY) != 0;
+                    item["degraded"] = (ultrasonic.flags & SENSOR_DEGRADED) != 0;
+                    item["stale"] = (ultrasonic.flags & SENSOR_STALE) != 0;
+                    item["detail"] = ultrasonic.detail;
+                    item["flags"] = ultrasonic.flags;
+                }
+                if (ctx.lidar) {
+                    const SensorHealthEntry lidar = buildLidarHealth(ctx.lidar);
+                    ArduinoJson::JsonObject item = sensors.add<ArduinoJson::JsonObject>();
+                    item["kind"] = "lidar";
+                    item["sensor_id"] = lidar.sensor_id;
+                    item["present"] = (lidar.flags & SENSOR_PRESENT) != 0;
+                    item["healthy"] = (lidar.flags & SENSOR_HEALTHY) != 0;
+                    item["degraded"] = (lidar.flags & SENSOR_DEGRADED) != 0;
+                    item["stale"] = (lidar.flags & SENSOR_STALE) != 0;
+                    item["detail"] = lidar.detail;
+                    item["flags"] = lidar.flags;
+                }
+            }
+        );
+
+        ctx.telemetry->registerBinProvider(
+            TelemetrySections::id(TelemetrySections::SectionId::TELEM_SENSOR_HEALTH),
+            [&ctx](std::vector<uint8_t>& out) {
+                std::vector<SensorHealthEntry> entries;
+                entries.reserve(3);
+                if (ctx.imu) entries.push_back(buildImuHealth(ctx.imu));
+                if (ctx.ultrasonic) entries.push_back(buildUltrasonicHealth(ctx.ultrasonic, 0));
+                if (ctx.lidar) entries.push_back(buildLidarHealth(ctx.lidar));
+                out.push_back(static_cast<uint8_t>(entries.size()));
+                for (const auto& entry : entries) {
+                    out.push_back(entry.kind);
+                    out.push_back(entry.sensor_id);
+                    out.push_back(entry.flags);
+                    out.push_back(entry.detail);
                 }
             }
         );

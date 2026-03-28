@@ -23,14 +23,6 @@ public:
     void begin() override {
         DBG_PRINTLN("[BleTransport] begin()");
 
-        constexpr const char* kLegacyPin = "1234";
-        if (!SerialBT_.setPin(kLegacyPin)) {
-            DBG_PRINTLN("[BleTransport] Failed to set Bluetooth PIN");
-            return;
-        }
-        DBG_PRINT("[BleTransport] Legacy PIN configured: ");
-        DBG_PRINTLN(kLegacyPin);
-
         SerialBT_.onAuthComplete(
             [](bool success) {
                 DBG_PRINTF("[BleTransport] Auth complete: %s\n",
@@ -41,6 +33,14 @@ public:
         if (!SerialBT_.begin(name_)) {
             DBG_PRINTLN("[BleTransport] Failed to start BluetoothSerial");
             return;
+        }
+
+        constexpr const char* kLegacyPin = "1234";
+        if (!SerialBT_.setPin(kLegacyPin)) {
+            DBG_PRINTLN("[BleTransport] Failed to set Bluetooth PIN");
+        } else {
+            DBG_PRINT("[BleTransport] Legacy PIN configured: ");
+            DBG_PRINTLN(kLegacyPin);
         }
 
         esp_bt_io_cap_t iocap = ESP_BT_IO_CAP_NONE;

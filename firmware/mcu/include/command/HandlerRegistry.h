@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <cstring>
+#include <cstdint>
 #include "command/IStringHandler.h"
 
 // Forward declaration
@@ -13,7 +14,7 @@ struct CommandContext;
 /**
  * HandlerRegistry - Singleton registry for IStringHandler instances.
  *
- * Provides O(1) command lookup via linear search (< 15 handlers expected).
+ * Provides near-O(1) command lookup via a fixed-size open-addressed hash index.
  * Handlers register via static constructors using REGISTER_HANDLER macro.
  *
  * Lifecycle:
@@ -98,11 +99,26 @@ public:
     static const char* capName(uint32_t capBit);
 
 private:
+    struct CommandIndexEntry {
+        const char* cmd = nullptr;
+        IStringHandler* handler = nullptr;
+    };
+
+    static constexpr size_t INDEX_SIZE = 128;
+    static constexpr uint16_t INDEX_EMPTY = 0xFFFF;
+
     HandlerRegistry() = default;
     HandlerRegistry(const HandlerRegistry&) = delete;
     HandlerRegistry& operator=(const HandlerRegistry&) = delete;
 
+    static uint32_t hashCommand(const char* cmd);
+    void rebuildIndex();
+    bool insertIndexEntry(const char* cmd, IStringHandler* handler);
+
     std::vector<IStringHandler*> handlers_;
+    CommandIndexEntry index_[INDEX_SIZE] = {};
+    uint16_t indexOrder_[INDEX_SIZE] = {};
+    size_t indexedCommandCount_ = 0;
     bool finalized_ = false;
     uint32_t availableCaps_ = 0;
 };

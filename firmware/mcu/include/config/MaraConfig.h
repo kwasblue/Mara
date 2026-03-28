@@ -8,6 +8,8 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <string>
+#include <vector>
 
 namespace config {
 
@@ -107,6 +109,14 @@ struct MaraConfig {
     /// Apply runtime overrides from JSON
     /// Returns true if any values were changed
     bool applyOverrides(const char* json);
+
+    /// Validate current configuration values.
+    /// Returns human-readable issues; empty means configuration is sane.
+    std::vector<std::string> validate() const;
+
+    /// Clamp obviously-invalid values back to safe defaults.
+    /// Returns true if any value was changed.
+    bool sanitize();
 
     /// Serialize config to JSON for saving/transmission
     /// Returns number of bytes written (excluding null terminator)

@@ -18,6 +18,116 @@ void resetMaraConfig() {
     g_robotConfig = MaraConfig::defaults();
 }
 
+std::vector<std::string> MaraConfig::validate() const {
+    std::vector<std::string> issues;
+
+    if (safety.host_timeout_ms < 100) {
+        issues.emplace_back("safety.host_timeout_ms must be >= 100");
+    }
+    if (safety.motion_timeout_ms < 10) {
+        issues.emplace_back("safety.motion_timeout_ms must be >= 10");
+    }
+    if (safety.max_linear_vel <= 0.0f) {
+        issues.emplace_back("safety.max_linear_vel must be positive");
+    }
+    if (safety.max_angular_vel <= 0.0f) {
+        issues.emplace_back("safety.max_angular_vel must be positive");
+    }
+
+    if (rates.control_hz < LoopRates::CONTROL_HZ_MIN || rates.control_hz > LoopRates::CONTROL_HZ_MAX) {
+        issues.emplace_back("rates.control_hz out of range");
+    }
+    if (rates.safety_hz < LoopRates::SAFETY_HZ_MIN || rates.safety_hz > LoopRates::SAFETY_HZ_MAX) {
+        issues.emplace_back("rates.safety_hz out of range");
+    }
+    if (rates.telemetry_hz < LoopRates::TELEMETRY_HZ_MIN || rates.telemetry_hz > LoopRates::TELEMETRY_HZ_MAX) {
+        issues.emplace_back("rates.telemetry_hz out of range");
+    }
+
+    if (control_task.rate_hz == 0) {
+        issues.emplace_back("control_task.rate_hz must be > 0");
+    }
+    if (network.serial_baud == 0) {
+        issues.emplace_back("network.serial_baud must be > 0");
+    }
+    if (network.tcp_port == 0) {
+        issues.emplace_back("network.tcp_port must be > 0");
+    }
+
+    if (motion.wheel_base <= 0.0f) {
+        issues.emplace_back("motion.wheel_base must be positive");
+    }
+    if (motion.max_linear <= 0.0f) {
+        issues.emplace_back("motion.max_linear must be positive");
+    }
+    if (motion.max_angular <= 0.0f) {
+        issues.emplace_back("motion.max_angular must be positive");
+    }
+
+    return issues;
+}
+
+bool MaraConfig::sanitize() {
+    bool changed = false;
+
+    if (safety.host_timeout_ms < 100) {
+        safety.host_timeout_ms = MaraConfig::defaults().safety.host_timeout_ms;
+        changed = true;
+    }
+    if (safety.motion_timeout_ms < 10) {
+        safety.motion_timeout_ms = MaraConfig::defaults().safety.motion_timeout_ms;
+        changed = true;
+    }
+    if (safety.max_linear_vel <= 0.0f) {
+        safety.max_linear_vel = MaraConfig::defaults().safety.max_linear_vel;
+        changed = true;
+    }
+    if (safety.max_angular_vel <= 0.0f) {
+        safety.max_angular_vel = MaraConfig::defaults().safety.max_angular_vel;
+        changed = true;
+    }
+
+    if (rates.control_hz < LoopRates::CONTROL_HZ_MIN || rates.control_hz > LoopRates::CONTROL_HZ_MAX) {
+        rates.control_hz = MaraConfig::defaults().rates.control_hz;
+        changed = true;
+    }
+    if (rates.safety_hz < LoopRates::SAFETY_HZ_MIN || rates.safety_hz > LoopRates::SAFETY_HZ_MAX) {
+        rates.safety_hz = MaraConfig::defaults().rates.safety_hz;
+        changed = true;
+    }
+    if (rates.telemetry_hz < LoopRates::TELEMETRY_HZ_MIN || rates.telemetry_hz > LoopRates::TELEMETRY_HZ_MAX) {
+        rates.telemetry_hz = MaraConfig::defaults().rates.telemetry_hz;
+        changed = true;
+    }
+
+    if (control_task.rate_hz == 0) {
+        control_task.rate_hz = MaraConfig::defaults().control_task.rate_hz;
+        changed = true;
+    }
+    if (network.serial_baud == 0) {
+        network.serial_baud = MaraConfig::defaults().network.serial_baud;
+        changed = true;
+    }
+    if (network.tcp_port == 0) {
+        network.tcp_port = MaraConfig::defaults().network.tcp_port;
+        changed = true;
+    }
+    if (motion.wheel_base <= 0.0f) {
+        motion.wheel_base = MaraConfig::defaults().motion.wheel_base;
+        changed = true;
+    }
+    if (motion.max_linear <= 0.0f) {
+        motion.max_linear = MaraConfig::defaults().motion.max_linear;
+        changed = true;
+    }
+    if (motion.max_angular <= 0.0f) {
+        motion.max_angular = MaraConfig::defaults().motion.max_angular;
+        changed = true;
+    }
+
+    return changed;
+}
+
 bool MaraConfig::applyOverrides(const char* json) {
     if (!json || !*json) return false;
 

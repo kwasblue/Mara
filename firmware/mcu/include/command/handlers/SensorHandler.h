@@ -22,6 +22,7 @@ public:
             case CmdType::I2C_SCAN:
             case CmdType::ULTRASONIC_ATTACH:
             case CmdType::ULTRASONIC_READ:
+            case CmdType::ULTRASONIC_DETACH:
             case CmdType::ENCODER_ATTACH:
             case CmdType::ENCODER_READ:
             case CmdType::ENCODER_RESET:
@@ -37,6 +38,7 @@ public:
             case CmdType::I2C_SCAN:          handleI2cScan(ctx);                    break;
             case CmdType::ULTRASONIC_ATTACH: handleUltrasonicAttach(payload, ctx); break;
             case CmdType::ULTRASONIC_READ:   handleUltrasonicRead(payload, ctx);   break;
+            case CmdType::ULTRASONIC_DETACH: handleUltrasonicDetach(payload, ctx); break;
             case CmdType::ENCODER_ATTACH:    handleEncoderAttach(payload, ctx);    break;
             case CmdType::ENCODER_READ:      handleEncoderRead(payload, ctx);      break;
             case CmdType::ENCODER_RESET:     handleEncoderReset(payload, ctx);     break;
@@ -54,6 +56,7 @@ private:
     void handleI2cScan(CommandContext& ctx);
     void handleUltrasonicAttach(JsonVariantConst payload, CommandContext& ctx);
     void handleUltrasonicRead(JsonVariantConst payload, CommandContext& ctx);
+    void handleUltrasonicDetach(JsonVariantConst payload, CommandContext& ctx);
     void handleEncoderAttach(JsonVariantConst payload, CommandContext& ctx);
     void handleEncoderRead(JsonVariantConst payload, CommandContext& ctx);
     void handleEncoderReset(JsonVariantConst payload, CommandContext& ctx);

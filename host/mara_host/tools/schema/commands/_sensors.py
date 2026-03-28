@@ -43,6 +43,19 @@ SENSOR_COMMANDS: dict[str, dict] = {
         },
     },
 
+    "CMD_ULTRASONIC_DETACH": {
+        "kind": "cmd",
+        "direction": "host->mcu",
+        "description": "Detach an ultrasonic sensor and clear its cached state.",
+        "payload": {
+            "sensor_id": {
+                "type": "int",
+                "required": True,
+                "default": 0,
+            },
+        },
+    },
+
     # Encoders
     "CMD_ENCODER_ATTACH": {
         "kind": "cmd",

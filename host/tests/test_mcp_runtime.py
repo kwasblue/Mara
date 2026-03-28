@@ -224,3 +224,16 @@ class TestMaraRuntime:
         assert runtime._ctx is None
         assert runtime.state.connected is False
         assert runtime.state.robot_state.value == "UNKNOWN"
+
+
+    @pytest.mark.asyncio
+    async def test_connect_passes_robot_config_to_cli_context(self, runtime, mock_ctx):
+        runtime.robot_config = object()
+        runtime.robot_config_path = "robots/test.yaml"
+
+        with patch("mara_host.cli.context.CLIContext", return_value=mock_ctx) as cli_context:
+            await runtime.connect()
+
+        _, kwargs = cli_context.call_args
+        assert kwargs["robot_config"] is runtime.robot_config
+        assert kwargs["robot_config_path"] == "robots/test.yaml"

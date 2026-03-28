@@ -32,6 +32,16 @@ class FakeClient:
                 "ticks": 321,
             })
         elif command == "CMD_ULTRASONIC_READ":
+            if payload.get("sensor_id") == 9:
+                self.bus.publish(f"cmd.{command}", {
+                    "src": "mcu",
+                    "cmd": command,
+                    "ok": False,
+                    "sensor_id": payload["sensor_id"],
+                    "attached": True,
+                    "error": "read_failed",
+                })
+                return False, "read_failed"
             self.bus.publish(f"cmd.{command}", {
                 "src": "mcu",
                 "cmd": command,
@@ -144,3 +154,21 @@ async def test_composite_service_rejects_conflicting_motor_actions_locally():
     assert result.ok is False
     assert result.error.startswith("conflicting_motor_action")
     client.send_reliable.assert_not_awaited()
+
+
+
+@pytest.mark.asyncio
+async def test_ultrasonic_read_timeout_is_reported_as_degraded_hardware_state():
+    client = FakeClient()
+    service = UltrasonicService(client)
+    service.configure(9, trig_pin=4, echo_pin=5)
+    service.get_state(9).attached = True
+
+    result = await service.read(9)
+
+    assert result.ok is True
+    assert result.data["degraded"] is True
+    assert result.data["expected"] is True
+    assert result.data["reason"] == "no_echo"
+    assert service.get_state(9).degraded is True
+    assert service.get_state(9).distance_cm is None

@@ -77,6 +77,7 @@ from .api.dc_motor import DCMotor
 from .api.encoder import Encoder, EncoderReading
 from .api.imu import IMU, IMUReading
 from .api.ultrasonic import Ultrasonic, UltrasonicReading
+from .api.sensors import SensorsFacade, SensorHandle, SensorHealthStatus
 
 # Public API - I/O
 from .api.gpio import GPIO
@@ -107,6 +108,9 @@ __all__ = [
     "IMUReading",
     "Ultrasonic",
     "UltrasonicReading",
+    "SensorsFacade",
+    "SensorHandle",
+    "SensorHealthStatus",
     # I/O
     "GPIO",
     "PWM",

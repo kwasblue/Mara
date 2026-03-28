@@ -67,3 +67,6 @@ class TelemetryHostModule(EventHostModule):
 
         if pkt.dc_motor0 is not None:
             self._bus.publish("telemetry.dc_motor0", pkt.dc_motor0)
+
+        if pkt.sensor_health is not None:
+            self._bus.publish("telemetry.sensor_health", pkt.sensor_health)

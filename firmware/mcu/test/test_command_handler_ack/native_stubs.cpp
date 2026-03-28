@@ -454,6 +454,18 @@ bool IntentBuffer::consumeServoIntent(uint8_t id, ServoIntent& out) {
     return true;
 }
 
+void IntentBuffer::setCompositeIntent(const CompositeIntent& intent) {
+    composite_ = intent;
+    composite_.pending = true;
+}
+
+bool IntentBuffer::consumeCompositeIntent(CompositeIntent& out) {
+    if (!composite_.pending) return false;
+    out = composite_;
+    composite_.pending = false;
+    return true;
+}
+
 void IntentBuffer::setDcMotorIntent(uint8_t id, float speed, uint32_t now_ms) {
     if (id >= MAX_DC_MOTOR_INTENTS) return;
     dcMotors_[id].id = id;

@@ -45,3 +45,30 @@ def test_cli_control_module_registers_graph_commands():
         "graph-clear",
     ]:
         assert command in source
+
+
+def test_cli_context_control_graph_service_binds_sensor_policy_provider():
+    from mara_host.cli.context import CLIContext
+
+    ctx = CLIContext(port="/dev/null", robot_config_path=None, robot_config=object())
+    ctx._client = object()
+
+    service = ctx.control_graph_service
+
+    assert service._sensor_policy_provider == ctx._sensor_policy_provider
+
+
+def test_robot_control_graph_service_binds_sensor_policy_provider():
+    from mara_host.config import RobotConfig
+
+    robot = RobotConfig.from_dict(
+        {
+            "transport": {"type": "serial", "port": "/dev/null"},
+            "sensors": {"imu": {"type": "imu"}},
+        }
+    ).create_robot()
+    robot._client = object()
+
+    service = robot.control_graph_service
+
+    assert service._sensor_policy_provider == robot._sensor_policy_provider

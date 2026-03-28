@@ -224,11 +224,15 @@ class MaraRuntime:
         host: Optional[str] = None,
         ble_name: Optional[str] = None,
         tcp_port: int = 3333,
+        robot_config: Optional[object] = None,
+        robot_config_path: Optional[str] = None,
     ):
         self.port = port
         self.host = host
         self.ble_name = ble_name
         self.tcp_port = tcp_port
+        self.robot_config = robot_config
+        self.robot_config_path = robot_config_path
 
         self._ctx = None
         self._store = StateStore()
@@ -276,6 +280,8 @@ class MaraRuntime:
                 ble_name=self.ble_name,
                 tcp_port=self.tcp_port,
                 verbose=False,
+                robot_config=self.robot_config,
+                robot_config_path=self.robot_config_path,
             )
 
             try:
@@ -513,6 +519,16 @@ class MaraRuntime:
         )
 
         # Create context provider for LLM
+        from mara_host.config import RobotConfig
+        self.robot_config_path = config_path
+        self.robot_config = RobotConfig.load(config_path)
+        if self._ctx is not None:
+            self._ctx.robot_config = self.robot_config
+            self._ctx.robot_config_path = config_path
+            self._ctx._policy_robot = None
+            if self._ctx._control_graph_service is not None:
+                self._ctx._control_graph_service.bind_sensor_policy_provider(self._ctx._sensor_policy_provider)
+
         self._robot_context = RobotStateContext(
             model=self._robot_model,
             pose_tracker=self._robot_service.pose,

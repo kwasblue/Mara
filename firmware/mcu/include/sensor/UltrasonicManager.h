@@ -47,6 +47,16 @@ public:
         return true;
     }
 
+    bool detach(uint8_t id) {
+        if (id >= MAX_SENSORS) {
+            DBG_PRINTF("[Ultrasonic] detach failed, id=%u out of range\n", id);
+            return false;
+        }
+        sensors_[id] = Sensor{};
+        DBG_PRINTF("[Ultrasonic] detach id=%u\n", id);
+        return true;
+    }
+
     bool isAttached(uint8_t id) const {
         return (id < MAX_SENSORS) && sensors_[id].attached;
     }
@@ -136,6 +146,7 @@ public:
     void setSampleInterval(uint32_t) {}
     uint32_t getSampleInterval() const { return 0; }
     bool attach(uint8_t, int, int) { return false; }
+    bool detach(uint8_t) { return false; }
     bool isAttached(uint8_t) const { return false; }
     void loop(uint32_t) {}
     float readDistanceCm(uint8_t) const { return -1.0f; }

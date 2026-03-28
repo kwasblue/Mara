@@ -14,6 +14,8 @@ TELEM_LIDAR          = 0x03  # LiDAR distance sensor
 TELEM_ENCODER0       = 0x04  # Encoder 0 tick count
 TELEM_STEPPER0       = 0x05  # Stepper motor 0 state
 TELEM_DC_MOTOR0      = 0x06  # DC motor 0 state
+TELEM_PERF           = 0x07  # MCU performance and watchdog metrics
+TELEM_SENSOR_HEALTH  = 0x08  # Compact sensor health and degraded-state summary
 
 # Control telemetry sections
 TELEM_CTRL_SIGNALS   = 0x10  # Control signal bus values
@@ -27,6 +29,8 @@ __all__ = [
     "TELEM_ENCODER0",
     "TELEM_STEPPER0",
     "TELEM_DC_MOTOR0",
+    "TELEM_PERF",
+    "TELEM_SENSOR_HEALTH",
     "TELEM_CTRL_SIGNALS",
     "TELEM_CTRL_OBSERVERS",
     "TELEM_CTRL_SLOTS",
@@ -70,6 +74,18 @@ SECTION_INFO = {
         "description": "DC motor 0 state",
         "format": "attached(u8) speed_centi(i16)",
         "size": 3,
+    },
+    0x07: {
+        "name": "TELEM_PERF",
+        "description": "MCU performance and watchdog metrics",
+        "format": "last_fault(u8) hb_count(u32) hb_timeouts(u32) hb_recoveries(u32) hb_max_gap_ms(u32) motion_cmds(u32) motion_timeouts(u32) motion_max_gap_ms(u32) iterations(u32) overruns(u32) avg_total_us(u16) peak_total_us(u16) pkt_last_bytes(u16) pkt_max_bytes(u16) pkt_sent(u32) pkt_bytes(u32) pkt_dropped_sections(u32) pkt_last_sections(u8) pkt_max_sections(u8) pkt_buffered(u8)",
+        "size": 56,
+    },
+    0x08: {
+        "name": "TELEM_SENSOR_HEALTH",
+        "description": "Compact sensor health and degraded-state summary",
+        "format": "count(u8) [sensor_kind(u8) sensor_id(u8) flags(u8) detail(u8)]*",
+        "size": None,
     },
     0x10: {
         "name": "TELEM_CTRL_SIGNALS",

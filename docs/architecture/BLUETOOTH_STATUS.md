@@ -2,7 +2,7 @@
 
 ## Summary
 
-Bluetooth Classic SPP transport is implemented in the MARA repo on both firmware and host sides, but practical use on this Linux laptop is currently blocked by ESP32/BlueZ pairing behavior.
+Bluetooth Classic SPP transport is implemented in the MARA repo on both firmware and host sides. As of the latest stabilization pass, the firmware no longer aborts during boot by calling `BluetoothSerial::setPin()` before `begin()`. Practical Linux pairing is still blocked by ESP32/BlueZ authentication behavior, but the transport now boots cleanly enough to keep the rest of the service stack alive.
 
 ## What is complete
 
@@ -70,4 +70,5 @@ The repo-native Bluetooth transport implementation is in place, but practical Li
 ## Recommendation
 - Prefer TCP for wireless control.
 - Keep USB serial for setup and recovery.
+- Keep BLE disabled in the default `esp32_usb` dev image until ESP32 Classic Bluetooth can boot reliably alongside the rest of the transport stack on this board/profile.
 - Treat Bluetooth transport as experimental until there is a reason to invest in lower-level ESP-IDF/Bluedroid auth work.

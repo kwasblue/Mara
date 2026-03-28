@@ -1,6 +1,6 @@
 import argparse
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from mara_host.core.result import Result
 
@@ -225,3 +225,39 @@ def test_cli_parser_registers_key_control_commands():
 
     for name in ["gpio", "servo", "encoder", "imu", "ultrasonic", "run", "test", "build"]:
         assert name in help_text
+
+
+
+def test_cli_ultrasonic_detach_uses_service(monkeypatch):
+    from mara_host.cli.commands.ultrasonic import cmd_ultrasonic_detach
+
+    fake_ctx = FakeCLIContext()
+    _patch_ctx(monkeypatch, fake_ctx)
+
+    args = argparse.Namespace(id=0, port=None, host=None, tcp_port=None, quiet=True, verbose=False)
+    rc = cmd_ultrasonic_detach(args)
+
+    assert rc == 0
+    fake_ctx.ultrasonic_service.detach.assert_awaited_once_with(0)
+
+
+def test_cli_ultrasonic_read_reports_degraded_hardware_state(monkeypatch):
+    from mara_host.cli.commands.ultrasonic import cmd_ultrasonic_read
+    import mara_host.cli.commands.ultrasonic as ultrasonic_cmd
+
+    fake_ctx = FakeCLIContext()
+    fake_ctx.ultrasonic_service.read = AsyncMock(return_value=Result.success({
+        "sensor_id": 0,
+        "degraded": True,
+        "expected": True,
+        "reason": "no_echo",
+    }))
+    _patch_ctx(monkeypatch, fake_ctx)
+    monkeypatch.setattr(ultrasonic_cmd, "print_info", MagicMock())
+    monkeypatch.setattr(ultrasonic_cmd.console, "print", MagicMock())
+
+    args = argparse.Namespace(id=0, port=None, host=None, tcp_port=None, quiet=True, verbose=False)
+    rc = cmd_ultrasonic_read(args)
+
+    assert rc == 0
+    ultrasonic_cmd.print_info.assert_called_with("Ultrasonic 0: attached, but no echo was measured")

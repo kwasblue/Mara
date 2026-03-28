@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from .services.control.motion_service import MotionService
     from .services.control.motor_service import MotorService
     from .services.control.servo_service import ServoService
+    from .api.sensors import SensorsFacade
 
 
 class Session:
@@ -173,6 +174,9 @@ class Robot:
         self._motion: Optional[MotionService] = None
         self._motor_service: Optional[MotorService] = None
         self._servo_service: Optional[ServoService] = None
+        self._sensors = None
+        self._config = None
+        self._control_graph_service = None
 
     def _setup(self) -> None:
         """Initialize transport, bus, and client (called by connect)."""
@@ -277,6 +281,22 @@ class Robot:
         return self._client.is_connected
 
     @property
+    def config(self):
+        """Optional RobotConfig attached when created from config helpers."""
+        return self._config
+
+    def get_sensor_config(self, name: str):
+        """Return a configured sensor entry if this robot came from RobotConfig."""
+        if self._config is None:
+            return None
+        return self._config.get_sensor(name)
+
+    def _sensor_policy_provider(self):
+        if self._config is None:
+            return None
+        return self.sensors
+
+    @property
     def capabilities(self) -> list[str]:
         """
         List of capabilities reported by the MCU.
@@ -359,6 +379,25 @@ class Robot:
             from .services.control.servo_service import ServoService
             self._servo_service = ServoService(self.client)
         return self._servo_service
+
+    @property
+    def sensors(self) -> "SensorsFacade":
+        """Thin config-aware sensor facade layered on existing APIs/services."""
+        if self._sensors is None:
+            from .api.sensors import SensorsFacade
+            self._sensors = SensorsFacade(self)
+        return self._sensors
+
+    @property
+    def control_graph_service(self):
+        """Config-aware control-graph service bound to this robot when available."""
+        if self._control_graph_service is None:
+            from .services.control.control_graph_service import ControlGraphService
+            self._control_graph_service = ControlGraphService(
+                self.client,
+                sensor_policy_provider=self._sensor_policy_provider,
+            )
+        return self._control_graph_service
 
     # -------------------------------------------------------------------------
     # Event Subscription
@@ -515,9 +554,9 @@ class Robot:
         from .config import RobotConfig
 
         config = RobotConfig.load(config_path, profile=profile)
-        errors = config.validate()
-        if errors:
-            raise ValueError(f"Invalid config: {'; '.join(errors)}")
+        report = config.validate_report()
+        if report.errors:
+            raise ValueError(f"Invalid config: {'; '.join(report.errors)}")
         return config.create_robot()
 
     def __repr__(self) -> str:

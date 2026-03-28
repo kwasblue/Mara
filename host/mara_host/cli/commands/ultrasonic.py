@@ -166,8 +166,15 @@ async def cmd_ultrasonic_read(args: argparse.Namespace, ctx: CLIContext) -> int:
     result = await ctx.ultrasonic_service.read(args.id)
 
     if result.ok:
-        print_info(f"Ultrasonic {args.id}: read request sent")
-        console.print("[dim]Check telemetry stream for distance data[/dim]")
+        data = result.data or {"sensor_id": args.id}
+        if data.get("degraded"):
+            print_info(f"Ultrasonic {args.id}: attached, but no echo was measured")
+            console.print("[yellow]Continuing in degraded hardware state[/yellow]")
+        elif data.get("distance_cm") is not None:
+            print_success(f"Ultrasonic {args.id}: {float(data['distance_cm']):.1f} cm")
+        else:
+            print_info(f"Ultrasonic {args.id}: read request sent")
+            console.print("[dim]Check telemetry stream for distance data[/dim]")
         return 0
     else:
         print_error(f"Failed: {result.error}")

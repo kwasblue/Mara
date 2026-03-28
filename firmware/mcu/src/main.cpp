@@ -20,6 +20,7 @@
 // Config
 #include "config/PinConfig.h"
 #include "config/WifiSecrets.h"
+#include "config/MaraConfig.h"
 
 // Set to true to use FreeRTOS task for control loop (Core 1, high priority)
 // Set to false to use cooperative scheduling in main loop()
@@ -63,6 +64,15 @@ void setup() {
     Serial.begin(115200);
     delay(500);
     Serial.println("\n[MCU] Booting with USB Serial + WiFi (AP+STA)...");
+
+    auto& maraCfg = config::getMaraConfig();
+    const auto cfgIssues = maraCfg.validate();
+    for (const auto& issue : cfgIssues) {
+        Serial.printf("[CONFIG] %s\n", issue.c_str());
+    }
+    if (maraCfg.sanitize()) {
+        Serial.println("[CONFIG] Invalid runtime config detected; sanitized to safe defaults");
+    }
 
     // =========================================================================
     // Phase 1: Initialize storage components that need runtime parameters

@@ -7,11 +7,28 @@ from mara_host.transport.tcp_transport import AsyncTcpTransport
 from tests.fakes.fake_mara_server import FakeMaraTcpServer
 
 
-async def _build_service(fake_server):
+class _PolicyFacade:
+    def __init__(self, ok: bool = True, decisions: list[dict] | None = None, required_kinds: list[str] | None = None):
+        self._ok = ok
+        self._decisions = decisions or []
+        self._required_kinds = required_kinds or []
+
+    def evaluate_graph_requirements(self, _graph):
+        class Report:
+            pass
+
+        report = Report()
+        report.ok = self._ok
+        report.required_kinds = list(self._required_kinds)
+        report.decisions = list(self._decisions)
+        return report
+
+
+async def _build_service(fake_server, sensor_policy_provider=None):
     transport = AsyncTcpTransport(fake_server.host, fake_server.port)
     client = MaraClient(transport, verbose=False)
     await client.start()
-    return client, ControlGraphService(client)
+    return client, ControlGraphService(client, sensor_policy_provider=sensor_policy_provider)
 
 
 @pytest.fixture
@@ -51,6 +68,7 @@ async def test_control_graph_upload_and_clear(sample_graph):
         assert clear_result.ok
         assert clear_result.data["cleared"] is True
         assert service.cached_graph is None
+        assert service.cached_policy is None
     finally:
         await client.stop()
         await fake_mara_server.stop()
@@ -114,6 +132,99 @@ async def test_control_graph_apply_fails_when_status_disagrees(sample_graph, mon
         result = await service.apply(sample_graph)
         assert not result.ok
         assert "graph-status disagrees" in result.error
+    finally:
+        await client.stop()
+        await fake_mara_server.stop()
+
+
+@pytest.mark.asyncio
+async def test_control_graph_upload_includes_non_blocking_policy(sample_graph):
+    fake_mara_server = await FakeMaraTcpServer().start()
+    facade = _PolicyFacade(
+        ok=True,
+        required_kinds=["imu"],
+        decisions=[
+            {
+                "name": "imu",
+                "kind": "imu",
+                "sensor_id": 0,
+                "usable": True,
+                "blocking": False,
+                "reason": "available",
+                "fallback": "none",
+                "fail_open": False,
+            }
+        ],
+    )
+    client, service = await _build_service(fake_mara_server, sensor_policy_provider=lambda: facade)
+    try:
+        result = await service.upload(sample_graph)
+        assert result.ok
+        assert result.data["policy"]["ok"] is True
+        assert result.data["policy"]["required_kinds"] == ["imu"]
+        assert result.data["policy"]["blocking"] == []
+    finally:
+        await client.stop()
+        await fake_mara_server.stop()
+
+
+@pytest.mark.asyncio
+async def test_control_graph_apply_blocks_when_sensor_policy_blocks(sample_graph):
+    fake_mara_server = await FakeMaraTcpServer().start()
+    facade = _PolicyFacade(
+        ok=False,
+        required_kinds=["imu"],
+        decisions=[
+            {
+                "name": "imu",
+                "kind": "imu",
+                "sensor_id": 0,
+                "usable": False,
+                "blocking": True,
+                "reason": "stale",
+                "fallback": "hold_last",
+                "fail_open": False,
+            }
+        ],
+    )
+    client, service = await _build_service(fake_mara_server, sensor_policy_provider=lambda: facade)
+    try:
+        result = await service.apply(sample_graph)
+        assert not result.ok
+        assert result.error == "Control graph blocked by sensor policy"
+        assert result.data["policy"]["blocking"][0]["reason"] == "stale"
+    finally:
+        await client.stop()
+        await fake_mara_server.stop()
+
+
+@pytest.mark.asyncio
+async def test_control_graph_enable_rechecks_policy_for_cached_graph(sample_graph):
+    fake_mara_server = await FakeMaraTcpServer().start()
+    facade = _PolicyFacade(ok=True, decisions=[])
+    client, service = await _build_service(fake_mara_server, sensor_policy_provider=lambda: facade)
+    try:
+        upload_result = await service.upload(sample_graph)
+        assert upload_result.ok
+
+        facade._ok = False
+        facade._required_kinds = ["imu"]
+        facade._decisions = [
+            {
+                "name": "imu",
+                "kind": "imu",
+                "sensor_id": 0,
+                "usable": False,
+                "blocking": True,
+                "reason": "missing",
+                "fallback": "hold_last",
+                "fail_open": False,
+            }
+        ]
+        result = await service.enable(True)
+        assert not result.ok
+        assert result.error == "Control graph enable blocked by sensor policy"
+        assert result.data["policy"]["blocking"][0]["reason"] == "missing"
     finally:
         await client.stop()
         await fake_mara_server.stop()

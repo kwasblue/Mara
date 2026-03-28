@@ -29,16 +29,25 @@ def create_http_app(runtime: MaraRuntime) -> Starlette:
 
     @asynccontextmanager
     async def lifespan(app):
-        # Connect on startup
-        try:
-            await runtime.connect()
-            print(f"[MARA HTTP] Connected to robot")
-        except Exception as e:
-            print(f"[MARA HTTP] Connection failed: {e}")
+        should_auto_connect = any(
+            value not in (None, "")
+            for value in (runtime.port, runtime.host, runtime.ble_name, runtime.robot_config, runtime.robot_config_path)
+        )
+
+        if should_auto_connect:
+            try:
+                await runtime.connect()
+                print("[MARA HTTP] Connected to robot")
+            except Exception as e:
+                print(f"[MARA HTTP] Connection failed: {e}")
+        else:
+            print("[MARA HTTP] No explicit robot target configured; starting disconnected")
+
         yield
-        # Disconnect on shutdown
-        await runtime.disconnect()
-        print("[MARA HTTP] Disconnected")
+
+        if runtime.is_connected or runtime.state.connected or runtime._ctx is not None:
+            await runtime.disconnect()
+            print("[MARA HTTP] Disconnected")
 
     # ═══════════════════════════════════════════════════════════
     # Custom Endpoints (not generated)
@@ -122,11 +131,18 @@ async def run_http_server(
     ble_name: Optional[str] = None,
     tcp_port: int = 3333,
     http_port: int = 8000,
+    robot_config_path: Optional[str] = None,
 ) -> None:
     """Run the HTTP server."""
     import uvicorn
 
-    runtime = MaraRuntime(port=port, host=host, ble_name=ble_name, tcp_port=tcp_port)
+    runtime = MaraRuntime(
+        port=port,
+        host=host,
+        ble_name=ble_name,
+        tcp_port=tcp_port,
+        robot_config_path=robot_config_path,
+    )
     app = create_http_app(runtime)
 
     print(f"[MARA HTTP] Starting server on http://localhost:{http_port}")

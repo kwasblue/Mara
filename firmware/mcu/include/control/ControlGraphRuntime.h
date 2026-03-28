@@ -157,7 +157,7 @@ public:
             return false;
         }
 
-        DynamicJsonDocument doc(static_cast<size_t>(len) + 512u);
+        JsonDocument doc;
         const DeserializationError json_error = deserializeJson(doc, buf.data(), len);
         if (json_error) {
             error = "persisted_graph_invalid_json";

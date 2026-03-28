@@ -29,6 +29,21 @@ struct SafetyConfig {
     int relay_pin = -1;
 };
 
+struct ModeWatchdogStats {
+    uint32_t host_heartbeat_count = 0;
+    uint32_t host_timeout_count = 0;
+    uint32_t host_recovery_count = 0;
+    uint32_t motion_command_count = 0;
+    uint32_t motion_timeout_count = 0;
+    uint32_t last_host_heartbeat_ms = 0;
+    uint32_t last_motion_command_ms = 0;
+    uint32_t last_host_timeout_ms = 0;
+    uint32_t last_motion_timeout_ms = 0;
+    uint32_t max_host_gap_ms = 0;
+    uint32_t max_motion_gap_ms = 0;
+    uint8_t last_fault = 0;
+};
+
 class ModeManager {
 public:
     using StopCallback = std::function<void()>;
@@ -63,24 +78,18 @@ public:
     bool isBypassed() const { return bypassed_; }
     uint32_t hostAgeMs(uint32_t now_ms) const { return now_ms - lastHostHeartbeat_; }
     uint32_t motionAgeMs(uint32_t now_ms) const { return now_ms - lastMotionCmd_; }
+    const ModeWatchdogStats& watchdogStats() const { return stats_; }
     
     // Validation
     bool validateVelocity(float vx, float omega, float& out_vx, float& out_omega);
     
     // Callback
     void onStop(StopCallback cb) { stopCallback_ = cb; }
-
-    // Emergency stop callback - called in addition to stopCallback for critical stops
-    // This should directly disable motor PWM, not go through motion controller
     void onEmergencyStop(StopCallback cb) { emergencyStopCallback_ = cb; }
 
     // Clock injection for testability
     void setClock(mara::IClock* clk) { clock_ = clk; }
-
-    /// Set HAL GPIO driver (for E-stop, bypass, relay pins)
     void setHalGpio(hal::IGpio* gpio) { halGpio_ = gpio; }
-
-    /// Set HAL watchdog driver
     void setHalWatchdog(hal::IWatchdog* watchdog) { halWatchdog_ = watchdog; }
 
 private:
@@ -94,14 +103,15 @@ private:
     uint32_t lastMotionCmd_ = 0;
     bool hostEverSeen_ = false;
     bool bypassed_ = false;
-    bool wasMoving_ = false;  // True if non-zero velocity was commanded
-    bool stopLatched_ = false;  // Prevent repeated stop callback spam for one fault episode
+    bool wasMoving_ = false;
+    bool stopLatched_ = false;
+    bool hostTimedOut_ = false;
+    ModeWatchdogStats stats_{};
 
     StopCallback stopCallback_;
-    StopCallback emergencyStopCallback_;  // Direct motor disable for E-stop
+    StopCallback emergencyStopCallback_;
     mara::IClock* clock_ = nullptr;
 
-    /// Get current time from clock or fallback to system clock
     uint32_t now_ms() const {
         if (clock_) return clock_->millis();
         return mara::getSystemClock().millis();
@@ -110,21 +120,7 @@ private:
     mara::SpinlockType lock_ = MCU_SPINLOCK_INIT;
 
     void triggerStop();
-    void triggerEmergencyStop();  // Direct motor disable
+    void triggerEmergencyStop();
     void readHardwareInputs();
     bool canTransition(MaraMode from, MaraMode to);
-
 };
-
-// Helper to convert mode to string
-// inline const char* maraModeToString(MaraMode m) {
-//     switch (m) {
-//         case MaraMode::BOOT: return "BOOT";
-//         case MaraMode::DISCONNECTED: return "DISCONNECTED";
-//         case MaraMode::IDLE: return "IDLE";
-//         case MaraMode::ARMED: return "ARMED";
-//         case MaraMode::ACTIVE: return "ACTIVE";
-//         case MaraMode::ESTOPPED: return "ESTOPPED";
-//         default: return "UNKNOWN";
-//     }
-// }       

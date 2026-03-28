@@ -15,9 +15,20 @@
 #include "command/CommandRegistry.h"
 #include "command/handlers/AllHandlers.h"
 
-// Include implementation directly so native env doesn't need to compile all src/
+// Native env does not build src/ by default. Pull in the handler/registry
+// implementation slices this suite exercises.
 #include "../../src/command/HandlerRegistry.cpp"
 #include "../../src/command/CommandRegistry.cpp"
+#include "../../src/command/handlers/SafetyHandler.cpp"
+#include "../../src/command/handlers/MotionHandler.cpp"
+#include "../../src/command/handlers/GpioHandler.cpp"
+#include "../../src/command/handlers/ServoHandler.cpp"
+#include "../../src/command/handlers/StepperHandler.cpp"
+#include "../../src/command/handlers/DcMotorHandler.cpp"
+#include "../../src/command/handlers/SensorHandler.cpp"
+#include "../../src/command/handlers/TelemetryHandler.cpp"
+#include "../../src/command/handlers/ControlHandler.cpp"
+#include "../../src/command/handlers/ObserverHandler.cpp"
 
 // ---------------- MotionSpy ----------------
 struct MotionSpy : public MotionController {
@@ -48,6 +59,7 @@ static ServoManager*       pServo = nullptr;
 static StepperManager*     pStepper = nullptr;
 static UltrasonicManager*  pUltrasonic = nullptr;
 static EncoderManager*     pEncoder = nullptr;
+static ImuManager*         pImu = nullptr;
 static DcMotorManager*     pDc = nullptr;
 static TelemetryModule*    pTelemetry = nullptr;
 static MotionSpy*          pMotion = nullptr;
@@ -64,6 +76,7 @@ static SensorHandler*      pSensorHandler = nullptr;
 static TelemetryHandler*   pTelemetryHandler = nullptr;
 static ControlHandler*     pControlHandler = nullptr;
 static ObserverHandler*    pObserverHandler = nullptr;
+static IdentityHandler*    pIdentityHandler = nullptr;
 
 static void captureTx(const Event& evt) {
     if (evt.type == EventType::JSON_MESSAGE_TX) {
@@ -88,6 +101,7 @@ void setUp() {
     pStepper = new StepperManager(*pGpio);
     pUltrasonic = new UltrasonicManager();
     pEncoder = new EncoderManager();
+    pImu = new ImuManager();
     pDc = new DcMotorManager(*pGpio, *pPwm);
     pTelemetry = new TelemetryModule(*pBus);
     pMotion = new MotionSpy(*pDc);
@@ -101,10 +115,11 @@ void setUp() {
     pServoHandler = new ServoHandler(*pServo, *pMotion);
     pStepperHandler = new StepperHandler(*pStepper, *pMotion);
     pDcMotorHandler = new DcMotorHandler(*pDc);
-    pSensorHandler = new SensorHandler(*pUltrasonic, *pEncoder);
+    pSensorHandler = new SensorHandler(*pUltrasonic, *pEncoder, *pImu);
     pTelemetryHandler = new TelemetryHandler(*pTelemetry);
     pControlHandler = new ControlHandler();
     pObserverHandler = new ObserverHandler();
+    pIdentityHandler = new IdentityHandler();
 
     // Subscribe capture first
     pBus->subscribe(&captureTx);
@@ -120,6 +135,7 @@ void setUp() {
     pRegistry->registerHandler(pTelemetryHandler);
     pRegistry->registerHandler(pControlHandler);
     pRegistry->registerHandler(pObserverHandler);
+    pRegistry->registerHandler(pIdentityHandler);
 
     pRegistry->setup();
     isSetupDone = true;
@@ -216,6 +232,38 @@ void test_registry_finds_correct_handler() {
     TEST_ASSERT_TRUE(lastTx.find("CMD_LED_ON") != std::string::npos);
 }
 
+void test_ultrasonic_detach_command_is_acknowledged() {
+    int startCount = txCount;
+
+    std::string cmd = R"({
+      "kind":"cmd",
+      "type":"CMD_ULTRASONIC_DETACH",
+      "seq":410,
+      "payload":{"sensor_id":0}
+    })";
+
+    injectJson(cmd);
+    TEST_ASSERT_EQUAL(startCount + 1, txCount);
+    TEST_ASSERT_TRUE(lastTx.find("CMD_ULTRASONIC_DETACH") != std::string::npos);
+}
+
+void test_get_identity_reports_feature_array_and_caps() {
+    int startCount = txCount;
+
+    std::string cmd = R"({
+      "kind":"cmd",
+      "type":"CMD_GET_IDENTITY",
+      "seq":420,
+      "payload":{}
+    })";
+
+    injectJson(cmd);
+    TEST_ASSERT_EQUAL(startCount + 1, txCount);
+    TEST_ASSERT_TRUE(lastTx.find("CMD_GET_IDENTITY") != std::string::npos);
+    TEST_ASSERT_TRUE(lastTx.find("\"features\"") != std::string::npos);
+    TEST_ASSERT_TRUE(lastTx.find("\"caps\"") != std::string::npos);
+}
+
 void test_unknown_command_returns_error() {
     int startCount = txCount;
 
@@ -240,6 +288,8 @@ int main(int argc, char** argv) {
     RUN_TEST(test_motion_set_vel_calls_motion_controller_once);
     RUN_TEST(test_safety_handler_processes_arm_command);
     RUN_TEST(test_registry_finds_correct_handler);
+    RUN_TEST(test_ultrasonic_detach_command_is_acknowledged);
+    RUN_TEST(test_get_identity_reports_feature_array_and_caps);
     RUN_TEST(test_unknown_command_returns_error);
     return UNITY_END();
 }

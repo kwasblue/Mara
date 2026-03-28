@@ -520,6 +520,12 @@ class RobotCommandsMixin:
         payload['sensor_id'] = sensor_id
         await self.send_json_cmd('CMD_ULTRASONIC_READ', payload)
 
+    async def cmd_ultrasonic_detach(self, sensor_id: int = 0) -> None:
+        """Detach an ultrasonic sensor and clear its cached state. (CMD_ULTRASONIC_DETACH)"""
+        payload: dict[str, Any] = {}
+        payload['sensor_id'] = sensor_id
+        await self.send_json_cmd('CMD_ULTRASONIC_DETACH', payload)
+
     async def cmd_encoder_attach(self, encoder_id: int = 0, pin_a: int = 32, pin_b: int = 33) -> None:
         """Attach/configure a quadrature encoder with runtime pins. (CMD_ENCODER_ATTACH)"""
         payload: dict[str, Any] = {}

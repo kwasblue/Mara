@@ -57,7 +57,7 @@ async with Robot("/dev/ttyUSB0") as robot:
 |-------|-------------|
 | `Encoder` | Quadrature encoder with callbacks |
 | `IMU` | Inertial measurement unit |
-| `Ultrasonic` | Ultrasonic distance sensor |
+| `Ultrasonic` | Ultrasonic distance sensor with attach/read/detach and degraded no-echo reporting |
 
 ### I/O
 

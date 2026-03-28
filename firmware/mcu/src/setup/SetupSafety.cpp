@@ -6,6 +6,7 @@
 #include "motor/MotionController.h"
 #include "motor/DcMotorManager.h"
 #include "motor/StepperManager.h"
+#include "config/MaraConfig.h"
 
 namespace {
 
@@ -19,15 +20,16 @@ public:
             return mara::Result<void>::err(mara::ErrorCode::NotInitialized);
         }
 
-        SafetyConfig config;
-        config.host_timeout_ms   = 10000;
-        config.motion_timeout_ms = 2000;
-        config.max_linear_vel    = 0.5f;
-        config.max_angular_vel   = 2.0f;
+        const auto& maraCfg = config::getMaraConfig();
 
-        config.estop_pin  = -1;  // TODO: Wire physical E-stop button
-        config.bypass_pin = -1;  // TODO: Wire bypass switch
-        config.relay_pin  = -1;  // TODO: Wire motor power relay
+        SafetyConfig config;
+        config.host_timeout_ms   = maraCfg.safety.host_timeout_ms;
+        config.motion_timeout_ms = maraCfg.safety.motion_timeout_ms;
+        config.max_linear_vel    = maraCfg.safety.max_linear_vel;
+        config.max_angular_vel   = maraCfg.safety.max_angular_vel;
+        config.estop_pin         = maraCfg.safety.estop_pin;
+        config.bypass_pin        = maraCfg.safety.bypass_pin;
+        config.relay_pin         = maraCfg.safety.relay_pin;
 
         ctx.mode->configure(config);
         ctx.mode->begin();

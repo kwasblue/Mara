@@ -43,6 +43,18 @@ TELEMETRY_SECTIONS: Dict[str, Dict[str, Any]] = {
         "format": "attached(u8) speed_centi(i16)",
         "size": 3,
     },
+    "TELEM_PERF": {
+        "id": 0x07,
+        "description": "MCU performance and watchdog metrics",
+        "format": "last_fault(u8) hb_count(u32) hb_timeouts(u32) hb_recoveries(u32) hb_max_gap_ms(u32) motion_cmds(u32) motion_timeouts(u32) motion_max_gap_ms(u32) iterations(u32) overruns(u32) avg_total_us(u16) peak_total_us(u16) pkt_last_bytes(u16) pkt_max_bytes(u16) pkt_sent(u32) pkt_bytes(u32) pkt_dropped_sections(u32) pkt_last_sections(u8) pkt_max_sections(u8) pkt_buffered(u8)",
+        "size": 56,
+    },
+    "TELEM_SENSOR_HEALTH": {
+        "id": 0x08,
+        "description": "Compact sensor health and degraded-state summary",
+        "format": "count(u8) [sensor_kind(u8) sensor_id(u8) flags(u8) detail(u8)]*",
+        "size": None,
+    },
     "TELEM_CTRL_SIGNALS": {
         "id": 0x10,
         "description": "Control signal bus values",

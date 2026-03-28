@@ -69,6 +69,8 @@ class CLIContext:
         tcp_port: Optional[int] = None,
         ble_name: Optional[str] = None,
         verbose: bool = True,
+        robot_config: Optional[object] = None,
+        robot_config_path: Optional[str] = None,
     ):
         """
         Initialize CLI context.
@@ -86,6 +88,7 @@ class CLIContext:
             get_baudrate,
             get_tcp_host,
             get_tcp_port,
+            get_robot_config_path,
         )
 
         self.port = port or get_serial_port()
@@ -94,6 +97,8 @@ class CLIContext:
         self.tcp_port = tcp_port or get_tcp_port()
         self.ble_name = ble_name
         self.verbose = verbose
+        self.robot_config = robot_config
+        self.robot_config_path = robot_config_path or get_robot_config_path()
 
         self._connection: Optional["ConnectionService"] = None
         self._client: Optional["MaraClient"] = None
@@ -114,6 +119,7 @@ class CLIContext:
         self._control_graph_service: Optional["ControlGraphService"] = None
         self._controller_service: Optional["ControllerService"] = None
         self._pid_service: Optional["PidService"] = None
+        self._policy_robot = None
 
     @classmethod
     def from_args(cls, args) -> "CLIContext":
@@ -135,6 +141,7 @@ class CLIContext:
             tcp_port=getattr(args, "tcp_port", None),
             ble_name=getattr(args, "ble_name", None),
             verbose=verbose,
+            robot_config_path=getattr(args, "robot_config", None),
         )
 
     async def connect(self) -> None:
@@ -218,6 +225,7 @@ class CLIContext:
         self._control_graph_service = None
         self._controller_service = None
         self._pid_service = None
+        self._policy_robot = None
 
     async def __aenter__(self) -> "CLIContext":
         await self.connect()
@@ -225,6 +233,31 @@ class CLIContext:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         await self.disconnect()
+
+    def _resolve_robot_config(self):
+        if self.robot_config is not None:
+            return self.robot_config
+        if not self.robot_config_path:
+            return None
+        from mara_host.config import RobotConfig
+        self.robot_config = RobotConfig.load(self.robot_config_path)
+        return self.robot_config
+
+    def _sensor_policy_provider(self):
+        config = self._resolve_robot_config()
+        if config is None:
+            return None
+        if self._policy_robot is None:
+            robot = config.create_robot()
+            robot._client = self._client
+            robot._bus = getattr(self._client, "bus", None)
+            robot._connected = self.is_connected
+            self._policy_robot = robot
+        else:
+            self._policy_robot._client = self._client
+            self._policy_robot._bus = getattr(self._client, "bus", None)
+            self._policy_robot._connected = self.is_connected
+        return self._policy_robot.sensors
 
     @property
     def client(self) -> "MaraClient":
@@ -333,7 +366,10 @@ class CLIContext:
         """Get or create ControlGraphService instance."""
         if self._control_graph_service is None:
             from mara_host.services.control.control_graph_service import ControlGraphService
-            self._control_graph_service = ControlGraphService(self.client)
+            self._control_graph_service = ControlGraphService(
+                self.client,
+                sensor_policy_provider=self._sensor_policy_provider,
+            )
         return self._control_graph_service
 
     @property

@@ -114,6 +114,11 @@ def get_build_env() -> str:
     return get("build.env", "esp32_usb")
 
 
+def get_robot_config_path() -> Optional[str]:
+    """Get default robot YAML config path for config-aware service wiring."""
+    return get("robot.config")
+
+
 def get_build_preset() -> Optional[str]:
     """Get default build preset."""
     return get("build.preset")
@@ -187,6 +192,7 @@ def apply_defaults(parser_defaults: dict) -> dict:
         "tcp.port": "tcp_port",
         "build.env": "env",
         "build.preset": "preset",
+        "robot.config": "robot_config",
         "can.channel": "channel",
         "can.bustype": "bustype",
         "can.node_id": "node_id",

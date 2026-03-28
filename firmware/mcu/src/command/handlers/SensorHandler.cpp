@@ -153,19 +153,35 @@ void SensorHandler::handleUltrasonicAttach(JsonVariantConst payload, CommandCont
 void SensorHandler::handleUltrasonicRead(JsonVariantConst payload, CommandContext& ctx) {
     int sensorId = payload["sensor_id"] | 0;
 
+    const bool attached = ultrasonic_.isAttached(sensorId);
     float distCm = ultrasonic_.readDistanceCm(sensorId);
-    bool ok = (distCm >= 0.0f);
+    bool ok = attached && (distCm >= 0.0f);
 
-    DBG_PRINTF("[SENSOR] ULTRASONIC_READ id=%d dist=%.2f ok=%d\n",
-               sensorId, distCm, (int)ok);
+    DBG_PRINTF("[SENSOR] ULTRASONIC_READ id=%d attached=%d dist=%.2f ok=%d\n",
+               sensorId, (int)attached, distCm, (int)ok);
 
     JsonDocument resp;
     resp["sensor_id"] = sensorId;
+    resp["attached"] = attached;
     resp["distance_cm"] = ok ? distCm : -1.0f;
     if (!ok) {
-        resp["error"] = "read_failed";
+        resp["error"] = attached ? "read_failed" : "not_attached";
     }
     ctx.sendAck("CMD_ULTRASONIC_READ", ok, resp);
+}
+
+void SensorHandler::handleUltrasonicDetach(JsonVariantConst payload, CommandContext& ctx) {
+    int sensorId = payload["sensor_id"] | 0;
+    const bool ok = ultrasonic_.detach(sensorId);
+
+    DBG_PRINTF("[SENSOR] ULTRASONIC_DETACH id=%d ok=%d\n", sensorId, (int)ok);
+
+    JsonDocument resp;
+    resp["sensor_id"] = sensorId;
+    if (!ok) {
+        resp["error"] = "detach_failed";
+    }
+    ctx.sendAck("CMD_ULTRASONIC_DETACH", ok, resp);
 }
 
 void SensorHandler::handleEncoderAttach(JsonVariantConst payload, CommandContext& ctx) {

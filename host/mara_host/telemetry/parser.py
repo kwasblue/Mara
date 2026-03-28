@@ -11,6 +11,8 @@ from .models import (
     EncoderTelemetry,
     StepperTelemetry,
     DcMotorTelemetry,
+    SensorHealthEntryTelemetry,
+    SensorHealthTelemetry,
 )
 
 
@@ -90,6 +92,28 @@ def parse_telemetry(msg: Dict[str, Any]) -> TelemetryPacket:
             ts_ms=ts_ms,
         )
 
+    # --- Sensor health ---
+    sensor_health = None
+    sensor_health_raw = data.get("sensor_health")
+    if isinstance(sensor_health_raw, dict):
+        sensors = []
+        for entry in sensor_health_raw.get("sensors", []):
+            if not isinstance(entry, dict):
+                continue
+            sensors.append(
+                SensorHealthEntryTelemetry(
+                    kind=str(entry.get("kind", "unknown")),
+                    sensor_id=int(entry.get("sensor_id", 0)),
+                    present=bool(entry.get("present", False)),
+                    healthy=bool(entry.get("healthy", False)),
+                    degraded=bool(entry.get("degraded", False)),
+                    stale=bool(entry.get("stale", False)),
+                    detail=int(entry.get("detail", 0)),
+                    flags=int(entry.get("flags", 0)),
+                )
+            )
+        sensor_health = SensorHealthTelemetry(ts_ms=ts_ms, sensors=sensors)
+
     # --- Encoder0 ---
     encoder0 = None
     enc_raw = data.get("encoder0")
@@ -149,4 +173,5 @@ def parse_telemetry(msg: Dict[str, Any]) -> TelemetryPacket:
         encoder0=encoder0,
         stepper0=stepper0,
         dc_motor0=dc_motor0,
+        sensor_health=sensor_health,
     )

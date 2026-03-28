@@ -18,6 +18,8 @@ enum class SectionId : uint8_t {
     TELEM_ENCODER0       = 0x04,  // Encoder 0 tick count
     TELEM_STEPPER0       = 0x05,  // Stepper motor 0 state
     TELEM_DC_MOTOR0      = 0x06,  // DC motor 0 state
+    TELEM_PERF           = 0x07,  // MCU performance and watchdog metrics
+    TELEM_SENSOR_HEALTH  = 0x08,  // Compact sensor health and degraded-state summary
     TELEM_CTRL_SIGNALS   = 0x10,  // Control signal bus values
     TELEM_CTRL_OBSERVERS = 0x11,  // Observer state estimates
     TELEM_CTRL_SLOTS     = 0x12,  // Control slot status
@@ -50,6 +52,12 @@ inline uint8_t id(SectionId s) {
 //
 // TELEM_DC_MOTOR0: attached(u8) speed_centi(i16)
 //   Size: 3 bytes
+//
+// TELEM_PERF: last_fault(u8) hb_count(u32) hb_timeouts(u32) hb_recoveries(u32) hb_max_gap_ms(u32) motion_cmds(u32) motion_timeouts(u32) motion_max_gap_ms(u32) iterations(u32) overruns(u32) avg_total_us(u16) peak_total_us(u16) pkt_last_bytes(u16) pkt_max_bytes(u16) pkt_sent(u32) pkt_bytes(u32) pkt_dropped_sections(u32) pkt_last_sections(u8) pkt_max_sections(u8) pkt_buffered(u8)
+//   Size: 56 bytes
+//
+// TELEM_SENSOR_HEALTH: count(u8) [sensor_kind(u8) sensor_id(u8) flags(u8) detail(u8)]*
+//   Size: variable
 //
 // TELEM_CTRL_SIGNALS: count(u16) [id(u16) value(f32) ts_ms(u32)]*
 //   Size: variable

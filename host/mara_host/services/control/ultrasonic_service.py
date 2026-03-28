@@ -5,8 +5,9 @@ Ultrasonic sensor service.
 Provides high-level control for ultrasonic distance sensors.
 """
 
+import asyncio
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Any
 
 from mara_host.core.result import ServiceResult
 from mara_host.services.control.service_base import ConfigurableService
@@ -30,8 +31,10 @@ class UltrasonicState:
     """Current state of an ultrasonic sensor."""
 
     sensor_id: int
-    distance_cm: float = 0.0  # Last measured distance
+    distance_cm: Optional[float] = None  # Last measured distance
     attached: bool = False
+    degraded: bool = False
+    last_error: Optional[str] = None
 
 
 class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
@@ -132,6 +135,8 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
             self.configure(sensor_id, trig_pin, echo_pin, max_distance_cm)
             state = self.get_state(sensor_id)
             state.attached = True
+            state.degraded = False
+            state.last_error = None
             return ServiceResult.success(
                 data={
                     "sensor_id": sensor_id,
@@ -162,6 +167,9 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
         if ok:
             state = self.get_state(sensor_id)
             state.attached = False
+            state.distance_cm = None
+            state.degraded = False
+            state.last_error = None
             return ServiceResult.success(data={"sensor_id": sensor_id})
         else:
             return ServiceResult.failure(
@@ -172,7 +180,8 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
         """
         Request distance reading from MCU.
 
-        Note: The actual value comes via telemetry.
+        A no-echo ultrasonic timeout is treated as an expected degraded hardware
+        state rather than a generic transport/software failure.
 
         Args:
             sensor_id: Sensor ID
@@ -180,16 +189,61 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
         Returns:
             ServiceResult
         """
-        result = await self._send_reliable_with_ack_payload(
-            "CMD_ULTRASONIC_READ",
-            {"sensor_id": sensor_id},
-            error_message=f"Failed to read ultrasonic sensor {sensor_id}",
-        )
+        loop = asyncio.get_running_loop()
+        ack_future: asyncio.Future[Any] = loop.create_future()
+        topic = "cmd.CMD_ULTRASONIC_READ"
 
-        if result.ok:
-            return ServiceResult.success(data=result.data or {"sensor_id": sensor_id})
-        else:
-            return result
+        def _handler(data: Any) -> None:
+            if not ack_future.done():
+                ack_future.set_result(data)
+
+        self.client.bus.subscribe(topic, _handler)
+        try:
+            ok, error = await self.client.send_reliable(
+                "CMD_ULTRASONIC_READ",
+                {"sensor_id": sensor_id},
+            )
+            ack_payload: dict[str, Any] | None
+            try:
+                ack_payload = await asyncio.wait_for(ack_future, timeout=0.1)
+            except asyncio.TimeoutError:
+                ack_payload = None
+        finally:
+            self.client.bus.unsubscribe(topic, _handler)
+
+        state = self.get_state(sensor_id)
+        payload = dict(ack_payload or {"sensor_id": sensor_id})
+        distance_cm = payload.get("distance_cm")
+        ack_error = payload.get("error")
+
+        if ok:
+            state.attached = bool(payload.get("attached", state.attached or self.has_config(sensor_id)))
+            state.distance_cm = float(distance_cm) if distance_cm is not None else state.distance_cm
+            state.degraded = False
+            state.last_error = None
+            return ServiceResult.success(data=payload)
+
+        if ack_error == "read_failed":
+            state.attached = bool(payload.get("attached", state.attached or self.has_config(sensor_id)))
+            state.distance_cm = None
+            state.degraded = True
+            state.last_error = ack_error
+            degraded_payload = {
+                **payload,
+                "sensor_id": sensor_id,
+                "distance_cm": None,
+                "degraded": True,
+                "expected": True,
+                "reason": "no_echo",
+                "message": f"Ultrasonic sensor {sensor_id} attached but no echo was measured; treating as degraded hardware state.",
+            }
+            return ServiceResult.success(data=degraded_payload)
+
+        state.last_error = error or ack_error
+        return ServiceResult.failure(
+            error=error or ack_error or f"Failed to read ultrasonic sensor {sensor_id}",
+            data=payload,
+        )
 
     async def detach_all(self) -> ServiceResult:
         """
@@ -208,13 +262,15 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
             return ServiceResult.failure(error="; ".join(errors))
         return ServiceResult.success()
 
-    def update_reading(self, sensor_id: int, distance_cm: float) -> None:
+    def update_reading(self, sensor_id: int, distance_cm: Optional[float]) -> None:
         """
         Update last reading (called from telemetry handler).
 
         Args:
             sensor_id: Sensor ID
-            distance_cm: Measured distance in centimeters
+            distance_cm: Measured distance in centimeters, or None when unavailable
         """
         state = self.get_state(sensor_id)
         state.distance_cm = distance_cm
+        state.degraded = distance_cm is None
+        state.last_error = None if distance_cm is not None else "read_failed"

@@ -230,6 +230,9 @@ struct ServiceStorage {
         stepper.setHal(&hal.timer);
         mode.setHalGpio(&hal.gpio);
         mode.setHalWatchdog(&hal.watchdog);
+
+        // Wire new HAL components
+        persistence.setHal(&hal.persistence, &hal.systemInfo);
     }
 
     /// Initialize I2C bus via HAL.

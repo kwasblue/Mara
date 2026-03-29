@@ -135,6 +135,11 @@ void McuPersistence::fillTelemetry(JsonObject node) const {
 }
 
 uint8_t McuPersistence::readResetReason_() const {
+    // Use HAL if available
+    if (halSystemInfo_) {
+        return halSystemInfo_->getResetReasonRaw(0);
+    }
+
 #if defined(ARDUINO_ARCH_ESP32)
     return static_cast<uint8_t>(rtc_get_reset_reason(0));
 #else
@@ -143,6 +148,28 @@ uint8_t McuPersistence::readResetReason_() const {
 }
 
 void McuPersistence::loadDiagnostics_() {
+    // Use HAL if available
+    if (halPersistence_) {
+        if (!halPersistence_->begin(kDiagNs, true)) {
+            return;
+        }
+        diagnostics_.boot_count = halPersistence_->getUInt("boot_cnt", 0);
+        diagnostics_.last_boot_ms = halPersistence_->getUInt("boot_ms", 0);
+        diagnostics_.last_host_timeout_ms = halPersistence_->getUInt("host_to_ms", 0);
+        diagnostics_.last_motion_timeout_ms = halPersistence_->getUInt("motion_to", 0);
+        diagnostics_.estop_count = halPersistence_->getUInt("estop_cnt", 0);
+        diagnostics_.last_estop_ms = halPersistence_->getUInt("estop_ms", 0);
+        diagnostics_.last_fault_ms = halPersistence_->getUInt("fault_ms", 0);
+        diagnostics_.host_timeout_count = halPersistence_->getUInt("host_to_ct", 0);
+        diagnostics_.motion_timeout_count = halPersistence_->getUInt("motion_ct", 0);
+        diagnostics_.host_recovery_count = halPersistence_->getUInt("host_recov", 0);
+        diagnostics_.last_fault = halPersistence_->getUChar("last_fault", 0);
+        diagnostics_.last_reset_reason = halPersistence_->getUChar("reset_rs", 0);
+        diagnostics_.dirty = false;
+        halPersistence_->end();
+        return;
+    }
+
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences prefs;
     if (!prefs.begin(kDiagNs, true)) {
@@ -166,10 +193,33 @@ void McuPersistence::loadDiagnostics_() {
 }
 
 void McuPersistence::saveDiagnostics_() {
-#if defined(ARDUINO_ARCH_ESP32)
     if (!diagnostics_.dirty) {
         return;
     }
+
+    // Use HAL if available
+    if (halPersistence_) {
+        if (!halPersistence_->begin(kDiagNs, false)) {
+            return;
+        }
+        halPersistence_->putUInt("boot_cnt", diagnostics_.boot_count);
+        halPersistence_->putUInt("boot_ms", diagnostics_.last_boot_ms);
+        halPersistence_->putUInt("host_to_ms", diagnostics_.last_host_timeout_ms);
+        halPersistence_->putUInt("motion_to", diagnostics_.last_motion_timeout_ms);
+        halPersistence_->putUInt("estop_cnt", diagnostics_.estop_count);
+        halPersistence_->putUInt("estop_ms", diagnostics_.last_estop_ms);
+        halPersistence_->putUInt("fault_ms", diagnostics_.last_fault_ms);
+        halPersistence_->putUInt("host_to_ct", diagnostics_.host_timeout_count);
+        halPersistence_->putUInt("motion_ct", diagnostics_.motion_timeout_count);
+        halPersistence_->putUInt("host_recov", diagnostics_.host_recovery_count);
+        halPersistence_->putUChar("last_fault", diagnostics_.last_fault);
+        halPersistence_->putUChar("reset_rs", diagnostics_.last_reset_reason);
+        halPersistence_->end();
+        diagnostics_.dirty = false;
+        return;
+    }
+
+#if defined(ARDUINO_ARCH_ESP32)
     Preferences prefs;
     if (!prefs.begin(kDiagNs, false)) {
         return;
@@ -192,6 +242,32 @@ void McuPersistence::saveDiagnostics_() {
 }
 
 void McuPersistence::loadConfigMirror_() {
+    // Use HAL if available
+    if (halPersistence_) {
+        if (!halPersistence_->begin(kCfgNs, true)) {
+            return;
+        }
+        config_mirror_.valid = halPersistence_->getBool("valid", false);
+        config_mirror_.version = halPersistence_->getUInt("version", 1);
+        config_mirror_.safety.host_timeout_ms = halPersistence_->getUInt("s_host_to", config_mirror_.safety.host_timeout_ms);
+        config_mirror_.safety.motion_timeout_ms = halPersistence_->getUInt("s_motion", config_mirror_.safety.motion_timeout_ms);
+        config_mirror_.safety.max_linear_vel = halPersistence_->getFloat("s_max_lin", config_mirror_.safety.max_linear_vel);
+        config_mirror_.safety.max_angular_vel = halPersistence_->getFloat("s_max_ang", config_mirror_.safety.max_angular_vel);
+        config_mirror_.safety.estop_pin = halPersistence_->getInt("s_estop", config_mirror_.safety.estop_pin);
+        config_mirror_.safety.bypass_pin = halPersistence_->getInt("s_bypass", config_mirror_.safety.bypass_pin);
+        config_mirror_.safety.relay_pin = halPersistence_->getInt("s_relay", config_mirror_.safety.relay_pin);
+        halPersistence_->getString("n_name", config_mirror_.device_name, sizeof(config_mirror_.device_name));
+        config_mirror_.network.device_name = config_mirror_.device_name;
+        config_mirror_.network.serial_baud = halPersistence_->getUInt("n_baud", config_mirror_.network.serial_baud);
+        config_mirror_.network.tcp_port = static_cast<uint16_t>(halPersistence_->getUInt("n_tcp", config_mirror_.network.tcp_port));
+        config_mirror_.network.wifi_enabled = halPersistence_->getBool("n_wifi", config_mirror_.network.wifi_enabled);
+        config_mirror_.network.ble_enabled = halPersistence_->getBool("n_ble", config_mirror_.network.ble_enabled);
+        config_mirror_.network.mqtt_enabled = halPersistence_->getBool("n_mqtt", config_mirror_.network.mqtt_enabled);
+        config_mirror_.network.mqtt_port = static_cast<uint16_t>(halPersistence_->getUInt("n_mqttp", config_mirror_.network.mqtt_port));
+        halPersistence_->end();
+        return;
+    }
+
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences prefs;
     if (!prefs.begin(kCfgNs, true)) {
@@ -219,6 +295,31 @@ void McuPersistence::loadConfigMirror_() {
 }
 
 void McuPersistence::saveConfigMirror_() {
+    // Use HAL if available
+    if (halPersistence_) {
+        if (!halPersistence_->begin(kCfgNs, false)) {
+            return;
+        }
+        halPersistence_->putBool("valid", config_mirror_.valid);
+        halPersistence_->putUInt("version", config_mirror_.version);
+        halPersistence_->putUInt("s_host_to", config_mirror_.safety.host_timeout_ms);
+        halPersistence_->putUInt("s_motion", config_mirror_.safety.motion_timeout_ms);
+        halPersistence_->putFloat("s_max_lin", config_mirror_.safety.max_linear_vel);
+        halPersistence_->putFloat("s_max_ang", config_mirror_.safety.max_angular_vel);
+        halPersistence_->putInt("s_estop", config_mirror_.safety.estop_pin);
+        halPersistence_->putInt("s_bypass", config_mirror_.safety.bypass_pin);
+        halPersistence_->putInt("s_relay", config_mirror_.safety.relay_pin);
+        halPersistence_->putString("n_name", config_mirror_.device_name);
+        halPersistence_->putUInt("n_baud", config_mirror_.network.serial_baud);
+        halPersistence_->putUInt("n_tcp", config_mirror_.network.tcp_port);
+        halPersistence_->putBool("n_wifi", config_mirror_.network.wifi_enabled);
+        halPersistence_->putBool("n_ble", config_mirror_.network.ble_enabled);
+        halPersistence_->putBool("n_mqtt", config_mirror_.network.mqtt_enabled);
+        halPersistence_->putUInt("n_mqttp", config_mirror_.network.mqtt_port);
+        halPersistence_->end();
+        return;
+    }
+
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences prefs;
     if (!prefs.begin(kCfgNs, false)) {

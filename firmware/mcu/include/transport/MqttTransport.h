@@ -8,6 +8,7 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include "core/ITransport.h"
+#include "hal/ITaskScheduler.h"
 #include <string>
 #include <functional>
 #include <freertos/FreeRTOS.h>
@@ -29,6 +30,9 @@ public:
         const char* username = nullptr,
         const char* password = nullptr
     );
+
+    /// Set HAL task scheduler (optional, for portable code)
+    void setHal(hal::ITaskScheduler* scheduler) { halScheduler_ = scheduler; }
 
     void begin() override;
     void loop() override;
@@ -73,6 +77,11 @@ private:
     FrameCallback frameCallback_;       // legacy
     FrameCallbackV2 frameCallbackV2_;   // preferred
 
+    // HAL task scheduler (optional)
+    hal::ITaskScheduler* halScheduler_ = nullptr;
+    hal::TaskHandle halConnectTask_;
+
+    // Direct FreeRTOS handle (legacy)
     TaskHandle_t connectTask_ = nullptr;
     volatile bool connectInProgress_ = false;
     uint32_t nextReconnectAttemptMs_ = 0;

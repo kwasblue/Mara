@@ -10,6 +10,12 @@
 #include "Esp32Timer.h"
 #include "Esp32Watchdog.h"
 #include "Esp32Can.h"
+#include "Esp32CriticalSection.h"
+#include "Esp32HeapMonitor.h"
+#include "Esp32I2sAudio.h"
+#include "Esp32Persistence.h"
+#include "Esp32SystemInfo.h"
+#include "Esp32TaskScheduler.h"
 #include "../Hal.h"
 
 namespace hal {
@@ -26,6 +32,16 @@ struct Esp32HalStorage {
     Esp32Can      can;      // CAN bus (TWAI)
 #endif
 
+    // New HAL components for portability
+    Esp32CriticalSection critical;
+    Esp32HeapMonitor     heapMonitor;
+#if HAS_AUDIO
+    Esp32I2sAudio        i2sAudio;
+#endif
+    Esp32Persistence     persistence;
+    Esp32SystemInfo      systemInfo;
+    Esp32TaskScheduler   scheduler;
+
     /// Build HalContext with pointers to owned instances
     HalContext buildContext() {
         return HalContext{
@@ -36,10 +52,20 @@ struct Esp32HalStorage {
             .timer    = &timer,
             .watchdog = &watchdog,
 #if HAS_CAN
-            .can      = &can
+            .can      = &can,
 #else
-            .can      = nullptr
+            .can      = nullptr,
 #endif
+            .critical    = &critical,
+            .heapMonitor = &heapMonitor,
+#if HAS_AUDIO
+            .i2sAudio    = &i2sAudio,
+#else
+            .i2sAudio    = nullptr,
+#endif
+            .persistence = &persistence,
+            .systemInfo  = &systemInfo,
+            .scheduler   = &scheduler
         };
     }
 };

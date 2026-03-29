@@ -16,6 +16,12 @@
 #include "ITimer.h"
 #include "IWatchdog.h"
 #include "ICan.h"
+#include "ICriticalSection.h"
+#include "IHeapMonitor.h"
+#include "II2sAudio.h"
+#include "IPersistence.h"
+#include "ISystemInfo.h"
+#include "ITaskScheduler.h"
 
 namespace hal {
 
@@ -28,6 +34,14 @@ struct HalContext {
     ITimer*    timer    = nullptr;
     IWatchdog* watchdog = nullptr;
     ICan*      can      = nullptr;   // CAN bus (optional)
+
+    // New interfaces for portability
+    ICriticalSection* critical    = nullptr;
+    IHeapMonitor*     heapMonitor = nullptr;  // Optional (debug)
+    II2sAudio*        i2sAudio    = nullptr;  // Optional (HAS_AUDIO)
+    IPersistence*     persistence = nullptr;
+    ISystemInfo*      systemInfo  = nullptr;
+    ITaskScheduler*   scheduler   = nullptr;
 };
 
 } // namespace hal

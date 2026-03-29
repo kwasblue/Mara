@@ -11,6 +11,8 @@
 
 #include "command/ModeManager.h"
 #include "config/MaraConfig.h"
+#include "hal/IPersistence.h"
+#include "hal/ISystemInfo.h"
 
 namespace persistence {
 
@@ -40,6 +42,12 @@ struct PersistedConfigMirror {
 
 class McuPersistence {
 public:
+    /// Set HAL interfaces (optional, for portable code)
+    void setHal(hal::IPersistence* persistence, hal::ISystemInfo* systemInfo) {
+        halPersistence_ = persistence;
+        halSystemInfo_ = systemInfo;
+    }
+
     void begin(const config::MaraConfig& cfg, uint32_t now_ms);
     void mirrorConfig(const config::MaraConfig& cfg);
     void updateFromMode(const ModeManager& mode, uint32_t now_ms);
@@ -68,6 +76,10 @@ private:
     PersistedConfigMirror config_mirror_{};
     bool ready_ = false;
     bool boot_recorded_ = false;
+
+    // HAL interfaces (optional, nullptr means use direct platform calls)
+    hal::IPersistence* halPersistence_ = nullptr;
+    hal::ISystemInfo* halSystemInfo_ = nullptr;
 };
 
 } // namespace persistence

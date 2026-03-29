@@ -18,6 +18,13 @@
 //   - No blocking calls inside (no delay, no I/O waits)
 //   - No heap allocation inside
 //   - Prefer snapshot pattern for bulk reads
+//
+// HAL-based alternative:
+//   When USE_HAL_CRITICAL_SECTION is defined, use HAL interfaces:
+//   {
+//       mara::HalCriticalSection lock(hal.critical, handle);
+//       // ... protected code ...
+//   }
 
 #pragma once
 
@@ -28,10 +35,16 @@
 #include <freertos/portmacro.h>
 #endif
 
+// Forward declare HAL types
+namespace hal {
+    class ICriticalSection;
+    struct SpinlockHandle;
+}
+
 namespace mara {
 
 // =============================================================================
-// Spinlock Type (platform-specific)
+// Spinlock Type (platform-specific, legacy)
 // =============================================================================
 
 #ifdef ESP32
@@ -45,7 +58,7 @@ using SpinlockType = SpinlockStub;
 #endif
 
 // =============================================================================
-// CriticalSection RAII Guard
+// CriticalSection RAII Guard (legacy, direct platform calls)
 // =============================================================================
 
 /// RAII guard for spinlock-based critical sections.
@@ -89,7 +102,7 @@ private:
 };
 
 // =============================================================================
-// Spinlock Initialization Helper
+// Spinlock Initialization Helper (legacy)
 // =============================================================================
 
 /// Initialize a spinlock (call once at construction)
@@ -100,7 +113,7 @@ inline void initSpinlock([[maybe_unused]] SpinlockType& lock) {
 }
 
 // =============================================================================
-// ISR-Safe Critical Section (for interrupt handlers)
+// ISR-Safe Critical Section (for interrupt handlers, legacy)
 // =============================================================================
 
 #ifdef ESP32
@@ -126,5 +139,67 @@ private:
 // Native stub - same as regular CriticalSection
 using CriticalSectionISR = CriticalSection;
 #endif
+
+// =============================================================================
+// HAL-based Critical Section (portable)
+// =============================================================================
+
+#ifdef USE_HAL_CRITICAL_SECTION
+
+/// RAII guard using HAL critical section interface.
+/// Portable across platforms via HAL abstraction.
+class HalCriticalSection {
+public:
+    /// Enter critical section via HAL
+    HalCriticalSection(hal::ICriticalSection* hal, hal::SpinlockHandle& lock)
+        : hal_(hal), lock_(lock) {
+        if (hal_) {
+            hal_->enterCritical(lock_);
+        }
+    }
+
+    /// Exit critical section via HAL
+    ~HalCriticalSection() {
+        if (hal_) {
+            hal_->exitCritical(lock_);
+        }
+    }
+
+    // Non-copyable, non-movable
+    HalCriticalSection(const HalCriticalSection&) = delete;
+    HalCriticalSection& operator=(const HalCriticalSection&) = delete;
+    HalCriticalSection(HalCriticalSection&&) = delete;
+    HalCriticalSection& operator=(HalCriticalSection&&) = delete;
+
+private:
+    hal::ICriticalSection* hal_;
+    hal::SpinlockHandle& lock_;
+};
+
+/// RAII guard for ISR-safe HAL critical sections.
+class HalCriticalSectionISR {
+public:
+    HalCriticalSectionISR(hal::ICriticalSection* hal, hal::SpinlockHandle& lock)
+        : hal_(hal), lock_(lock) {
+        if (hal_) {
+            hal_->enterCriticalISR(lock_);
+        }
+    }
+
+    ~HalCriticalSectionISR() {
+        if (hal_) {
+            hal_->exitCriticalISR(lock_);
+        }
+    }
+
+    HalCriticalSectionISR(const HalCriticalSectionISR&) = delete;
+    HalCriticalSectionISR& operator=(const HalCriticalSectionISR&) = delete;
+
+private:
+    hal::ICriticalSection* hal_;
+    hal::SpinlockHandle& lock_;
+};
+
+#endif // USE_HAL_CRITICAL_SECTION
 
 } // namespace mara

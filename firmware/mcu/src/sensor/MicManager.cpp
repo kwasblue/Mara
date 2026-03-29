@@ -8,10 +8,11 @@ bool MicManager::begin(gpio_num_t wsPin,
                        i2s_port_t port) {
     port_   = port;
     online_ = false;
+    usingHal_ = false;
 
     i2s_config_t config = {};
     config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
-    config.sample_rate = 16000;  // 16 kHz is plenty for “robot noises”
+    config.sample_rate = 16000;  // 16 kHz is plenty for "robot noises"
     config.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT;
     config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT;  // using one channel
     config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
@@ -51,6 +52,55 @@ bool MicManager::begin(gpio_num_t wsPin,
     return true;
 }
 
+bool MicManager::beginHal(int8_t wsPin, int8_t sckPin, int8_t sdPin) {
+    online_ = false;
+    usingHal_ = false;
+
+    if (!halAudio_) {
+        Serial.println("[MicManager] HAL audio not set");
+        return false;
+    }
+
+    hal::I2sConfig config;
+    config.sample_rate = 16000;
+    config.bits = hal::I2sBitsPerSample::Bits32;
+    config.channel = hal::I2sChannelFormat::LeftOnly;
+    config.dma_buf_count = 4;
+    config.dma_buf_len = 256;
+
+    hal::I2sPins pins;
+    pins.bck_pin = sckPin;
+    pins.ws_pin = wsPin;
+    pins.data_in_pin = sdPin;
+    pins.data_out_pin = -1;
+
+    hal::I2sResult result = halAudio_->beginRx(config, pins);
+    if (result != hal::I2sResult::Ok) {
+        Serial.printf("[MicManager] HAL beginRx failed: %d\n", static_cast<int>(result));
+        return false;
+    }
+
+    online_ = true;
+    usingHal_ = true;
+    Serial.println("[MicManager] HAL init OK");
+    return true;
+}
+
+void MicManager::end() {
+    if (!online_) {
+        return;
+    }
+
+    if (usingHal_ && halAudio_) {
+        halAudio_->end();
+    } else {
+        i2s_driver_uninstall(port_);
+    }
+
+    online_ = false;
+    usingHal_ = false;
+}
+
 bool MicManager::readLevel(Level& outLevel, size_t sampleCount) {
     if (!online_) {
         return false;
@@ -66,16 +116,26 @@ bool MicManager::readLevel(Level& outLevel, size_t sampleCount) {
     }
 
     size_t bytesRead = 0;
-    esp_err_t err = i2s_read(
-        port_,
-        (void*)buffer,
-        bufBytes,
-        &bytesRead,
-        /*ticks_to_wait=*/50 / portTICK_PERIOD_MS
-    );
-    if (err != ESP_OK || bytesRead == 0) {
-        // No data yet, or error
-        return false;
+
+    if (usingHal_ && halAudio_) {
+        // Use HAL interface
+        hal::I2sResult result = halAudio_->read(buffer, bufBytes, &bytesRead, 50);
+        if (result != hal::I2sResult::Ok || bytesRead == 0) {
+            return false;
+        }
+    } else {
+        // Use direct ESP32 I2S driver
+        esp_err_t err = i2s_read(
+            port_,
+            (void*)buffer,
+            bufBytes,
+            &bytesRead,
+            /*ticks_to_wait=*/50 / portTICK_PERIOD_MS
+        );
+        if (err != ESP_OK || bytesRead == 0) {
+            // No data yet, or error
+            return false;
+        }
     }
 
     size_t actualSamples = bytesRead / bytesPerSample;

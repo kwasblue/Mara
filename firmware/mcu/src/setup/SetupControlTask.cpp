@@ -17,8 +17,12 @@
 
 namespace mara {
 
+// HAL task scheduler (optional)
+static hal::ITaskScheduler* g_halScheduler = nullptr;
+
 // Task state
 static TaskHandle_t g_controlTaskHandle = nullptr;
+static hal::TaskHandle g_halTaskHandle;
 static ServiceContext* g_taskCtx = nullptr;
 static ControlTaskConfig g_taskConfig;
 static volatile bool g_taskRunning = false;
@@ -208,8 +212,13 @@ static void controlTaskFunc(void* param) {
     }
 }
 
+void setControlTaskHal(hal::ITaskScheduler* scheduler) {
+    g_halScheduler = scheduler;
+}
+
 bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
-    if (g_controlTaskHandle != nullptr) {
+    // Check if already running (either HAL or direct)
+    if (g_controlTaskHandle != nullptr || (g_halScheduler && g_halTaskHandle.native != nullptr)) {
         Serial.println("[CTRL_TASK] Already running");
         return false;
     }
@@ -233,7 +242,23 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
     g_stats.jitter_violations = 0;
     g_rtStats.reset();
 
-    // Create the task pinned to specified core
+    // Use HAL if available
+    if (g_halScheduler) {
+        hal::TaskConfig halConfig;
+        halConfig.name = "ControlTask";
+        halConfig.stackSize = config.stack_size;
+        halConfig.priority = config.priority;
+        halConfig.core = config.core;
+
+        if (!g_halScheduler->createTask(controlTaskFunc, &ctx, halConfig, g_halTaskHandle)) {
+            Serial.println("[CTRL_TASK] Failed to create task via HAL");
+            g_halTaskHandle.native = nullptr;
+            return false;
+        }
+        return true;
+    }
+
+    // Direct FreeRTOS path (legacy)
     BaseType_t result = xTaskCreatePinnedToCore(
         controlTaskFunc,
         "ControlTask",
@@ -254,11 +279,22 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
 }
 
 void stopControlTask() {
-    if (g_controlTaskHandle == nullptr) {
+    Serial.println("[CTRL_TASK] Stopping...");
+
+    // Use HAL if available and task was created via HAL
+    if (g_halScheduler && g_halTaskHandle.native != nullptr) {
+        g_halScheduler->deleteTask(g_halTaskHandle);
+        g_halTaskHandle.native = nullptr;
+        g_taskRunning = false;
+        g_taskCtx = nullptr;
+        Serial.println("[CTRL_TASK] Stopped (HAL)");
         return;
     }
 
-    Serial.println("[CTRL_TASK] Stopping...");
+    // Direct FreeRTOS path
+    if (g_controlTaskHandle == nullptr) {
+        return;
+    }
 
     // Delete the task
     vTaskDelete(g_controlTaskHandle);
@@ -270,6 +306,9 @@ void stopControlTask() {
 }
 
 bool isControlTaskRunning() {
+    if (g_halScheduler && g_halTaskHandle.native != nullptr) {
+        return g_taskRunning;
+    }
     return g_taskRunning && g_controlTaskHandle != nullptr;
 }
 

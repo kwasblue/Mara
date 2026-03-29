@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "hal/ITaskScheduler.h"
 
 namespace mara {
 
@@ -11,8 +12,12 @@ struct ControlTaskConfig {
     uint16_t rate_hz = 100;         // Control loop rate (default 100Hz)
     uint16_t stack_size = 4096;     // Stack size in bytes
     uint8_t priority = 5;           // Task priority (0-24, higher = more priority)
-    uint8_t core = 1;               // Core to run on (0 or 1, 1 recommended - Core 0 is WiFi)
+    int8_t core = 1;                // Core to run on (-1 = any, 0 or 1 for specific core)
 };
+
+/// Set HAL task scheduler (optional, for portable code)
+/// Call before startControlTask() to use HAL instead of direct FreeRTOS calls
+void setControlTaskHal(hal::ITaskScheduler* scheduler);
 
 /// Start the FreeRTOS control task
 /// @param ctx Service context (must remain valid for lifetime of task)

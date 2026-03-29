@@ -265,6 +265,34 @@ struct RtTimingStats {
 #endif
 
 // =============================================================================
+// HAL-based heap check macros (portable)
+// =============================================================================
+
+/**
+ * HAL-based entry to real-time critical section.
+ * Uses IHeapMonitor interface for portability.
+ * @param hal Pointer to IHeapMonitor (can be nullptr)
+ */
+#define RT_CONTROL_ENTER_HAL(hal) \
+    const size_t __rt_heap_start = ((hal) ? (hal)->getFreeSize(::hal::MemoryCaps::Default) : 0)
+
+/**
+ * HAL-based check at exit from real-time critical section.
+ * @param hal Pointer to IHeapMonitor (can be nullptr)
+ * @param name Name of the zone for logging
+ */
+#define RT_CONTROL_EXIT_CHECK_HAL(hal, name) \
+    do { \
+        if (hal) { \
+            size_t __rt_heap_end = (hal)->getFreeSize(::hal::MemoryCaps::Default); \
+            if (__rt_heap_end < __rt_heap_start - RT_HEAP_CHECK_THRESHOLD) { \
+                Serial.printf("[RT_WARN] %s allocated %d bytes\n", \
+                              name, (int)(__rt_heap_start - __rt_heap_end)); \
+            } \
+        } \
+    } while(0)
+
+// =============================================================================
 // Real-time zone macros (for explicit scoping)
 // =============================================================================
 

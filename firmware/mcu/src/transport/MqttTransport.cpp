@@ -83,6 +83,32 @@ void MqttTransport::reconnect() {
     if (mqtt_.connected() || connectInProgress_) return;
 
     connectInProgress_ = true;
+
+    // Use HAL if available
+    if (halScheduler_) {
+        hal::TaskConfig config;
+        config.name = "mqtt_connect";
+        config.stackSize = 4096;
+        config.priority = 1;
+        config.core = 0;
+
+        if (!halScheduler_->createTask(&MqttTransport::connectTaskEntry, this, config, halConnectTask_)) {
+            connectInProgress_ = false;
+            halConnectTask_.native = nullptr;
+            consecutiveFailures_++;
+            if (retriesExhausted()) {
+                nextReconnectAttemptMs_ = UINT32_MAX;
+                Serial.printf("[MQTT] Failed to start connect task (HAL); giving up after %u attempts\n",
+                    static_cast<unsigned>(MAX_RETRIES));
+            } else {
+                nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
+                Serial.println("[MQTT] Failed to start connect task (HAL); backing off");
+            }
+        }
+        return;
+    }
+
+    // Direct FreeRTOS path (legacy)
     BaseType_t ok = xTaskCreatePinnedToCore(
         &MqttTransport::connectTaskEntry,
         "mqtt_connect",
@@ -159,7 +185,14 @@ void MqttTransport::connectTaskBody() {
 
     connectInProgress_ = false;
     connectTask_ = nullptr;
-    vTaskDelete(nullptr);
+    halConnectTask_.native = nullptr;
+
+    // Delete self - use HAL if available
+    if (halScheduler_) {
+        halScheduler_->deleteCurrentTask();
+    } else {
+        vTaskDelete(nullptr);
+    }
 }
 
 uint32_t MqttTransport::nextReconnectDelayMs() const {

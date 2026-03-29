@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "driver/i2s.h"
+#include "hal/II2sAudio.h"
 
 class MicManager {
 public:
@@ -12,12 +13,19 @@ public:
         float dbfs = -120.0f; // dBFS approx
     };
 
-    MicManager() : port_(I2S_NUM_0), online_(false) {}
+    MicManager() : port_(I2S_NUM_0), online_(false), halAudio_(nullptr) {}
 
+    /// Set HAL I2S audio interface (optional, for portable code)
+    void setHal(hal::II2sAudio* audio) { halAudio_ = audio; }
+
+    /// Begin with direct ESP32 I2S driver (legacy)
     bool begin(gpio_num_t wsPin,
                gpio_num_t sckPin,
                gpio_num_t sdPin,
                i2s_port_t port = I2S_NUM_0);
+
+    /// Begin with HAL I2S interface (portable)
+    bool beginHal(int8_t wsPin, int8_t sckPin, int8_t sdPin);
 
     bool isOnline() const { return online_; }
 
@@ -25,7 +33,12 @@ public:
     bool readLevel(Level& outLevel,
                    size_t sampleCount = 512);
 
+    /// End/stop the microphone (release resources)
+    void end();
+
 private:
     i2s_port_t port_;
     bool       online_;
+    hal::II2sAudio* halAudio_;
+    bool       usingHal_ = false;
 };

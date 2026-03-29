@@ -28,6 +28,7 @@ spec = importlib.util.spec_from_file_location(
     HOST_DIR / "mcp" / "tool_schema.py"
 )
 tool_schema_module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = tool_schema_module
 spec.loader.exec_module(tool_schema_module)
 TOOLS = tool_schema_module.TOOLS
 ToolDef = tool_schema_module.ToolDef
@@ -62,33 +63,12 @@ from __future__ import annotations
 
 def param_to_json_schema(param: ToolParam) -> dict:
     """Convert ToolParam to JSON Schema property."""
-    schema = {
-        "type": param.type,
-        "description": param.description,
-    }
-    if param.default is not None:
-        schema["default"] = param.default
-    return schema
+    return param.to_json_schema()
 
 
 def tool_to_mcp_schema(tool: ToolDef) -> dict:
     """Convert ToolDef to MCP Tool inputSchema."""
-    properties = {}
-    required = []
-
-    for param in tool.params:
-        properties[param.name] = param_to_json_schema(param)
-        if param.required:
-            required.append(param.name)
-
-    schema = {
-        "type": "object",
-        "properties": properties,
-    }
-    if required:
-        schema["required"] = required
-
-    return schema
+    return tool.input_schema()
 
 
 # =============================================================================

@@ -117,6 +117,72 @@ class FreshValue:
         }
 
 
+@dataclass(frozen=True)
+class RuntimeSnapshot:
+    connected: bool
+    connected_at: str | None
+    robot_state: dict[str, Any]
+    firmware: str
+    features: list[Any]
+    imu: dict[str, Any] | None
+    encoders: dict[int, dict[str, Any]]
+    command_stats: dict[str, Any]
+    recent_commands: list[dict[str, Any]]
+    recent_events: list[dict[str, Any]]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "connected": self.connected,
+            "connected_at": self.connected_at,
+            "robot_state": self.robot_state,
+            "firmware": self.firmware,
+            "features": list(self.features),
+            "imu": self.imu,
+            "encoders": dict(self.encoders),
+            "command_stats": self.command_stats,
+            "recent_commands": list(self.recent_commands),
+            "recent_events": list(self.recent_events),
+        }
+
+
+@dataclass(frozen=True)
+class RuntimeFreshnessReport:
+    robot_state: dict[str, Any]
+    imu: dict[str, Any]
+    encoders: dict[int, dict[str, Any]]
+    any_stale: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "robot_state": self.robot_state,
+            "imu": self.imu,
+            "encoders": dict(self.encoders),
+            "any_stale": self.any_stale,
+        }
+
+
+@dataclass(frozen=True)
+class RuntimeHealthReport:
+    connected: bool
+    context_present: bool
+    context_connected: bool
+    robot_state: dict[str, Any]
+    telemetry: dict[str, Any]
+    commands: dict[str, Any]
+    healthy: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "connected": self.connected,
+            "context_present": self.context_present,
+            "context_connected": self.context_connected,
+            "robot_state": self.robot_state,
+            "telemetry": self.telemetry,
+            "commands": self.commands,
+            "healthy": self.healthy,
+        }
+
+
 @dataclass
 class StateStore:
     """
@@ -622,89 +688,77 @@ class MaraRuntime:
         if state:
             self._store.robot_state = FreshValue(state, datetime.now(), stale_after_s=2.0)
 
+    def snapshot_model(self) -> RuntimeSnapshot:
+        """Return the typed runtime snapshot model."""
+        return RuntimeSnapshot(
+            connected=self._store.connected,
+            connected_at=(
+                self._store.connected_at.isoformat()
+                if self._store.connected_at else None
+            ),
+            robot_state=self._store.robot_state.to_dict(),
+            firmware=self._store.firmware_version,
+            features=list(self._store.features),
+            imu=self._store.imu.to_dict() if self._store.imu.value else None,
+            encoders={eid: ev.to_dict() for eid, ev in self._store.encoders.items()},
+            command_stats=self._store.get_command_stats(),
+            recent_commands=[c.to_dict() for c in self._store.commands[-5:]],
+            recent_events=[e.to_dict() for e in self._store.get_recent_events(10)],
+        )
+
     def get_snapshot(self) -> dict:
         """
         Get complete state snapshot for LLM context.
 
         Includes freshness information so the LLM knows what's current.
         """
-        return {
-            # Connection
-            "connected": self._store.connected,
-            "connected_at": (
-                self._store.connected_at.isoformat()
-                if self._store.connected_at else None
-            ),
+        return self.snapshot_model().to_dict()
 
-            # Robot state with freshness
-            "robot_state": self._store.robot_state.to_dict(),
-
-            # Identity
-            "firmware": self._store.firmware_version,
-            "features": self._store.features,
-
-            # Telemetry with freshness
-            "imu": self._store.imu.to_dict() if self._store.imu.value else None,
-            "encoders": {
-                eid: ev.to_dict()
-                for eid, ev in self._store.encoders.items()
-            },
-
-            # Command stats
-            "command_stats": self._store.get_command_stats(),
-
-            # Recent commands (last 5)
-            "recent_commands": [
-                c.to_dict() for c in self._store.commands[-5:]
-            ],
-
-            # Recent events (last 10)
-            "recent_events": [
-                e.to_dict() for e in self._store.get_recent_events(10)
-            ],
-        }
-
-    def get_freshness_report(self) -> dict:
-        """Get a report on data freshness."""
-        return {
-            "robot_state": {
+    def freshness_report_model(self) -> RuntimeFreshnessReport:
+        """Return the typed runtime freshness report."""
+        return RuntimeFreshnessReport(
+            robot_state={
                 "value": self._store.robot_state.value,
                 "freshness": self._store.robot_state.freshness,
                 "age_s": round(self._store.robot_state.age_s, 2),
             },
-            "imu": {
+            imu={
                 "has_data": self._store.imu.value is not None,
                 "freshness": self._store.imu.freshness,
                 "age_s": round(self._store.imu.age_s, 2),
             },
-            "encoders": {
+            encoders={
                 eid: {
                     "freshness": ev.freshness,
                     "age_s": round(ev.age_s, 2),
                 }
                 for eid, ev in self._store.encoders.items()
             },
-            "any_stale": (
+            any_stale=(
                 self._store.robot_state.is_stale or
                 self._store.imu.is_stale or
                 any(ev.is_stale for ev in self._store.encoders.values())
             ),
-        }
+        )
 
-    def get_health_report(self) -> dict:
-        """Get a compact runtime health report for HTTP callers."""
+    def get_freshness_report(self) -> dict:
+        """Get a report on data freshness."""
+        return self.freshness_report_model().to_dict()
+
+    def health_report_model(self) -> RuntimeHealthReport:
+        """Return the typed runtime health report."""
         connected = self.is_connected
         imu_has_data = self._store.imu.value is not None
         encoder_count = len(self._store.encoders)
         recent_commands = self._store.commands[-5:]
         last_command = recent_commands[-1].to_dict() if recent_commands else None
 
-        return {
-            "connected": connected,
-            "context_present": self._ctx is not None,
-            "context_connected": (self._ctx.is_connected if self._ctx is not None else False),
-            "robot_state": self._store.robot_state.to_dict(),
-            "telemetry": {
+        return RuntimeHealthReport(
+            connected=connected,
+            context_present=self._ctx is not None,
+            context_connected=(self._ctx.is_connected if self._ctx is not None else False),
+            robot_state=self._store.robot_state.to_dict(),
+            telemetry={
                 "imu": {
                     "has_data": imu_has_data,
                     "freshness": self._store.imu.freshness,
@@ -713,12 +767,16 @@ class MaraRuntime:
                 "encoders_seen": encoder_count,
                 "encoder_ids": sorted(self._store.encoders.keys()),
             },
-            "commands": {
+            commands={
                 "stats": self._store.get_command_stats(),
                 "last": last_command,
             },
-            "healthy": connected and not self._store.robot_state.is_stale,
-        }
+            healthy=connected and not self._store.robot_state.is_stale,
+        )
+
+    def get_health_report(self) -> dict:
+        """Get a compact runtime health report for HTTP callers."""
+        return self.health_report_model().to_dict()
 
     # ═══════════════════════════════════════════════════════════
     # Telemetry Callbacks

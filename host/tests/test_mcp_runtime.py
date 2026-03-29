@@ -4,7 +4,15 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
 
-from mara_host.mcp.runtime import MaraRuntime, StateStore, FreshValue, EventType
+from mara_host.mcp.runtime import (
+    MaraRuntime,
+    StateStore,
+    FreshValue,
+    EventType,
+    RuntimeSnapshot,
+    RuntimeFreshnessReport,
+    RuntimeHealthReport,
+)
 
 
 class TestStateStore:
@@ -172,12 +180,29 @@ class TestMaraRuntime:
         assert record.latency_ms is not None
         assert len(runtime.state.commands) == 1
 
+    def test_snapshot_model(self, runtime):
+        snapshot = runtime.snapshot_model()
+        assert isinstance(snapshot, RuntimeSnapshot)
+        as_dict = snapshot.to_dict()
+        assert "connected" in as_dict
+        assert "robot_state" in as_dict
+        assert "command_stats" in as_dict
+        assert "recent_commands" in as_dict
+
     def test_get_snapshot(self, runtime):
         snapshot = runtime.get_snapshot()
         assert "connected" in snapshot
         assert "robot_state" in snapshot
         assert "command_stats" in snapshot
         assert "recent_commands" in snapshot
+
+    def test_freshness_report_model(self, runtime):
+        report = runtime.freshness_report_model()
+        assert isinstance(report, RuntimeFreshnessReport)
+        as_dict = report.to_dict()
+        assert "robot_state" in as_dict
+        assert "imu" in as_dict
+        assert "any_stale" in as_dict
 
     def test_get_freshness_report(self, runtime):
         report = runtime.get_freshness_report()
@@ -190,8 +215,11 @@ class TestMaraRuntime:
         runtime._store.connected = True
         runtime._store.robot_state = FreshValue("ARMED", datetime.now(), stale_after_s=2.0)
 
-        report = runtime.get_health_report()
+        model = runtime.health_report_model()
+        assert isinstance(model, RuntimeHealthReport)
 
+        report = runtime.get_health_report()
+        assert report == model.to_dict()
         assert report["connected"] is True
         assert report["context_present"] is True
         assert report["context_connected"] is True

@@ -110,9 +110,10 @@ class ConnectionService:
         self.transport = self._create_transport()
 
         # Create client with transport-appropriate settings
-        # TCP over WiFi needs keepalive pings to maintain connection
         if self.config.transport_type == TransportType.TCP:
-            heartbeat_interval = 15.0  # 15 seconds - keep connection alive
+            # MCU host_timeout_ms = 3000ms — heartbeat must arrive well within that.
+            # 1s gives a 3x safety margin and handles WiFi jitter without flooding.
+            heartbeat_interval = 1.0   # 1 second - must be < MCU host_timeout_ms (3s)
             connection_timeout = 60.0  # Longer timeout for WiFi
             command_timeout = 5.0      # 5 seconds for WiFi latency
         else:

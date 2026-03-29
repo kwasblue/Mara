@@ -197,7 +197,7 @@ public:
             auto& slot = runtime_[i];
             if (!summary.enabled || !slot.valid) continue;
 
-            const uint16_t rate_hz = summary.rate_hz > 0 ? summary.rate_hz : 1;
+            const uint16_t rate_hz = summary.rate_hz > 0 ? summary.rate_hz : 100;
             const uint32_t period_ms = rate_hz >= 1000 ? 1u : (1000u / rate_hz ? 1000u / rate_hz : 1u);
             if (slot.last_run_ms != 0 && (now_ms - slot.last_run_ms) < period_ms) {
                 continue;

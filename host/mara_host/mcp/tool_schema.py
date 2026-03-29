@@ -18,28 +18,56 @@ Each tool maps to a service method call and specifies:
 
 from __future__ import annotations
 
-from typing import Optional, Literal, NamedTuple
+from dataclasses import dataclass, field
+from typing import Optional, Literal, Any, Mapping
+
+from mara_host.tools.schema.control_graph.schema import graph_json_schema
 
 
-class ToolParam(NamedTuple):
-    """Parameter definition for a tool."""
+JsonType = Literal["integer", "number", "string", "boolean", "array", "object"]
+JsonSchemaDict = dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ToolParam:
+    """Typed parameter definition for a tool."""
+
     name: str
-    type: Literal["integer", "number", "string", "boolean", "array", "object"]
+    type: JsonType
     description: str
     required: bool = True
-    default: Optional[any] = None
+    default: Any = None
     # Maps this param to a different name when calling the service method
     service_name: Optional[str] = None
+    # Optional richer JSON Schema override for object/array params.
+    json_schema: Optional[Mapping[str, Any]] = None
+
+    def to_json_schema(self) -> JsonSchemaDict:
+        """Convert this typed parameter to a JSON Schema property."""
+        if self.json_schema is not None:
+            schema = dict(self.json_schema)
+            schema.setdefault("description", self.description)
+            return schema
+
+        schema: JsonSchemaDict = {
+            "type": self.type,
+            "description": self.description,
+        }
+        if self.default is not None:
+            schema["default"] = self.default
+        return schema
 
 
-class ToolDef(NamedTuple):
-    """Definition of an MCP/HTTP tool."""
+@dataclass(frozen=True)
+class ToolDef:
+    """Typed definition of an MCP/HTTP tool."""
+
     name: str
     description: str
     category: str
     service: Optional[str] = None  # Service property name on runtime
     method: Optional[str] = None   # Method to call on service
-    params: tuple[ToolParam, ...] = ()
+    params: tuple[ToolParam, ...] = field(default_factory=tuple)
     requires_arm: bool = True
     # For tools that use client directly instead of service
     client_method: Optional[str] = None
@@ -47,6 +75,24 @@ class ToolDef(NamedTuple):
     response_format: Optional[str] = None
     # For special tools with custom handlers
     custom_handler: bool = False
+
+    def input_schema(self) -> JsonSchemaDict:
+        """Return the canonical MCP/OpenAI input schema for this tool."""
+        properties: JsonSchemaDict = {}
+        required: list[str] = []
+
+        for param in self.params:
+            properties[param.name] = param.to_json_schema()
+            if param.required:
+                required.append(param.name)
+
+        schema: JsonSchemaDict = {
+            "type": "object",
+            "properties": properties,
+        }
+        if required:
+            schema["required"] = required
+        return schema
 
 
 # =============================================================================
@@ -136,7 +182,12 @@ TOOLS: list[ToolDef] = [
         service="control_graph_service",
         method="upload",
         params=(
-            ToolParam("graph", "object", "Control-graph config object with schema_version and slots."),
+            ToolParam(
+                "graph",
+                "object",
+                "Control-graph config object with schema_version and slots.",
+                json_schema=graph_json_schema(),
+            ),
         ),
         requires_arm=False,
     ),
@@ -147,7 +198,12 @@ TOOLS: list[ToolDef] = [
         service="control_graph_service",
         method="apply",
         params=(
-            ToolParam("graph", "object", "Control-graph config object with schema_version and slots."),
+            ToolParam(
+                "graph",
+                "object",
+                "Control-graph config object with schema_version and slots.",
+                json_schema=graph_json_schema(),
+            ),
             ToolParam("enable", "boolean", "Enable the uploaded graph after upload succeeds.", required=False, default=True),
         ),
         requires_arm=False,

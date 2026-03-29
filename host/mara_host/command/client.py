@@ -62,9 +62,11 @@ class BaseMaraClient(BinaryCommandsMixin):
         log_level: int = 20,  # logging.INFO
         log_dir: str = "logs",
         verbose: bool = True,
+        robot_name: Optional[str] = None,
     ) -> None:
         self.transport = transport
         self.bus = bus or EventBus()
+        self._robot_name = robot_name
         self._verbose = verbose
         self._running = False
         self._seq = 0

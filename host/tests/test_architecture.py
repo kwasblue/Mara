@@ -9,13 +9,13 @@ Layer hierarchy (higher layers may import from lower, not vice versa):
     1. api/         - Public user-facing API (top)
     2. runtime/     - Runtime orchestration
     3. command/     - Client and command handling
-    4. motor/, sensor/, hw/ - Host modules
+    4. motor/, sensor/ - Host modules
     5. core/        - Core infrastructure
     6. transport/   - Transport layer (bottom)
 
 Rules:
     - transport/ should not import from command/ or api/
-    - core/ should not import from motor/, sensor/, hw/, api/
+    - core/ should not import from motor/, sensor/, api/
     - api/ is the public surface, all others are internal
 """
 
@@ -92,12 +92,12 @@ class TestPublicAPIBoundary:
         """Public __all__ should not include internal modules."""
         import mara_host
 
-        internal_prefixes = ("_", "core", "hw", "motor", "sensor", "telemetry")
+        internal_prefixes = ("_", "core", "motor", "sensor", "telemetry")
         for name in mara_host.__all__:
             for prefix in internal_prefixes:
                 if name.lower().startswith(prefix) and not name.startswith("__"):
                     # Allow things like "EncoderReading" but not "core" or "_internal"
-                    if name in ("core", "hw", "motor", "sensor", "telemetry"):
+                    if name in ("core", "motor", "sensor", "telemetry"):
                         pytest.fail(f"Internal module '{name}' exposed in public __all__")
 
 
@@ -188,7 +188,6 @@ class TestInternalModulesHaveAll:
 
     @pytest.mark.parametrize("module_name", [
         "core",
-        "hw",
         "motor",
         "sensor",
         "telemetry",

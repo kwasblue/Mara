@@ -10,19 +10,31 @@
 #include "motor/StepperManager.h"
 #include "hw/PwmManager.h"
 #include "loop/LoopFunctions.h"
+#include "config/PlatformConfig.h"
+#include "config/FeatureFlags.h"
+#include "hal/ITaskScheduler.h"
+#include "hal/ILogger.h"
+#include "core/Clock.h"
 
+#if PLATFORM_HAS_ARDUINO
 #include <Arduino.h>
+#endif
+
+#if HAS_FREERTOS
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#endif
 
 namespace mara {
 
-// HAL task scheduler (optional)
+// HAL task scheduler (preferred path)
 static hal::ITaskScheduler* g_halScheduler = nullptr;
+static hal::TaskHandle g_halTaskHandle;
 
 // Task state
+#if HAS_FREERTOS
 static TaskHandle_t g_controlTaskHandle = nullptr;
-static hal::TaskHandle g_halTaskHandle;
+#endif
 static ServiceContext* g_taskCtx = nullptr;
 static ControlTaskConfig g_taskConfig;
 static volatile bool g_taskRunning = false;
@@ -33,24 +45,52 @@ static volatile ControlTaskStats g_stats;
 // Jitter tracking
 static RtTimingStats g_rtStats;
 
-// The FreeRTOS control task
+// The control task function (runs on dedicated core/thread)
 static void controlTaskFunc(void* param) {
     ServiceContext* ctx = static_cast<ServiceContext*>(param);
 
-    TickType_t lastWake = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(1000 / g_taskConfig.rate_hz);
+    // Use HAL scheduler for timing if available
+    uint32_t lastWake = 0;
+    uint32_t periodTicks = 0;
+
+    if (g_halScheduler) {
+        lastWake = g_halScheduler->getTickCount();
+        periodTicks = g_halScheduler->msToTicks(1000 / g_taskConfig.rate_hz);
+    }
+#if HAS_FREERTOS
+    else {
+        // Legacy FreeRTOS path
+        lastWake = xTaskGetTickCount();
+        periodTicks = pdMS_TO_TICKS(1000 / g_taskConfig.rate_hz);
+    }
+#endif
 
     g_taskRunning = true;
     g_rtStats.target_period_us = 1000000 / g_taskConfig.rate_hz;
 
-    Serial.printf("[CTRL_TASK] Started on Core %d at %d Hz (period=%d ticks)\n",
-                  xPortGetCoreID(), g_taskConfig.rate_hz, (int)period);
+    // Log startup - use HAL logger if available
+    uint8_t core = 0;
+    if (g_halScheduler) {
+        core = g_halScheduler->getCurrentCore();
+    }
+#if HAS_FREERTOS
+    else {
+        core = xPortGetCoreID();
+    }
+#endif
 
-    uint32_t last_iteration_us = micros();
+#if PLATFORM_HAS_ARDUINO
+    Serial.printf("[CTRL_TASK] Started on Core %d at %d Hz (period=%lu ticks)\n",
+                  core, g_taskConfig.rate_hz, (unsigned long)periodTicks);
+#endif
+
+    // Get clock for timing (use system clock if no HAL clock available)
+    auto& sysClock = mara::getSystemClock();
+    uint32_t last_iteration_us = sysClock.micros();
 
     for (;;) {
-        uint32_t start_us = micros();
-        uint32_t now_ms = millis();
+        uint32_t start_us = sysClock.micros();
+        uint32_t now_ms = sysClock.millis();
 
         // Track period jitter (time since last iteration)
         if (g_stats.iterations > 0) {
@@ -193,7 +233,7 @@ static void controlTaskFunc(void* param) {
         // =====================================================================
 
         // Compute execution time
-        uint32_t exec_us = micros() - start_us;
+        uint32_t exec_us = sysClock.micros() - start_us;
         g_stats.last_exec_us = exec_us;
         g_stats.iterations++;
 
@@ -207,8 +247,17 @@ static void controlTaskFunc(void* param) {
             g_stats.overruns++;
         }
 
-        // Wait until next period - vTaskDelayUntil provides precise timing
-        vTaskDelayUntil(&lastWake, period);
+        // Wait until next period - use HAL scheduler for precise timing
+        if (g_halScheduler) {
+            g_halScheduler->delayUntil(lastWake, periodTicks);
+        }
+#if HAS_FREERTOS
+        else {
+            TickType_t lastWakeTicks = static_cast<TickType_t>(lastWake);
+            vTaskDelayUntil(&lastWakeTicks, static_cast<TickType_t>(periodTicks));
+            lastWake = static_cast<uint32_t>(lastWakeTicks);
+        }
+#endif
     }
 }
 
@@ -217,15 +266,24 @@ void setControlTaskHal(hal::ITaskScheduler* scheduler) {
 }
 
 bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
-    // Check if already running (either HAL or direct)
-    if (g_controlTaskHandle != nullptr || (g_halScheduler && g_halTaskHandle.native != nullptr)) {
+    // Check if already running
+    bool alreadyRunning = (g_halScheduler && g_halTaskHandle.native != nullptr);
+#if HAS_FREERTOS
+    alreadyRunning = alreadyRunning || (g_controlTaskHandle != nullptr);
+#endif
+
+    if (alreadyRunning) {
+#if PLATFORM_HAS_ARDUINO
         Serial.println("[CTRL_TASK] Already running");
+#endif
         return false;
     }
 
     // Validate config
     if (config.rate_hz < 10 || config.rate_hz > 1000) {
+#if PLATFORM_HAS_ARDUINO
         Serial.printf("[CTRL_TASK] Invalid rate: %d Hz (must be 10-1000)\n", config.rate_hz);
+#endif
         return false;
     }
 
@@ -242,7 +300,7 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
     g_stats.jitter_violations = 0;
     g_rtStats.reset();
 
-    // Use HAL if available
+    // Use HAL scheduler if available (preferred path)
     if (g_halScheduler) {
         hal::TaskConfig halConfig;
         halConfig.name = "ControlTask";
@@ -251,14 +309,17 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
         halConfig.core = config.core;
 
         if (!g_halScheduler->createTask(controlTaskFunc, &ctx, halConfig, g_halTaskHandle)) {
+#if PLATFORM_HAS_ARDUINO
             Serial.println("[CTRL_TASK] Failed to create task via HAL");
+#endif
             g_halTaskHandle.native = nullptr;
             return false;
         }
         return true;
     }
 
-    // Direct FreeRTOS path (legacy)
+#if HAS_FREERTOS
+    // Direct FreeRTOS path (legacy fallback)
     BaseType_t result = xTaskCreatePinnedToCore(
         controlTaskFunc,
         "ControlTask",
@@ -270,16 +331,24 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
     );
 
     if (result != pdPASS) {
+#if PLATFORM_HAS_ARDUINO
         Serial.println("[CTRL_TASK] Failed to create task");
+#endif
         g_controlTaskHandle = nullptr;
         return false;
     }
 
     return true;
+#else
+    // No scheduler available - cannot create task
+    return false;
+#endif
 }
 
 void stopControlTask() {
+#if PLATFORM_HAS_ARDUINO
     Serial.println("[CTRL_TASK] Stopping...");
+#endif
 
     // Use HAL if available and task was created via HAL
     if (g_halScheduler && g_halTaskHandle.native != nullptr) {
@@ -287,10 +356,13 @@ void stopControlTask() {
         g_halTaskHandle.native = nullptr;
         g_taskRunning = false;
         g_taskCtx = nullptr;
+#if PLATFORM_HAS_ARDUINO
         Serial.println("[CTRL_TASK] Stopped (HAL)");
+#endif
         return;
     }
 
+#if HAS_FREERTOS
     // Direct FreeRTOS path
     if (g_controlTaskHandle == nullptr) {
         return;
@@ -302,14 +374,21 @@ void stopControlTask() {
     g_taskRunning = false;
     g_taskCtx = nullptr;
 
+#if PLATFORM_HAS_ARDUINO
     Serial.println("[CTRL_TASK] Stopped");
+#endif
+#endif // HAS_FREERTOS
 }
 
 bool isControlTaskRunning() {
     if (g_halScheduler && g_halTaskHandle.native != nullptr) {
         return g_taskRunning;
     }
+#if HAS_FREERTOS
     return g_taskRunning && g_controlTaskHandle != nullptr;
+#else
+    return g_taskRunning;
+#endif
 }
 
 ControlTaskStats getControlTaskStats() {

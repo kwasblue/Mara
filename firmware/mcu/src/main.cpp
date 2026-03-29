@@ -22,6 +22,9 @@
 #include "config/WifiSecrets.h"
 #include "config/MaraConfig.h"
 
+// HAL Logger (for debug output abstraction)
+#include "core/Debug.h"
+
 // Set to true to use FreeRTOS task for control loop (Core 1, high priority)
 // Set to false to use cooperative scheduling in main loop()
 static constexpr bool USE_FREERTOS_CONTROL = true;
@@ -63,6 +66,14 @@ static void updateLoopSchedulers() {
 void setup() {
     Serial.begin(115200);
     delay(500);
+
+    // Wire HAL to managers first (this initializes the logger)
+    g_storage.initHal();
+
+    // Set up debug logger for DBG_* macros
+    auto halCtx = g_storage.hal.buildContext();
+    mara::setDebugLogger(halCtx.logger);
+
     Serial.println("\n[MCU] Booting with USB Serial + WiFi (AP+STA)...");
 
     auto& maraCfg = config::getMaraConfig();
@@ -77,8 +88,6 @@ void setup() {
     // =========================================================================
     // Phase 1: Initialize storage components that need runtime parameters
     // =========================================================================
-    // Wire HAL to managers (GPIO, PWM, I2C, etc.) - must be called first
-    g_storage.initHal();
 
     g_storage.initTransports(Serial, 115200, 3333,
                               MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_ROBOT_ID);

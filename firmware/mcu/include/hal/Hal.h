@@ -22,6 +22,10 @@
 #include "IPersistence.h"
 #include "ISystemInfo.h"
 #include "ITaskScheduler.h"
+#include "ILogger.h"
+#include "ITransportFactory.h"
+#include "IOta.h"
+#include "IWifiManager.h"
 
 namespace hal {
 
@@ -42,6 +46,10 @@ struct HalContext {
     IPersistence*     persistence = nullptr;
     ISystemInfo*      systemInfo  = nullptr;
     ITaskScheduler*   scheduler   = nullptr;
+    ILogger*          logger      = nullptr;  // Logging abstraction
+    ITransportFactory* transportFactory = nullptr;  // Transport creation
+    IOta*             ota         = nullptr;  // OTA updates
+    IWifiManager*     wifi        = nullptr;  // WiFi management
 };
 
 } // namespace hal

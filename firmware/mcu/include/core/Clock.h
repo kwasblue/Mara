@@ -22,6 +22,12 @@ public:
 
     /// Get current time in microseconds
     virtual uint32_t micros() const = 0;
+
+    /// Delay for specified milliseconds (blocking)
+    virtual void delay(uint32_t ms) = 0;
+
+    /// Delay for specified microseconds (blocking)
+    virtual void delayMicroseconds(uint32_t us) = 0;
 };
 
 /**
@@ -32,6 +38,8 @@ class SystemClock : public IClock {
 public:
     uint32_t millis() const override;
     uint32_t micros() const override;
+    void delay(uint32_t ms) override;
+    void delayMicroseconds(uint32_t us) override;
 };
 
 /**
@@ -42,6 +50,12 @@ class MockClock : public IClock {
 public:
     uint32_t millis() const override { return millis_; }
     uint32_t micros() const override { return micros_; }
+
+    /// delay() in mock clock advances time (non-blocking simulation)
+    void delay(uint32_t ms) override { advanceMillis(ms); }
+
+    /// delayMicroseconds() in mock clock advances time
+    void delayMicroseconds(uint32_t us) override { advanceMicros(us); }
 
     /// Set current millisecond time
     void setMillis(uint32_t ms) { millis_ = ms; micros_ = ms * 1000; }

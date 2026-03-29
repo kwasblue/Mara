@@ -16,6 +16,10 @@
 #include "Esp32Persistence.h"
 #include "Esp32SystemInfo.h"
 #include "Esp32TaskScheduler.h"
+#include "Esp32Logger.h"
+#include "Esp32TransportFactory.h"
+#include "Esp32Ota.h"
+#include "Esp32WifiManager.h"
 #include "../Hal.h"
 
 namespace hal {
@@ -41,6 +45,14 @@ struct Esp32HalStorage {
     Esp32Persistence     persistence;
     Esp32SystemInfo      systemInfo;
     Esp32TaskScheduler   scheduler;
+    Esp32Logger          logger;
+    Esp32TransportFactory transportFactory;
+#if HAS_OTA
+    Esp32Ota             ota;
+#endif
+#if HAS_WIFI
+    Esp32WifiManager     wifiManager;
+#endif
 
     /// Build HalContext with pointers to owned instances
     HalContext buildContext() {
@@ -65,7 +77,19 @@ struct Esp32HalStorage {
 #endif
             .persistence = &persistence,
             .systemInfo  = &systemInfo,
-            .scheduler   = &scheduler
+            .scheduler   = &scheduler,
+            .logger      = &logger,
+            .transportFactory = &transportFactory,
+#if HAS_OTA
+            .ota         = &ota,
+#else
+            .ota         = nullptr,
+#endif
+#if HAS_WIFI
+            .wifi        = &wifiManager
+#else
+            .wifi        = nullptr
+#endif
         };
     }
 };

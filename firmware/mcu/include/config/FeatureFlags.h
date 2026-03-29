@@ -3,6 +3,9 @@
 // All optional features can be enabled/disabled via platformio.ini build_flags
 #pragma once
 
+// Include platform detection first
+#include "config/PlatformConfig.h"
+
 // =============================================================================
 // TRANSPORT FLAGS
 // =============================================================================
@@ -201,6 +204,36 @@
 
 #ifndef HAS_COMMAND_HANDLER
 #define HAS_COMMAND_HANDLER 1
+#endif
+
+// =============================================================================
+// HAL FEATURE FLAGS
+// =============================================================================
+// These flags indicate whether HAL abstractions should be used.
+// They allow gradual migration from direct Arduino/FreeRTOS calls to HAL.
+
+#ifndef HAS_HAL_LOGGER
+#define HAS_HAL_LOGGER 1  // Use ILogger abstraction for Serial output
+#endif
+
+#ifndef HAS_HAL_CLOCK
+#define HAS_HAL_CLOCK 1   // Use IClock abstraction for timing
+#endif
+
+#ifndef HAS_HAL_SCHEDULER
+#define HAS_HAL_SCHEDULER 1  // Use ITaskScheduler for FreeRTOS tasks
+#endif
+
+#ifndef HAS_HAL_OTA
+#define HAS_HAL_OTA 1     // Use IOta abstraction for OTA updates
+#endif
+
+#ifndef HAS_HAL_WIFI
+#define HAS_HAL_WIFI 1    // Use IWifiManager for WiFi operations
+#endif
+
+#ifndef HAS_HAL_TRANSPORT_FACTORY
+#define HAS_HAL_TRANSPORT_FACTORY 1  // Use ITransportFactory for transport creation
 #endif
 
 // =============================================================================

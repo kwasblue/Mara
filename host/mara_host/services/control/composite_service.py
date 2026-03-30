@@ -38,13 +38,13 @@ class CompositeService:
         },
         "CMD_STEPPER_MOVE_REL": {
             "conflict_group": "stepper",
-            "id_field": "motor_id",
+            "id_field": "stepper_id",
             "conflict_error": "conflicting_stepper_action",
             "max_actions_error": "too_many_stepper_move_actions",
         },
         "CMD_STEPPER_STOP": {
             "conflict_group": "stepper",
-            "id_field": "motor_id",
+            "id_field": "stepper_id",
             "conflict_error": "conflicting_stepper_action",
             "max_actions_error": "too_many_stepper_stop_actions",
         },

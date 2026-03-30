@@ -132,7 +132,7 @@ async def test_composite_service_accepts_extended_batch_payload():
         {"cmd": "CMD_SERVO_SET_ANGLE", "args": {"servo_id": 0, "angle_deg": 90, "duration_ms": 250}},
         {"cmd": "CMD_PWM_SET", "args": {"channel": 1, "duty": 0.4, "freq_hz": 1000.0}},
         {"cmd": "CMD_DC_SET_SPEED", "args": {"motor_id": 0, "speed": 0.2}},
-        {"cmd": "CMD_STEPPER_MOVE_REL", "args": {"motor_id": 1, "steps": 100, "speed_steps_s": 800.0}},
+        {"cmd": "CMD_STEPPER_MOVE_REL", "args": {"stepper_id": 1, "steps": 100, "speed_rps": 2.0}},
     ]
 
     result = await service.apply(actions)

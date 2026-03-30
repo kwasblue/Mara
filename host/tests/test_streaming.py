@@ -67,6 +67,9 @@ async def test_streaming_does_not_starve_acked_commands():
         on_event=lambda e: events.append(e),
     )
 
+    # Must start update loop for queue-based ACK processing (Phase 5 fix)
+    await rc.start_update_loop(interval_s=0.01)
+
     async def delayed_ack(seq):
         await asyncio.sleep(0.02)
         rc.on_ack(seq, ok=True)
@@ -79,17 +82,20 @@ async def test_streaming_does_not_starve_acked_commands():
     async def reliable_cmd():
         return await rc.send("CMD_PING", {"_needs_ack": True}, wait_for_ack=True)
 
-    t1 = asyncio.create_task(stream_task())
-    t2 = asyncio.create_task(reliable_cmd())
+    try:
+        t1 = asyncio.create_task(stream_task())
+        t2 = asyncio.create_task(reliable_cmd())
 
-    ok, err = await t2
-    await t1
+        ok, err = await asyncio.wait_for(t2, timeout=1.0)
+        await t1
 
-    assert ok is True
-    assert err is None
-    assert rc.pending_count() == 0
-    assert rc.stats()["timeouts"] == 0
-    assert any(e.get("event") == "cmd.ack" and e.get("ok") is True for e in events)
+        assert ok is True
+        assert err is None
+        assert rc.pending_count() == 0
+        assert rc.stats()["timeouts"] == 0
+        assert any(e.get("event") == "cmd.ack" and e.get("ok") is True for e in events)
+    finally:
+        await rc.stop_update_loop()
 
 
 # Optional: only enable if you already have an mcu fixture + HIL mark

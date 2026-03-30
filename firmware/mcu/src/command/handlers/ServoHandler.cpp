@@ -2,6 +2,7 @@
 // Implementation of ServoHandler methods
 
 #include "command/handlers/ServoHandler.h"
+#include "module/LoggingModule.h"
 #include "config/PinConfig.h"
 #include "core/Debug.h"
 #include <cmath>
@@ -30,11 +31,11 @@ void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
     }
 
     if (ok) {
-        DBG_PRINTF("[SERVO] ATTACH id=%d pin=%d min=%d max=%d requested=%d\n",
-                   servoId, pin, minUs, maxUs, requestedChannel);
+        MARA_LOG_DEBUG("servo", "ATTACH id=%d pin=%d min=%d max=%d requested=%d",
+                       servoId, pin, minUs, maxUs, requestedChannel);
         servo_.attach(servoId, pin, minUs, maxUs);
     } else {
-        DBG_PRINTF("[SERVO] ATTACH: unknown servoId=%d\n", servoId);
+        MARA_LOG_WARN("servo", "ATTACH: unknown servoId=%d", servoId);
     }
 
     JsonDocument resp;
@@ -53,7 +54,7 @@ void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
 void ServoHandler::handleDetach(JsonVariantConst payload, CommandContext& ctx) {
     int servoId = payload["servo_id"] | 0;
 
-    DBG_PRINTF("[SERVO] DETACH id=%d\n", servoId);
+    MARA_LOG_DEBUG("servo", "DETACH id=%d", servoId);
     servo_.detach(servoId);
 
     JsonDocument resp;
@@ -71,8 +72,8 @@ void ServoHandler::handleSetAngle(JsonVariantConst payload, CommandContext& ctx)
     float angle = payload["angle_deg"] | 0.0f;
     int durMs = payload["duration_ms"] | 0;
 
-    DBG_PRINTF("[SERVO] SET_ANGLE id=%d angle=%.1f dur=%d\n",
-               servoId, angle, durMs);
+    MARA_LOG_DEBUG("servo", "SET_ANGLE id=%d angle=%.1f dur=%d",
+                   servoId, angle, durMs);
 
     const uint32_t now_ms = ctx.now_ms();
     ctx.mode.onMotionCommand(now_ms);

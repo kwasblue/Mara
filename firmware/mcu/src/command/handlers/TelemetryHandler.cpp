@@ -115,3 +115,52 @@ void TelemetryHandler::handleSetLogLevel(JsonVariantConst payload, CommandContex
     resp["level"] = levelStr;
     ctx.sendAck("CMD_SET_LOG_LEVEL", true, resp);
 }
+
+void TelemetryHandler::handleSetSubsystemLogLevel(JsonVariantConst payload, CommandContext& ctx) {
+    const char* subsystem = payload["subsystem"] | "";
+    const char* levelStr = payload["level"] | "info";
+
+    if (!subsystem || strlen(subsystem) == 0) {
+        ctx.sendError("CMD_SET_SUBSYSTEM_LOG_LEVEL", "missing_subsystem");
+        return;
+    }
+
+    DBG_PRINTF("[TELEM] SET_SUBSYSTEM_LOG_LEVEL subsystem=%s level=%s\n", subsystem, levelStr);
+
+    if (LoggingModule::instance()) {
+        LoggingModule::instance()->setSubsystemLevel(subsystem, levelStr);
+    }
+
+    JsonDocument resp;
+    resp["subsystem"] = subsystem;
+    resp["level"] = levelStr;
+    ctx.sendAck("CMD_SET_SUBSYSTEM_LOG_LEVEL", true, resp);
+}
+
+void TelemetryHandler::handleGetLogLevels(CommandContext& ctx) {
+    JsonDocument resp;
+
+    if (LoggingModule::instance()) {
+        // Parse the JSON string from LoggingModule
+        std::string levelsJson = LoggingModule::instance()->getSubsystemLevelsJson();
+        JsonDocument levels;
+        deserializeJson(levels, levelsJson);
+        resp["levels"] = levels;
+    } else {
+        resp["levels"] = nullptr;
+    }
+
+    ctx.sendAck("CMD_GET_LOG_LEVELS", true, resp);
+}
+
+void TelemetryHandler::handleClearSubsystemLogLevels(CommandContext& ctx) {
+    DBG_PRINTLN("[TELEM] CLEAR_SUBSYSTEM_LOG_LEVELS");
+
+    if (LoggingModule::instance()) {
+        LoggingModule::instance()->clearSubsystemLevels();
+    }
+
+    JsonDocument resp;
+    resp["cleared"] = true;
+    ctx.sendAck("CMD_CLEAR_SUBSYSTEM_LOG_LEVELS", true, resp);
+}

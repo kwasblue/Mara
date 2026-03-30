@@ -39,30 +39,41 @@ async def test_reliable_commander_ack_and_stats():
 
     commander = ReliableCommander(send_func=send_func, **kwargs)
 
-    # Start send and then ack it
-    task = asyncio.create_task(commander.send("CMD_TEST", {"x": 1}, wait_for_ack=True))
+    # Must start update loop for queue-based ACK processing (Phase 5 fix)
+    await commander.start_update_loop(interval_s=0.01)
 
-    # Wait until at least one send happened
-    t0 = time.time()
-    while not send_calls and (time.time() - t0) < 1.0:
-        await asyncio.sleep(0.001)
+    try:
+        # Start send and then ack it
+        task = asyncio.create_task(commander.send("CMD_TEST", {"x": 1}, wait_for_ack=True))
 
-    assert send_calls, "Expected send_func to be called"
-    seq = send_calls[-1][2]
+        # Wait until at least one send happened
+        t0 = time.time()
+        while not send_calls and (time.time() - t0) < 1.0:
+            await asyncio.sleep(0.001)
 
-    commander.on_ack(seq, ok=True, error=None)
-    ok, err = await task
-    assert ok is True
-    assert err is None
+        assert send_calls, "Expected send_func to be called"
+        seq = send_calls[-1][2]
 
-    st = commander.stats()
-    assert st["commands_sent"] >= 1
-    assert st["acks_received"] >= 1
-    assert st["pending"] == 0
+        # Queue the ACK for async processing
+        commander.on_ack(seq, ok=True, error=None)
 
-    # If you wired event emission, ensure we emitted at least something
-    if "on_event" in sig.parameters:
-        assert len(events) > 0
+        # Give time for ACK to be processed from queue
+        await asyncio.sleep(0.05)
+
+        ok, err = await asyncio.wait_for(task, timeout=1.0)
+        assert ok is True
+        assert err is None
+
+        st = commander.stats()
+        assert st["commands_sent"] >= 1
+        assert st["acks_received"] >= 1
+        assert st["pending"] == 0
+
+        # If you wired event emission, ensure we emitted at least something
+        if "on_event" in sig.parameters:
+            assert len(events) > 0
+    finally:
+        await commander.stop_update_loop()
 
 
 @pytest.mark.asyncio
@@ -83,24 +94,29 @@ async def test_reliable_commander_retries_then_ack():
 
     await commander.start_update_loop(interval_s=0.005)
 
-    task = asyncio.create_task(commander.send("CMD_RETRY", {"a": 1}, wait_for_ack=True))
+    try:
+        task = asyncio.create_task(commander.send("CMD_RETRY", {"a": 1}, wait_for_ack=True))
 
-    # Wait for initial send
-    t0 = time.time()
-    while len(send_calls) < 1 and (time.time() - t0) < 1.0:
-        await asyncio.sleep(0.001)
-    assert len(send_calls) >= 1
-    seq = send_calls[0][2]
+        # Wait for initial send
+        t0 = time.time()
+        while len(send_calls) < 1 and (time.time() - t0) < 1.0:
+            await asyncio.sleep(0.001)
+        assert len(send_calls) >= 1
+        seq = send_calls[0][2]
 
-    # Wait long enough for at least one retry
-    await asyncio.sleep(0.05)
-    assert len(send_calls) >= 2, f"Expected at least one retry send, got {len(send_calls)}"
-    assert commander.stats()["retries"] >= 1
+        # Wait long enough for at least one retry
+        await asyncio.sleep(0.05)
+        assert len(send_calls) >= 2, f"Expected at least one retry send, got {len(send_calls)}"
+        assert commander.stats()["retries"] >= 1
 
-    # Ack and finish
-    commander.on_ack(seq, ok=True, error=None)
-    ok, err = await task
-    assert ok is True
-    assert err is None
+        # Ack and finish (queue-based processing)
+        commander.on_ack(seq, ok=True, error=None)
 
-    await commander.stop_update_loop()
+        # Give time for ACK to be processed from queue
+        await asyncio.sleep(0.05)
+
+        ok, err = await asyncio.wait_for(task, timeout=1.0)
+        assert ok is True
+        assert err is None
+    finally:
+        await commander.stop_update_loop()

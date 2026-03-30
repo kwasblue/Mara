@@ -42,21 +42,21 @@ class TestSignalService:
         )
 
         assert result.ok
-        assert result.data["signal_id"] == 0
-        assert result.data["name"] == "velocity_ref"
+        assert result.data.signal_id == 0
+        assert result.data.name == "velocity_ref"
 
         # Check signal is cached
         assert 0 in signal_service.signals
         assert signal_service.signals[0].name == "velocity_ref"
 
-        # Check correct command sent
+        # Check correct command sent (payload uses 'id' and 'initial' field names)
         mock_client.send_reliable.assert_called_once_with(
             "CMD_CTRL_SIGNAL_DEFINE",
             {
-                "signal_id": 0,
+                "id": 0,
                 "name": "velocity_ref",
                 "signal_kind": "continuous",
-                "initial_value": 0.0,
+                "initial": 0.0,
             },
         )
 
@@ -99,8 +99,8 @@ class TestSignalService:
         result = await signal_service.set(0, 1.5)
 
         assert result.ok
-        assert result.data["signal_id"] == 0
-        assert result.data["value"] == 1.5
+        assert result.data.signal_id == 0
+        assert result.data.value == 1.5
 
         # Check cached value is updated
         assert signal_service.signals[0].value == 1.5
@@ -123,8 +123,8 @@ class TestSignalService:
         result = await signal_service.list()
 
         assert result.ok
-        assert 0 in result.data["signals"]
-        assert 1 in result.data["signals"]
+        assert 0 in result.data.signals
+        assert 1 in result.data.signals
 
     @pytest.mark.asyncio
     async def test_clear_signals(self, signal_service, mock_client):

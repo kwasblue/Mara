@@ -16,14 +16,6 @@ void AudioGraphManager::attach(EventBus* bus, CommandRegistry* cmd) {
 }
 
 void AudioGraphManager::begin() {
-    // Register commands in your style (adapt to your API)
-    //
-    // cmd_->registerHandler(AUDIO_CHAIN_SET,
-    //   [this](const JsonObjectConst& msg){ handleChainSet(msg); });
-    //
-    // cmd_->registerHandler(AUDIO_CHAIN_GET,
-    //   [this](const JsonObjectConst& msg){ handleChainGet(msg); });
-
     // Provide a sane default chain
     auto default_chain = std::unique_ptr<audio::DspChain>(new audio::DspChain(44100, 2));
     default_chain->add(std::unique_ptr<audio::DspNode>(new audio::BypassNode()));

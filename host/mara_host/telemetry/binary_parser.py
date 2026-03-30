@@ -1,8 +1,11 @@
 # telemetry/binary_parser.py
 from __future__ import annotations
 
+import logging
 import struct
 from typing import Dict, Any
+
+_log = logging.getLogger(__name__)
 
 from .models import (
     TelemetryPacket,
@@ -40,6 +43,10 @@ from .telemetry_sections import (
 
 # Pre-compiled struct formats for performance (avoid format string parsing each call)
 _PKT_HDR = struct.Struct("<BHIB")  # version(u8), seq(u16), ts_ms(u32), section_count(u8)
+_SECTION_HDR = struct.Struct("<BH")  # section_id(u8), section_len(u16) - optimized from int.from_bytes
+
+# Maximum section size to prevent DoS via malformed packets
+_MAX_SECTION_SIZE = 4096
 _IMU_FMT = struct.Struct("<BB7h")  # online, ok, ax/ay/az, gx/gy/gz, temp
 _ULTRASONIC_FMT = struct.Struct("<BBBH")  # sensor_id, attached, ok, dist_mm
 _LIDAR_FMT = struct.Struct("<BBHH")  # online, ok, dist_mm, signal
@@ -53,6 +60,11 @@ _FLOAT_FMT = struct.Struct("<f")  # single float
 _SLOT_FMT = struct.Struct("<BBBI")  # slot, enabled, ok, run_count
 _U16_FMT = struct.Struct("<H")  # count
 _SENSOR_HEALTH_ENTRY_FMT = struct.Struct("<BBBB")  # kind, sensor_id, flags, detail
+
+# Sentinel value for "no measurement" (0xFFFF = 65535)
+# Zero distance is valid (object touching sensor), so we use max uint16 as sentinel
+_NO_MEASUREMENT_SENTINEL = 0xFFFF
+
 _SENSOR_KIND_NAMES = {
     1: "imu",
     2: "ultrasonic",
@@ -81,29 +93,46 @@ def _make_empty(ts_ms: int, raw_len: int, meta: Dict[str, Any]) -> TelemetryPack
 
 def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
     if len(payload) < _PKT_HDR.size:
+        _log.warning("Telemetry packet too short: %d bytes (need %d for header)", len(payload), _PKT_HDR.size)
         return _make_empty(0, len(payload), {"error": "short_header"})
 
     ver, seq, ts_ms, section_count = _PKT_HDR.unpack_from(payload, 0)
     off = _PKT_HDR.size
     pkt = _make_empty(ts_ms, len(payload), {"ver": int(ver), "seq": int(seq), "sections": int(section_count)})
 
+    # Use memoryview to avoid slice copies in hot loop
+    payload_view = memoryview(payload)
+
     for _ in range(int(section_count)):
-        if off + 3 > len(payload):
+        if off + _SECTION_HDR.size > len(payload):
+            _log.warning("Telemetry section header truncated at offset %d (payload len=%d)", off, len(payload))
             pkt.raw["error"] = "short_section_header"
             return pkt
 
-        section_id = payload[off]
-        section_len = int.from_bytes(payload[off + 1: off + 3], "little")
-        off += 3
+        # Optimized: use pre-compiled struct instead of int.from_bytes with slice
+        section_id, section_len = _SECTION_HDR.unpack_from(payload, off)
+        off += _SECTION_HDR.size
+
+        # Sanity check: reject unreasonably large sections (DoS prevention)
+        if section_len > _MAX_SECTION_SIZE:
+            _log.warning("Telemetry section 0x%02X too large: %d bytes (max %d)", section_id, section_len, _MAX_SECTION_SIZE)
+            pkt.raw["error"] = f"section_too_large:{section_len}"
+            pkt.raw["bad_section_id"] = int(section_id)
+            return pkt
 
         if off + section_len > len(payload):
+            _log.warning(
+                "Telemetry section 0x%02X body truncated: need %d bytes, have %d",
+                section_id, section_len, len(payload) - off
+            )
             pkt.raw["error"] = "short_section_body"
             pkt.raw["bad_section_id"] = int(section_id)
             pkt.raw["needed"] = section_len
             pkt.raw["have"] = len(payload) - off
             return pkt
 
-        body = payload[off: off + section_len]
+        # Use memoryview slice (O(1) no-copy) instead of bytes slice (O(n) copy)
+        body = payload_view[off: off + section_len]
         off += section_len
 
         if section_id == TELEM_IMU:
@@ -115,13 +144,18 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
         if section_id == TELEM_ULTRASONIC:
             if len(body) >= _ULTRASONIC_FMT.size:
                 sensor_id, attached, ok, dist_mm = _ULTRASONIC_FMT.unpack_from(body, 0)
-                pkt.ultrasonic = UltrasonicTelemetry(int(sensor_id), bool(attached), bool(ok), (dist_mm * 0.1) if dist_mm != 0 else None, ts_ms)
+                # Use sentinel value for "no measurement" - zero distance is valid (object touching sensor)
+                distance_cm = (dist_mm * 0.1) if dist_mm != _NO_MEASUREMENT_SENTINEL else None
+                pkt.ultrasonic = UltrasonicTelemetry(int(sensor_id), bool(attached), bool(ok), distance_cm, ts_ms)
             continue
 
         if section_id == TELEM_LIDAR:
             if len(body) >= _LIDAR_FMT.size:
                 online, ok, dist_mm, signal = _LIDAR_FMT.unpack_from(body, 0)
-                pkt.lidar = LidarTelemetry(bool(online), bool(ok), (dist_mm * 0.001) if dist_mm != 0 else None, (signal if signal != 0 else None), ts_ms)
+                # Use sentinel value for "no measurement" - zero distance is valid
+                distance_m = (dist_mm * 0.001) if dist_mm != _NO_MEASUREMENT_SENTINEL else None
+                signal_val = signal if signal != _NO_MEASUREMENT_SENTINEL else None
+                pkt.lidar = LidarTelemetry(bool(online), bool(ok), distance_m, signal_val, ts_ms)
             continue
 
         if section_id == TELEM_ENCODER0:
@@ -153,7 +187,9 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                 count = body[0]
                 sensors = []
                 pos = 1
-                for _ in range(count):
+                # Limit iterations to available data (prevents wasted loop iterations)
+                max_entries = (len(body) - pos) // _SENSOR_HEALTH_ENTRY_FMT.size
+                for _ in range(min(count, max_entries)):
                     if pos + _SENSOR_HEALTH_ENTRY_FMT.size > len(body):
                         break
                     kind_code, sensor_id, flags, detail = _SENSOR_HEALTH_ENTRY_FMT.unpack_from(body, pos)

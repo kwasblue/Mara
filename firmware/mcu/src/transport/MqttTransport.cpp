@@ -9,15 +9,6 @@
 #include "core/Protocol.h"
 #include <ArduinoJson.h>
 
-static void dumpHexPrefix(const uint8_t* data, unsigned len, unsigned maxBytes = 16) {
-    Serial.print("[MQTT] RX bytes: ");
-    for (unsigned i = 0; i < len && i < maxBytes; i++) {
-        Serial.printf("%02X ", data[i]);
-    }
-    if (len > maxBytes) Serial.print("...");
-    Serial.println();
-}
-
 MqttTransport::MqttTransport(
     const char* broker,
     uint16_t port,
@@ -214,9 +205,6 @@ void MqttTransport::onMessage(char* topic, uint8_t* payload, unsigned int length
     std::string t(topic);
 
     if (t == topicCmd_) {
-        // Optional debug
-        // dumpHexPrefix(payload, length);
-
         // Copy payload to buffer for frame extraction
         std::vector<uint8_t> rxBuffer(payload, payload + length);
 

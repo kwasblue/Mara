@@ -61,17 +61,23 @@ def generate_cpp_header(commands: dict) -> str:
     lines.append("// AUTO-GENERATED FILE — DO NOT EDIT BY HAND")
     lines.append("// Generated from COMMANDS in schema.py\n")
     lines.append("#pragma once")
-    lines.append("#include <string>\n")
+    lines.append("#include <string>")
+    lines.append("#include <unordered_map>\n")
     lines.append("enum class CmdType {")
     for entry in enum_entries:
         lines.append(f"    {entry},")
     lines.append("    UNKNOWN")
     lines.append("};\n")
 
+    # Generate hash-based lookup (O(1) instead of O(n) linear search)
+    lines.append("// Optimized O(1) lookup using hash map instead of O(n) if-else chain")
     lines.append("inline CmdType cmdTypeFromString(const std::string& s) {")
+    lines.append("    static const std::unordered_map<std::string, CmdType> CMD_MAP = {")
     for name, entry in zip(names, enum_entries):
-        lines.append(f'    if (s == "{name}") return CmdType::{entry};')
-    lines.append("    return CmdType::UNKNOWN;")
+        lines.append(f'        {{"{name}", CmdType::{entry}}},')
+    lines.append("    };")
+    lines.append("    auto it = CMD_MAP.find(s);")
+    lines.append("    return (it != CMD_MAP.end()) ? it->second : CmdType::UNKNOWN;")
     lines.append("}\n")
 
     lines.append("inline const char* cmdTypeToString(CmdType c) {")

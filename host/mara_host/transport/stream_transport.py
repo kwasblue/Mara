@@ -1,6 +1,7 @@
 # mara_host/transports/stream_transport.py
 from __future__ import annotations
 import asyncio
+import logging
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -9,6 +10,8 @@ from typing import Optional
 
 from mara_host.core import protocol
 from mara_host.transport.base_transport import BaseTransport
+
+_log = logging.getLogger(__name__)
 
 
 class StreamTransport(BaseTransport, ABC):
@@ -77,10 +80,19 @@ class StreamTransport(BaseTransport, ABC):
             t.join(timeout=2.0)
         self._thread = None
 
-        # Shutdown write executor
+        # Shutdown write executor (cancel pending writes to avoid hang)
         if self._write_executor is not None:
-            self._write_executor.shutdown(wait=True)
-            self._write_executor = None
+            try:
+                # Python 3.9+: cancel_futures=True prevents hanging on stuck writes
+                import sys
+                if sys.version_info >= (3, 9):
+                    self._write_executor.shutdown(wait=False, cancel_futures=True)
+                else:
+                    self._write_executor.shutdown(wait=False)
+            except Exception as e:
+                _log.warning("Error shutting down write executor: %s", e)
+            finally:
+                self._write_executor = None
 
         # Clear cached loop reference
         self._cached_loop = None
@@ -97,18 +109,39 @@ class StreamTransport(BaseTransport, ABC):
         time.sleep(0.05)
 
     # ---- background reader ----
+    # Maximum consecutive errors before stopping reader (prevents infinite error loops)
+    _MAX_CONSECUTIVE_ERRORS = 5
+
     def _reader_loop(self) -> None:
+        consecutive_errors = 0
+
         while not self._stop:
             try:
                 data = self._read_raw(256)
                 if data:
+                    consecutive_errors = 0  # Reset on successful read
                     self._rx_buffer.extend(data)
-                    protocol.extract_frames(self._rx_buffer, lambda body: self._handle_body(body))
+                    protocol.extract_frames(self._rx_buffer, self._safe_handle_body)
                 else:
                     time.sleep(0.01)
             except Exception as e:
-                print(f"[StreamTransport] error: {e}")
+                consecutive_errors += 1
+                _log.warning(
+                    "Reader loop error (%d/%d): %s",
+                    consecutive_errors, self._MAX_CONSECUTIVE_ERRORS, e
+                )
+                if consecutive_errors >= self._MAX_CONSECUTIVE_ERRORS:
+                    _log.error("Too many consecutive reader errors, stopping reader loop")
+                    self._stop = True
+                    break
                 time.sleep(0.5)
+
+    def _safe_handle_body(self, body: bytes) -> None:
+        """Wrap frame handler to catch and log exceptions."""
+        try:
+            self._handle_body(body)
+        except Exception as e:
+            _log.error("Frame handler error: %s", e, exc_info=True)
 
     # ---- async-friendly write API ----
     async def send_bytes(self, data: bytes) -> None:
@@ -119,10 +152,15 @@ class StreamTransport(BaseTransport, ABC):
         then delegates actual I/O to a dedicated executor thread.
         """
         # Fast path: cache loop reference to avoid get_running_loop() overhead
+        # Validate loop is still running, not just not-closed
         loop = self._cached_loop
-        if loop is None or loop.is_closed():
-            loop = asyncio.get_running_loop()
-            self._cached_loop = loop
+        try:
+            if loop is None or loop.is_closed() or not loop.is_running():
+                loop = asyncio.get_running_loop()
+                self._cached_loop = loop
+        except RuntimeError:
+            # No running loop - this shouldn't happen in async context
+            raise RuntimeError("send_bytes called outside async context")
 
         # asyncio.Lock serializes async callers without thread overhead
         async with self._async_lock:

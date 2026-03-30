@@ -230,21 +230,53 @@ class Robot:
         await self._client.start()
         self._connected = True
 
-    async def disconnect(self) -> None:
+    async def disconnect(self, validate_cleanup: bool = False) -> None:
         """
         Disconnect from the robot.
 
         This stops all background tasks and closes the transport cleanly.
+
+        Args:
+            validate_cleanup: If True, warn about leaked event subscriptions
         """
         if not self._connected:
             return
 
-        if self._mcu_diagnostics_service is not None:
-            self._mcu_diagnostics_service.close()
-            self._mcu_diagnostics_service = None
+        # Close services with explicit cleanup methods
+        # This unsubscribes any event handlers they registered
+        for service in [
+            self._control_graph_service,
+            self._mcu_diagnostics_service,
+            self._motion,
+            self._motor_service,
+            self._servo_service,
+        ]:
+            if service is not None and hasattr(service, 'close'):
+                try:
+                    service.close()
+                except Exception:
+                    pass  # Best-effort cleanup
 
+        # Clear all lazy-loaded service references
+        # (they hold stale client references after disconnect)
+        self._gpio = None
+        self._motion = None
+        self._motor_service = None
+        self._servo_service = None
+        self._sensors = None
+        self._control_graph_service = None
+        self._mcu_diagnostics_service = None
+
+        # Stop client (transport, monitors, heartbeat)
         if self._client:
             await self._client.stop()
+
+        # Validate cleanup if requested
+        if validate_cleanup and self._bus is not None:
+            remaining = self._bus.get_subscription_count()
+            if remaining:
+                import warnings
+                warnings.warn(f"Subscription leak: {remaining}", ResourceWarning)
 
         self._connected = False
 
@@ -471,6 +503,18 @@ class Robot:
             self._setup()
         self._bus.subscribe(event, handler)
 
+    def off(self, event: str, handler: Callable[[Any], None]) -> None:
+        """
+        Unsubscribe from robot events.
+
+        Args:
+            event: Event topic name
+            handler: Callback function to remove
+        """
+        if self._bus is None:
+            return
+        self._bus.unsubscribe(event, handler)
+
     # -------------------------------------------------------------------------
     # Safety & State Commands
     # -------------------------------------------------------------------------
@@ -655,28 +699,3 @@ def robot_from_config(config: Union[Dict[str, Any], "RobotConfig"]) -> Robot:
         config = RobotConfig.from_dict(config)
 
     return config.create_robot()
-
-
-# Keep old dict-based function for backward compatibility
-def _robot_from_dict(config: Dict[str, Any]) -> Robot:
-    """Internal: create Robot from raw dict (backward compat)."""
-    transport = config.get("transport", {})
-    transport_type = transport.get("type", "serial")
-
-    if transport_type == "serial":
-        return Robot(
-            port=transport.get("port", "/dev/ttyUSB0"),
-            baudrate=transport.get("baudrate", 115200),
-        )
-    elif transport_type == "tcp":
-        return Robot(
-            host=transport.get("host", "192.168.4.1"),
-            tcp_port=transport.get("port", 3333),
-        )
-    elif transport_type == "ble":
-        return Robot(
-            ble_name=transport.get("ble_name") or transport.get("port", "ESP32-SPP"),
-            baudrate=transport.get("baudrate", 115200),
-        )
-    else:
-        raise ValueError(f"Unknown transport type: {transport_type}")

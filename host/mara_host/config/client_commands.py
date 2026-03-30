@@ -513,15 +513,37 @@ class RobotCommandsMixin:
         payload: dict[str, Any] = {}
         await self.send_json_cmd('CMD_IMU_READ', payload)
 
+    async def cmd_imu_calibrate(self, samples: int = 100, delay_ms: int = 10) -> None:
+        """Calibrate the IMU by collecting samples to compute bias offsets. (CMD_IMU_CALIBRATE)"""
+        payload: dict[str, Any] = {}
+        payload['samples'] = samples
+        payload['delay_ms'] = delay_ms
+        await self.send_json_cmd('CMD_IMU_CALIBRATE', payload)
+
+    async def cmd_imu_set_bias(self, accel_bias: Any, gyro_bias: Any) -> None:
+        """Set IMU bias offsets directly. (CMD_IMU_SET_BIAS)"""
+        payload: dict[str, Any] = {}
+        payload['accel_bias'] = accel_bias
+        payload['gyro_bias'] = gyro_bias
+        await self.send_json_cmd('CMD_IMU_SET_BIAS', payload)
+
+    async def cmd_imu_zero(self) -> None:
+        """Zero the IMU orientation (reset yaw/heading). (CMD_IMU_ZERO)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_IMU_ZERO', payload)
+
     async def cmd_i2c_scan(self) -> None:
         """Scan the primary MCU I2C bus and report responding 7-bit addresses. (CMD_I2C_SCAN)"""
         payload: dict[str, Any] = {}
         await self.send_json_cmd('CMD_I2C_SCAN', payload)
 
-    async def cmd_ultrasonic_attach(self, sensor_id: int = 0) -> None:
+    async def cmd_ultrasonic_attach(self, trig_pin: int, echo_pin: int, sensor_id: int = 0, max_distance_cm: float = 400.0) -> None:
         """Attach/configure an ultrasonic sensor for the given logical sensor_id. (CMD_ULTRASONIC_ATTACH)"""
         payload: dict[str, Any] = {}
+        payload['trig_pin'] = trig_pin
+        payload['echo_pin'] = echo_pin
         payload['sensor_id'] = sensor_id
+        payload['max_distance_cm'] = max_distance_cm
         await self.send_json_cmd('CMD_ULTRASONIC_ATTACH', payload)
 
     async def cmd_ultrasonic_read(self, sensor_id: int = 0) -> None:
@@ -536,12 +558,14 @@ class RobotCommandsMixin:
         payload['sensor_id'] = sensor_id
         await self.send_json_cmd('CMD_ULTRASONIC_DETACH', payload)
 
-    async def cmd_encoder_attach(self, encoder_id: int = 0, pin_a: int = 32, pin_b: int = 33) -> None:
+    async def cmd_encoder_attach(self, pin_a: int, pin_b: int, encoder_id: int = 0, ppr: int = 11, gear_ratio: float = 1.0) -> None:
         """Attach/configure a quadrature encoder with runtime pins. (CMD_ENCODER_ATTACH)"""
         payload: dict[str, Any] = {}
-        payload['encoder_id'] = encoder_id
         payload['pin_a'] = pin_a
         payload['pin_b'] = pin_b
+        payload['encoder_id'] = encoder_id
+        payload['ppr'] = ppr
+        payload['gear_ratio'] = gear_ratio
         await self.send_json_cmd('CMD_ENCODER_ATTACH', payload)
 
     async def cmd_encoder_read(self, encoder_id: int = 0) -> None:
@@ -555,6 +579,12 @@ class RobotCommandsMixin:
         payload: dict[str, Any] = {}
         payload['encoder_id'] = encoder_id
         await self.send_json_cmd('CMD_ENCODER_RESET', payload)
+
+    async def cmd_encoder_detach(self, encoder_id: int) -> None:
+        """Detach an encoder and free its resources. (CMD_ENCODER_DETACH)"""
+        payload: dict[str, Any] = {}
+        payload['encoder_id'] = encoder_id
+        await self.send_json_cmd('CMD_ENCODER_DETACH', payload)
 
     async def cmd_servo_attach(self, servo_id: int, channel: int, min_us: int = 1000, max_us: int = 2000) -> None:
         """Attach a servo ID to a physical pin. (CMD_SERVO_ATTACH)"""
@@ -579,32 +609,67 @@ class RobotCommandsMixin:
         payload['duration_ms'] = duration_ms
         await self.send_json_cmd('CMD_SERVO_SET_ANGLE', payload)
 
+    async def cmd_servo_set_pulse(self, servo_id: int, pulse_us: int) -> None:
+        """Set servo pulse width in microseconds. (CMD_SERVO_SET_PULSE)"""
+        payload: dict[str, Any] = {}
+        payload['servo_id'] = servo_id
+        payload['pulse_us'] = pulse_us
+        await self.send_json_cmd('CMD_SERVO_SET_PULSE', payload)
+
     async def cmd_batch_apply(self, actions: Any) -> None:
         """Apply a staged batch of batchable commands at one control boundary with deterministic MCU family ordering. (CMD_BATCH_APPLY)"""
         payload: dict[str, Any] = {}
         payload['actions'] = actions
         await self.send_json_cmd('CMD_BATCH_APPLY', payload)
 
-    async def cmd_stepper_move_rel(self, motor_id: int, steps: int, speed_steps_s: float = 1000.0) -> None:
-        """Move a stepper a relative number of steps. (CMD_STEPPER_MOVE_REL)"""
-        payload: dict[str, Any] = {}
-        payload['motor_id'] = motor_id
-        payload['steps'] = steps
-        payload['speed_steps_s'] = speed_steps_s
-        await self.send_json_cmd('CMD_STEPPER_MOVE_REL', payload)
-
-    async def cmd_stepper_stop(self, motor_id: int) -> None:
-        """Immediately stop a stepper motor. (CMD_STEPPER_STOP)"""
-        payload: dict[str, Any] = {}
-        payload['motor_id'] = motor_id
-        await self.send_json_cmd('CMD_STEPPER_STOP', payload)
-
-    async def cmd_stepper_enable(self, motor_id: int, enable: bool = True) -> None:
+    async def cmd_stepper_enable(self, stepper_id: int, enable: bool = True) -> None:
         """Enable or disable a stepper driver (via enable pin). (CMD_STEPPER_ENABLE)"""
         payload: dict[str, Any] = {}
-        payload['motor_id'] = motor_id
+        payload['stepper_id'] = stepper_id
         payload['enable'] = enable
         await self.send_json_cmd('CMD_STEPPER_ENABLE', payload)
+
+    async def cmd_stepper_move_rel(self, stepper_id: int, steps: int, speed_rps: float = 1.0) -> None:
+        """Move a stepper a relative number of steps. (CMD_STEPPER_MOVE_REL)"""
+        payload: dict[str, Any] = {}
+        payload['stepper_id'] = stepper_id
+        payload['steps'] = steps
+        payload['speed_rps'] = speed_rps
+        await self.send_json_cmd('CMD_STEPPER_MOVE_REL', payload)
+
+    async def cmd_stepper_move_deg(self, stepper_id: int, degrees: float, speed_rps: float = 1.0) -> None:
+        """Move a stepper a relative number of degrees. (CMD_STEPPER_MOVE_DEG)"""
+        payload: dict[str, Any] = {}
+        payload['stepper_id'] = stepper_id
+        payload['degrees'] = degrees
+        payload['speed_rps'] = speed_rps
+        await self.send_json_cmd('CMD_STEPPER_MOVE_DEG', payload)
+
+    async def cmd_stepper_move_rev(self, stepper_id: int, revolutions: float, speed_rps: float = 1.0) -> None:
+        """Move a stepper a relative number of revolutions. (CMD_STEPPER_MOVE_REV)"""
+        payload: dict[str, Any] = {}
+        payload['stepper_id'] = stepper_id
+        payload['revolutions'] = revolutions
+        payload['speed_rps'] = speed_rps
+        await self.send_json_cmd('CMD_STEPPER_MOVE_REV', payload)
+
+    async def cmd_stepper_stop(self, stepper_id: int) -> None:
+        """Immediately stop a stepper motor. (CMD_STEPPER_STOP)"""
+        payload: dict[str, Any] = {}
+        payload['stepper_id'] = stepper_id
+        await self.send_json_cmd('CMD_STEPPER_STOP', payload)
+
+    async def cmd_stepper_get_position(self, stepper_id: int) -> None:
+        """Get the current position of a stepper motor in steps. (CMD_STEPPER_GET_POSITION)"""
+        payload: dict[str, Any] = {}
+        payload['stepper_id'] = stepper_id
+        await self.send_json_cmd('CMD_STEPPER_GET_POSITION', payload)
+
+    async def cmd_stepper_reset_position(self, stepper_id: int) -> None:
+        """Reset the stepper position counter to zero. (CMD_STEPPER_RESET_POSITION)"""
+        payload: dict[str, Any] = {}
+        payload['stepper_id'] = stepper_id
+        await self.send_json_cmd('CMD_STEPPER_RESET_POSITION', payload)
 
     async def cmd_telem_set_interval(self, interval_ms: int = 100) -> None:
         """Set telemetry publish interval in milliseconds (0 = disable). (CMD_TELEM_SET_INTERVAL)"""
@@ -613,10 +678,27 @@ class RobotCommandsMixin:
         await self.send_json_cmd('CMD_TELEM_SET_INTERVAL', payload)
 
     async def cmd_set_log_level(self, level: str = 'info') -> None:
-        """Set MCU logging verbosity level. (CMD_SET_LOG_LEVEL)"""
+        """Set MCU global logging verbosity level. (CMD_SET_LOG_LEVEL)"""
         payload: dict[str, Any] = {}
         payload['level'] = level
         await self.send_json_cmd('CMD_SET_LOG_LEVEL', payload)
+
+    async def cmd_set_subsystem_log_level(self, subsystem: str, level: str = 'info') -> None:
+        """Set logging verbosity for a specific MCU subsystem (e.g., servo, stepper, motor). (CMD_SET_SUBSYSTEM_LOG_LEVEL)"""
+        payload: dict[str, Any] = {}
+        payload['subsystem'] = subsystem
+        payload['level'] = level
+        await self.send_json_cmd('CMD_SET_SUBSYSTEM_LOG_LEVEL', payload)
+
+    async def cmd_get_log_levels(self) -> None:
+        """Get current MCU log levels (global and per-subsystem). (CMD_GET_LOG_LEVELS)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_GET_LOG_LEVELS', payload)
+
+    async def cmd_clear_subsystem_log_levels(self) -> None:
+        """Clear all per-subsystem log levels, reverting to global level. (CMD_CLEAR_SUBSYSTEM_LOG_LEVELS)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_CLEAR_SUBSYSTEM_LOG_LEVELS', payload)
 
     async def cmd_wifi_scan(self) -> None:
         """Scan for available WiFi networks. (CMD_WIFI_SCAN)"""

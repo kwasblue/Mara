@@ -5,9 +5,10 @@ from __future__ import annotations
 import asyncio
 import random
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Awaitable, Callable, Dict, Any, Optional
+from typing import Awaitable, Callable, Dict, Any, Optional, Tuple, Deque
 
 
 class CommandStatus(Enum):
@@ -102,6 +103,8 @@ class ReliableCommander:
 
     # Maximum age for any pending command before forced eviction (prevents memory leaks)
     MAX_PENDING_AGE_S = 30.0
+    # Maximum pending commands before rejecting new ones (prevents OOM)
+    MAX_PENDING_COMMANDS = 256
 
     def __init__(
         self,
@@ -141,6 +144,14 @@ class ReliableCommander:
         self._pending: Dict[int, PendingCommand] = {}
         self._pending_lock = asyncio.Lock()
         self._update_task: Optional[asyncio.Task] = None
+        self._ack_task: Optional[asyncio.Task] = None
+        # Queue for async ACK processing (avoids race condition in on_ack)
+        # Each entry: (seq, ok, error, ack_ns)
+        self._ack_queue: asyncio.Queue[Tuple[int, bool, Optional[str], int]] = asyncio.Queue()
+        # Optimization: track if pending dict has changed since last update
+        # Avoids copying dict when nothing to process
+        self._pending_dirty = False
+        self._last_snapshot_ns = 0
 
         # Stats
         self.commands_sent = 0
@@ -149,9 +160,9 @@ class ReliableCommander:
         self.timeouts = 0
         self.retries = 0
 
-        # Latency tracking
-        self._latencies_ms: list[float] = []  # Recent latencies for percentile calculation
+        # Latency tracking (deque with maxlen for O(1) eviction)
         self._max_latency_samples = 1000
+        self._latencies_ms: Deque[float] = deque(maxlen=self._max_latency_samples)
 
     # ---------------- Helpers ----------------
 
@@ -166,10 +177,8 @@ class ReliableCommander:
         return float(cmd_def.get("timeout_s", self.timeout_s))
 
     def _record_latency(self, latency_ms: float) -> None:
-        """Record a latency sample for percentile tracking."""
-        self._latencies_ms.append(latency_ms)
-        if len(self._latencies_ms) > self._max_latency_samples:
-            self._latencies_ms.pop(0)
+        """Record a latency sample for percentile tracking (O(1) with deque)."""
+        self._latencies_ms.append(latency_ms)  # Auto-evicts oldest when full
 
     def get_latency_percentiles(self) -> Dict[str, float]:
         """
@@ -224,6 +233,16 @@ class ReliableCommander:
         Returns:
             (success, error_msg) if wait_for_ack else (True, None)
         """
+        # Check pending limit before accepting new command (OOM prevention)
+        if wait_for_ack and len(self._pending) >= self.MAX_PENDING_COMMANDS:
+            self._emit(
+                "cmd.rejected",
+                cmd_type=cmd_type,
+                reason="too_many_pending",
+                count=len(self._pending),
+            )
+            return False, "TOO_MANY_PENDING"
+
         payload = payload or {}
         payload["wantAck"] = wait_for_ack
         sent_ns = time.monotonic_ns()
@@ -249,7 +268,7 @@ class ReliableCommander:
         if not wait_for_ack:
             return True, None
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         future: asyncio.Future[tuple[bool, Optional[str]]] = loop.create_future()
 
         async with self._pending_lock:
@@ -262,6 +281,7 @@ class ReliableCommander:
                 future=future,
                 timeout_s=cmd_timeout,  # Store per-command timeout
             )
+            self._pending_dirty = True  # Mark for update loop
 
         try:
             return await future
@@ -322,9 +342,55 @@ class ReliableCommander:
         return seq
 
     def on_ack(self, seq: int, ok: bool, error: Optional[str] = None) -> None:
-        """Call when ack received from firmware."""
+        """
+        Queue ACK for async processing.
+
+        Safe to call from any context (sync callback from transport).
+        The actual ACK processing happens in _process_acks() which runs
+        as an async task with proper locking.
+
+        This avoids the TOCTOU race condition where checking lock.locked()
+        and then accessing the dict could race with _update().
+        """
         ack_ns = time.monotonic_ns()
-        cmd = self._pending.pop(seq, None)
+        try:
+            self._ack_queue.put_nowait((seq, ok, error, ack_ns))
+        except asyncio.QueueFull:
+            self._emit("cmd.ack_dropped", seq=seq, reason="queue_full")
+
+    async def _process_acks(self) -> None:
+        """
+        Process queued ACKs with proper lock handling.
+
+        Runs as a background task alongside _update_loop.
+        """
+        while True:
+            try:
+                # Wait for ACK with short timeout to allow cancellation check
+                try:
+                    ack_data = await asyncio.wait_for(
+                        self._ack_queue.get(),
+                        timeout=0.1,
+                    )
+                    await self._handle_ack(*ack_data)
+                except asyncio.TimeoutError:
+                    pass  # Normal: no ACK received, loop continues
+            except asyncio.CancelledError:
+                # Drain remaining ACKs before exiting
+                while not self._ack_queue.empty():
+                    try:
+                        ack_data = self._ack_queue.get_nowait()
+                        await self._handle_ack(*ack_data)
+                    except asyncio.QueueEmpty:
+                        break
+                raise
+
+    async def _handle_ack(
+        self, seq: int, ok: bool, error: Optional[str], ack_ns: int
+    ) -> None:
+        """Process a single ACK with proper locking."""
+        async with self._pending_lock:
+            cmd = self._pending.pop(seq, None)
 
         if cmd is None:
             self._emit("cmd.ack_orphan", seq=seq, ok=ok, error=error, ack_ns=ack_ns)
@@ -360,20 +426,23 @@ class ReliableCommander:
             cmd.future.set_result((ok, error))
 
     async def start_update_loop(self, interval_s: float = 0.05) -> None:
-        """Start background task to handle retries."""
+        """Start background tasks to handle retries and ACK processing."""
         if self._update_task is not None:
             return
         self._update_task = asyncio.create_task(self._update_loop(float(interval_s)))
+        self._ack_task = asyncio.create_task(self._process_acks())
 
     async def stop_update_loop(self) -> None:
-        """Stop background task."""
-        if self._update_task:
-            self._update_task.cancel()
-            try:
-                await self._update_task
-            except asyncio.CancelledError:
-                pass
-            self._update_task = None
+        """Stop background tasks."""
+        for task in [self._update_task, self._ack_task]:
+            if task:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        self._update_task = None
+        self._ack_task = None
 
 
     # ---------------- Internals ----------------
@@ -385,15 +454,22 @@ class ReliableCommander:
 
     async def _update(self) -> None:
         """Handle retries and timeouts with exponential backoff."""
+        # Fast path: skip if no pending commands
+        if not self._pending:
+            return
+
         now_ns = time.monotonic_ns()
 
         timed_out: list[int] = []
         to_retry: list[PendingCommand] = []
         stale: list[int] = []
 
-        # Copy pending items under lock to avoid race with on_ack
+        # Optimization: Only create snapshot if necessary
+        # Use tuple() for slight speed improvement over list()
         async with self._pending_lock:
-            pending_snapshot = list(self._pending.items())
+            pending_snapshot = tuple(self._pending.items())
+            self._pending_dirty = False
+            self._last_snapshot_ns = now_ns
 
         for seq, cmd in pending_snapshot:
             # Check for absolute max age (memory leak prevention)
@@ -480,12 +556,30 @@ class ReliableCommander:
     def pending_count(self) -> int:
         return len(self._pending)
     
-    def clear_pending(self) -> None:
+    async def clear_pending(self) -> None:
         """Clear all pending commands (e.g., on disconnect)."""
-        for cmd in self._pending.values():
+        async with self._pending_lock:
+            for cmd in self._pending.values():
+                if cmd.future and not cmd.future.done():
+                    cmd.future.set_result((False, "CLEARED"))
+            self._pending.clear()
+
+    def clear_pending_sync(self) -> None:
+        """
+        Clear all pending commands synchronously.
+
+        Use this only when you cannot await (e.g., from sync cleanup code).
+        Uses atomic dict swap pattern to prevent races with on_ack().
+        """
+        # Atomic swap: replace dict with empty, then process old
+        # This prevents race where on_ack() could process a command
+        # between our iteration and clear()
+        old_pending = self._pending
+        self._pending = {}
+
+        for cmd in old_pending.values():
             if cmd.future and not cmd.future.done():
                 cmd.future.set_result((False, "CLEARED"))
-        self._pending.clear()
     
     def stats(self) -> Dict[str, Any]:
         """

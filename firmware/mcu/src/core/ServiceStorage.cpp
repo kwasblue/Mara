@@ -75,6 +75,15 @@ void ServiceStorage::initCan(uint8_t nodeId, uint32_t baudRate) {
     can->setHal(&hal.can);
     can->setNodeId(nodeId);
     can->setBaudRate(baudRate);
+
+    // Wire CAN safety callbacks to ModeManager
+    can->setEstopCallback([this]() {
+        mode.estop();
+    });
+    can->setStopCallback([this](uint8_t /* nodeId */) {
+        mode.deactivate();
+    });
+
     transport.addTransport(can);
 #else
     (void)nodeId;

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import asdict, is_dataclass
 from typing import Any, Callable, Mapping
 
@@ -9,7 +10,6 @@ from mara_host.services.persistence.store import ControlGraphStore
 from mara_host.tools.schema.control_graph.schema import (
     ControlGraphConfig,
     ControlGraphValidationError,
-    normalize_graph_config,
     normalize_graph_model,
 )
 
@@ -28,6 +28,43 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         self._cached_policy: dict[str, Any] | None = None
         self._sensor_policy_provider = sensor_policy_provider
         self._persistence_store = persistence_store
+
+        # Protect cache from concurrent async access
+        self._cache_lock = asyncio.Lock()
+
+        # Subscribe to graph change events for cache invalidation
+        self._subscriptions: list[tuple[str, Callable]] = []
+        self._subscribe("ctrl_graph.changed", self._on_graph_changed)
+        self._subscribe("ctrl_graph.cleared", self._on_graph_cleared)
+
+    def _subscribe(self, topic: str, handler: Callable) -> None:
+        """Track subscription for cleanup."""
+        self.client.bus.subscribe(topic, handler)
+        self._subscriptions.append((topic, handler))
+
+    def _on_graph_changed(self, data: Any) -> None:
+        """Handle graph change event from MCU - invalidate cache."""
+        self.invalidate_cache()
+
+    def _on_graph_cleared(self, data: Any) -> None:
+        """Handle graph cleared event from MCU - invalidate cache."""
+        self.invalidate_cache()
+
+    def invalidate_cache(self) -> None:
+        """
+        Manually invalidate cached graph and policy.
+
+        Note: This is a sync method for use from event handlers. For async
+        contexts, cache writes are protected by _cache_lock in upload/clear/enable.
+        """
+        self._cached_graph_model = None
+        self._cached_policy = None
+
+    def close(self) -> None:
+        """Clean up subscriptions."""
+        for topic, handler in self._subscriptions:
+            self.client.bus.unsubscribe(topic, handler)
+        self._subscriptions.clear()
 
     @staticmethod
     def _graph_matches_status(status_payload: dict[str, Any], graph: Mapping[str, Any]) -> bool:
@@ -131,7 +168,9 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         if not result.ok:
             return result
 
-        self._cached_graph_model = normalized_model
+        # Update cache under lock for thread safety
+        async with self._cache_lock:
+            self._cached_graph_model = normalized_model
         if self._persistence_store is not None:
             self._persistence_store.save_graph(normalized_model)
         payload = dict(result.data or {})
@@ -186,8 +225,10 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         )
         if not result.ok:
             return result
-        self._cached_graph_model = None
-        self._cached_policy = None
+        # Update cache under lock for thread safety
+        async with self._cache_lock:
+            self._cached_graph_model = None
+            self._cached_policy = None
         if self._persistence_store is not None:
             self._persistence_store.clear()
         payload = dict(result.data or {})
@@ -211,8 +252,10 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         )
         if not result.ok:
             return result
-        if self._cached_graph_model is not None:
-            self._cached_graph_model = self._cached_graph_model.with_enabled(enable)
+        # Update cache under lock for thread safety
+        async with self._cache_lock:
+            if self._cached_graph_model is not None:
+                self._cached_graph_model = self._cached_graph_model.with_enabled(enable)
         payload = dict(result.data or {})
         payload.setdefault("enabled", enable)
         if self.cached_graph is not None:

@@ -95,7 +95,6 @@ class ConnectionService:
         self.config = config
         self.client = None
         self.transport = None
-        self._event_handlers: dict[str, list[Callable]] = {}
 
     async def connect(self) -> ConnectionInfo:
         """
@@ -204,11 +203,6 @@ class ConnectionService:
         """
         if self.client:
             self.client.bus.subscribe(topic, handler)
-
-        # Also store for reconnection
-        if topic not in self._event_handlers:
-            self._event_handlers[topic] = []
-        self._event_handlers[topic].append(handler)
 
     async def __aenter__(self) -> "ConnectionService":
         await self.connect()

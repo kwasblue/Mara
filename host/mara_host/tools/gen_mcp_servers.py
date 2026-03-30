@@ -394,9 +394,19 @@ def generate_http_handlers() -> str:
 
     # Imports
     lines.append("""from datetime import datetime
+import dataclasses
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
+
+
+def _serialize_result_data(data):
+    \"\"\"Convert dataclass result data to dict for JSON serialization.\"\"\"
+    if data is None:
+        return None
+    if dataclasses.is_dataclass(data) and not isinstance(data, type):
+        return dataclasses.asdict(data)
+    return data
 
 
 def create_generated_routes(runtime) -> list[Route]:
@@ -464,7 +474,7 @@ def create_generated_routes(runtime) -> list[Route]:
             lines.append(f'''        sent_at = datetime.now()
         result = await runtime.{tool.service}.{tool.method}({args_str})
 {sync_line}        runtime.record_command("{tool.name}", {record_args}, result.ok, result.error, sent_at=sent_at)
-        return JSONResponse({{"ok": result.ok, "error": result.error, "state": getattr(result, 'state', None), "data": getattr(result, 'data', None)}})
+        return JSONResponse({{"ok": result.ok, "error": result.error, "state": getattr(result, 'state', None), "data": _serialize_result_data(getattr(result, 'data', None))}})
 
 ''')
 

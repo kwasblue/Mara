@@ -92,7 +92,8 @@ class CalibrationStore(JsonArtifactStore):
         if not payload:
             return None
         records = payload.get("records", {})
-        if name not in records:
+        # Guard against malformed payload where records is not a dict
+        if not isinstance(records, dict) or name not in records:
             return None
         return CalibrationRecord.from_dict(name, records[name])
 

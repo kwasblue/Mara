@@ -29,6 +29,9 @@ public:
             case CmdType::SAFETY_SET_RATE:
             case CmdType::TELEM_SET_RATE:
             case CmdType::SET_LOG_LEVEL:
+            case CmdType::SET_SUBSYSTEM_LOG_LEVEL:
+            case CmdType::GET_LOG_LEVELS:
+            case CmdType::CLEAR_SUBSYSTEM_LOG_LEVELS:
                 return true;
             default:
                 return false;
@@ -37,12 +40,15 @@ public:
 
     void handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx) override {
         switch (cmd) {
-            case CmdType::TELEM_SET_INTERVAL: handleSetInterval(payload, ctx); break;
-            case CmdType::GET_RATES:          handleGetRates(ctx);             break;
-            case CmdType::CTRL_SET_RATE:      handleCtrlSetRate(payload, ctx); break;
-            case CmdType::SAFETY_SET_RATE:    handleSafetySetRate(payload, ctx); break;
-            case CmdType::TELEM_SET_RATE:     handleTelemSetRate(payload, ctx); break;
-            case CmdType::SET_LOG_LEVEL:      handleSetLogLevel(payload, ctx); break;
+            case CmdType::TELEM_SET_INTERVAL:         handleSetInterval(payload, ctx); break;
+            case CmdType::GET_RATES:                  handleGetRates(ctx);             break;
+            case CmdType::CTRL_SET_RATE:              handleCtrlSetRate(payload, ctx); break;
+            case CmdType::SAFETY_SET_RATE:            handleSafetySetRate(payload, ctx); break;
+            case CmdType::TELEM_SET_RATE:             handleTelemSetRate(payload, ctx); break;
+            case CmdType::SET_LOG_LEVEL:              handleSetLogLevel(payload, ctx); break;
+            case CmdType::SET_SUBSYSTEM_LOG_LEVEL:    handleSetSubsystemLogLevel(payload, ctx); break;
+            case CmdType::GET_LOG_LEVELS:             handleGetLogLevels(ctx); break;
+            case CmdType::CLEAR_SUBSYSTEM_LOG_LEVELS: handleClearSubsystemLogLevels(ctx); break;
             default: break;
         }
     }
@@ -57,4 +63,7 @@ private:
     void handleSafetySetRate(JsonVariantConst payload, CommandContext& ctx);
     void handleTelemSetRate(JsonVariantConst payload, CommandContext& ctx);
     void handleSetLogLevel(JsonVariantConst payload, CommandContext& ctx);
+    void handleSetSubsystemLogLevel(JsonVariantConst payload, CommandContext& ctx);
+    void handleGetLogLevels(CommandContext& ctx);
+    void handleClearSubsystemLogLevels(CommandContext& ctx);
 };

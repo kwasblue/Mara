@@ -7,11 +7,15 @@ enabling better handling of reconnection scenarios.
 """
 
 import asyncio
+import logging
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Deque
+
+_log = logging.getLogger(__name__)
 
 
 class ConnectionState(Enum):
@@ -110,9 +114,9 @@ class ConnectionMonitor:
         # Statistics
         self._stats = ConnectionStats()
 
-        # Event history (bounded)
-        self._event_history: List[ConnectionEvent] = []
+        # Event history (bounded deque for O(1) eviction)
         self._max_history = 100
+        self._event_history: Deque[ConnectionEvent] = deque(maxlen=self._max_history)
 
     def _transition_to(self, new_state: ConnectionState, reason: str = "") -> None:
         """
@@ -153,10 +157,8 @@ class ConnectionMonitor:
         # Update state
         self._state = new_state
 
-        # Record history
+        # Record history (deque auto-evicts oldest when full)
         self._event_history.append(event)
-        if len(self._event_history) > self._max_history:
-            self._event_history.pop(0)
 
         # Update stats
         if new_state == ConnectionState.RECONNECTING:
@@ -171,8 +173,8 @@ class ConnectionMonitor:
         if self.on_state_change:
             try:
                 self.on_state_change(event)
-            except Exception:
-                pass
+            except Exception as e:
+                _log.warning("on_state_change callback failed: %s", e)
 
         # Legacy callbacks for backward compatibility
         if (
@@ -182,8 +184,8 @@ class ConnectionMonitor:
             if self.on_disconnect:
                 try:
                     self.on_disconnect()
-                except Exception:
-                    pass
+                except Exception as e:
+                    _log.warning("on_disconnect callback failed: %s", e)
         elif new_state == ConnectionState.CONNECTED and old_state in (
             ConnectionState.RECONNECTING,
             ConnectionState.CONNECTING,
@@ -194,8 +196,8 @@ class ConnectionMonitor:
             if self.on_reconnect:
                 try:
                     self.on_reconnect()
-                except Exception:
-                    pass
+                except Exception as e:
+                    _log.warning("on_reconnect callback failed: %s", e)
 
     def on_message_received(self) -> None:
         """Call this whenever any valid message arrives from firmware."""
@@ -209,7 +211,8 @@ class ConnectionMonitor:
                 self._transition_to(ConnectionState.CONNECTED, "message_after_timeout")
             elif self._state == ConnectionState.DISCONNECTED:
                 # Received message while disconnected - transition through connecting
-                self._state = ConnectionState.CONNECTING
+                # Use _transition_to for both transitions to ensure proper event recording
+                self._transition_to(ConnectionState.CONNECTING, "unexpected_message_start")
                 self._transition_to(ConnectionState.CONNECTED, "unexpected_message")
 
     def check(self) -> None:
@@ -250,12 +253,14 @@ class ConnectionMonitor:
     @property
     def state(self) -> ConnectionState:
         """Get current connection state."""
-        return self._state
+        with self._state_lock:
+            return self._state
 
     @property
     def connected(self) -> bool:
         """Check if connection is active (CONNECTED state)."""
-        return self._state == ConnectionState.CONNECTED
+        with self._state_lock:
+            return self._state == ConnectionState.CONNECTED
 
     @property
     def time_since_last_message(self) -> Optional[float]:

@@ -1,8 +1,11 @@
 import asyncio
+import logging
 from typing import Optional
 
 from mara_host.core import protocol
 from mara_host.transport.async_base_transport import AsyncBaseTransport
+
+_log = logging.getLogger(__name__)
 
 
 class AsyncTcpTransport(AsyncBaseTransport):
@@ -19,17 +22,22 @@ class AsyncTcpTransport(AsyncBaseTransport):
 
     # Timeout for write operations (seconds)
     WRITE_TIMEOUT = 0.5
+    # Read buffer size (increased from 1024 for high-bandwidth streams)
+    READ_BUFFER_SIZE = 4096
 
     def __init__(
         self,
         host: str,
         port: int,
         reconnect_delay: float = 1.0,
+        max_reconnect_delay: float = 30.0,
     ) -> None:
         super().__init__()
         self.host = host
         self.port = port
         self.reconnect_delay = reconnect_delay
+        self._max_reconnect_delay = max_reconnect_delay
+        self._current_delay = reconnect_delay  # Current backoff delay
 
         self._reader: Optional[asyncio.StreamReader] = None
         self._writer: Optional[asyncio.StreamWriter] = None
@@ -67,8 +75,10 @@ class AsyncTcpTransport(AsyncBaseTransport):
             self._writer.close()
             try:
                 await self._writer.wait_closed()
-            except Exception:
-                pass
+            except (ConnectionResetError, BrokenPipeError, OSError):
+                pass  # Expected errors during cleanup
+            except asyncio.CancelledError:
+                raise  # Never suppress cancellation
             self._writer = None
             self._reader = None
 
@@ -88,14 +98,14 @@ class AsyncTcpTransport(AsyncBaseTransport):
         except asyncio.TimeoutError:
             # Don't close connection on timeout - just skip this drain
             # The TCP stack will eventually flush or the connection will die
-            print("[TcpTransport] Write drain timeout (skipping)")
+            _log.warning("Write drain timeout - data may be buffered")
             return False
         except (ConnectionResetError, BrokenPipeError, OSError) as e:
             # Connection is dead, let read loop handle reconnect
-            print(f"[TcpTransport] Connection error: {e}")
+            _log.warning("Connection error: %s", e)
             return False
         except Exception as e:
-            print(f"[TcpTransport] Write error: {e}")
+            _log.warning("Write error: %s", e)
             return False
 
     async def send_frame(self, msg_type: int, payload: bytes = b"", drain: bool = False) -> None:
@@ -180,7 +190,7 @@ class AsyncTcpTransport(AsyncBaseTransport):
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
         except Exception as e:
-            print(f"[TcpTransport] Could not set socket options: {e}")
+            _log.debug("Could not set socket options: %s", e)
 
     # ------------------------------------------------------------------
     # Internal async loop
@@ -190,23 +200,26 @@ class AsyncTcpTransport(AsyncBaseTransport):
         """Main reconnect + read loop."""
         while self._running:
             try:
-                print(f"[TcpTransport] Connecting to {self.host}:{self.port} ...")
+                _log.info("Connecting to %s:%d ...", self.host, self.port)
                 self._reader, self._writer = await asyncio.open_connection(
                     self.host, self.port
                 )
-                print("[TcpTransport] Connected")
+                _log.info("Connected")
 
                 # Enable TCP keepalive for connection stability
                 self._configure_socket_keepalive()
 
+                # Reset backoff delay on successful connection
+                self._current_delay = self.reconnect_delay
+
                 # Clear buffer on (re)connect
                 self._rx_buffer.clear()
 
-                # Read loop
+                # Read loop with configurable buffer size
                 while self._running:
-                    data = await self._reader.read(1024)
+                    data = await self._reader.read(self.READ_BUFFER_SIZE)
                     if not data:
-                        print("[TcpTransport] Connection closed by peer")
+                        _log.warning("Connection closed by peer")
                         break
 
                     # Accumulate and let protocol.extract_frames parse frames.
@@ -216,7 +229,7 @@ class AsyncTcpTransport(AsyncBaseTransport):
                     protocol.extract_frames(self._rx_buffer, self._frame_handler)
 
             except Exception as e:
-                print(f"[TcpTransport] Error: {e}")
+                _log.warning("Error: %s", e)
 
             # Cleanup and reconnect delay
             if self._writer:
@@ -229,5 +242,9 @@ class AsyncTcpTransport(AsyncBaseTransport):
                 self._reader = None
 
             if self._running:
-                print(f"[TcpTransport] Reconnecting in {self.reconnect_delay}s ...")
-                await asyncio.sleep(self.reconnect_delay)
+                _log.info("Reconnecting in %.1fs ...", self._current_delay)
+                await asyncio.sleep(self._current_delay)
+                # Exponential backoff with cap
+                self._current_delay = min(
+                    self._current_delay * 2, self._max_reconnect_delay
+                )

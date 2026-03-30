@@ -33,6 +33,14 @@ class CapturingBus:
     def subscribe(self, topic: str, handler: Callable[[Any], None]) -> None:
         self.subscribers.setdefault(topic, []).append(handler)
 
+    def unsubscribe(self, topic: str, handler: Callable[[Any], None]) -> None:
+        """Remove a handler from a topic."""
+        if topic in self.subscribers:
+            try:
+                self.subscribers[topic].remove(handler)
+            except ValueError:
+                pass  # Handler not found
+
     def publish(self, topic: str, data: Any) -> None:
         self.events.append(PublishedEvent(topic, data))
         for h in self.subscribers.get(topic, []):

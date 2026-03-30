@@ -10,10 +10,13 @@ from __future__ import annotations
 
 from abc import ABC
 import asyncio
+import logging
 from dataclasses import dataclass
 from typing import Callable, Generic, Optional, Type, TypeVar, TYPE_CHECKING, Any
 
 from mara_host.core.result import ServiceResult
+
+_log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -75,6 +78,30 @@ class ConfigurableService(Generic[ConfigT, StateT], ABC):
         self.client = client
         self._configs: dict[int, ConfigT] = {}
         self._states: dict[int, StateT] = {}
+        # Track subscriptions for cleanup
+        self._subscriptions: list[tuple[str, Callable]] = []
+
+    def _subscribe(self, topic: str, handler: Callable) -> None:
+        """
+        Subscribe to a topic with tracking for cleanup.
+
+        Args:
+            topic: Event topic to subscribe to
+            handler: Handler function
+        """
+        self.client.bus.subscribe(topic, handler)
+        self._subscriptions.append((topic, handler))
+
+    def close(self) -> None:
+        """
+        Clean up service resources.
+
+        Unsubscribes all tracked event handlers. Override in subclasses
+        to add additional cleanup logic (call super().close() first).
+        """
+        for topic, handler in self._subscriptions:
+            self.client.bus.unsubscribe(topic, handler)
+        self._subscriptions.clear()
 
     def _create_default_config(self, item_id: int) -> ConfigT:
         """
@@ -181,9 +208,9 @@ class ConfigurableService(Generic[ConfigT, StateT], ABC):
         if ok:
             return ServiceResult.success(data=payload)
         else:
-            return ServiceResult.failure(
-                error=error or error_message or f"Command {command} failed"
-            )
+            final_error = error or error_message or f"Command {command} failed"
+            _log.warning("Service command %s failed: %s", command, final_error)
+            return ServiceResult.failure(error=final_error)
 
     async def _send_reliable_with_ack_payload(
         self,
@@ -210,9 +237,9 @@ class ConfigurableService(Generic[ConfigT, StateT], ABC):
         try:
             ok, error = await self.client.send_reliable(command, payload)
             if not ok:
-                return ServiceResult.failure(
-                    error=error or error_message or f"Command {command} failed"
-                )
+                final_error = error or error_message or f"Command {command} failed"
+                _log.warning("Service command %s failed: %s", command, final_error)
+                return ServiceResult.failure(error=final_error)
 
             ack_payload = None
             try:

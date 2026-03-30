@@ -3,6 +3,7 @@
 
 #pragma once
 #include <string>
+#include <unordered_map>
 
 enum class CmdType {
     ACTIVATE,
@@ -29,6 +30,7 @@ enum class CmdType {
     CAM_STOP_CAPTURE,
     CAM_STOP_RECORDING,
     CLEAR_ESTOP,
+    CLEAR_SUBSYSTEM_LOG_LEVELS,
     CTRL_GRAPH_CLEAR,
     CTRL_GRAPH_ENABLE,
     CTRL_GRAPH_STATUS,
@@ -55,10 +57,12 @@ enum class CmdType {
     DEACTIVATE,
     DISARM,
     ENCODER_ATTACH,
+    ENCODER_DETACH,
     ENCODER_READ,
     ENCODER_RESET,
     ESTOP,
     GET_IDENTITY,
+    GET_LOG_LEVELS,
     GET_RATES,
     GET_STATE,
     GPIO_READ,
@@ -67,7 +71,10 @@ enum class CmdType {
     GPIO_WRITE,
     HEARTBEAT,
     I2C_SCAN,
+    IMU_CALIBRATE,
     IMU_READ,
+    IMU_SET_BIAS,
+    IMU_ZERO,
     LED_OFF,
     LED_ON,
     MCU_DIAGNOSTICS_QUERY,
@@ -83,11 +90,17 @@ enum class CmdType {
     SERVO_ATTACH,
     SERVO_DETACH,
     SERVO_SET_ANGLE,
+    SERVO_SET_PULSE,
     SET_LOG_LEVEL,
     SET_MODE,
+    SET_SUBSYSTEM_LOG_LEVEL,
     SET_VEL,
     STEPPER_ENABLE,
+    STEPPER_GET_POSITION,
+    STEPPER_MOVE_DEG,
     STEPPER_MOVE_REL,
+    STEPPER_MOVE_REV,
+    STEPPER_RESET_POSITION,
     STEPPER_STOP,
     STOP,
     TELEM_SET_INTERVAL,
@@ -102,102 +115,118 @@ enum class CmdType {
     UNKNOWN
 };
 
+// Optimized O(1) lookup using hash map instead of O(n) if-else chain
 inline CmdType cmdTypeFromString(const std::string& s) {
-    if (s == "CMD_ACTIVATE") return CmdType::ACTIVATE;
-    if (s == "CMD_ARM") return CmdType::ARM;
-    if (s == "CMD_BATCH_APPLY") return CmdType::BATCH_APPLY;
-    if (s == "CMD_CAM_APPLY_PRESET") return CmdType::CAM_APPLY_PRESET;
-    if (s == "CMD_CAM_CAPTURE_FRAME") return CmdType::CAM_CAPTURE_FRAME;
-    if (s == "CMD_CAM_FLASH") return CmdType::CAM_FLASH;
-    if (s == "CMD_CAM_GET_CONFIG") return CmdType::CAM_GET_CONFIG;
-    if (s == "CMD_CAM_GET_STATUS") return CmdType::CAM_GET_STATUS;
-    if (s == "CMD_CAM_SET_AWB") return CmdType::CAM_SET_AWB;
-    if (s == "CMD_CAM_SET_BRIGHTNESS") return CmdType::CAM_SET_BRIGHTNESS;
-    if (s == "CMD_CAM_SET_CONTRAST") return CmdType::CAM_SET_CONTRAST;
-    if (s == "CMD_CAM_SET_EXPOSURE") return CmdType::CAM_SET_EXPOSURE;
-    if (s == "CMD_CAM_SET_FLIP") return CmdType::CAM_SET_FLIP;
-    if (s == "CMD_CAM_SET_GAIN") return CmdType::CAM_SET_GAIN;
-    if (s == "CMD_CAM_SET_MOTION_DETECTION") return CmdType::CAM_SET_MOTION_DETECTION;
-    if (s == "CMD_CAM_SET_QUALITY") return CmdType::CAM_SET_QUALITY;
-    if (s == "CMD_CAM_SET_RESOLUTION") return CmdType::CAM_SET_RESOLUTION;
-    if (s == "CMD_CAM_SET_SATURATION") return CmdType::CAM_SET_SATURATION;
-    if (s == "CMD_CAM_SET_SHARPNESS") return CmdType::CAM_SET_SHARPNESS;
-    if (s == "CMD_CAM_START_CAPTURE") return CmdType::CAM_START_CAPTURE;
-    if (s == "CMD_CAM_START_RECORDING") return CmdType::CAM_START_RECORDING;
-    if (s == "CMD_CAM_STOP_CAPTURE") return CmdType::CAM_STOP_CAPTURE;
-    if (s == "CMD_CAM_STOP_RECORDING") return CmdType::CAM_STOP_RECORDING;
-    if (s == "CMD_CLEAR_ESTOP") return CmdType::CLEAR_ESTOP;
-    if (s == "CMD_CTRL_GRAPH_CLEAR") return CmdType::CTRL_GRAPH_CLEAR;
-    if (s == "CMD_CTRL_GRAPH_ENABLE") return CmdType::CTRL_GRAPH_ENABLE;
-    if (s == "CMD_CTRL_GRAPH_STATUS") return CmdType::CTRL_GRAPH_STATUS;
-    if (s == "CMD_CTRL_GRAPH_UPLOAD") return CmdType::CTRL_GRAPH_UPLOAD;
-    if (s == "CMD_CTRL_SET_RATE") return CmdType::CTRL_SET_RATE;
-    if (s == "CMD_CTRL_SIGNALS_CLEAR") return CmdType::CTRL_SIGNALS_CLEAR;
-    if (s == "CMD_CTRL_SIGNALS_LIST") return CmdType::CTRL_SIGNALS_LIST;
-    if (s == "CMD_CTRL_SIGNAL_DEFINE") return CmdType::CTRL_SIGNAL_DEFINE;
-    if (s == "CMD_CTRL_SIGNAL_DELETE") return CmdType::CTRL_SIGNAL_DELETE;
-    if (s == "CMD_CTRL_SIGNAL_GET") return CmdType::CTRL_SIGNAL_GET;
-    if (s == "CMD_CTRL_SIGNAL_SET") return CmdType::CTRL_SIGNAL_SET;
-    if (s == "CMD_CTRL_SLOT_CONFIG") return CmdType::CTRL_SLOT_CONFIG;
-    if (s == "CMD_CTRL_SLOT_ENABLE") return CmdType::CTRL_SLOT_ENABLE;
-    if (s == "CMD_CTRL_SLOT_GET_PARAM") return CmdType::CTRL_SLOT_GET_PARAM;
-    if (s == "CMD_CTRL_SLOT_RESET") return CmdType::CTRL_SLOT_RESET;
-    if (s == "CMD_CTRL_SLOT_SET_PARAM") return CmdType::CTRL_SLOT_SET_PARAM;
-    if (s == "CMD_CTRL_SLOT_SET_PARAM_ARRAY") return CmdType::CTRL_SLOT_SET_PARAM_ARRAY;
-    if (s == "CMD_CTRL_SLOT_STATUS") return CmdType::CTRL_SLOT_STATUS;
-    if (s == "CMD_DC_SET_SPEED") return CmdType::DC_SET_SPEED;
-    if (s == "CMD_DC_SET_VEL_GAINS") return CmdType::DC_SET_VEL_GAINS;
-    if (s == "CMD_DC_SET_VEL_TARGET") return CmdType::DC_SET_VEL_TARGET;
-    if (s == "CMD_DC_STOP") return CmdType::DC_STOP;
-    if (s == "CMD_DC_VEL_PID_ENABLE") return CmdType::DC_VEL_PID_ENABLE;
-    if (s == "CMD_DEACTIVATE") return CmdType::DEACTIVATE;
-    if (s == "CMD_DISARM") return CmdType::DISARM;
-    if (s == "CMD_ENCODER_ATTACH") return CmdType::ENCODER_ATTACH;
-    if (s == "CMD_ENCODER_READ") return CmdType::ENCODER_READ;
-    if (s == "CMD_ENCODER_RESET") return CmdType::ENCODER_RESET;
-    if (s == "CMD_ESTOP") return CmdType::ESTOP;
-    if (s == "CMD_GET_IDENTITY") return CmdType::GET_IDENTITY;
-    if (s == "CMD_GET_RATES") return CmdType::GET_RATES;
-    if (s == "CMD_GET_STATE") return CmdType::GET_STATE;
-    if (s == "CMD_GPIO_READ") return CmdType::GPIO_READ;
-    if (s == "CMD_GPIO_REGISTER_CHANNEL") return CmdType::GPIO_REGISTER_CHANNEL;
-    if (s == "CMD_GPIO_TOGGLE") return CmdType::GPIO_TOGGLE;
-    if (s == "CMD_GPIO_WRITE") return CmdType::GPIO_WRITE;
-    if (s == "CMD_HEARTBEAT") return CmdType::HEARTBEAT;
-    if (s == "CMD_I2C_SCAN") return CmdType::I2C_SCAN;
-    if (s == "CMD_IMU_READ") return CmdType::IMU_READ;
-    if (s == "CMD_LED_OFF") return CmdType::LED_OFF;
-    if (s == "CMD_LED_ON") return CmdType::LED_ON;
-    if (s == "CMD_MCU_DIAGNOSTICS_QUERY") return CmdType::MCU_DIAGNOSTICS_QUERY;
-    if (s == "CMD_MCU_DIAGNOSTICS_RESET") return CmdType::MCU_DIAGNOSTICS_RESET;
-    if (s == "CMD_OBSERVER_CONFIG") return CmdType::OBSERVER_CONFIG;
-    if (s == "CMD_OBSERVER_ENABLE") return CmdType::OBSERVER_ENABLE;
-    if (s == "CMD_OBSERVER_RESET") return CmdType::OBSERVER_RESET;
-    if (s == "CMD_OBSERVER_SET_PARAM") return CmdType::OBSERVER_SET_PARAM;
-    if (s == "CMD_OBSERVER_SET_PARAM_ARRAY") return CmdType::OBSERVER_SET_PARAM_ARRAY;
-    if (s == "CMD_OBSERVER_STATUS") return CmdType::OBSERVER_STATUS;
-    if (s == "CMD_PWM_SET") return CmdType::PWM_SET;
-    if (s == "CMD_SAFETY_SET_RATE") return CmdType::SAFETY_SET_RATE;
-    if (s == "CMD_SERVO_ATTACH") return CmdType::SERVO_ATTACH;
-    if (s == "CMD_SERVO_DETACH") return CmdType::SERVO_DETACH;
-    if (s == "CMD_SERVO_SET_ANGLE") return CmdType::SERVO_SET_ANGLE;
-    if (s == "CMD_SET_LOG_LEVEL") return CmdType::SET_LOG_LEVEL;
-    if (s == "CMD_SET_MODE") return CmdType::SET_MODE;
-    if (s == "CMD_SET_VEL") return CmdType::SET_VEL;
-    if (s == "CMD_STEPPER_ENABLE") return CmdType::STEPPER_ENABLE;
-    if (s == "CMD_STEPPER_MOVE_REL") return CmdType::STEPPER_MOVE_REL;
-    if (s == "CMD_STEPPER_STOP") return CmdType::STEPPER_STOP;
-    if (s == "CMD_STOP") return CmdType::STOP;
-    if (s == "CMD_TELEM_SET_INTERVAL") return CmdType::TELEM_SET_INTERVAL;
-    if (s == "CMD_TELEM_SET_RATE") return CmdType::TELEM_SET_RATE;
-    if (s == "CMD_ULTRASONIC_ATTACH") return CmdType::ULTRASONIC_ATTACH;
-    if (s == "CMD_ULTRASONIC_DETACH") return CmdType::ULTRASONIC_DETACH;
-    if (s == "CMD_ULTRASONIC_READ") return CmdType::ULTRASONIC_READ;
-    if (s == "CMD_WIFI_DISCONNECT") return CmdType::WIFI_DISCONNECT;
-    if (s == "CMD_WIFI_JOIN") return CmdType::WIFI_JOIN;
-    if (s == "CMD_WIFI_SCAN") return CmdType::WIFI_SCAN;
-    if (s == "CMD_WIFI_STATUS") return CmdType::WIFI_STATUS;
-    return CmdType::UNKNOWN;
+    static const std::unordered_map<std::string, CmdType> CMD_MAP = {
+        {"CMD_ACTIVATE", CmdType::ACTIVATE},
+        {"CMD_ARM", CmdType::ARM},
+        {"CMD_BATCH_APPLY", CmdType::BATCH_APPLY},
+        {"CMD_CAM_APPLY_PRESET", CmdType::CAM_APPLY_PRESET},
+        {"CMD_CAM_CAPTURE_FRAME", CmdType::CAM_CAPTURE_FRAME},
+        {"CMD_CAM_FLASH", CmdType::CAM_FLASH},
+        {"CMD_CAM_GET_CONFIG", CmdType::CAM_GET_CONFIG},
+        {"CMD_CAM_GET_STATUS", CmdType::CAM_GET_STATUS},
+        {"CMD_CAM_SET_AWB", CmdType::CAM_SET_AWB},
+        {"CMD_CAM_SET_BRIGHTNESS", CmdType::CAM_SET_BRIGHTNESS},
+        {"CMD_CAM_SET_CONTRAST", CmdType::CAM_SET_CONTRAST},
+        {"CMD_CAM_SET_EXPOSURE", CmdType::CAM_SET_EXPOSURE},
+        {"CMD_CAM_SET_FLIP", CmdType::CAM_SET_FLIP},
+        {"CMD_CAM_SET_GAIN", CmdType::CAM_SET_GAIN},
+        {"CMD_CAM_SET_MOTION_DETECTION", CmdType::CAM_SET_MOTION_DETECTION},
+        {"CMD_CAM_SET_QUALITY", CmdType::CAM_SET_QUALITY},
+        {"CMD_CAM_SET_RESOLUTION", CmdType::CAM_SET_RESOLUTION},
+        {"CMD_CAM_SET_SATURATION", CmdType::CAM_SET_SATURATION},
+        {"CMD_CAM_SET_SHARPNESS", CmdType::CAM_SET_SHARPNESS},
+        {"CMD_CAM_START_CAPTURE", CmdType::CAM_START_CAPTURE},
+        {"CMD_CAM_START_RECORDING", CmdType::CAM_START_RECORDING},
+        {"CMD_CAM_STOP_CAPTURE", CmdType::CAM_STOP_CAPTURE},
+        {"CMD_CAM_STOP_RECORDING", CmdType::CAM_STOP_RECORDING},
+        {"CMD_CLEAR_ESTOP", CmdType::CLEAR_ESTOP},
+        {"CMD_CLEAR_SUBSYSTEM_LOG_LEVELS", CmdType::CLEAR_SUBSYSTEM_LOG_LEVELS},
+        {"CMD_CTRL_GRAPH_CLEAR", CmdType::CTRL_GRAPH_CLEAR},
+        {"CMD_CTRL_GRAPH_ENABLE", CmdType::CTRL_GRAPH_ENABLE},
+        {"CMD_CTRL_GRAPH_STATUS", CmdType::CTRL_GRAPH_STATUS},
+        {"CMD_CTRL_GRAPH_UPLOAD", CmdType::CTRL_GRAPH_UPLOAD},
+        {"CMD_CTRL_SET_RATE", CmdType::CTRL_SET_RATE},
+        {"CMD_CTRL_SIGNALS_CLEAR", CmdType::CTRL_SIGNALS_CLEAR},
+        {"CMD_CTRL_SIGNALS_LIST", CmdType::CTRL_SIGNALS_LIST},
+        {"CMD_CTRL_SIGNAL_DEFINE", CmdType::CTRL_SIGNAL_DEFINE},
+        {"CMD_CTRL_SIGNAL_DELETE", CmdType::CTRL_SIGNAL_DELETE},
+        {"CMD_CTRL_SIGNAL_GET", CmdType::CTRL_SIGNAL_GET},
+        {"CMD_CTRL_SIGNAL_SET", CmdType::CTRL_SIGNAL_SET},
+        {"CMD_CTRL_SLOT_CONFIG", CmdType::CTRL_SLOT_CONFIG},
+        {"CMD_CTRL_SLOT_ENABLE", CmdType::CTRL_SLOT_ENABLE},
+        {"CMD_CTRL_SLOT_GET_PARAM", CmdType::CTRL_SLOT_GET_PARAM},
+        {"CMD_CTRL_SLOT_RESET", CmdType::CTRL_SLOT_RESET},
+        {"CMD_CTRL_SLOT_SET_PARAM", CmdType::CTRL_SLOT_SET_PARAM},
+        {"CMD_CTRL_SLOT_SET_PARAM_ARRAY", CmdType::CTRL_SLOT_SET_PARAM_ARRAY},
+        {"CMD_CTRL_SLOT_STATUS", CmdType::CTRL_SLOT_STATUS},
+        {"CMD_DC_SET_SPEED", CmdType::DC_SET_SPEED},
+        {"CMD_DC_SET_VEL_GAINS", CmdType::DC_SET_VEL_GAINS},
+        {"CMD_DC_SET_VEL_TARGET", CmdType::DC_SET_VEL_TARGET},
+        {"CMD_DC_STOP", CmdType::DC_STOP},
+        {"CMD_DC_VEL_PID_ENABLE", CmdType::DC_VEL_PID_ENABLE},
+        {"CMD_DEACTIVATE", CmdType::DEACTIVATE},
+        {"CMD_DISARM", CmdType::DISARM},
+        {"CMD_ENCODER_ATTACH", CmdType::ENCODER_ATTACH},
+        {"CMD_ENCODER_DETACH", CmdType::ENCODER_DETACH},
+        {"CMD_ENCODER_READ", CmdType::ENCODER_READ},
+        {"CMD_ENCODER_RESET", CmdType::ENCODER_RESET},
+        {"CMD_ESTOP", CmdType::ESTOP},
+        {"CMD_GET_IDENTITY", CmdType::GET_IDENTITY},
+        {"CMD_GET_LOG_LEVELS", CmdType::GET_LOG_LEVELS},
+        {"CMD_GET_RATES", CmdType::GET_RATES},
+        {"CMD_GET_STATE", CmdType::GET_STATE},
+        {"CMD_GPIO_READ", CmdType::GPIO_READ},
+        {"CMD_GPIO_REGISTER_CHANNEL", CmdType::GPIO_REGISTER_CHANNEL},
+        {"CMD_GPIO_TOGGLE", CmdType::GPIO_TOGGLE},
+        {"CMD_GPIO_WRITE", CmdType::GPIO_WRITE},
+        {"CMD_HEARTBEAT", CmdType::HEARTBEAT},
+        {"CMD_I2C_SCAN", CmdType::I2C_SCAN},
+        {"CMD_IMU_CALIBRATE", CmdType::IMU_CALIBRATE},
+        {"CMD_IMU_READ", CmdType::IMU_READ},
+        {"CMD_IMU_SET_BIAS", CmdType::IMU_SET_BIAS},
+        {"CMD_IMU_ZERO", CmdType::IMU_ZERO},
+        {"CMD_LED_OFF", CmdType::LED_OFF},
+        {"CMD_LED_ON", CmdType::LED_ON},
+        {"CMD_MCU_DIAGNOSTICS_QUERY", CmdType::MCU_DIAGNOSTICS_QUERY},
+        {"CMD_MCU_DIAGNOSTICS_RESET", CmdType::MCU_DIAGNOSTICS_RESET},
+        {"CMD_OBSERVER_CONFIG", CmdType::OBSERVER_CONFIG},
+        {"CMD_OBSERVER_ENABLE", CmdType::OBSERVER_ENABLE},
+        {"CMD_OBSERVER_RESET", CmdType::OBSERVER_RESET},
+        {"CMD_OBSERVER_SET_PARAM", CmdType::OBSERVER_SET_PARAM},
+        {"CMD_OBSERVER_SET_PARAM_ARRAY", CmdType::OBSERVER_SET_PARAM_ARRAY},
+        {"CMD_OBSERVER_STATUS", CmdType::OBSERVER_STATUS},
+        {"CMD_PWM_SET", CmdType::PWM_SET},
+        {"CMD_SAFETY_SET_RATE", CmdType::SAFETY_SET_RATE},
+        {"CMD_SERVO_ATTACH", CmdType::SERVO_ATTACH},
+        {"CMD_SERVO_DETACH", CmdType::SERVO_DETACH},
+        {"CMD_SERVO_SET_ANGLE", CmdType::SERVO_SET_ANGLE},
+        {"CMD_SERVO_SET_PULSE", CmdType::SERVO_SET_PULSE},
+        {"CMD_SET_LOG_LEVEL", CmdType::SET_LOG_LEVEL},
+        {"CMD_SET_MODE", CmdType::SET_MODE},
+        {"CMD_SET_SUBSYSTEM_LOG_LEVEL", CmdType::SET_SUBSYSTEM_LOG_LEVEL},
+        {"CMD_SET_VEL", CmdType::SET_VEL},
+        {"CMD_STEPPER_ENABLE", CmdType::STEPPER_ENABLE},
+        {"CMD_STEPPER_GET_POSITION", CmdType::STEPPER_GET_POSITION},
+        {"CMD_STEPPER_MOVE_DEG", CmdType::STEPPER_MOVE_DEG},
+        {"CMD_STEPPER_MOVE_REL", CmdType::STEPPER_MOVE_REL},
+        {"CMD_STEPPER_MOVE_REV", CmdType::STEPPER_MOVE_REV},
+        {"CMD_STEPPER_RESET_POSITION", CmdType::STEPPER_RESET_POSITION},
+        {"CMD_STEPPER_STOP", CmdType::STEPPER_STOP},
+        {"CMD_STOP", CmdType::STOP},
+        {"CMD_TELEM_SET_INTERVAL", CmdType::TELEM_SET_INTERVAL},
+        {"CMD_TELEM_SET_RATE", CmdType::TELEM_SET_RATE},
+        {"CMD_ULTRASONIC_ATTACH", CmdType::ULTRASONIC_ATTACH},
+        {"CMD_ULTRASONIC_DETACH", CmdType::ULTRASONIC_DETACH},
+        {"CMD_ULTRASONIC_READ", CmdType::ULTRASONIC_READ},
+        {"CMD_WIFI_DISCONNECT", CmdType::WIFI_DISCONNECT},
+        {"CMD_WIFI_JOIN", CmdType::WIFI_JOIN},
+        {"CMD_WIFI_SCAN", CmdType::WIFI_SCAN},
+        {"CMD_WIFI_STATUS", CmdType::WIFI_STATUS},
+    };
+    auto it = CMD_MAP.find(s);
+    return (it != CMD_MAP.end()) ? it->second : CmdType::UNKNOWN;
 }
 
 inline const char* cmdTypeToString(CmdType c) {
@@ -226,6 +255,7 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::CAM_STOP_CAPTURE: return "CMD_CAM_STOP_CAPTURE";
         case CmdType::CAM_STOP_RECORDING: return "CMD_CAM_STOP_RECORDING";
         case CmdType::CLEAR_ESTOP: return "CMD_CLEAR_ESTOP";
+        case CmdType::CLEAR_SUBSYSTEM_LOG_LEVELS: return "CMD_CLEAR_SUBSYSTEM_LOG_LEVELS";
         case CmdType::CTRL_GRAPH_CLEAR: return "CMD_CTRL_GRAPH_CLEAR";
         case CmdType::CTRL_GRAPH_ENABLE: return "CMD_CTRL_GRAPH_ENABLE";
         case CmdType::CTRL_GRAPH_STATUS: return "CMD_CTRL_GRAPH_STATUS";
@@ -252,10 +282,12 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::DEACTIVATE: return "CMD_DEACTIVATE";
         case CmdType::DISARM: return "CMD_DISARM";
         case CmdType::ENCODER_ATTACH: return "CMD_ENCODER_ATTACH";
+        case CmdType::ENCODER_DETACH: return "CMD_ENCODER_DETACH";
         case CmdType::ENCODER_READ: return "CMD_ENCODER_READ";
         case CmdType::ENCODER_RESET: return "CMD_ENCODER_RESET";
         case CmdType::ESTOP: return "CMD_ESTOP";
         case CmdType::GET_IDENTITY: return "CMD_GET_IDENTITY";
+        case CmdType::GET_LOG_LEVELS: return "CMD_GET_LOG_LEVELS";
         case CmdType::GET_RATES: return "CMD_GET_RATES";
         case CmdType::GET_STATE: return "CMD_GET_STATE";
         case CmdType::GPIO_READ: return "CMD_GPIO_READ";
@@ -264,7 +296,10 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::GPIO_WRITE: return "CMD_GPIO_WRITE";
         case CmdType::HEARTBEAT: return "CMD_HEARTBEAT";
         case CmdType::I2C_SCAN: return "CMD_I2C_SCAN";
+        case CmdType::IMU_CALIBRATE: return "CMD_IMU_CALIBRATE";
         case CmdType::IMU_READ: return "CMD_IMU_READ";
+        case CmdType::IMU_SET_BIAS: return "CMD_IMU_SET_BIAS";
+        case CmdType::IMU_ZERO: return "CMD_IMU_ZERO";
         case CmdType::LED_OFF: return "CMD_LED_OFF";
         case CmdType::LED_ON: return "CMD_LED_ON";
         case CmdType::MCU_DIAGNOSTICS_QUERY: return "CMD_MCU_DIAGNOSTICS_QUERY";
@@ -280,11 +315,17 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::SERVO_ATTACH: return "CMD_SERVO_ATTACH";
         case CmdType::SERVO_DETACH: return "CMD_SERVO_DETACH";
         case CmdType::SERVO_SET_ANGLE: return "CMD_SERVO_SET_ANGLE";
+        case CmdType::SERVO_SET_PULSE: return "CMD_SERVO_SET_PULSE";
         case CmdType::SET_LOG_LEVEL: return "CMD_SET_LOG_LEVEL";
         case CmdType::SET_MODE: return "CMD_SET_MODE";
+        case CmdType::SET_SUBSYSTEM_LOG_LEVEL: return "CMD_SET_SUBSYSTEM_LOG_LEVEL";
         case CmdType::SET_VEL: return "CMD_SET_VEL";
         case CmdType::STEPPER_ENABLE: return "CMD_STEPPER_ENABLE";
+        case CmdType::STEPPER_GET_POSITION: return "CMD_STEPPER_GET_POSITION";
+        case CmdType::STEPPER_MOVE_DEG: return "CMD_STEPPER_MOVE_DEG";
         case CmdType::STEPPER_MOVE_REL: return "CMD_STEPPER_MOVE_REL";
+        case CmdType::STEPPER_MOVE_REV: return "CMD_STEPPER_MOVE_REV";
+        case CmdType::STEPPER_RESET_POSITION: return "CMD_STEPPER_RESET_POSITION";
         case CmdType::STEPPER_STOP: return "CMD_STEPPER_STOP";
         case CmdType::STOP: return "CMD_STOP";
         case CmdType::TELEM_SET_INTERVAL: return "CMD_TELEM_SET_INTERVAL";

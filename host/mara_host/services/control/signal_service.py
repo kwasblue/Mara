@@ -121,10 +121,10 @@ class SignalService:
             ServiceResult
         """
         payload = CtrlSignalDefinePayload(
-            signal_id=signal_id,
+            id=signal_id,
             name=name,
             signal_kind=kind,
-            initial_value=initial_value,
+            initial=initial_value,
         )
         ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
@@ -153,7 +153,7 @@ class SignalService:
         Returns:
             ServiceResult
         """
-        payload = CtrlSignalDeletePayload(signal_id=signal_id)
+        payload = CtrlSignalDeletePayload(id=signal_id)
         ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
@@ -175,7 +175,7 @@ class SignalService:
         Returns:
             ServiceResult
         """
-        payload = CtrlSignalSetPayload(signal_id=signal_id, value=value)
+        payload = CtrlSignalSetPayload(id=signal_id, value=value)
         ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
@@ -202,7 +202,7 @@ class SignalService:
         Returns:
             ServiceResult with value in data
         """
-        payload = CtrlSignalGetPayload(signal_id=signal_id)
+        payload = CtrlSignalGetPayload(id=signal_id)
         ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:

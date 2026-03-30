@@ -35,6 +35,31 @@ from .robot_config_schema import (
 )
 
 
+def _parse_bool(value: Any, default: bool = False) -> bool:
+    """
+    Parse boolean from various formats.
+
+    Handles:
+    - Native bool: returns as-is
+    - String: 'true', 'yes', '1', 'on' -> True (case insensitive)
+    - Other: falls back to bool() coercion
+
+    Args:
+        value: Value to parse
+        default: Default if value is None
+
+    Returns:
+        Parsed boolean
+    """
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in ('true', 'yes', '1', 'on')
+    return bool(value)
+
+
 @dataclass
 class ValidationReport:
     """Detailed validation output for robot configuration."""
@@ -83,12 +108,28 @@ class DriveConfig:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DriveConfig":
+        wheel_radius = float(data.get("wheel_radius", 0.05))
+        if wheel_radius <= 0:
+            raise ValueError(f"wheel_radius must be positive, got {wheel_radius}")
+
+        wheel_base = float(data.get("wheel_base", 0.2))
+        if wheel_base <= 0:
+            raise ValueError(f"wheel_base must be positive, got {wheel_base}")
+
+        max_linear_vel = float(data.get("max_linear_vel", 1.0))
+        if max_linear_vel <= 0:
+            raise ValueError(f"max_linear_vel must be positive, got {max_linear_vel}")
+
+        max_angular_vel = float(data.get("max_angular_vel", 3.0))
+        if max_angular_vel <= 0:
+            raise ValueError(f"max_angular_vel must be positive, got {max_angular_vel}")
+
         return cls(
             type=data.get("type", "differential"),
-            wheel_radius=data.get("wheel_radius", 0.05),
-            wheel_base=data.get("wheel_base", 0.2),
-            max_linear_vel=data.get("max_linear_vel", 1.0),
-            max_angular_vel=data.get("max_angular_vel", 3.0),
+            wheel_radius=wheel_radius,
+            wheel_base=wheel_base,
+            max_linear_vel=max_linear_vel,
+            max_angular_vel=max_angular_vel,
         )
 
 
@@ -104,11 +145,11 @@ class FeaturesConfig:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FeaturesConfig":
         return cls(
-            telemetry=data.get("telemetry", True),
-            encoder=data.get("encoder", False),
-            motion=data.get("motion", False),
-            modes=data.get("modes", False),
-            camera=data.get("camera", False),
+            telemetry=_parse_bool(data.get("telemetry"), default=True),
+            encoder=_parse_bool(data.get("encoder"), default=False),
+            motion=_parse_bool(data.get("motion"), default=False),
+            modes=_parse_bool(data.get("modes"), default=False),
+            camera=_parse_bool(data.get("camera"), default=False),
         )
 
 
@@ -158,10 +199,10 @@ class SensorDegradationConfig:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SensorDegradationConfig":
         return cls(
-            required=bool(data.get("required", False)),
-            allow_missing=bool(data.get("allow_missing", True)),
+            required=_parse_bool(data.get("required"), default=False),
+            allow_missing=_parse_bool(data.get("allow_missing"), default=True),
             stale_after_ms=data.get("stale_after_ms"),
-            fail_open=bool(data.get("fail_open", True)),
+            fail_open=_parse_bool(data.get("fail_open"), default=True),
             fallback=str(data.get("fallback", "none")),
         )
 
@@ -195,7 +236,7 @@ class SensorConfig:
         return cls(
             name=name,
             kind=kind,
-            enabled=bool(data.get("enabled", True)),
+            enabled=_parse_bool(data.get("enabled"), default=True),
             sensor_id=int(data.get("sensor_id", 0)),
             transport=str(data.get("transport", "telemetry")),
             topic=str(topic) if topic is not None else None,
@@ -217,10 +258,10 @@ class PersistencePolicy:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PersistencePolicy":
         return cls(
-            enabled=bool(data.get("enabled", False)),
+            enabled=_parse_bool(data.get("enabled"), default=False),
             backend=str(data.get("backend", "host_file")),
-            restore=bool(data.get("restore", True)),
-            restore_live_state=bool(data.get("restore_live_state", False)),
+            restore=_parse_bool(data.get("restore"), default=True),
+            restore_live_state=_parse_bool(data.get("restore_live_state"), default=False),
         )
 
 
@@ -295,8 +336,9 @@ class RobotConfig:
 
         Raises:
             FileNotFoundError: If config file doesn't exist
-            yaml.YAMLError: If YAML is malformed
-            ConfigValidationError: If config fails schema validation
+            yaml.YAMLError: If YAML syntax is invalid
+            ConfigValidationError: If config fails JSON schema validation
+            ValueError: If numeric config values are invalid (e.g., negative wheel_radius)
         """
         path = Path(path)
         with open(path, "r") as f:

@@ -29,8 +29,16 @@ class TelemetryFileLogger:
         imu_path = self._log_dir / "imu.csv"
         ultra_path = self._log_dir / "ultrasonic.csv"
 
-        self._imu_fp = imu_path.open("w", newline="")
-        self._ultra_fp = ultra_path.open("w", newline="")
+        # Open files with cleanup on partial failure
+        try:
+            self._imu_fp = imu_path.open("w", newline="")
+            self._ultra_fp = ultra_path.open("w", newline="")
+        except Exception:
+            # Clean up any opened files on failure
+            if self._imu_fp:
+                self._imu_fp.close()
+                self._imu_fp = None
+            raise
 
         self._imu_writer = csv.writer(self._imu_fp)
         self._ultra_writer = csv.writer(self._ultra_fp)
@@ -62,12 +70,16 @@ class TelemetryFileLogger:
         )
 
     def stop(self) -> None:
-        if self._imu_fp:
-            self._imu_fp.close()
-            self._imu_fp = None
-        if self._ultra_fp:
-            self._ultra_fp.close()
-            self._ultra_fp = None
+        """Close file handles safely, suppressing errors during cleanup."""
+        # Close all file handles, suppressing errors to ensure all get closed
+        for fp_name in ('_imu_fp', '_ultra_fp'):
+            fp = getattr(self, fp_name, None)
+            if fp:
+                try:
+                    fp.close()
+                except Exception:
+                    pass  # Best-effort cleanup
+                setattr(self, fp_name, None)
 
         self._imu_writer = None
         self._ultra_writer = None

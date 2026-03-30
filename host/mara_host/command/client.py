@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 import contextlib
-import json
 import asyncio
 import inspect
 import time
 from typing import Optional, Protocol, Callable, Dict, Any, Tuple
 
+# Optimized JSON: Use orjson if available (2-3x faster than stdlib json)
+try:
+    import orjson
+    _HAS_ORJSON = True
+except ImportError:
+    import json
+    _HAS_ORJSON = False
+
 from mara_host.core.event_bus import EventBus
 from mara_host.core import protocol
-from .coms.connection_monitor import ConnectionMonitor, ConnectionState
+from .coms.connection_monitor import ConnectionMonitor
 from .coms.reliable_commander import ReliableCommander, RetryConfig
 from mara_host.config.client_commands import RobotCommandsMixin
 from mara_host.telemetry.binary_parser import parse_telemetry_bin
 from mara_host.config.version import PROTOCOL_VERSION
-from mara_host.tools.schema.error_codes import ErrorCode, get_error_message
+from mara_host.tools.schema.error_codes import ErrorCode
 from mara_host.tools.schema.commands import COMMANDS
 from .binary_mixin import BinaryCommandsMixin
 
@@ -35,12 +42,56 @@ MSG_HEARTBEAT        = protocol.MSG_HEARTBEAT
 MSG_WHOAMI           = protocol.MSG_WHOAMI
 MSG_CMD_JSON         = protocol.MSG_CMD_JSON
 MSG_CMD_BIN          = protocol.MSG_CMD_BIN
+MSG_ACK_BIN          = protocol.MSG_ACK_BIN
 MSG_VERSION_REQUEST  = protocol.MSG_VERSION_REQUEST
 MSG_VERSION_RESPONSE = protocol.MSG_VERSION_RESPONSE
 MSG_TELEMETRY_BIN    = protocol.MSG_TELEMETRY_BIN
 
 # Pre-computed for json.dumps (avoids tuple creation per call)
 _JSON_SEPARATORS = (",", ":")
+
+# Commands that need payload validation for safety
+_VELOCITY_COMMANDS = frozenset({"CMD_SET_VEL", "CMD_SET_VELOCITY"})
+
+
+def _validate_command_payload(cmd_type: str, payload: Dict[str, Any]) -> None:
+    """
+    Validate command payload before sending.
+
+    Checks for NaN/Inf values in velocity commands to prevent
+    dangerous MCU behavior. Binary encoder already validates these,
+    but JSON commands skip that path.
+
+    Raises:
+        ValueError: If payload contains invalid values
+    """
+    import math
+
+    if cmd_type in _VELOCITY_COMMANDS:
+        vx = payload.get("vx", 0.0)
+        omega = payload.get("omega", 0.0)
+        if isinstance(vx, (int, float)):
+            if math.isnan(vx) or math.isinf(vx):
+                raise ValueError(f"Velocity vx cannot be NaN or Inf, got {vx}")
+        if isinstance(omega, (int, float)):
+            if math.isnan(omega) or math.isinf(omega):
+                raise ValueError(f"Velocity omega cannot be NaN or Inf, got {omega}")
+
+
+def _json_encode(obj: Dict[str, Any]) -> bytes:
+    """Encode dict to JSON bytes. Uses orjson if available (2-3x faster)."""
+    if _HAS_ORJSON:
+        return orjson.dumps(obj)
+    else:
+        return json.dumps(obj, separators=_JSON_SEPARATORS).encode("utf-8")
+
+
+def _json_decode(data: bytes) -> Dict[str, Any]:
+    """Decode JSON bytes to dict. Uses orjson if available (faster, accepts bytes directly)."""
+    if _HAS_ORJSON:
+        return orjson.loads(data)
+    else:
+        return json.loads(data.decode("utf-8"))
 
 
 class BaseMaraClient(BinaryCommandsMixin):
@@ -84,6 +135,8 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._board: Optional[str] = None
         self._platform_name: Optional[str] = None
         self._handshake_future: Optional[asyncio.Future] = None
+        # Lock to prevent race condition between handshake and cached identity
+        self._handshake_lock = asyncio.Lock()
 
         # Lazy logging (deferred initialization for startup speed)
         self._logs: Optional["MaraLogBundle"] = None
@@ -140,22 +193,6 @@ class BaseMaraClient(BinaryCommandsMixin):
 
     # ---------- Lifecycle ----------
 
-    async def ensure_safe_baseline(self) -> None:
-        """
-        Best-effort: put robot into a known-safe state regardless of current state.
-        Ignore errors because the robot may already be in that state.
-        """
-        for cmd, payload in [
-            ("CMD_CLEAR_ESTOP", {}),   # <- first
-            ("CMD_STOP", {}),
-            ("CMD_DEACTIVATE", {}),
-            ("CMD_DISARM", {}),
-        ]:
-            try:
-                await self.send_reliable(cmd, payload, wait_for_ack=True)
-            except Exception:
-                pass
-
     async def start(self) -> None:
         """Start the transport, perform handshake, and start background tasks."""
         if self.transport is None:
@@ -183,10 +220,7 @@ class BaseMaraClient(BinaryCommandsMixin):
         # Start commander FIRST so send_reliable works well
         await self.commander.start_update_loop(interval_s=0.05)
 
-        # NEW: normalize robot state before HIL tests call ARM/ACTIVATE
-        # await self.ensure_safe_baseline()
-
-        # Connection + heartbeat after baseline
+        # Connection + heartbeat
         await self.connection.start_monitoring(interval_s=0.1)
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
@@ -195,32 +229,39 @@ class BaseMaraClient(BinaryCommandsMixin):
 
     async def stop(self) -> None:
         """Stop the client and underlying transport (closes serial)."""
+        from mara_host.core.shutdown import shutdown_gracefully
+        import logging
+
+        _log = logging.getLogger(__name__)
+
         self._running = False
 
-        # 1) Cancel heartbeat
-        if self._heartbeat_task:
-            self._heartbeat_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._heartbeat_task
-            self._heartbeat_task = None
+        # Define shutdown sequence with async wrappers
+        async def cancel_heartbeat() -> None:
+            if self._heartbeat_task:
+                self._heartbeat_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._heartbeat_task
+                self._heartbeat_task = None
 
-        # 2) STOP background senders/monitors BEFORE sending any more commands
-        with contextlib.suppress(Exception):
-            await self.connection.stop_monitoring()
-        with contextlib.suppress(Exception):
-            await self.commander.stop_update_loop()
+        async def clear_pending_async() -> None:
+            await self.commander.clear_pending()
 
-        # 3) Clear anything queued/retrying
-        with contextlib.suppress(Exception):
-            self.commander.clear_pending()
+        async def send_stop_cmd() -> None:
+            await self.send_json_cmd("CMD_STOP", {})
 
-        # 4) Optional: one best-effort STOP only (don’t DISARM/DEACTIVATE here)
-        # This avoids “late disarm” affecting next test.
-        with contextlib.suppress(Exception):
-            await self.send("CMD_STOP", {})  # or whatever your non-reliable send is
+        components = [
+            ("heartbeat", cancel_heartbeat),
+            ("connection_monitor", self.connection.stop_monitoring),
+            ("commander", self.commander.stop_update_loop),
+            ("pending_commands", clear_pending_async),
+            ("stop_command", send_stop_cmd),
+            ("transport", self._stop_transport),
+        ]
 
-        # 5) Close transport last
-        await self._stop_transport()
+        result = await shutdown_gracefully(components)
+        if result.errors:
+            _log.warning(f"Shutdown had {len(result.errors)} errors")
 
         if self._verbose:
             print("[MaraClient] Stopped")
@@ -249,10 +290,12 @@ class BaseMaraClient(BinaryCommandsMixin):
 
         self._handshake_future = loop.create_future()
         # If identity arrived before handshake started, complete immediately
-        if self._cached_identity is not None:
-            if not self._handshake_future.done():
-                self._handshake_future.set_result(self._cached_identity)
-            self._cached_identity = None
+        # Use lock to prevent race with _handle_json_payload setting _cached_identity
+        async with self._handshake_lock:
+            if self._cached_identity is not None:
+                if not self._handshake_future.done():
+                    self._handshake_future.set_result(self._cached_identity)
+                self._cached_identity = None
 
         req_type = MSG_VERSION_REQUEST if MSG_VERSION_REQUEST is not None else MSG_WHOAMI
 
@@ -313,22 +356,30 @@ class BaseMaraClient(BinaryCommandsMixin):
 
     def _handle_version_response(self, payload: bytes) -> None:
         """Handle VERSION_RESPONSE from firmware."""
+        import logging
+        _log = logging.getLogger(__name__)
+
         try:
-            data = json.loads(payload.decode("utf-8"))
+            data = _json_decode(payload)
         except Exception as e:
+            _log.warning(
+                "Failed to parse version response: %s (payload=%r)",
+                e, payload[:100] if len(payload) > 100 else payload
+            )
             if self._verbose:
                 print(f"[MaraClient] Failed to parse version response: {e}")
-            data = {}
-        
+            # Include parse error in result so handshake can report it
+            data = {"_parse_error": str(e)}
+
         self.bus.publish("version", data)
-        
+
         if self._handshake_future and not self._handshake_future.done():
             self._handshake_future.set_result(data)
 
     # ---------- Connection callbacks ----------
 
     def _on_disconnect(self) -> None:
-        self.commander.clear_pending()
+        self.commander.clear_pending_sync()
         self.bus.publish("connection.lost", {})
         self.logs.events.write("connection.lost")
 
@@ -391,7 +442,9 @@ class BaseMaraClient(BinaryCommandsMixin):
             self._handle_json_payload(payload)
         elif msg_type == MSG_TELEMETRY_BIN:
             telemetry_pkt = parse_telemetry_bin(payload)
-            self.bus.publish("telemetry.binary", telemetry_pkt) 
+            self.bus.publish("telemetry.binary", telemetry_pkt)
+        elif msg_type == MSG_ACK_BIN:
+            self._handle_binary_ack(payload)
         else:
             self.bus.publish(
                 "raw_frame",
@@ -401,8 +454,8 @@ class BaseMaraClient(BinaryCommandsMixin):
     def _handle_json_payload(self, payload: bytes) -> None:
         """Handle a JSON-encoded payload from the robot."""
         try:
-            text = payload.decode("utf-8")
-            obj = json.loads(text)
+            # Optimized: _json_decode uses orjson if available (accepts bytes directly)
+            obj = _json_decode(payload)
         except Exception as e:
             if self._verbose:
                 print(f"[MaraClient] Failed to decode JSON payload: {e!r}")
@@ -463,6 +516,18 @@ class BaseMaraClient(BinaryCommandsMixin):
 
         # Fallback
         self.bus.publish("json", obj)
+
+    def _handle_binary_ack(self, payload: bytes) -> None:
+        """Handle a binary ACK frame from the robot."""
+        try:
+            seq, ok = protocol.decode_ack_bin(payload)
+            self.commander.on_ack(seq, ok, None)
+            self.bus.publish("cmd.ack_bin", {"seq": seq, "ok": ok})
+        except ValueError as e:
+            if self._verbose:
+                print(f"[MaraClient] Failed to decode binary ACK: {e!r}")
+            self.bus.publish("ack_bin_error", {"error": str(e), "raw": payload})
+
     # ---------- Outgoing commands ----------
 
     def _next_seq(self) -> int:
@@ -486,6 +551,9 @@ class BaseMaraClient(BinaryCommandsMixin):
         If seq is provided, it is used as-is (for retries).
         Otherwise, a new sequence is allocated.
         """
+        # Validate payload for safety-critical commands
+        _validate_command_payload(type_str, payload or {})
+
         if seq is None:
             seq = self._next_seq()
 
@@ -496,7 +564,8 @@ class BaseMaraClient(BinaryCommandsMixin):
             **(payload or {}),
         }
 
-        data = json.dumps(cmd_obj, separators=_JSON_SEPARATORS).encode("utf-8")
+        # Optimized: _json_encode uses orjson if available (2-3x faster)
+        data = _json_encode(cmd_obj)
         await self._send_frame(MSG_CMD_JSON, data)
         return seq
 
@@ -592,7 +661,7 @@ class BaseMaraClient(BinaryCommandsMixin):
         """
         import asyncio
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         future: asyncio.Future[dict] = loop.create_future()
 
         def on_response(msg: dict) -> None:

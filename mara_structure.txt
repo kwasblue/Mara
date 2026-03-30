@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-29 17:22:16
-Total Files: 856
-Total Lines of Code: 95,065
+Generated: 2026-03-30 12:22:18
+Total Files: 884
+Total Lines of Code: 101,962
 ================================================================================
 
 
@@ -742,6 +742,10 @@ HOST (Python)
   host/mara_host/cli/commands/calibrate/wheels.py (40 lines)
     [Fn] cmd_wheels(args)
 
+  host/mara_host/cli/commands/camera.py (281 lines)
+    [Fn] register(subparsers)
+    [Fn] cmd_list_resolutions(args)
+
   host/mara_host/cli/commands/config.py (337 lines)
     [Fn] register(subparsers)
     [Fn] _find_config_files()
@@ -807,12 +811,15 @@ HOST (Python)
     [Fn] register(subparsers)
     [Fn] cmd_gui(args)
 
+  host/mara_host/cli/commands/i2c.py (106 lines)
+    [Fn] register(subparsers)
+
   host/mara_host/cli/commands/imu.py (225 lines)
     [Fn] register(subparsers)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
 
-  host/mara_host/cli/commands/monitor.py (266 lines)
+  host/mara_host/cli/commands/monitor.py (265 lines)
     [Class] MonitorState
     [Fn] register(subparsers)
     [Fn] cmd_monitor(args)
@@ -824,6 +831,9 @@ HOST (Python)
     [Fn] _generate_display(state, args)
     [Fn] _generate_compact_display(state, args, status_line, elapsed)
     [Fn] _speed_bar(speed, width)
+
+  host/mara_host/cli/commands/motion.py (148 lines)
+    [Fn] register(subparsers)
 
   host/mara_host/cli/commands/motor.py (113 lines)
     [Fn] register(subparsers)
@@ -937,6 +947,9 @@ HOST (Python)
   host/mara_host/cli/commands/servo.py (244 lines)
     [Fn] register(subparsers)
 
+  host/mara_host/cli/commands/signal.py (139 lines)
+    [Fn] register(subparsers)
+
   host/mara_host/cli/commands/sim.py (146 lines)
     [Fn] register(subparsers)
     [Fn] cmd_virtual(args)
@@ -948,6 +961,9 @@ HOST (Python)
       `-- set_frame_handler(self, handler)
     [Fn] on_event(topic)
     [Fn] handler(data)
+
+  host/mara_host/cli/commands/state.py (144 lines)
+    [Fn] register(subparsers)
 
   host/mara_host/cli/commands/stepper.py (194 lines)
     [Fn] register(subparsers)
@@ -1011,6 +1027,9 @@ HOST (Python)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
 
+  host/mara_host/cli/commands/wifi.py (126 lines)
+    [Fn] register(subparsers)
+
   host/mara_host/cli/completions.py (288 lines)
     [Fn] register(subparsers)
     [Fn] cmd_completions(args)
@@ -1032,7 +1051,7 @@ HOST (Python)
     [Fn] format_pin_status(gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
     [Fn] confirm(message, default)
 
-  host/mara_host/cli/context.py (340 lines)
+  host/mara_host/cli/context.py (363 lines)
     [Class] CLIContextConfig
     [Class] CLIContext
       |-- __init__(self, port, baudrate, host, tcp_port, ble_name, verbose, robot_config, robot_config_path)
@@ -1057,7 +1076,10 @@ HOST (Python)
       |-- control_graph_service(self)
       |-- controller_service(self)
       |-- mcu_diagnostics_service(self)
-      `-- pid_service(self)
+      |-- pid_service(self)
+      |-- motion_service(self)
+      |-- signal_service(self)
+      `-- camera_control_service(self)
     [Fn] run_with_context(func)
     [Fn] wrapper(args)
     [Fn] run_with_context_no_connect(func)
@@ -1071,7 +1093,7 @@ HOST (Python)
     [Fn] cmd_debug(args)
     [Fn] main(argv)
 
-  host/mara_host/command/__init__.py (29 lines)
+  host/mara_host/command/__init__.py (55 lines)
     [Fn] __getattr__(name)
 
   host/mara_host/command/binary_commands.py (26 lines)
@@ -1088,13 +1110,13 @@ HOST (Python)
       |-- _init_binary_encoder(self)
       `-- set_prefer_binary(self, prefer)
 
-  host/mara_host/command/client.py (454 lines)
+  host/mara_host/command/client.py (455 lines)
     [Class] HasSendBytes
       |-- set_frame_handler(self, handler)
       |-- start(self)
       `-- stop(self)
     [Class] BaseMaraClient
-      |-- __init__(self, transport, bus, heartbeat_interval_s, connection_timeout_s, command_timeout_s, max_retries, require_version_match, handshake_timeout_s, log_level, log_dir, verbose)
+      |-- __init__(self, transport, bus, heartbeat_interval_s, connection_timeout_s, command_timeout_s, max_retries, require_version_match, handshake_timeout_s, log_level, log_dir, verbose, robot_name)
       |-- logs(self)
       |-- _log_event(self, event, data)
       |-- _handle_version_response(self, payload)
@@ -1128,7 +1150,7 @@ HOST (Python)
 
   host/mara_host/command/coms/__init__.py (3 lines)
 
-  host/mara_host/command/coms/connection_monitor.py (153 lines)
+  host/mara_host/command/coms/connection_monitor.py (159 lines)
     [Class] ConnectionState
     [Class] ConnectionEvent
     [Class] ConnectionStats
@@ -1144,7 +1166,7 @@ HOST (Python)
       |-- get_event_history(self, count)
       `-- reset(self)
 
-  host/mara_host/command/coms/reliable_commander.py (306 lines)
+  host/mara_host/command/coms/reliable_commander.py (322 lines)
     [Class] CommandStatus
     [Class] RetryConfig
       `-- calculate_backoff(self, retry_n)
@@ -1161,7 +1183,7 @@ HOST (Python)
       |-- _emit(self, event)
       |-- on_ack(self, seq, ok, error)
       |-- pending_count(self)
-      |-- clear_pending(self)
+      |-- clear_pending_sync(self)
       `-- stats(self)
     [Fn] percentile(p)
 
@@ -1184,7 +1206,8 @@ HOST (Python)
       |-- start(self)
       `-- stop(self)
 
-  host/mara_host/command/json_to_binary.py (56 lines)
+  host/mara_host/command/json_to_binary.py (62 lines)
+    [Fn] _validate_float(value, name)
     [Class] JsonToBinaryEncoder
       |-- encode(self, cmd)
       |-- supports_binary(self, cmd_type)
@@ -1196,14 +1219,268 @@ HOST (Python)
       |-- encode_signals(self, signals)
       `-- encode_signal_cmds(self, cmds)
 
+  host/mara_host/command/payloads.py (782 lines)
+    [Class] DcStopPayload
+      |-- __init__(self, motor_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SafetySetRatePayload
+      |-- __init__(self, hz)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] StepperStopPayload
+      |-- __init__(self, stepper_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SetLogLevelPayload
+      |-- __init__(self, level)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SetVelPayload
+      |-- __init__(self, vx, omega, frame)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ServoAttachPayload
+      |-- __init__(self, servo_id, channel, min_us, max_us)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ServoDetachPayload
+      |-- __init__(self, servo_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ServoSetAnglePayload
+      |-- __init__(self, servo_id, angle_deg, duration_ms)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ServoSetPulsePayload
+      |-- __init__(self, servo_id, pulse_us)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] DcSetSpeedPayload
+      |-- __init__(self, motor_id, speed)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] DcSetVelGainsPayload
+      |-- __init__(self, motor_id, kp, ki, kd)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] DcSetVelTargetPayload
+      |-- __init__(self, motor_id, omega)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] DcVelPidEnablePayload
+      |-- __init__(self, motor_id, enable)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] StepperEnablePayload
+      |-- __init__(self, stepper_id, enable)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] StepperGetPositionPayload
+      |-- __init__(self, stepper_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] StepperMoveDegPayload
+      |-- __init__(self, stepper_id, degrees, speed_rps)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] StepperMoveRelPayload
+      |-- __init__(self, stepper_id, steps, speed_rps)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] StepperMoveRevPayload
+      |-- __init__(self, stepper_id, revolutions, speed_rps)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] StepperResetPositionPayload
+      |-- __init__(self, stepper_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] GpioReadPayload
+      |-- __init__(self, channel)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] GpioRegisterChannelPayload
+      |-- __init__(self, channel, pin, mode)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] GpioTogglePayload
+      |-- __init__(self, channel)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] GpioWritePayload
+      |-- __init__(self, channel, value)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] EncoderAttachPayload
+      |-- __init__(self, pin_a, pin_b, encoder_id, ppr, gear_ratio)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] EncoderDetachPayload
+      |-- __init__(self, encoder_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] EncoderReadPayload
+      |-- __init__(self, encoder_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] EncoderResetPayload
+      |-- __init__(self, encoder_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ImuCalibratePayload
+      |-- __init__(self, samples, delay_ms)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ImuSetBiasPayload
+      |-- __init__(self, accel_bias, gyro_bias)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ObserverConfigPayload
+      |-- __init__(self, slot, num_states, num_outputs, input_ids, output_ids, estimate_ids, num_inputs, rate_hz)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ObserverEnablePayload
+      |-- __init__(self, slot, enable)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ObserverResetPayload
+      |-- __init__(self, slot)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ObserverSetParamPayload
+      |-- __init__(self, slot, key, value)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ObserverSetParamArrayPayload
+      |-- __init__(self, slot, key, values)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ObserverStatusPayload
+      |-- __init__(self, slot)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] WifiJoinPayload
+      |-- __init__(self, ssid, password)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] BatchApplyPayload
+      |-- __init__(self, actions)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlGraphEnablePayload
+      |-- __init__(self, enable)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlGraphUploadPayload
+      |-- __init__(self, graph)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSetRatePayload
+      |-- __init__(self, hz)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSignalDefinePayload
+      |-- __init__(self, id, name, signal_kind, initial)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSignalDeletePayload
+      |-- __init__(self, id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSignalGetPayload
+      |-- __init__(self, id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSignalSetPayload
+      |-- __init__(self, id, value)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSlotConfigPayload
+      |-- __init__(self, slot, controller_type, rate_hz, ref_id, meas_id, out_id, num_states, num_inputs, state_ids, ref_ids, output_ids, require_armed, require_active)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSlotEnablePayload
+      |-- __init__(self, slot, enable)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSlotGetParamPayload
+      |-- __init__(self, slot, key)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSlotResetPayload
+      |-- __init__(self, slot)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSlotSetParamPayload
+      |-- __init__(self, slot, key, value)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSlotSetParamArrayPayload
+      |-- __init__(self, slot, key, values)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] CtrlSlotStatusPayload
+      |-- __init__(self, slot)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] PwmSetPayload
+      |-- __init__(self, channel, duty, freq_hz)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SetModePayload
+      |-- __init__(self, mode)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] TelemSetIntervalPayload
+      |-- __init__(self, interval_ms)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] TelemSetRatePayload
+      |-- __init__(self, hz)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] UltrasonicAttachPayload
+      |-- __init__(self, trig_pin, echo_pin, sensor_id, max_distance_cm)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] UltrasonicDetachPayload
+      |-- __init__(self, sensor_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] UltrasonicReadPayload
+      |-- __init__(self, sensor_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+
+  host/mara_host/command/types.py (133 lines)
+    [Class] IdentityMessage
+      |-- from_dict(cls, data)
+      `-- to_dict(self)
+    [Class] CommandMessage
+      |-- to_dict(self)
+      `-- from_dict(cls, data)
+    [Class] CommandAck
+      |-- from_dict(cls, data)
+      |-- to_dict(self)
+      `-- success(self)
+    [Class] TelemetryMessage
+      |-- from_dict(cls, data)
+      `-- to_dict(self)
+    [Class] RawFrame
+      `-- to_dict(self)
+    [Class] HelloMessage
+      |-- from_dict(cls, data)
+      `-- to_dict(self)
+
   host/mara_host/config/__init__.py (32 lines)
 
-  host/mara_host/config/client_commands.py (446 lines)
+  host/mara_host/config/client_commands.py (493 lines)
     [Class] RobotCommandsMixin
 
-  host/mara_host/config/command_defs.py (190 lines)
+  host/mara_host/config/command_defs.py (208 lines)
 
-  host/mara_host/config/control_graph_defs.py (37 lines)
+  host/mara_host/config/control_graph_defs.py (44 lines)
 
   host/mara_host/config/feature_flags.py (204 lines)
     [Fn] _env_bool(key, default)
@@ -1313,6 +1590,158 @@ HOST (Python)
     [Class] ObserverConfig
     [Fn] _matrix_to_row_major(matrix)
 
+  host/mara_host/control_graph/__init__.py (1 lines)
+
+  host/mara_host/control_graph/nodes.py (552 lines)
+    [Class] Constant
+      |-- __init__(self, value)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] EncoderVelocity
+      |-- __init__(self, encoder_id, ticks_per_rad, fallback)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ImuAxis
+      |-- __init__(self, axis)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SignalRead
+      |-- __init__(self, signal_id, fallback)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Abs
+      |-- __init__(self)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Clamp
+      |-- __init__(self, min, max)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Deadband
+      |-- __init__(self, threshold)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] DeltaGate
+      |-- __init__(self, threshold)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Derivative
+      |-- __init__(self, gain)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Error
+      |-- __init__(self, feedback_signal, fallback)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Hysteresis
+      |-- __init__(self, on_threshold, off_threshold)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Integrator
+      |-- __init__(self, gain, min, max)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Lowpass
+      |-- __init__(self, alpha)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Map
+      |-- __init__(self, in_min, in_max, out_min, out_max)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Median
+      |-- __init__(self)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Negate
+      |-- __init__(self)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Offset
+      |-- __init__(self, value)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Oscillator
+      |-- __init__(self, frequency, amplitude, offset)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Proportional
+      |-- __init__(self, gain)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Pulse
+      |-- __init__(self, interval_ms, duration_ms, value)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Recall
+      |-- __init__(self, name, fallback)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Scale
+      |-- __init__(self, factor)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SignalAdd
+      |-- __init__(self, signal_id, fallback, scale)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SignalRecall
+      |-- __init__(self, signal_id, fallback)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SignalSubtract
+      |-- __init__(self, signal_id, fallback)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SlewRate
+      |-- __init__(self, rate)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Sum
+      |-- __init__(self, inputs)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Tap
+      |-- __init__(self, name)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Threshold
+      |-- __init__(self, cutoff, output_low, output_high)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Toggle
+      |-- __init__(self, threshold)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] GpioWrite
+      |-- __init__(self, channel)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] MotorSpeed
+      |-- __init__(self, motor_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] PwmDuty
+      |-- __init__(self, channel)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] ServoAngle
+      |-- __init__(self, servo_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] SignalWrite
+      |-- __init__(self, signal_id)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Slot
+      |-- __init__(self, id, source, sink, sinks, transforms, rate_hz, enabled)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] Graph
+      |-- __init__(self, slots)
+      |-- to_dict(self)
+      `-- __repr__(self)
+
   host/mara_host/core/__init__.py (31 lines)
 
   host/mara_host/core/base_module.py (45 lines)
@@ -1325,12 +1754,13 @@ HOST (Python)
       |-- topics(self)
       `-- __repr__(self)
 
-  host/mara_host/core/event_bus.py (40 lines)
+  host/mara_host/core/event_bus.py (46 lines)
     [Class] EventBus
       |-- __init__(self)
       |-- subscribe(self, topic, handler)
       |-- unsubscribe(self, topic, handler)
-      `-- publish(self, topic, data)
+      |-- publish(self, topic, data)
+      `-- get_subscription_count(self)
 
   host/mara_host/core/host_module.py (40 lines)
     [Class] CommandHostModule
@@ -1374,6 +1804,10 @@ HOST (Python)
     [Class] EncoderDefaults
     [Class] HostSettings
       `-- load(cls, profile)
+
+  host/mara_host/core/shutdown.py (26 lines)
+    [Class] ShutdownError
+    [Class] ShutdownResult
 
   host/mara_host/core/utils.py (4 lines)
     [Fn] clamp(value, min_val, max_val)
@@ -2965,17 +3399,18 @@ HOST (Python)
 
   host/mara_host/mcp/__main__.py (3 lines)
 
-  host/mara_host/mcp/_generated_http.py (576 lines)
+  host/mara_host/mcp/_generated_http.py (895 lines)
     [Fn] create_generated_routes(runtime)
     [Fn] get_openai_function_schema()
 
-  host/mara_host/mcp/_generated_tools.py (578 lines)
+  host/mara_host/mcp/_generated_tools.py (1558 lines)
     [Fn] get_tool_definitions()
 
   host/mara_host/mcp/http_server.py (104 lines)
     [Fn] create_http_app(runtime)
 
-  host/mara_host/mcp/runtime.py (562 lines)
+  host/mara_host/mcp/runtime.py (584 lines)
+    [Fn] _redact_sensitive(params)
     [Class] EventType
     [Class] Event
       `-- to_dict(self)
@@ -3015,6 +3450,9 @@ HOST (Python)
       |-- wifi_service(self)
       |-- control_graph_service(self)
       |-- mcu_diagnostics_service(self)
+      |-- motion_service(self)
+      |-- signal_service(self)
+      |-- camera_control_service(self)
       |-- client(self)
       |-- telemetry(self)
       |-- robot_loaded(self)
@@ -3033,10 +3471,11 @@ HOST (Python)
       |-- _on_encoder(self, encoder_data)
       `-- _on_state_change(self, new_state)
 
-  host/mara_host/mcp/server.py (41 lines)
+  host/mara_host/mcp/server.py (53 lines)
+    [Fn] _check_auth(arguments)
     [Fn] create_server(port, host, ble_name, tcp_port)
 
-  host/mara_host/mcp/tool_schema.py (523 lines)
+  host/mara_host/mcp/tool_schema.py (752 lines)
     [Class] ToolParam
       `-- to_json_schema(self)
     [Class] ToolDef
@@ -3329,7 +3768,7 @@ HOST (Python)
     [Fn] model(params, v)
     [Fn] cost(params)
 
-  host/mara_host/robot.py (303 lines)
+  host/mara_host/robot.py (298 lines)
     [Class] Session
       |-- __init__(self, robot, name, log_dir)
       |-- start(self)
@@ -3358,11 +3797,11 @@ HOST (Python)
       |-- control_graph_service(self)
       |-- mcu_diagnostics_service(self)
       |-- on(self, event, handler)
+      |-- off(self, event, handler)
       |-- from_config(cls, config_path, profile)
       `-- __repr__(self)
     [Fn] load_config(config_path)
     [Fn] robot_from_config(config)
-    [Fn] _robot_from_dict(config)
 
   host/mara_host/robot_layer/__init__.py (38 lines)
 
@@ -3467,7 +3906,7 @@ HOST (Python)
     [Class] EncoderHostModule
       `-- __init__(self, bus, client, defaults)
 
-  host/mara_host/services/__init__.py (64 lines)
+  host/mara_host/services/__init__.py (77 lines)
     [Fn] __getattr__(name)
     [Fn] __dir__()
 
@@ -3506,7 +3945,7 @@ HOST (Python)
 
   host/mara_host/services/codegen/__init__.py (12 lines)
 
-  host/mara_host/services/codegen/generator_service.py (159 lines)
+  host/mara_host/services/codegen/generator_service.py (149 lines)
     [Class] GeneratorType
     [Class] GeneratorResult
     [Class] GenerationSummary
@@ -3518,8 +3957,6 @@ HOST (Python)
       |-- generate(self, generator_type)
       |-- list_generated_files(self, generator_type)
       |-- get_schema_path(self)
-      |-- set_progress_callback(self, callback)
-      |-- _notify_progress(self, gen_type, message)
       `-- get_available_generators()
 
   host/mara_host/services/control/__init__.py (128 lines)
@@ -3532,7 +3969,7 @@ HOST (Python)
       |-- _validate_arg(self, name, spec, value)
       `-- _validate_actions(self, actions)
 
-  host/mara_host/services/control/control_graph_service.py (233 lines)
+  host/mara_host/services/control/control_graph_service.py (232 lines)
     [Class] ControlGraphService
       |-- __init__(self, client, sensor_policy_provider, persistence_store)
       |-- _graph_matches_status(status_payload, graph)
@@ -3555,7 +3992,7 @@ HOST (Python)
     [Class] ControllerService
       `-- __init__(self, client)
 
-  host/mara_host/services/control/encoder_service.py (125 lines)
+  host/mara_host/services/control/encoder_service.py (127 lines)
     [Class] EncoderConfig
     [Class] EncoderState
     [Class] EncoderService
@@ -3564,7 +4001,7 @@ HOST (Python)
       |-- counts_to_radians(self, encoder_id, counts)
       `-- counts_to_degrees(self, encoder_id, counts)
 
-  host/mara_host/services/control/gpio_service.py (153 lines)
+  host/mara_host/services/control/gpio_service.py (158 lines)
     [Class] GpioMode
     [Class] GpioChannel
     [Class] GpioService
@@ -3577,7 +4014,7 @@ HOST (Python)
     [Class] I2cService
       `-- __init__(self, client)
 
-  host/mara_host/services/control/imu_service.py (140 lines)
+  host/mara_host/services/control/imu_service.py (143 lines)
     [Class] ImuReading
     [Class] ImuBias
     [Class] ImuService
@@ -3603,7 +4040,7 @@ HOST (Python)
       |-- _check_rate_limit(self)
       `-- compute_arcade_drive(self, throttle, steering, max_linear, max_angular)
 
-  host/mara_host/services/control/motor_service.py (137 lines)
+  host/mara_host/services/control/motor_service.py (139 lines)
     [Class] MotorConfig
     [Class] MotorState
     [Class] MotorService
@@ -3619,7 +4056,7 @@ HOST (Python)
       |-- is_enabled(self, motor_id)
       `-- get_gains(self, motor_id)
 
-  host/mara_host/services/control/pwm_service.py (79 lines)
+  host/mara_host/services/control/pwm_service.py (76 lines)
     [Class] PwmConfig
     [Class] PwmState
     [Class] PwmService
@@ -3640,14 +4077,14 @@ HOST (Python)
       `-- clear_states(self)
     [Fn] _handler(data)
 
-  host/mara_host/services/control/servo_service.py (188 lines)
+  host/mara_host/services/control/servo_service.py (189 lines)
     [Class] ServoConfig
     [Class] ServoState
     [Class] ServoService
       |-- configure(self, servo_id, channel, min_angle, max_angle, min_us, max_us, inverted)
       `-- get_attached_servos(self)
 
-  host/mara_host/services/control/signal_service.py (119 lines)
+  host/mara_host/services/control/signal_service.py (123 lines)
     [Class] SignalKind
     [Class] Signal
     [Class] SignalService
@@ -3670,7 +4107,7 @@ HOST (Python)
       |-- set_state(self, state)
       `-- sync_from_telemetry(self, state_str)
 
-  host/mara_host/services/control/stepper_service.py (183 lines)
+  host/mara_host/services/control/stepper_service.py (172 lines)
     [Class] StepperConfig
     [Class] StepperState
     [Class] StepperService
@@ -3678,7 +4115,7 @@ HOST (Python)
       |-- effective_steps_per_rev(self)
       `-- get_effective_steps_per_rev(self, stepper_id)
 
-  host/mara_host/services/control/ultrasonic_service.py (160 lines)
+  host/mara_host/services/control/ultrasonic_service.py (164 lines)
     [Class] UltrasonicConfig
     [Class] UltrasonicState
     [Class] UltrasonicService
@@ -3693,7 +4130,7 @@ HOST (Python)
     [Class] WifiService
       `-- __init__(self, client)
 
-  host/mara_host/services/persistence/__init__.py (14 lines)
+  host/mara_host/services/persistence/__init__.py (26 lines)
 
   host/mara_host/services/persistence/mcu_diagnostics_service.py (176 lines)
     [Class] McuDiagnosticsService
@@ -3709,7 +4146,7 @@ HOST (Python)
       `-- clear_persisted_records(self)
     [Fn] _handler(data)
 
-  host/mara_host/services/persistence/store.py (72 lines)
+  host/mara_host/services/persistence/store.py (91 lines)
     [Class] JsonArtifactStore
       |-- __init__(self, root, namespace)
       |-- load(self)
@@ -3722,10 +4159,32 @@ HOST (Python)
       `-- load_graph_model(self)
     [Class] CalibrationStore
       |-- __init__(self, root)
-      `-- upsert(self, name, values)
+      |-- upsert(self, name, values)
+      `-- get_record(self, name)
     [Class] DiagnosticRecordStore
       |-- __init__(self, root)
-      `-- append(self, name, details)
+      |-- append(self, name, details)
+      `-- get_records(self)
+
+  host/mara_host/services/persistence/types.py (115 lines)
+    [Class] CalibrationRecord
+      |-- from_dict(cls, name, data)
+      `-- to_dict(self)
+    [Class] DiagnosticRecord
+      |-- from_dict(cls, data)
+      `-- to_dict(self)
+    [Class] ControlGraphPayload
+      |-- from_dict(cls, data)
+      `-- to_dict(self)
+    [Class] CalibrationData
+      |-- from_dict(cls, data)
+      |-- to_dict(self)
+      |-- get(self, name)
+      `-- set(self, record)
+    [Class] DiagnosticData
+      |-- from_dict(cls, data)
+      |-- to_dict(self)
+      `-- append(self, record)
 
   host/mara_host/services/pins/__init__.py (14 lines)
 
@@ -3855,7 +4314,7 @@ HOST (Python)
 
   host/mara_host/services/transport/__init__.py (14 lines)
 
-  host/mara_host/services/transport/connection_service.py (130 lines)
+  host/mara_host/services/transport/connection_service.py (126 lines)
     [Class] TransportType
     [Class] ConnectionConfig
     [Class] ConnectionInfo
@@ -3872,6 +4331,80 @@ HOST (Python)
       |-- is_armed(self)
       |-- is_active(self)
       `-- attached_servos(self)
+
+  host/mara_host/services/types.py (427 lines)
+    [Class] GpioReadResponse
+      `-- from_dict(cls, data)
+    [Class] GpioWriteResponse
+      `-- from_dict(cls, data)
+    [Class] GpioRegisterResponse
+      `-- from_dict(cls, data)
+    [Class] EncoderReadResponse
+      `-- from_dict(cls, data)
+    [Class] EncoderAttachResponse
+      `-- from_dict(cls, data)
+    [Class] EncoderResetResponse
+      `-- from_dict(cls, data)
+    [Class] EncoderDetachResponse
+      `-- from_dict(cls, data)
+    [Class] ServoAttachResponse
+      `-- from_dict(cls, data)
+    [Class] ServoSetAngleResponse
+      `-- from_dict(cls, data)
+    [Class] ServoDetachResponse
+      `-- from_dict(cls, data)
+    [Class] ServoSetPulseResponse
+      `-- from_dict(cls, data)
+    [Class] MotorSetSpeedResponse
+      `-- from_dict(cls, data)
+    [Class] MotorAttachResponse
+      `-- from_dict(cls, data)
+    [Class] MotorStopResponse
+      `-- from_dict(cls, data)
+    [Class] MotorDetachResponse
+      `-- from_dict(cls, data)
+    [Class] StepperEnableResponse
+      `-- from_dict(cls, data)
+    [Class] StepperMoveRelResponse
+      `-- from_dict(cls, data)
+    [Class] StepperMoveDegResponse
+      `-- from_dict(cls, data)
+    [Class] StepperMoveRevResponse
+      `-- from_dict(cls, data)
+    [Class] StepperStopResponse
+      `-- from_dict(cls, data)
+    [Class] StepperPositionResponse
+      `-- from_dict(cls, data)
+    [Class] ImuReadResponse
+      `-- from_dict(cls, data)
+    [Class] ImuCalibrateResponse
+      `-- from_dict(cls, data)
+    [Class] ImuSetBiasResponse
+      `-- from_dict(cls, data)
+    [Class] UltrasonicAttachResponse
+      `-- from_dict(cls, data)
+    [Class] UltrasonicDetachResponse
+      `-- from_dict(cls, data)
+    [Class] UltrasonicReadResponse
+      `-- from_dict(cls, data)
+    [Class] PwmSetResponse
+      `-- from_dict(cls, data)
+    [Class] SignalDefineResponse
+      `-- from_dict(cls, data)
+    [Class] SignalDeleteResponse
+      `-- from_dict(cls, data)
+    [Class] SignalSetResponse
+      `-- from_dict(cls, data)
+    [Class] SignalGetResponse
+      `-- from_dict(cls, data)
+    [Class] SignalListResponse
+      `-- from_dict(cls, data)
+    [Class] RobotStateResponse
+      `-- from_dict(cls, data)
+    [Class] ControlGraphSlotStatus
+      `-- from_dict(cls, data)
+    [Class] ControlGraphStatus
+      `-- from_dict(cls, data)
 
   host/mara_host/telemetry/__init__.py (38 lines)
 
@@ -3949,7 +4482,7 @@ HOST (Python)
   host/mara_host/tools/build_world.py (26 lines)
     [Fn] main()
 
-  host/mara_host/tools/gen_binary_commands.py (530 lines)
+  host/mara_host/tools/gen_binary_commands.py (547 lines)
     [Fn] to_pascal_case(name)
     [Fn] to_snake_case(name)
     [Fn] get_struct_format(payload)
@@ -3964,6 +4497,14 @@ HOST (Python)
     [Fn] build_struct_fmt(fields)
     [Fn] generate_cpp_header()
     [Fn] generate_python_module()
+    [Fn] main()
+
+  host/mara_host/tools/gen_command_payloads.py (179 lines)
+    [Fn] field_to_python_type(fdef)
+    [Fn] field_default_repr(fdef)
+    [Fn] cmd_name_to_class_name(cmd_name)
+    [Fn] generate_payload_class(cmd_name, cmd_def)
+    [Fn] generate_all()
     [Fn] main()
 
   host/mara_host/tools/gen_commands.py (175 lines)
@@ -3993,7 +4534,19 @@ HOST (Python)
     [Fn] generate_py()
     [Fn] main()
 
-  host/mara_host/tools/gen_mcp_servers.py (101 lines)
+  host/mara_host/tools/gen_control_graph_types.py (148 lines)
+    [Fn] param_to_python_type(param)
+    [Fn] param_default_repr(param)
+    [Fn] to_class_name(kind)
+    [Fn] generate_node_class(spec, category)
+    [Fn] generate_all()
+    [Fn] main()
+
+  host/mara_host/tools/gen_mcp_servers.py (188 lines)
+    [Fn] cmd_to_tool_name(cmd_name)
+    [Fn] is_host_to_mcu(cmd_def)
+    [Fn] field_to_json_schema(field_def)
+    [Fn] get_auto_generated_tools()
     [Fn] generate_header(description)
     [Fn] param_to_json_schema(param)
     [Fn] tool_to_mcp_schema(tool)
@@ -4013,7 +4566,7 @@ HOST (Python)
     [Fn] write_version_files(version, cpp_path, py_path)
     [Fn] main()
 
-  host/mara_host/tools/generate_all.py (46 lines)
+  host/mara_host/tools/generate_all.py (54 lines)
     [Fn] main()
 
   host/mara_host/tools/generate_pins.py (37 lines)
@@ -4076,11 +4629,11 @@ HOST (Python)
 
   host/mara_host/tools/schema/commands/_safety.py (67 lines)
 
-  host/mara_host/tools/schema/commands/_sensors.py (65 lines)
+  host/mara_host/tools/schema/commands/_sensors.py (101 lines)
 
-  host/mara_host/tools/schema/commands/_servo.py (45 lines)
+  host/mara_host/tools/schema/commands/_servo.py (54 lines)
 
-  host/mara_host/tools/schema/commands/_stepper.py (30 lines)
+  host/mara_host/tools/schema/commands/_stepper.py (62 lines)
 
   host/mara_host/tools/schema/commands/_telemetry.py (21 lines)
 
@@ -4126,7 +4679,13 @@ HOST (Python)
 
   host/mara_host/tools/schema/control/_observers.py (185 lines)
 
-  host/mara_host/tools/schema/control_graph/__init__.py (20 lines)
+  host/mara_host/tools/schema/control_graph/__init__.py (25 lines)
+
+  host/mara_host/tools/schema/control_graph/builders.py (202 lines)
+    [Class] PIDConfig
+    [Fn] build_pid_graph(config)
+    [Fn] build_simple_pid_graph(motor_id, encoder_id, kp, ki, kd)
+    [Fn] build_cascaded_pid_graph(outer_config, inner_config)
 
   host/mara_host/tools/schema/control_graph/core.py (140 lines)
     [Class] ParamDef
@@ -4178,11 +4737,17 @@ HOST (Python)
 
   host/mara_host/tools/schema/control_graph/sinks/_servo_angle.py (14 lines)
 
+  host/mara_host/tools/schema/control_graph/sinks/_signal_write.py (19 lines)
+
   host/mara_host/tools/schema/control_graph/sources/__init__.py (3 lines)
 
   host/mara_host/tools/schema/control_graph/sources/_constant.py (18 lines)
 
+  host/mara_host/tools/schema/control_graph/sources/_encoder_velocity.py (33 lines)
+
   host/mara_host/tools/schema/control_graph/sources/_imu_axis.py (19 lines)
+
+  host/mara_host/tools/schema/control_graph/sources/_signal_read.py (25 lines)
 
   host/mara_host/tools/schema/control_graph/transforms/__init__.py (3 lines)
 
@@ -4195,6 +4760,8 @@ HOST (Python)
   host/mara_host/tools/schema/control_graph/transforms/_delta_gate.py (20 lines)
 
   host/mara_host/tools/schema/control_graph/transforms/_derivative.py (19 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_error.py (26 lines)
 
   host/mara_host/tools/schema/control_graph/transforms/_hysteresis.py (25 lines)
 
@@ -4219,6 +4786,12 @@ HOST (Python)
   host/mara_host/tools/schema/control_graph/transforms/_recall.py (24 lines)
 
   host/mara_host/tools/schema/control_graph/transforms/_scale.py (19 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_signal_add.py (32 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_signal_recall.py (26 lines)
+
+  host/mara_host/tools/schema/control_graph/transforms/_signal_subtract.py (26 lines)
 
   host/mara_host/tools/schema/control_graph/transforms/_slew_rate.py (21 lines)
 
@@ -4733,7 +5306,7 @@ HOST (Python)
       |-- topics(self)
       `-- last(self, topic)
 
-  host/tests/test_architecture.py (145 lines)
+  host/tests/test_architecture.py (144 lines)
     [Fn] get_imports_from_file(filepath)
     [Fn] get_mara_imports_from_file(filepath)
     [Class] TestPublicAPIBoundary
@@ -4813,6 +5386,53 @@ HOST (Python)
   host/tests/test_client_telemetry_bin_routing.py (51 lines)
     [Fn] _build_sectioned_payload(ts_ms, seq)
 
+  host/tests/test_command_payloads.py (69 lines)
+    [Class] TestSetVelPayload
+      |-- test_required_params(self)
+      |-- test_to_dict(self)
+      `-- test_cmd_attribute(self)
+    [Class] TestDcSetSpeedPayload
+      |-- test_creation(self)
+      `-- test_to_dict(self)
+    [Class] TestDcStopPayload
+      |-- test_creation(self)
+      `-- test_to_dict(self)
+    [Class] TestServoSetAnglePayload
+      |-- test_required_and_optional(self)
+      `-- test_with_duration(self)
+    [Class] TestGpioWritePayload
+      |-- test_creation(self)
+      `-- test_to_dict(self)
+    [Class] TestPayloadUsageWithClient
+      `-- test_payload_can_be_used_with_send(self)
+
+  host/tests/test_command_types.py (178 lines)
+    [Class] TestIdentityMessage
+      |-- test_from_dict_parses_all_fields(self)
+      |-- test_from_dict_applies_defaults(self)
+      |-- test_to_dict_roundtrip(self)
+      `-- test_immutable(self)
+    [Class] TestCommandMessage
+      |-- test_to_dict_includes_kind(self)
+      |-- test_from_dict_extracts_payload(self)
+      `-- test_empty_payload(self)
+    [Class] TestCommandAck
+      |-- test_from_dict_parses_ack(self)
+      |-- test_from_dict_parses_error(self)
+      |-- test_success_property(self)
+      |-- test_to_dict_includes_src(self)
+      `-- test_extra_data_preserved(self)
+    [Class] TestTelemetryMessage
+      |-- test_from_dict_extracts_timestamp(self)
+      |-- test_from_dict_with_short_timestamp_key(self)
+      `-- test_to_dict(self)
+    [Class] TestRawFrame
+      |-- test_creation(self)
+      `-- test_to_dict(self)
+    [Class] TestHelloMessage
+      |-- test_from_dict_extracts_data(self)
+      `-- test_to_dict_includes_type(self)
+
   host/tests/test_connection_monitor.py (49 lines)
     [Fn] _import_connection_monitor()
     [Fn] fake_monotonic()
@@ -4860,7 +5480,7 @@ HOST (Python)
     [Fn] test_robot_control_graph_service_binds_sensor_policy_provider()
     [Fn] test_generated_control_graph_defs_exports_typed_spec_objects()
 
-  host/tests/test_control_graph_schema.py (146 lines)
+  host/tests/test_control_graph_schema.py (295 lines)
     [Fn] test_normalize_graph_config_applies_defaults()
     [Fn] test_normalize_graph_model_returns_typed_objects()
     [Fn] test_normalize_graph_config_accepts_typed_objects_as_compat_input()
@@ -4869,6 +5489,13 @@ HOST (Python)
     [Fn] test_graph_json_schema_has_slot_shape()
     [Fn] test_normalize_graph_config_accepts_stateful_generic_transforms()
     [Fn] test_normalize_graph_config_rejects_negative_slew_rate()
+    [Fn] test_normalize_graph_config_accepts_signal_read_source()
+    [Fn] test_normalize_graph_config_accepts_signal_write_sink()
+    [Fn] test_normalize_graph_config_accepts_signal_transforms()
+    [Fn] test_normalize_graph_config_signal_add_with_scale()
+    [Fn] test_parallel_slots_via_signals()
+    [Fn] test_build_simple_pid_graph()
+    [Fn] test_build_pid_graph_with_config()
 
   host/tests/test_control_graph_service.py (202 lines)
     [Class] _PolicyFacade
@@ -4954,10 +5581,28 @@ HOST (Python)
     [Class] TestMainWindowPanels
       `-- test_panel_definitions(self)
 
-  host/tests/test_hil_churn.py (99 lines)
+  host/tests/test_hil_churn.py (98 lines)
     [Fn] _get_mcu_port(request)
     [Fn] _get_churn_cycles(request)
     [Fn] _on_state(evt)
+
+  host/tests/test_hil_long_soak.py (381 lines)
+    [Fn] pytest_addoption(parser)
+    [Fn] _get_mcu_port(request)
+    [Fn] _get_float_opt(request, cli_name, env_name, default)
+    [Fn] _get_int_opt(request, cli_name, env_name, default)
+    [Fn] _get_log_dir(request)
+    [Fn] _want_event_dump(request)
+    [Fn] _ensure_dir(p)
+    [Fn] _now_ts()
+    [Fn] _safe_json(obj)
+    [Fn] _attach_bus_dump(client, filepath, tag)
+    [Fn] _write(topic, payload)
+    [Fn] close()
+    [Fn] _dump_snapshot(client, filepath, reason, recent, extra)
+    [Fn] _log_cmd(entry)
+    [Fn] _on_lost(_evt)
+    [Fn] _pending_size()
 
   host/tests/test_hil_mini_soak.py (308 lines)
     [Fn] pytest_addoption(parser)
@@ -5108,6 +5753,27 @@ HOST (Python)
     [Fn] test_connection_config_defaults_to_more_tolerant_handshake_budget()
     [Class] _DummyClient
       `-- __init__(self, transport)
+
+  host/tests/test_persistence_types.py (155 lines)
+    [Class] TestCalibrationRecord
+      |-- test_from_dict(self)
+      |-- test_to_dict_roundtrip(self)
+      `-- test_immutable(self)
+    [Class] TestDiagnosticRecord
+      |-- test_from_dict(self)
+      `-- test_to_dict(self)
+    [Class] TestControlGraphPayload
+      |-- test_from_dict(self)
+      `-- test_to_dict_includes_kind(self)
+    [Class] TestCalibrationData
+      |-- test_from_empty_dict(self)
+      |-- test_from_dict_with_records(self)
+      |-- test_set_and_get(self)
+      `-- test_to_dict(self)
+    [Class] TestDiagnosticData
+      |-- test_from_empty_dict(self)
+      |-- test_append(self)
+      `-- test_to_dict(self)
 
   host/tests/test_pin_service.py (249 lines)
     [Class] TestPinClassification
@@ -5302,6 +5968,34 @@ HOST (Python)
   host/tests/test_service_ack_payloads.py (140 lines)
     [Class] FakeClient
       `-- __init__(self)
+
+  host/tests/test_service_types.py (150 lines)
+    [Class] TestGpioResponses
+      |-- test_read_response_from_dict(self)
+      |-- test_write_response_from_dict(self)
+      `-- test_register_response_from_dict(self)
+    [Class] TestEncoderResponses
+      |-- test_read_response_from_dict(self)
+      `-- test_attach_response_from_dict(self)
+    [Class] TestServoResponses
+      |-- test_attach_response_from_dict(self)
+      `-- test_set_angle_response_from_dict(self)
+    [Class] TestMotorResponses
+      |-- test_set_speed_response_from_dict(self)
+      `-- test_attach_response_from_dict(self)
+    [Class] TestImuResponse
+      |-- test_from_dict_full(self)
+      `-- test_from_dict_short_names(self)
+    [Class] TestRobotStateResponse
+      |-- test_armed_state(self)
+      |-- test_active_state(self)
+      `-- test_estopped_state(self)
+    [Class] TestControlGraphResponses
+      |-- test_slot_status_from_dict(self)
+      `-- test_status_from_dict(self)
+    [Class] TestUsageWithServiceResult
+      |-- test_parse_response_from_service_data(self)
+      `-- test_immutable_response(self)
 
   host/tests/test_session_replay.py (19 lines)
     [Fn] _import_replay()
@@ -5777,7 +6471,7 @@ FIRMWARE/MCU (C++)
     [Struct] ImuGyroMsg
     [Struct] StatusMsg
 
-  firmware/mcu/include/config/CommandDefs.h (295 lines)
+  firmware/mcu/include/config/CommandDefs.h (322 lines)
     [Fn] cmdTypeFromString(const std::string& s)
     [Fn] cmdTypeToString(CmdType c)
 
@@ -5814,7 +6508,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/config/WifiSecretsTemplate.h (3 lines)
 
-  firmware/mcu/include/control/ControlGraphRuntime.h (807 lines)
+  firmware/mcu/include/control/ControlGraphRuntime.h (949 lines)
     [Struct] ControlGraphSlotSummary
     [Class] ControlGraphRuntime
     [Struct] TransformRuntime
@@ -5824,7 +6518,7 @@ FIRMWARE/MCU (C++)
     [Fn] restore(const char*& error)
     [Fn] clear()
     [Fn] setEnabled(bool enable)
-    [Fn] step(uint32_t now_ms, const ModeManager* mode, GpioManager* gpio, ServoManager* servo, ImuManager* imu)
+    [Fn] step(uint32_t now_ms, const ModeManager* mode, GpioManager* gpio, ServoManager* servo, ImuManager* imu, EncoderManager* encoder = nullptr, SignalBus* signals = nullptr)
     [Fn] present()
     [Fn] enabled()
     [Fn] schemaVersion()
@@ -5844,9 +6538,9 @@ FIRMWARE/MCU (C++)
     [Fn] computeRollDeg_(const ImuManager::Sample& s)
     [Fn] parseSink_(JsonObjectConst sink, SinkRuntime& out, const char*& error)
     [Fn] parseSlot_(JsonObjectConst source, JsonArrayConst transforms, JsonVariantConst sinkVariant, SlotRuntime& out, const char*& error)
-    [Fn] readSource_(const SlotRuntime& slot, ImuManager* imu, float& value)
-    [Fn] applyTransforms_(SlotRuntime& slot, float value, uint32_t now_ms, bool& should_emit)
-    [Fn] writeSink_(SlotRuntime& slot, GpioManager* gpio, ServoManager* servo, float value)
+    [Fn] readSource_(SlotRuntime& slot, ImuManager* imu, EncoderManager* encoder, SignalBus* signals, uint32_t now_ms, float& value)
+    [Fn] applyTransforms_(SlotRuntime& slot, float value, uint32_t now_ms, SignalBus* signals, bool& should_emit)
+    [Fn] writeSink_(SlotRuntime& slot, GpioManager* gpio, ServoManager* servo, SignalBus* signals, float value)
 
   firmware/mcu/include/control/ControlKernel.h (182 lines)
     [Class] IController
@@ -6844,7 +7538,7 @@ FIRMWARE/MCU (C++)
     [Fn] loop()
     [Fn] sendBytes(const uint8_t*, size_t)
 
-  firmware/mcu/include/transport/CanTransport.h (99 lines)
+  firmware/mcu/include/transport/CanTransport.h (105 lines)
     [Class] CanTransport
     [Struct] ProtoReassembly
     [Class] CanTransport
@@ -7023,7 +7717,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/core/Runtime.cpp (168 lines)
 
-  firmware/mcu/src/core/ServiceStorage.cpp (183 lines)
+  firmware/mcu/src/core/ServiceStorage.cpp (189 lines)
 
   firmware/mcu/src/hal/drivers/Vl53l0x.cpp (370 lines)
 
@@ -7153,10 +7847,9 @@ FIRMWARE/MCU (C++)
     [Class] SetupWifiModule
     [Fn] getSetupWifiModule()
 
-  firmware/mcu/src/transport/CanTransport.cpp (224 lines)
+  firmware/mcu/src/transport/CanTransport.cpp (230 lines)
 
-  firmware/mcu/src/transport/MqttTransport.cpp (232 lines)
-    [Fn] dumpHexPrefix(const uint8_t* data, unsigned len, unsigned maxBytes = 16)
+  firmware/mcu/src/transport/MqttTransport.cpp (224 lines)
     [Fn] t(topic)
 
   firmware/mcu/src/transport/TransportRegistry.cpp (70 lines)
@@ -7775,22 +8468,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     567
+  Python Files:     595
   C++ Files:        289
-  Total Files:      856
+  Total Files:      884
 
 DEFINITIONS
-  Classes:          981
+  Classes:          1151
   Structs:          168
-  Functions:        2133
-  Methods:          2724
+  Functions:        2183
+  Methods:          3141
 
 LINES OF CODE
-  Python:           70,595
-  C++:              24,470
-  Total Code:       95,065
-  Blank Lines:      26,097
-  Comment Lines:    26,200
-  Total Lines:      147,362
+  Python:           77,313
+  C++:              24,649
+  Total Code:       101,962
+  Blank Lines:      27,703
+  Comment Lines:    27,099
+  Total Lines:      156,764
 
 ================================================================================

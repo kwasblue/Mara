@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Optional
 import importlib
 
 
@@ -119,7 +119,6 @@ class CodeGeneratorService:
     def __init__(self):
         """Initialize code generator service."""
         self._tools_dir = Path(__file__).parent.parent.parent / "tools"
-        self._progress_callback: Optional[Callable[[GeneratorType, str], None]] = None
 
         # Ensure tools dir is in path
         if str(self._tools_dir) not in sys.path:
@@ -193,8 +192,6 @@ class CodeGeneratorService:
                 error=f"Unknown generator type: {generator_type}"
             )
 
-        self._notify_progress(generator_type, f"Running {module_name}...")
-
         try:
             # Import and run the generator
             module = importlib.import_module(module_name)
@@ -243,18 +240,6 @@ class CodeGeneratorService:
     def get_schema_path(self) -> Path:
         """Get path to the platform schema package (source of truth)."""
         return self._tools_dir / "schema"
-
-    def set_progress_callback(
-        self,
-        callback: Callable[[GeneratorType, str], None]
-    ) -> None:
-        """Set callback for progress updates."""
-        self._progress_callback = callback
-
-    def _notify_progress(self, gen_type: GeneratorType, message: str) -> None:
-        """Notify progress callback if set."""
-        if self._progress_callback:
-            self._progress_callback(gen_type, message)
 
     @staticmethod
     def get_available_generators() -> list[GeneratorType]:

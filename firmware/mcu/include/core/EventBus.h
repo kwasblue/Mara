@@ -34,6 +34,7 @@ public:
     struct Subscription {
         Handler   handler = nullptr;
         EventMask mask    = ALL_EVENTS;  // Which event types to receive
+        bool      active  = true;        // Mark-and-sweep: false = pending removal
     };
 
     struct Stats {
@@ -58,7 +59,34 @@ public:
         if (handlerCount_ < MAX_HANDLERS && h != nullptr) {
             subs_[handlerCount_].handler = h;
             subs_[handlerCount_].mask = mask;
+            subs_[handlerCount_].active = true;
             ++handlerCount_;
+        }
+    }
+
+    // Unsubscribe a handler from all events
+    // Uses mark-and-sweep: marks inactive, compacts later (safe during dispatch)
+    void unsubscribe(Handler h) {
+        for (uint8_t i = 0; i < handlerCount_; ++i) {
+            if (subs_[i].handler == h) {
+                subs_[i].active = false;
+                needsCompact_ = true;
+            }
+        }
+    }
+
+    // Unsubscribe a handler from a specific event type
+    void unsubscribe(Handler h, EventType type) {
+        unsubscribe(h, eventMask(type));
+    }
+
+    // Unsubscribe a handler with specific mask
+    void unsubscribe(Handler h, EventMask mask) {
+        for (uint8_t i = 0; i < handlerCount_; ++i) {
+            if (subs_[i].handler == h && subs_[i].mask == mask) {
+                subs_[i].active = false;
+                needsCompact_ = true;
+            }
         }
     }
 
@@ -127,22 +155,47 @@ private:
         return static_cast<EventMask>(1) << static_cast<uint8_t>(type);
     }
 
-    // Dispatch event to matching subscribers
+    // Dispatch event to matching subscribers (only active handlers)
     void dispatchEvent(const Event& evt) {
         EventMask evtMask = eventMask(evt.type);
 
         for (uint8_t i = 0; i < handlerCount_; ++i) {
             const Subscription& sub = subs_[i];
-            if (sub.handler && (sub.mask & evtMask)) {
+            if (sub.active && sub.handler && (sub.mask & evtMask)) {
                 sub.handler(evt);
                 ++stats_.delivered;
             }
         }
+
+        // Compact after dispatch if needed (safe: not iterating anymore)
+        if (needsCompact_) {
+            compact();
+        }
+    }
+
+    // Remove inactive subscriptions (called automatically after dispatch)
+    void compact() {
+        uint8_t writeIdx = 0;
+        for (uint8_t readIdx = 0; readIdx < handlerCount_; ++readIdx) {
+            if (subs_[readIdx].active) {
+                if (writeIdx != readIdx) {
+                    subs_[writeIdx] = subs_[readIdx];
+                }
+                ++writeIdx;
+            }
+        }
+        // Clear remaining slots
+        for (uint8_t i = writeIdx; i < handlerCount_; ++i) {
+            subs_[i] = Subscription{};
+        }
+        handlerCount_ = writeIdx;
+        needsCompact_ = false;
     }
 
     // Subscriptions with type filtering
     Subscription subs_[MAX_HANDLERS]{};
     uint8_t      handlerCount_ = 0;
+    bool         needsCompact_ = false;  // Mark-and-sweep: pending cleanup
 
     // Ring buffer queue for ISR-safe publishing
     Event   queue_[QUEUE_SIZE]{};

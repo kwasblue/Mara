@@ -45,24 +45,6 @@ def cmd_shell(args: argparse.Namespace) -> int:
 
 async def _run_interactive_shell(args: argparse.Namespace, log_level: int = logging.INFO, log_dir: str = "logs") -> int:
     """Run the interactive shell."""
-    from mara_host.command.client import MaraClient
-
-    # Create transport
-    if args.transport == "serial":
-        from mara_host.transport.serial_transport import SerialTransport
-        transport = SerialTransport(args.port, baudrate=args.baudrate)
-    elif args.transport == "ble":
-        from mara_host.transport.bluetooth_transport import BluetoothSerialTransport
-        transport = BluetoothSerialTransport.auto(
-            device_name=args.ble_name,
-            baudrate=args.baudrate,
-        )
-    else:
-        from mara_host.transport.tcp_transport import AsyncTcpTransport
-        transport = AsyncTcpTransport(host=args.host, port=args.tcp_port)
-
-    client = MaraClient(transport, connection_timeout_s=6.0, log_level=log_level, log_dir=log_dir)
-
     # Event log
     event_log: list[tuple[str, Any]] = []
     max_log = 100
@@ -80,28 +62,32 @@ async def _run_interactive_shell(args: argparse.Namespace, log_level: int = logg
         if show_events_live[0]:
             console.print(f"  [{style}][{topic.upper()}][/{style}] {data}")
 
-    # Subscribe to events
-    client.bus.subscribe("heartbeat", lambda d: log_event("heartbeat", d))  # Silent by default
-    client.bus.subscribe("pong", lambda d: handle_event("pong", d, "green"))
-    client.bus.subscribe("hello", lambda d: handle_event("hello", d, "green"))
-    client.bus.subscribe("json", lambda d: handle_event("json", d, "cyan"))
-    client.bus.subscribe("telemetry", lambda d: log_event("telemetry", d))  # Too noisy for live
-    client.bus.subscribe("error", lambda d: handle_event("error", d, "red"))
+    def setup_event_handlers(client) -> None:
+        """Subscribe to events on the client."""
+        client.bus.subscribe("heartbeat", lambda d: log_event("heartbeat", d))
+        client.bus.subscribe("pong", lambda d: handle_event("pong", d, "green"))
+        client.bus.subscribe("hello", lambda d: handle_event("hello", d, "green"))
+        client.bus.subscribe("json", lambda d: handle_event("json", d, "cyan"))
+        client.bus.subscribe("telemetry", lambda d: log_event("telemetry", d))
+        client.bus.subscribe("error", lambda d: handle_event("error", d, "red"))
 
-    try:
-        await client.start()
-        print_success("Connected to robot")
-    except Exception as e:
-        print_error(f"Connection failed: {e}")
-        return 1
+    # Shell with connection factory
+    shell = InteractiveShell(
+        event_log=event_log,
+        default_args=args,
+        log_level=log_level,
+        log_dir=log_dir,
+        setup_event_handlers=setup_event_handlers,
+    )
 
-    # Shell loop
-    shell = InteractiveShell(client, event_log)
+    # Try to connect with default args, but don't fail if we can't
+    await shell.try_connect()
 
     try:
         while True:
             try:
-                cmd = Prompt.ask("[green]mara>[/green]")
+                prompt = "[green]mara>[/green]" if shell.connected else "[yellow]mara (disconnected)>[/yellow]"
+                cmd = Prompt.ask(prompt)
             except (KeyboardInterrupt, EOFError):
                 console.print()
                 break
@@ -114,10 +100,7 @@ async def _run_interactive_shell(args: argparse.Namespace, log_level: int = logg
                 break
 
     finally:
-        await client.stop()
-        # Explicitly close transport to release serial port
-        if hasattr(transport, 'stop'):
-            transport.stop()
+        await shell.cleanup()
         print_info("Disconnected")
 
     return 0
@@ -126,13 +109,32 @@ async def _run_interactive_shell(args: argparse.Namespace, log_level: int = logg
 class InteractiveShell:
     """Interactive command shell for robot control."""
 
-    def __init__(self, client, event_log: list):
-        self.client = client
+    def __init__(
+        self,
+        event_log: list,
+        default_args: argparse.Namespace,
+        log_level: int,
+        log_dir: str,
+        setup_event_handlers,
+    ):
         self.event_log = event_log
+        self.default_args = default_args
+        self.log_level = log_level
+        self.log_dir = log_dir
+        self.setup_event_handlers = setup_event_handlers
+
+        # Current connection state
+        self.client = None
+        self.transport = None
+        self.connected = False
+        self.current_connection_info = ""
+
         self.commands = {
             "help": (self.cmd_help, "Show available commands"),
             "quit": (self.cmd_quit, "Exit the shell"),
             "exit": (self.cmd_quit, "Exit the shell"),
+            "connect": (self.cmd_connect, "Connect to robot (connect [serial|tcp|ble] ...)"),
+            "disconnect": (self.cmd_disconnect, "Disconnect from robot"),
             "ping": (self.cmd_ping, "Send ping to robot"),
             "status": (self.cmd_status, "Show connection status"),
             "events": (self.cmd_events, "Show recent events"),
@@ -141,8 +143,11 @@ class InteractiveShell:
             # Mode commands
             "arm": (self.cmd_arm, "Arm the robot"),
             "disarm": (self.cmd_disarm, "Disarm the robot"),
+            "activate": (self.cmd_active, "Set mode to ACTIVE"),
+            "deactivate": (self.cmd_deactivate, "Set mode to IDLE"),
             "active": (self.cmd_active, "Set mode to ACTIVE"),
-            "idle": (self.cmd_idle, "Set mode to IDLE"),
+            "idle": (self.cmd_deactivate, "Set mode to IDLE"),
+            "estop": (self.cmd_estop, "Emergency stop"),
 
             # LED commands
             "led": (self.cmd_led, "Control LED: led on/off/blink"),
@@ -151,19 +156,126 @@ class InteractiveShell:
             "servo": (self.cmd_servo, "Control servo: servo <id> <angle> or servo attach <id> <pin>"),
 
             # Motor commands
-            "motor": (self.cmd_motor, "Control motor: motor <id> <speed>"),
+            "motor": (self.cmd_motor, "Control DC motor: motor <id> <speed>"),
+            "dc": (self.cmd_dc, "DC motor control: dc set/stop/gains ..."),
+
+            # Stepper motor commands
+            "stepper": (self.cmd_stepper, "Stepper motor: stepper move/stop/enable/home ..."),
 
             # GPIO commands
-            "gpio": (self.cmd_gpio, "Control GPIO: gpio <pin> high/low/read"),
+            "gpio": (self.cmd_gpio, "Control GPIO: gpio <channel> high/low/read"),
+            "pwm": (self.cmd_pwm, "PWM control: pwm <channel> <duty> [freq]"),
+
+            # Sensor commands
+            "encoder": (self.cmd_encoder, "Encoder: encoder attach/read/reset/detach ..."),
+            "imu": (self.cmd_imu, "IMU: imu read/calibrate/bias ..."),
+            "ultrasonic": (self.cmd_ultrasonic, "Ultrasonic: ultrasonic attach/read/detach ..."),
+
+            # Camera commands
+            "cam": (self.cmd_cam, "Camera: cam capture/stream/preset ..."),
+
+            # Telemetry commands
+            "telem": (self.cmd_telem, "Telemetry: telem rate/interval ..."),
+
+            # WiFi commands
+            "wifi": (self.cmd_wifi, "WiFi: wifi scan/join/disconnect/status"),
+
+            # Control graph commands
+            "ctrl": (self.cmd_ctrl, "Control graph: ctrl status/enable/disable/clear ..."),
+
+            # Observer commands
+            "observer": (self.cmd_observer, "Observer: observer config/enable/disable/status ..."),
 
             # Info commands
             "info": (self.cmd_info, "Request robot info"),
             "version": (self.cmd_version, "Show host version"),
             "identity": (self.cmd_identity, "Get MCU build identity and features"),
+            "state": (self.cmd_state, "Get robot state"),
+            "rates": (self.cmd_rates, "Get loop rates"),
 
-            # Raw command
+            # Generic command interface
+            "send": (self.cmd_send, "Send any command: send CMD_NAME {json_payload}"),
+            "commands": (self.cmd_commands, "List all available commands"),
             "raw": (self.cmd_raw, "Send raw JSON command"),
         }
+
+    def _require_connection(self) -> bool:
+        """Check if connected, print error if not."""
+        if not self.connected:
+            print_error("Not connected. Use 'connect' first.")
+            return False
+        return True
+
+    def _create_transport(self, transport_type: str, **kwargs):
+        """Create a transport based on type and parameters."""
+        if transport_type == "serial":
+            from mara_host.transport.serial_transport import SerialTransport
+            port = kwargs.get("port", self.default_args.port)
+            baudrate = kwargs.get("baudrate", self.default_args.baudrate)
+            return SerialTransport(port, baudrate=baudrate), f"serial:{port}"
+        elif transport_type == "ble":
+            from mara_host.transport.bluetooth_transport import BluetoothSerialTransport
+            device_name = kwargs.get("device_name", self.default_args.ble_name)
+            baudrate = kwargs.get("baudrate", self.default_args.baudrate)
+            return BluetoothSerialTransport.auto(device_name=device_name, baudrate=baudrate), f"ble:{device_name}"
+        else:  # tcp
+            from mara_host.transport.tcp_transport import AsyncTcpTransport
+            host = kwargs.get("host", self.default_args.host)
+            port = kwargs.get("port", self.default_args.tcp_port)
+            return AsyncTcpTransport(host=host, port=port), f"tcp:{host}:{port}"
+
+    def _create_client(self, transport):
+        """Create a client with the given transport."""
+        from mara_host.command.client import MaraClient
+        client = MaraClient(
+            transport,
+            connection_timeout_s=6.0,
+            log_level=self.log_level,
+            log_dir=self.log_dir,
+        )
+        self.setup_event_handlers(client)
+        return client
+
+    async def try_connect(self, transport_type: str = None, **kwargs) -> bool:
+        """Try to connect with given or default parameters."""
+        if self.connected:
+            print_info("Already connected. Use 'disconnect' first.")
+            return False
+
+        # Use default transport type if not specified
+        if transport_type is None:
+            transport_type = self.default_args.transport
+
+        try:
+            self.transport, self.current_connection_info = self._create_transport(transport_type, **kwargs)
+            self.client = self._create_client(self.transport)
+            await self.client.start()
+            self.connected = True
+            print_success(f"Connected to robot ({self.current_connection_info})")
+            return True
+        except Exception as e:
+            self.client = None
+            self.transport = None
+            self.connected = False
+            print_info(f"Not connected: {e}")
+            print_info("Use 'connect' to connect when device is ready")
+            return False
+
+    async def cleanup(self) -> None:
+        """Clean up resources."""
+        if self.connected and self.client:
+            try:
+                await self.client.stop()
+            except Exception:
+                pass
+        if self.transport and hasattr(self.transport, 'stop'):
+            try:
+                self.transport.stop()
+            except Exception:
+                pass
+        self.client = None
+        self.transport = None
+        self.connected = False
 
     async def execute(self, cmd_line: str) -> Optional[str]:
         """Execute a command line."""
@@ -195,11 +307,16 @@ class InteractiveShell:
 
         # Group commands
         groups = {
-            "General": ["help", "quit", "status", "events", "clear"],
-            "Control": ["arm", "disarm", "active", "idle"],
-            "Hardware": ["led", "servo", "motor", "gpio"],
-            "Info": ["ping", "info", "version", "identity"],
-            "Advanced": ["raw"],
+            "Connection": ["connect", "disconnect", "status"],
+            "General": ["help", "quit", "events", "clear", "commands"],
+            "Safety": ["arm", "disarm", "activate", "deactivate", "estop"],
+            "Actuators": ["led", "servo", "motor", "dc", "stepper", "gpio", "pwm"],
+            "Sensors": ["encoder", "imu", "ultrasonic"],
+            "Camera": ["cam"],
+            "Telemetry": ["telem", "wifi"],
+            "Control": ["ctrl", "observer"],
+            "Info": ["ping", "info", "version", "identity", "state", "rates"],
+            "Advanced": ["send", "raw"],
         }
 
         for group, cmds in groups.items():
@@ -214,8 +331,60 @@ class InteractiveShell:
         """Exit the shell."""
         return "quit"
 
+    async def cmd_connect(self, args: list[str]) -> None:
+        """Connect to robot.
+
+        Usage:
+            connect                    - Connect with default settings
+            connect serial /dev/ttyUSB0 [baudrate]
+            connect tcp host [port]
+            connect ble device_name [baudrate]
+        """
+        if self.connected:
+            print_info(f"Already connected to {self.current_connection_info}")
+            print_info("Use 'disconnect' first to connect to a different device")
+            return
+
+        # Parse connection args
+        if not args:
+            # Use defaults
+            await self.try_connect()
+            return
+
+        transport_type = args[0].lower()
+        if transport_type == "serial":
+            port = args[1] if len(args) > 1 else self.default_args.port
+            baudrate = int(args[2]) if len(args) > 2 else self.default_args.baudrate
+            await self.try_connect("serial", port=port, baudrate=baudrate)
+        elif transport_type == "tcp":
+            host = args[1] if len(args) > 1 else self.default_args.host
+            port = int(args[2]) if len(args) > 2 else self.default_args.tcp_port
+            await self.try_connect("tcp", host=host, port=port)
+        elif transport_type == "ble":
+            device_name = args[1] if len(args) > 1 else self.default_args.ble_name
+            baudrate = int(args[2]) if len(args) > 2 else self.default_args.baudrate
+            await self.try_connect("ble", device_name=device_name, baudrate=baudrate)
+        else:
+            print_error(f"Unknown transport type: {transport_type}")
+            console.print("Usage:")
+            console.print("  connect                         - Connect with default settings")
+            console.print("  connect serial /dev/ttyUSB0     - Serial connection")
+            console.print("  connect tcp 192.168.1.100 3333  - TCP connection")
+            console.print("  connect ble MARA-Robot          - Bluetooth connection")
+
+    async def cmd_disconnect(self, args: list[str]) -> None:
+        """Disconnect from robot."""
+        if not self.connected:
+            print_info("Not connected")
+            return
+
+        await self.cleanup()
+        print_success("Disconnected from robot")
+
     async def cmd_ping(self, args: list[str]) -> None:
         """Send ping."""
+        if not self._require_connection():
+            return
         await self.client.send_ping()
         print_info("Ping sent, awaiting pong...")
 
@@ -223,7 +392,18 @@ class InteractiveShell:
         """Show status."""
         console.print()
         console.print("[bold]Connection Status:[/bold]")
-        console.print(f"  Connected: [green]Yes[/green]")
+        if self.connected:
+            console.print(f"  Connected: [green]Yes[/green]")
+            console.print(f"  Device: [cyan]{self.current_connection_info}[/cyan]")
+        else:
+            console.print(f"  Connected: [red]No[/red]")
+            # Show default connection info
+            if self.default_args.transport == "serial":
+                console.print(f"  Default: [dim]serial:{self.default_args.port}[/dim]")
+            elif self.default_args.transport == "tcp":
+                console.print(f"  Default: [dim]tcp:{self.default_args.host}:{self.default_args.tcp_port}[/dim]")
+            else:
+                console.print(f"  Default: [dim]ble:{self.default_args.ble_name}[/dim]")
         console.print(f"  Events received: [cyan]{len(self.event_log)}[/cyan]")
 
         # Show last heartbeat if any
@@ -259,21 +439,29 @@ class InteractiveShell:
 
     async def cmd_arm(self, args: list[str]) -> None:
         """Arm the robot."""
+        if not self._require_connection():
+            return
         await self.client.cmd_arm()
         print_success("Robot armed")
 
     async def cmd_disarm(self, args: list[str]) -> None:
         """Disarm the robot."""
+        if not self._require_connection():
+            return
         await self.client.cmd_disarm()
         print_success("Robot disarmed")
 
     async def cmd_active(self, args: list[str]) -> None:
         """Set mode to ACTIVE."""
+        if not self._require_connection():
+            return
         await self.client.cmd_set_mode("ACTIVE")
         print_success("Mode set to ACTIVE")
 
     async def cmd_idle(self, args: list[str]) -> None:
         """Set mode to IDLE."""
+        if not self._require_connection():
+            return
         await self.client.cmd_set_mode("IDLE")
         print_success("Mode set to IDLE")
 
@@ -281,6 +469,8 @@ class InteractiveShell:
         """Control LED."""
         if not args:
             console.print("Usage: led on/off/blink")
+            return
+        if not self._require_connection():
             return
 
         action = args[0].lower()
@@ -309,6 +499,8 @@ class InteractiveShell:
             console.print("  servo attach <id> <pin>     Attach servo to GPIO pin")
             console.print("  servo <id> <angle>          Set servo angle (0-180)")
             console.print("  servo detach <id>           Detach servo")
+            return
+        if not self._require_connection():
             return
 
         # Handle subcommands
@@ -350,6 +542,8 @@ class InteractiveShell:
         if len(args) < 2:
             console.print("Usage: motor <id> <speed> (-100 to 100)")
             return
+        if not self._require_connection():
+            return
 
         motor_id = int(args[0])
         speed = float(args[1])
@@ -364,6 +558,8 @@ class InteractiveShell:
         """Control GPIO."""
         if len(args) < 2:
             console.print("Usage: gpio <channel> high/low/read")
+            return
+        if not self._require_connection():
             return
 
         channel = int(args[0])
@@ -383,6 +579,8 @@ class InteractiveShell:
 
     async def cmd_info(self, args: list[str]) -> None:
         """Request robot info."""
+        if not self._require_connection():
+            return
         await self.client.cmd_get_info()
         print_info("Info requested (check events)")
 
@@ -396,6 +594,8 @@ class InteractiveShell:
 
     async def cmd_identity(self, args: list[str]) -> None:
         """Get MCU build identity and features."""
+        if not self._require_connection():
+            return
         import asyncio
 
         console.print()
@@ -452,6 +652,8 @@ class InteractiveShell:
             console.print("Usage: raw <json_command>")
             console.print('Example: raw {"cmd": "ping"}')
             return
+        if not self._require_connection():
+            return
 
         import json
         try:
@@ -461,3 +663,498 @@ class InteractiveShell:
             print_success("Command sent")
         except json.JSONDecodeError as e:
             print_error(f"Invalid JSON: {e}")
+
+    # -------------------------------------------------------------------------
+    # Generic command interface
+    # -------------------------------------------------------------------------
+
+    async def cmd_send(self, args: list[str]) -> None:
+        """Send any command by name with JSON payload."""
+        if not args:
+            console.print("Usage: send CMD_NAME [json_payload]")
+            console.print("Example: send CMD_ENCODER_READ {\"encoder_id\": 0}")
+            console.print("Use 'commands' to list all available commands")
+            return
+        if not self._require_connection():
+            return
+
+        from mara_host.tools.schema import COMMANDS
+        import json
+
+        cmd_name = args[0].upper()
+        if not cmd_name.startswith("CMD_"):
+            cmd_name = "CMD_" + cmd_name
+
+        if cmd_name not in COMMANDS:
+            print_error(f"Unknown command: {cmd_name}")
+            console.print("Use 'commands' to list all available commands")
+            return
+
+        # Parse payload if provided
+        payload = {}
+        if len(args) > 1:
+            try:
+                payload = json.loads(" ".join(args[1:]))
+            except json.JSONDecodeError as e:
+                print_error(f"Invalid JSON payload: {e}")
+                return
+
+        try:
+            ok, err = await self.client.send_reliable(cmd_name, payload)
+            if ok:
+                print_success(f"{cmd_name} sent successfully")
+            else:
+                print_error(f"{cmd_name} failed: {err}")
+        except Exception as e:
+            print_error(f"Error: {e}")
+
+    async def cmd_commands(self, args: list[str]) -> None:
+        """List all available commands."""
+        from mara_host.tools.schema import COMMANDS
+        from collections import defaultdict
+
+        # Group by prefix
+        groups = defaultdict(list)
+        for cmd in sorted(COMMANDS.keys()):
+            parts = cmd.split("_")
+            prefix = parts[1] if len(parts) > 1 else "OTHER"
+            groups[prefix].append(cmd)
+
+        # Filter by search term if provided
+        search = args[0].upper() if args else None
+
+        console.print()
+        console.print(f"[bold]Available Commands ({len(COMMANDS)} total):[/bold]")
+        console.print()
+
+        for prefix in sorted(groups.keys()):
+            cmds = groups[prefix]
+            if search and search not in prefix:
+                cmds = [c for c in cmds if search in c]
+                if not cmds:
+                    continue
+
+            console.print(f"[bold cyan]{prefix}:[/bold cyan]")
+            for cmd in cmds:
+                desc = COMMANDS[cmd].get("description", "")[:50]
+                console.print(f"  [green]{cmd:30}[/green] {desc}")
+            console.print()
+
+    # -------------------------------------------------------------------------
+    # Additional safety commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_deactivate(self, args: list[str]) -> None:
+        """Set mode to IDLE."""
+        if not self._require_connection():
+            return
+        await self.client.send_reliable("CMD_DEACTIVATE", {})
+        print_success("Mode set to IDLE")
+
+    async def cmd_estop(self, args: list[str]) -> None:
+        """Emergency stop."""
+        if not self._require_connection():
+            return
+        await self.client.send_reliable("CMD_ESTOP", {})
+        print_error("EMERGENCY STOP activated!")
+
+    async def cmd_state(self, args: list[str]) -> None:
+        """Get robot state."""
+        if not self._require_connection():
+            return
+        await self.client.send_reliable("CMD_GET_STATE", {})
+        print_info("State requested (check events)")
+
+    async def cmd_rates(self, args: list[str]) -> None:
+        """Get loop rates."""
+        if not self._require_connection():
+            return
+        await self.client.send_reliable("CMD_GET_RATES", {})
+        print_info("Rates requested (check events)")
+
+    # -------------------------------------------------------------------------
+    # DC Motor commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_dc(self, args: list[str]) -> None:
+        """DC motor control."""
+        if not args:
+            console.print("Usage:")
+            console.print("  dc set <id> <speed>      Set motor speed (-1.0 to 1.0)")
+            console.print("  dc stop <id>             Stop motor")
+            console.print("  dc gains <id> <kp> <ki>  Set velocity PID gains")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "set" and len(args) >= 3:
+            motor_id = int(args[1])
+            speed = float(args[2])
+            await self.client.send_reliable("CMD_DC_SET_SPEED", {"motor_id": motor_id, "speed": speed})
+            print_success(f"DC motor {motor_id} speed set to {speed}")
+        elif action == "stop" and len(args) >= 2:
+            motor_id = int(args[1])
+            await self.client.send_reliable("CMD_DC_STOP", {"motor_id": motor_id})
+            print_success(f"DC motor {motor_id} stopped")
+        elif action == "gains" and len(args) >= 4:
+            motor_id = int(args[1])
+            kp = float(args[2])
+            ki = float(args[3])
+            await self.client.send_reliable("CMD_DC_SET_VEL_GAINS", {"motor_id": motor_id, "kp": kp, "ki": ki})
+            print_success(f"DC motor {motor_id} gains set: kp={kp}, ki={ki}")
+        else:
+            print_error(f"Unknown dc action: {args}")
+
+    # -------------------------------------------------------------------------
+    # Stepper Motor commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_stepper(self, args: list[str]) -> None:
+        """Stepper motor control."""
+        if not args:
+            console.print("Usage:")
+            console.print("  stepper move <id> <steps> [speed_rps]  Move relative steps")
+            console.print("  stepper deg <id> <degrees> [speed]     Move relative degrees")
+            console.print("  stepper stop <id>                      Stop motor")
+            console.print("  stepper enable <id> [0/1]              Enable/disable motor")
+            console.print("  stepper home <id> [speed]              Home the motor")
+            console.print("  stepper pos <id>                       Get position")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "move" and len(args) >= 3:
+            stepper_id = int(args[1])
+            steps = int(args[2])
+            speed = float(args[3]) if len(args) > 3 else 1.0
+            await self.client.send_reliable("CMD_STEPPER_MOVE_REL", {"stepper_id": stepper_id, "steps": steps, "speed_rps": speed})
+            print_success(f"Stepper {stepper_id} moving {steps} steps")
+        elif action == "deg" and len(args) >= 3:
+            stepper_id = int(args[1])
+            degrees = float(args[2])
+            speed = float(args[3]) if len(args) > 3 else 1.0
+            await self.client.send_reliable("CMD_STEPPER_MOVE_DEG", {"stepper_id": stepper_id, "degrees": degrees, "speed_rps": speed})
+            print_success(f"Stepper {stepper_id} moving {degrees} degrees")
+        elif action == "stop" and len(args) >= 2:
+            stepper_id = int(args[1])
+            await self.client.send_reliable("CMD_STEPPER_STOP", {"stepper_id": stepper_id})
+            print_success(f"Stepper {stepper_id} stopped")
+        elif action == "enable" and len(args) >= 2:
+            stepper_id = int(args[1])
+            enable = bool(int(args[2])) if len(args) > 2 else True
+            await self.client.send_reliable("CMD_STEPPER_ENABLE", {"stepper_id": stepper_id, "enable": enable})
+            print_success(f"Stepper {stepper_id} {'enabled' if enable else 'disabled'}")
+        elif action == "home" and len(args) >= 2:
+            stepper_id = int(args[1])
+            speed = float(args[2]) if len(args) > 2 else 0.5
+            await self.client.send_reliable("CMD_STEPPER_HOME", {"stepper_id": stepper_id, "speed_rps": speed})
+            print_success(f"Stepper {stepper_id} homing")
+        elif action == "pos" and len(args) >= 2:
+            stepper_id = int(args[1])
+            await self.client.send_reliable("CMD_STEPPER_GET_POSITION", {"stepper_id": stepper_id})
+            print_info(f"Position requested for stepper {stepper_id} (check events)")
+        else:
+            print_error(f"Unknown stepper action: {args}")
+
+    # -------------------------------------------------------------------------
+    # PWM command
+    # -------------------------------------------------------------------------
+
+    async def cmd_pwm(self, args: list[str]) -> None:
+        """PWM control."""
+        if len(args) < 2:
+            console.print("Usage: pwm <channel> <duty> [freq_hz]")
+            console.print("  duty: 0.0 to 1.0")
+            console.print("  freq: frequency in Hz (default: 1000)")
+            return
+        if not self._require_connection():
+            return
+
+        channel = int(args[0])
+        duty = float(args[1])
+        freq = float(args[2]) if len(args) > 2 else 1000.0
+        await self.client.send_reliable("CMD_PWM_SET", {"channel": channel, "duty": duty, "freq_hz": freq})
+        print_success(f"PWM channel {channel} set to {duty*100:.1f}% duty @ {freq}Hz")
+
+    # -------------------------------------------------------------------------
+    # Encoder commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_encoder(self, args: list[str]) -> None:
+        """Encoder commands."""
+        if not args:
+            console.print("Usage:")
+            console.print("  encoder attach <id> <pin_a> <pin_b> [ppr]  Attach encoder")
+            console.print("  encoder read <id>                          Read encoder")
+            console.print("  encoder reset <id>                         Reset count")
+            console.print("  encoder detach <id>                        Detach encoder")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "attach" and len(args) >= 4:
+            encoder_id = int(args[1])
+            pin_a = int(args[2])
+            pin_b = int(args[3])
+            ppr = int(args[4]) if len(args) > 4 else 20
+            await self.client.send_reliable("CMD_ENCODER_ATTACH", {"encoder_id": encoder_id, "pin_a": pin_a, "pin_b": pin_b, "ppr": ppr})
+            print_success(f"Encoder {encoder_id} attached to pins {pin_a}/{pin_b}")
+        elif action == "read" and len(args) >= 2:
+            encoder_id = int(args[1])
+            await self.client.send_reliable("CMD_ENCODER_READ", {"encoder_id": encoder_id})
+            print_info(f"Encoder {encoder_id} read requested (check events)")
+        elif action == "reset" and len(args) >= 2:
+            encoder_id = int(args[1])
+            await self.client.send_reliable("CMD_ENCODER_RESET", {"encoder_id": encoder_id})
+            print_success(f"Encoder {encoder_id} reset")
+        elif action == "detach" and len(args) >= 2:
+            encoder_id = int(args[1])
+            await self.client.send_reliable("CMD_ENCODER_DETACH", {"encoder_id": encoder_id})
+            print_success(f"Encoder {encoder_id} detached")
+        else:
+            print_error(f"Unknown encoder action: {args}")
+
+    # -------------------------------------------------------------------------
+    # IMU commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_imu(self, args: list[str]) -> None:
+        """IMU commands."""
+        if not args:
+            console.print("Usage:")
+            console.print("  imu read                        Read IMU data")
+            console.print("  imu calibrate [samples] [delay] Calibrate IMU")
+            console.print("  imu bias <ax> <ay> <az> <gx> <gy> <gz>  Set bias")
+            console.print("  imu attach <type>               Attach IMU (mpu6050, etc)")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "read":
+            await self.client.send_reliable("CMD_IMU_READ", {})
+            print_info("IMU read requested (check events)")
+        elif action == "calibrate":
+            samples = int(args[1]) if len(args) > 1 else 100
+            delay_ms = int(args[2]) if len(args) > 2 else 10
+            await self.client.send_reliable("CMD_IMU_CALIBRATE", {"samples": samples, "delay_ms": delay_ms})
+            print_info(f"IMU calibration started ({samples} samples)")
+        elif action == "bias" and len(args) >= 7:
+            await self.client.send_reliable("CMD_IMU_SET_BIAS", {
+                "ax": float(args[1]), "ay": float(args[2]), "az": float(args[3]),
+                "gx": float(args[4]), "gy": float(args[5]), "gz": float(args[6]),
+            })
+            print_success("IMU bias set")
+        elif action == "attach" and len(args) >= 2:
+            imu_type = args[1]
+            await self.client.send_reliable("CMD_IMU_ATTACH", {"type": imu_type})
+            print_success(f"IMU {imu_type} attached")
+        else:
+            print_error(f"Unknown imu action: {args}")
+
+    # -------------------------------------------------------------------------
+    # Ultrasonic commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_ultrasonic(self, args: list[str]) -> None:
+        """Ultrasonic sensor commands."""
+        if not args:
+            console.print("Usage:")
+            console.print("  ultrasonic attach <id> <trig> <echo>  Attach sensor")
+            console.print("  ultrasonic read <id>                  Read distance")
+            console.print("  ultrasonic detach <id>                Detach sensor")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "attach" and len(args) >= 4:
+            sensor_id = int(args[1])
+            trig_pin = int(args[2])
+            echo_pin = int(args[3])
+            await self.client.send_reliable("CMD_ULTRASONIC_ATTACH", {"sensor_id": sensor_id, "trig_pin": trig_pin, "echo_pin": echo_pin})
+            print_success(f"Ultrasonic {sensor_id} attached (trig={trig_pin}, echo={echo_pin})")
+        elif action == "read" and len(args) >= 2:
+            sensor_id = int(args[1])
+            await self.client.send_reliable("CMD_ULTRASONIC_READ", {"sensor_id": sensor_id})
+            print_info(f"Ultrasonic {sensor_id} read requested (check events)")
+        elif action == "detach" and len(args) >= 2:
+            sensor_id = int(args[1])
+            await self.client.send_reliable("CMD_ULTRASONIC_DETACH", {"sensor_id": sensor_id})
+            print_success(f"Ultrasonic {sensor_id} detached")
+        else:
+            print_error(f"Unknown ultrasonic action: {args}")
+
+    # -------------------------------------------------------------------------
+    # Camera commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_cam(self, args: list[str]) -> None:
+        """Camera commands."""
+        if not args:
+            console.print("Usage:")
+            console.print("  cam capture                 Capture frame")
+            console.print("  cam stream start/stop       Control streaming")
+            console.print("  cam preset <name>           Apply preset")
+            console.print("  cam flash on/off            Control flash")
+            console.print("  cam resolution <w> <h>      Set resolution")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "capture":
+            await self.client.send_reliable("CMD_CAM_CAPTURE_FRAME", {})
+            print_info("Camera capture requested")
+        elif action == "stream" and len(args) >= 2:
+            if args[1].lower() == "start":
+                await self.client.send_reliable("CMD_CAM_STREAM_START", {})
+                print_success("Camera streaming started")
+            else:
+                await self.client.send_reliable("CMD_CAM_STREAM_STOP", {})
+                print_success("Camera streaming stopped")
+        elif action == "preset" and len(args) >= 2:
+            preset = args[1]
+            await self.client.send_reliable("CMD_CAM_APPLY_PRESET", {"preset": preset})
+            print_success(f"Camera preset '{preset}' applied")
+        elif action == "flash" and len(args) >= 2:
+            enable = args[1].lower() in ("on", "1", "true")
+            await self.client.send_reliable("CMD_CAM_FLASH", {"enable": enable})
+            print_success(f"Camera flash {'on' if enable else 'off'}")
+        elif action == "resolution" and len(args) >= 3:
+            width = int(args[1])
+            height = int(args[2])
+            await self.client.send_reliable("CMD_CAM_SET_RESOLUTION", {"width": width, "height": height})
+            print_success(f"Camera resolution set to {width}x{height}")
+        else:
+            print_error(f"Unknown cam action: {args}")
+
+    # -------------------------------------------------------------------------
+    # Telemetry commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_telem(self, args: list[str]) -> None:
+        """Telemetry commands."""
+        if not args:
+            console.print("Usage:")
+            console.print("  telem rate <hz>        Set telemetry rate")
+            console.print("  telem interval <ms>    Set telemetry interval")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "rate" and len(args) >= 2:
+            rate = int(args[1])
+            await self.client.send_reliable("CMD_TELEM_SET_RATE", {"rate_hz": rate})
+            print_success(f"Telemetry rate set to {rate} Hz")
+        elif action == "interval" and len(args) >= 2:
+            interval = int(args[1])
+            await self.client.send_reliable("CMD_TELEM_SET_INTERVAL", {"interval_ms": interval})
+            print_success(f"Telemetry interval set to {interval} ms")
+        else:
+            print_error(f"Unknown telem action: {args}")
+
+    # -------------------------------------------------------------------------
+    # WiFi commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_wifi(self, args: list[str]) -> None:
+        """WiFi commands."""
+        if not args:
+            console.print("Usage:")
+            console.print("  wifi status            Get WiFi status")
+            console.print("  wifi scan              Scan for networks")
+            console.print("  wifi join <ssid> <pw>  Connect to network")
+            console.print("  wifi disconnect        Disconnect from network")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "status":
+            await self.client.send_reliable("CMD_WIFI_STATUS", {})
+            print_info("WiFi status requested (check events)")
+        elif action == "scan":
+            await self.client.send_reliable("CMD_WIFI_SCAN", {})
+            print_info("WiFi scan started (check events)")
+        elif action == "join" and len(args) >= 3:
+            ssid = args[1]
+            password = args[2]
+            await self.client.send_reliable("CMD_WIFI_JOIN", {"ssid": ssid, "password": password})
+            print_info(f"Connecting to WiFi '{ssid}'...")
+        elif action == "disconnect":
+            await self.client.send_reliable("CMD_WIFI_DISCONNECT", {})
+            print_success("WiFi disconnected")
+        else:
+            print_error(f"Unknown wifi action: {args}")
+
+    # -------------------------------------------------------------------------
+    # Control graph commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_ctrl(self, args: list[str]) -> None:
+        """Control graph commands."""
+        if not args:
+            console.print("Usage:")
+            console.print("  ctrl status            Get control graph status")
+            console.print("  ctrl enable            Enable control graph")
+            console.print("  ctrl disable           Disable control graph")
+            console.print("  ctrl clear             Clear control graph")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "status":
+            await self.client.send_reliable("CMD_CTRL_GRAPH_STATUS", {})
+            print_info("Control graph status requested (check events)")
+        elif action == "enable":
+            await self.client.send_reliable("CMD_CTRL_GRAPH_ENABLE", {})
+            print_success("Control graph enabled")
+        elif action == "disable":
+            await self.client.send_reliable("CMD_CTRL_GRAPH_DISABLE", {})
+            print_success("Control graph disabled")
+        elif action == "clear":
+            await self.client.send_reliable("CMD_CTRL_GRAPH_CLEAR", {})
+            print_success("Control graph cleared")
+        else:
+            print_error(f"Unknown ctrl action: {args}")
+
+    # -------------------------------------------------------------------------
+    # Observer commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_observer(self, args: list[str]) -> None:
+        """Observer commands."""
+        if not args:
+            console.print("Usage:")
+            console.print("  observer status            Get observer status")
+            console.print("  observer enable <id>       Enable observer")
+            console.print("  observer disable <id>      Disable observer")
+            console.print("  observer reset <id>        Reset observer")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+        if action == "status":
+            await self.client.send_reliable("CMD_OBSERVER_STATUS", {})
+            print_info("Observer status requested (check events)")
+        elif action == "enable" and len(args) >= 2:
+            observer_id = int(args[1])
+            await self.client.send_reliable("CMD_OBSERVER_ENABLE", {"observer_id": observer_id, "enable": True})
+            print_success(f"Observer {observer_id} enabled")
+        elif action == "disable" and len(args) >= 2:
+            observer_id = int(args[1])
+            await self.client.send_reliable("CMD_OBSERVER_ENABLE", {"observer_id": observer_id, "enable": False})
+            print_success(f"Observer {observer_id} disabled")
+        elif action == "reset" and len(args) >= 2:
+            observer_id = int(args[1])
+            await self.client.send_reliable("CMD_OBSERVER_RESET", {"observer_id": observer_id})
+            print_success(f"Observer {observer_id} reset")
+        else:
+            print_error(f"Unknown observer action: {args}")

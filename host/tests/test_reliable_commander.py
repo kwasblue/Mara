@@ -28,13 +28,16 @@ async def test_reliable_commander_ack_resolves():
         task = asyncio.create_task(rc.send("CMD_SET_VEL", {"vx": 1.0}, wait_for_ack=True))
 
         # let rc.send run far enough to register pending
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.02)
         assert rc.pending_count() == 1
 
-        # Ack it
+        # Ack it (queued for async processing)
         rc.on_ack(1, True, None)
 
-        ok, err = await task
+        # Give time for ACK to be processed from queue
+        await asyncio.sleep(0.05)
+
+        ok, err = await asyncio.wait_for(task, timeout=1.0)
         assert ok is True
         assert err is None
         assert rc.pending_count() == 0
@@ -94,13 +97,14 @@ async def test_reliable_commander_clear_pending():
 
     try:
         task = asyncio.create_task(rc.send("CMD_TEST", {}, wait_for_ack=True))
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.02)
 
         assert rc.pending_count() == 1
 
-        rc.clear_pending()
+        # Must await async clear_pending
+        await rc.clear_pending()
 
-        ok, err = await task
+        ok, err = await asyncio.wait_for(task, timeout=1.0)
         assert ok is False
         assert err == "CLEARED"
         assert rc.pending_count() == 0

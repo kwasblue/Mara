@@ -56,8 +56,8 @@ class TestCommandsDomainFiles:
     def test_commands_has_expected_count(self):
         """COMMANDS should have expected number of commands."""
         from mara_host.tools.schema import COMMANDS
-        # Total should be 94 commands across all domains (including WiFi and MCU diagnostics commands)
-        assert len(COMMANDS) == 94, f"Expected 94 commands, got {len(COMMANDS)}"
+        # Total should be 103 commands across all domains (including WiFi and MCU diagnostics commands)
+        assert len(COMMANDS) == 106, f"Expected 106 commands, got {len(COMMANDS)}"
 
     def test_individual_domain_exports(self):
         """Individual domain exports should be available."""
@@ -84,12 +84,12 @@ class TestCommandsDomainFiles:
         assert len(CONTROL_COMMAND_OBJECTS) == 19, f"CONTROL_OBJECTS: expected 19, got {len(CONTROL_COMMAND_OBJECTS)}"
         assert len(MOTION_COMMANDS) == 2, f"MOTION: expected 2, got {len(MOTION_COMMANDS)}"
         assert len(GPIO_COMMANDS) == 7, f"GPIO: expected 7, got {len(GPIO_COMMANDS)}"
-        assert len(SERVO_COMMANDS) == 4, f"SERVO: expected 4, got {len(SERVO_COMMANDS)}"
-        assert len(STEPPER_COMMANDS) == 3, f"STEPPER: expected 3, got {len(STEPPER_COMMANDS)}"
-        assert len(SENSOR_COMMANDS) == 8, f"SENSOR: expected 8, got {len(SENSOR_COMMANDS)}"
+        assert len(SERVO_COMMANDS) == 5, f"SERVO: expected 5, got {len(SERVO_COMMANDS)}"
+        assert len(STEPPER_COMMANDS) == 7, f"STEPPER: expected 7, got {len(STEPPER_COMMANDS)}"
+        assert len(SENSOR_COMMANDS) == 12, f"SENSOR: expected 12, got {len(SENSOR_COMMANDS)}"
         assert len(DC_MOTOR_COMMANDS) == 5, f"DC_MOTOR: expected 5, got {len(DC_MOTOR_COMMANDS)}"
         assert len(OBSERVER_COMMANDS) == 6, f"OBSERVER: expected 6, got {len(OBSERVER_COMMANDS)}"
-        assert len(TELEMETRY_COMMANDS) == 2, f"TELEMETRY: expected 2, got {len(TELEMETRY_COMMANDS)}"
+        assert len(TELEMETRY_COMMANDS) == 5, f"TELEMETRY: expected 5, got {len(TELEMETRY_COMMANDS)}"
         assert len(CAMERA_COMMANDS) == 20, f"CAMERA: expected 20, got {len(CAMERA_COMMANDS)}"
         assert len(WIFI_COMMANDS) == 4, f"WIFI: expected 4, got {len(WIFI_COMMANDS)}"
 

@@ -279,13 +279,17 @@ class ReplayService:
 
                 try:
                     data = json.loads(line)
+                    # Validate JSON is a dict before accessing .get()
+                    if not isinstance(data, dict):
+                        continue
                     yield RecordedEvent(
                         timestamp=data.get("ts", 0) / 1e9,  # Convert ns to s
                         event_type=data.get("event", "unknown"),
                         topic=data.get("topic"),
                         data=data.get("data", data),
                     )
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, TypeError, KeyError):
+                    # Skip malformed JSON lines
                     continue
 
     async def replay(

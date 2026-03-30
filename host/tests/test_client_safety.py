@@ -120,53 +120,70 @@ class TestReliableCommander:
     @pytest.mark.asyncio
     async def test_send_and_ack_flow(self, mock_send):
         commander = ReliableCommander(send_func=mock_send, timeout_s=1.0, max_retries=3)
-        
-        # Send command in background
-        task = asyncio.create_task(commander.send("TEST", {}, wait_for_ack=True))
-        
-        # Give it time to register
-        await asyncio.sleep(0.02)
-        
-        # Should have 1 pending
-        assert commander.pending_count() == 1
-        
-        # Ack it
-        commander.on_ack(1, ok=True, error=None)
-        
-        # Should complete
-        ok, err = await task
-        assert ok is True
-        assert err is None
-        assert commander.pending_count() == 0
+        # Must start update loop for ACK processing (queue-based since Phase 5)
+        await commander.start_update_loop(interval_s=0.01)
+
+        try:
+            # Send command in background
+            task = asyncio.create_task(commander.send("TEST", {}, wait_for_ack=True))
+
+            # Give it time to register
+            await asyncio.sleep(0.02)
+
+            # Should have 1 pending
+            assert commander.pending_count() == 1
+
+            # Ack it (queued for async processing)
+            commander.on_ack(1, ok=True, error=None)
+
+            # Give time for ACK to be processed from queue
+            await asyncio.sleep(0.05)
+
+            # Should complete
+            ok, err = await asyncio.wait_for(task, timeout=1.0)
+            assert ok is True
+            assert err is None
+            assert commander.pending_count() == 0
+        finally:
+            await commander.stop_update_loop()
     
     @pytest.mark.asyncio
     async def test_ack_with_error(self, mock_send):
         commander = ReliableCommander(send_func=mock_send, timeout_s=1.0, max_retries=3)
-        
-        task = asyncio.create_task(commander.send("TEST", {}, wait_for_ack=True))
-        await asyncio.sleep(0.02)
-        
-        commander.on_ack(1, ok=False, error="not_armed")
-        
-        ok, err = await task
-        assert ok is False
-        assert err == "not_armed"
+        # Must start update loop for ACK processing (queue-based since Phase 5)
+        await commander.start_update_loop(interval_s=0.01)
+
+        try:
+            task = asyncio.create_task(commander.send("TEST", {}, wait_for_ack=True))
+            await asyncio.sleep(0.02)
+
+            commander.on_ack(1, ok=False, error="not_armed")
+
+            # Give time for ACK to be processed from queue
+            await asyncio.sleep(0.05)
+
+            ok, err = await asyncio.wait_for(task, timeout=1.0)
+            assert ok is False
+            assert err == "not_armed"
+        finally:
+            await commander.stop_update_loop()
     
     @pytest.mark.asyncio
     async def test_clear_pending_resolves_all(self, mock_send):
         commander = ReliableCommander(send_func=mock_send, timeout_s=10.0, max_retries=3)
-        
+
         task1 = asyncio.create_task(commander.send("TEST1", {}, wait_for_ack=True))
         task2 = asyncio.create_task(commander.send("TEST2", {}, wait_for_ack=True))
         await asyncio.sleep(0.02)
-        
+
         assert commander.pending_count() == 2
-        
-        commander.clear_pending()
-        
-        ok1, err1 = await task1
-        ok2, err2 = await task2
-        
+
+        # Use async clear_pending (not sync version)
+        await commander.clear_pending()
+
+        ok1, err1 = await asyncio.wait_for(task1, timeout=1.0)
+        ok2, err2 = await asyncio.wait_for(task2, timeout=1.0)
+
         assert ok1 is False
         assert err1 == "CLEARED"
         assert ok2 is False
@@ -194,35 +211,36 @@ class TestReliableCommander:
 # -----------------------------------------------------------------------------
 
 class TestDisconnectClearsPending:
-    
+
     @pytest.mark.asyncio
     async def test_disconnect_clears_commander(self):
         seq = [0]
         async def send_func(cmd_type, payload, callback=None):
             seq[0] += 1
             return seq[0]
-        
+
         cleared = []
-        
+
         def on_disconnect():
-            commander.clear_pending()
+            # Use sync version since this callback is called from sync context
+            commander.clear_pending_sync()
             cleared.append(True)
-        
+
         monitor = ConnectionMonitor(timeout_s=0.05, on_disconnect=on_disconnect)
         commander = ReliableCommander(send_func=send_func, timeout_s=10.0, max_retries=3)
-        
+
         monitor.on_message_received()
-        
+
         task = asyncio.create_task(commander.send("TEST", {}, wait_for_ack=True))
         await asyncio.sleep(0.02)
         assert commander.pending_count() == 1
-        
+
         # Disconnect
         await asyncio.sleep(0.1)
         monitor.check()
-        
+
         assert len(cleared) == 1
-        
-        ok, err = await task
+
+        ok, err = await asyncio.wait_for(task, timeout=1.0)
         assert ok is False
         assert err == "CLEARED"

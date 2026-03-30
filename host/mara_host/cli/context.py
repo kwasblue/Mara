@@ -86,7 +86,6 @@ class CLIContext:
         from mara_host.cli.cli_config import (
             get_serial_port,
             get_baudrate,
-            get_tcp_host,
             get_tcp_port,
             get_robot_config_path,
         )

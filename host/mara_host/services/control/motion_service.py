@@ -5,6 +5,7 @@ Motion control service for velocity and trajectory commands.
 Provides a high-level interface for robot motion control.
 """
 
+import asyncio
 import time
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
@@ -60,8 +61,13 @@ class MotionService:
         self._velocity_limit_angular = 2.0  # rad/s
 
         # Rate limiting for GUI/joystick use
+        # Pre-compute interval to avoid division in hot path
         self._rate_limit_hz = 50.0
+        self._min_interval_s = 1.0 / self._rate_limit_hz
         self._last_send_time = 0.0
+
+        # Re-entrancy protection: serialize concurrent velocity commands
+        self._command_lock = asyncio.Lock()
 
     @property
     def last_velocity(self) -> Velocity:
@@ -97,6 +103,8 @@ class MotionService:
     def rate_limit_hz(self, value: float) -> None:
         """Set command rate limit (Hz)."""
         self._rate_limit_hz = max(1.0, abs(value))
+        # Pre-compute interval to avoid division in hot path
+        self._min_interval_s = 1.0 / self._rate_limit_hz
 
     def set_limits(
         self,
@@ -121,6 +129,7 @@ class MotionService:
             self._velocity_limit_angular = abs(angular)
         if rate_hz is not None:
             self._rate_limit_hz = max(1.0, abs(rate_hz))
+            self._min_interval_s = 1.0 / self._rate_limit_hz
 
     def _check_rate_limit(self) -> bool:
         """
@@ -128,10 +137,11 @@ class MotionService:
 
         Returns:
             True if enough time has passed since last send
+
+        Optimized: Uses pre-computed interval and time.monotonic() for lower overhead.
         """
-        now = time.time()
-        min_interval = 1.0 / self._rate_limit_hz
-        if now - self._last_send_time >= min_interval:
+        now = time.monotonic()
+        if now - self._last_send_time >= self._min_interval_s:
             self._last_send_time = now
             return True
         return False
@@ -160,7 +170,7 @@ class MotionService:
         Returns:
             True if command was sent, False if skipped due to rate limit
         """
-        # Check rate limit if requested
+        # Check rate limit if requested (outside lock for fast rejection)
         if respect_rate_limit and not self._check_rate_limit():
             return False
 
@@ -170,15 +180,17 @@ class MotionService:
                 -self._velocity_limit_angular, min(self._velocity_limit_angular, omega)
             )
 
-        # All commands flow through commander (binary or JSON)
-        await self.client.send_stream(
-            "CMD_SET_VEL",
-            {"vx": vx, "omega": omega},
-            request_ack=False,
-            binary=binary,
-        )
+        # Serialize concurrent velocity commands to prevent interleaving
+        async with self._command_lock:
+            # All commands flow through commander (binary or JSON)
+            await self.client.send_stream(
+                "CMD_SET_VEL",
+                {"vx": vx, "omega": omega},
+                request_ack=False,
+                binary=binary,
+            )
 
-        self._last_velocity = Velocity(vx=vx, omega=omega)
+            self._last_velocity = Velocity(vx=vx, omega=omega)
         return True
 
     async def set_velocity_reliable(
@@ -206,8 +218,10 @@ class MotionService:
                 -self._velocity_limit_angular, min(self._velocity_limit_angular, omega)
             )
 
-        ok, error = await self.client.set_vel(vx, omega)
-        self._last_velocity = Velocity(vx=vx, omega=omega)
+        # Serialize concurrent velocity commands
+        async with self._command_lock:
+            ok, error = await self.client.set_vel(vx, omega)
+            self._last_velocity = Velocity(vx=vx, omega=omega)
 
         if ok:
             return ServiceResult.success(

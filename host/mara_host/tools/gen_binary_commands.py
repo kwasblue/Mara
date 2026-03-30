@@ -470,10 +470,23 @@ def generate_py_json_to_binary() -> str:
     lines.append("")
     lines.append("from __future__ import annotations")
     lines.append("")
+    lines.append("import math")
     lines.append("import struct")
     lines.append("from typing import Dict, Any, Optional, List, Tuple")
     lines.append("")
     lines.append("from .binary_commands import Opcode")
+    lines.append("")
+    lines.append("")
+    lines.append("def _validate_float(value: float, name: str) -> float:")
+    lines.append('    """')
+    lines.append("    Validate that a float value is finite (not NaN or Inf).")
+    lines.append("")
+    lines.append("    Raises ValueError if value is NaN or Inf, as these cannot be")
+    lines.append("    safely packed into binary and may cause undefined MCU behavior.")
+    lines.append('    """')
+    lines.append("    if math.isnan(value) or math.isinf(value):")
+    lines.append('        raise ValueError(f"{name} must be finite, got {value}")')
+    lines.append("    return value")
     lines.append("")
     lines.append("")
 
@@ -562,7 +575,11 @@ def generate_py_json_to_binary() -> str:
         else:
             for f in payload:
                 default = "0.0" if f["type"] == "f32" else "0"
-                lines.append(f"        {f['name']} = {'float' if f['type'] == 'f32' else 'int'}(cmd.get(\"{f['name']}\", {default}))")
+                if f["type"] == "f32":
+                    # Validate float values to reject NaN/Inf before packing
+                    lines.append(f"        {f['name']} = _validate_float(float(cmd.get(\"{f['name']}\", {default})), \"{f['name']}\")")
+                else:
+                    lines.append(f"        {f['name']} = int(cmd.get(\"{f['name']}\", {default}))")
             pack_args = ", ".join(["Opcode." + name] + [f["name"] for f in payload])
             lines.append(f"        return struct.pack('{fmt}', {pack_args})")
 
@@ -591,6 +608,7 @@ def generate_py_json_to_binary() -> str:
     lines.append("        data = struct.pack('<BB', Opcode.SET_SIGNALS, count)")
     lines.append("        for i in range(count):")
     lines.append("            signal_id, value = signals[i]")
+    lines.append("            value = _validate_float(value, f'signal[{i}].value')")
     lines.append("            data += struct.pack('<Hf', signal_id, value)")
     lines.append("        return data")
     lines.append("")

@@ -25,6 +25,50 @@
       ],
       "impl_key": "source.constant"
     },
+    "encoder_velocity": {
+      "kind": "encoder_velocity",
+      "category": "source",
+      "description": "Read encoder velocity (rad/s) as slot input. Provides feedback for velocity control loops.",
+      "params": [
+        {
+          "name": "encoder_id",
+          "type": "int",
+          "required": true,
+          "description": "Encoder channel ID (0-7).",
+          "minimum": 0,
+          "maximum": 7
+        },
+        {
+          "name": "ticks_per_rad",
+          "type": "float",
+          "required": false,
+          "description": "Encoder ticks per radian. Used to convert tick rate to rad/s.",
+          "default": 1.0,
+          "minimum": 0.001
+        },
+        {
+          "name": "fallback",
+          "type": "float",
+          "required": false,
+          "description": "Value to use if encoder is not available or not initialized.",
+          "default": 0.0
+        }
+      ],
+      "inputs": 0,
+      "outputs": 1,
+      "stateful": true,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [
+        "encoder"
+      ],
+      "tags": [
+        "sensor",
+        "feedback",
+        "control"
+      ],
+      "impl_key": "source.encoder_velocity"
+    },
     "imu_axis": {
       "kind": "imu_axis",
       "category": "source",
@@ -54,6 +98,39 @@
         "orientation"
       ],
       "impl_key": "source.imu_axis"
+    },
+    "signal_read": {
+      "kind": "signal_read",
+      "category": "source",
+      "description": "Read a signal value from the signal bus as slot input. Enables cross-slot communication and feedback loops.",
+      "params": [
+        {
+          "name": "signal_id",
+          "type": "int",
+          "required": true,
+          "description": "Signal ID to read from (must be pre-defined in signal bus).",
+          "minimum": 0,
+          "maximum": 255
+        },
+        {
+          "name": "fallback",
+          "type": "float",
+          "required": false,
+          "description": "Value to use if signal is not defined or not yet written.",
+          "default": 0.0
+        }
+      ],
+      "inputs": 0,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "routing",
+        "signal_bus"
+      ],
+      "impl_key": "source.signal_read"
     }
   },
   "transforms": {
@@ -180,6 +257,40 @@
         "math"
       ],
       "impl_key": "transform.derivative"
+    },
+    "error": {
+      "kind": "error",
+      "category": "transform",
+      "description": "Compute control error: current value (setpoint) minus feedback signal. Commonly used as first stage in PID loops.",
+      "params": [
+        {
+          "name": "feedback_signal",
+          "type": "int",
+          "required": true,
+          "description": "Signal ID containing feedback/measurement value.",
+          "minimum": 0,
+          "maximum": 255
+        },
+        {
+          "name": "fallback",
+          "type": "float",
+          "required": false,
+          "description": "Feedback value to use if signal is not defined.",
+          "default": 0.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "control",
+        "signal_bus",
+        "math"
+      ],
+      "impl_key": "transform.error"
     },
     "hysteresis": {
       "kind": "hysteresis",
@@ -544,6 +655,116 @@
       ],
       "impl_key": "transform.scale"
     },
+    "signal_add": {
+      "kind": "signal_add",
+      "category": "transform",
+      "description": "Add a signal value from the signal bus to the current value. Useful for merging parallel slot outputs.",
+      "params": [
+        {
+          "name": "signal_id",
+          "type": "int",
+          "required": true,
+          "description": "Signal ID to read and add (must be pre-defined in signal bus).",
+          "minimum": 0,
+          "maximum": 255
+        },
+        {
+          "name": "fallback",
+          "type": "float",
+          "required": false,
+          "description": "Value to add if signal is not defined or not yet written.",
+          "default": 0.0
+        },
+        {
+          "name": "scale",
+          "type": "float",
+          "required": false,
+          "description": "Scale factor applied to signal value before adding.",
+          "default": 1.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "routing",
+        "signal_bus",
+        "miso",
+        "math"
+      ],
+      "impl_key": "transform.signal_add"
+    },
+    "signal_recall": {
+      "kind": "signal_recall",
+      "category": "transform",
+      "description": "Replace current value with a signal from the signal bus. Similar to recall but reads from signal bus instead of local taps.",
+      "params": [
+        {
+          "name": "signal_id",
+          "type": "int",
+          "required": true,
+          "description": "Signal ID to read from (must be pre-defined in signal bus).",
+          "minimum": 0,
+          "maximum": 255
+        },
+        {
+          "name": "fallback",
+          "type": "float",
+          "required": false,
+          "description": "Value to use if signal is not defined or not yet written.",
+          "default": 0.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "routing",
+        "signal_bus",
+        "miso"
+      ],
+      "impl_key": "transform.signal_recall"
+    },
+    "signal_subtract": {
+      "kind": "signal_subtract",
+      "category": "transform",
+      "description": "Subtract a signal value from the current value. Result is: current - signal.",
+      "params": [
+        {
+          "name": "signal_id",
+          "type": "int",
+          "required": true,
+          "description": "Signal ID to read and subtract (must be pre-defined in signal bus).",
+          "minimum": 0,
+          "maximum": 255
+        },
+        {
+          "name": "fallback",
+          "type": "float",
+          "required": false,
+          "description": "Value to subtract if signal is not defined or not yet written.",
+          "default": 0.0
+        }
+      ],
+      "inputs": 1,
+      "outputs": 1,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "routing",
+        "signal_bus",
+        "math"
+      ],
+      "impl_key": "transform.signal_subtract"
+    },
     "slew_rate": {
       "kind": "slew_rate",
       "category": "transform",
@@ -787,6 +1008,32 @@
         "actuator"
       ],
       "impl_key": "sink.servo_angle"
+    },
+    "signal_write": {
+      "kind": "signal_write",
+      "category": "sink",
+      "description": "Write slot output value to a signal in the signal bus. Enables cross-slot communication.",
+      "params": [
+        {
+          "name": "signal_id",
+          "type": "int",
+          "required": true,
+          "description": "Signal ID to write to (must be pre-defined in signal bus).",
+          "minimum": 0,
+          "maximum": 255
+        }
+      ],
+      "inputs": 1,
+      "outputs": 0,
+      "stateful": false,
+      "mcu_supported": true,
+      "host_supported": true,
+      "requires": [],
+      "tags": [
+        "routing",
+        "signal_bus"
+      ],
+      "impl_key": "sink.signal_write"
     }
   }
 }

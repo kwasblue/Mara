@@ -34,6 +34,15 @@ SERVO_COMMAND_OBJECTS: dict[str, CommandDef] = {
             "duration_ms": FieldDef(type="int", default=0, description="Interpolation duration in milliseconds (0 = immediate)."),
         },
     ),
+    "CMD_SERVO_SET_PULSE": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Set servo pulse width in microseconds.",
+        payload={
+            "servo_id": FieldDef(type="int", required=True),
+            "pulse_us": FieldDef(type="int", required=True, description="Pulse width in microseconds."),
+        },
+    ),
     "CMD_BATCH_APPLY": CommandDef(
         kind="cmd",
         direction="host->mcu",

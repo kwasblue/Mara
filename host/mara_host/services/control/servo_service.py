@@ -12,6 +12,18 @@ import asyncio
 from mara_host.core.result import ServiceResult
 from mara_host.core.utils import clamp as clamp_value
 from mara_host.services.control.service_base import ConfigurableService
+from mara_host.command.payloads import (
+    ServoAttachPayload,
+    ServoDetachPayload,
+    ServoSetAnglePayload,
+    ServoSetPulsePayload,
+)
+from mara_host.services.types import (
+    ServoAttachResponse,
+    ServoSetAngleResponse,
+    ServoDetachResponse,
+    ServoSetPulseResponse,
+)
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -136,15 +148,8 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
             config.min_us = min_us
             config.max_us = max_us
 
-        ok, error = await self.client.send_reliable(
-            "CMD_SERVO_ATTACH",
-            {
-                "servo_id": servo_id,
-                "channel": channel,
-                "min_us": min_us,
-                "max_us": max_us,
-            },
-        )
+        payload = ServoAttachPayload(servo_id=servo_id, channel=channel, min_us=min_us, max_us=max_us)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(servo_id)
@@ -154,7 +159,9 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
             if initial_angle is not None:
                 await self.set_angle(servo_id, initial_angle)
 
-            return ServiceResult.success(data={"servo_id": servo_id, "channel": channel, "pin": channel})
+            return ServiceResult.success(
+                data=ServoAttachResponse(servo_id=servo_id, channel=channel, min_us=min_us, max_us=max_us)
+            )
         else:
             return ServiceResult.failure(error=error or f"Failed to attach servo {servo_id}")
 
@@ -168,15 +175,13 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_SERVO_DETACH",
-            {"servo_id": servo_id},
-        )
+        payload = ServoDetachPayload(servo_id=servo_id)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(servo_id)
             state.attached = False
-            return ServiceResult.success(data={"servo_id": servo_id})
+            return ServiceResult.success(data=ServoDetachResponse(servo_id=servo_id))
         else:
             return ServiceResult.failure(error=error or f"Failed to detach servo {servo_id}")
 
@@ -228,24 +233,20 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
         if config and config.inverted:
             angle = config.max_angle - (angle - config.min_angle)
 
-        payload = {
-            "servo_id": servo_id,
-            "angle_deg": angle,
-            "duration_ms": duration_ms,
-        }
+        payload = ServoSetAnglePayload(servo_id=servo_id, angle_deg=angle, duration_ms=duration_ms)
 
         if request_ack:
-            ok, error = await self.client.send_reliable("CMD_SERVO_SET_ANGLE", payload)
+            ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
             if not ok:
                 return ServiceResult.failure(error=error or f"Failed to set servo {servo_id} angle")
         else:
             # Fire-and-forget - don't wait for ACK
-            await self.client.send_auto("CMD_SERVO_SET_ANGLE", payload)
+            await self.client.send_auto(payload._cmd, payload.to_dict())
 
         # Update local state
         state = self.get_state(servo_id)
         state.angle = angle
-        return ServiceResult.success(data={"servo_id": servo_id, "angle": angle})
+        return ServiceResult.success(data=ServoSetAngleResponse(servo_id=servo_id, angle_deg=angle))
 
     async def center(self, servo_id: int, duration_ms: int = 0) -> ServiceResult:
         """
@@ -283,16 +284,16 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
         Returns:
             ServiceResult
         """
-        payload = {"servo_id": servo_id, "pulse_us": pulse_us}
+        payload = ServoSetPulsePayload(servo_id=servo_id, pulse_us=pulse_us)
 
         if request_ack:
-            ok, error = await self.client.send_reliable("CMD_SERVO_SET_PULSE", payload)
+            ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
             if not ok:
                 return ServiceResult.failure(error=error or f"Failed to set servo {servo_id} pulse")
         else:
-            await self.client.send_auto("CMD_SERVO_SET_PULSE", payload)
+            await self.client.send_auto(payload._cmd, payload.to_dict())
 
-        return ServiceResult.success(data={"servo_id": servo_id, "pulse_us": pulse_us})
+        return ServiceResult.success(data=ServoSetPulseResponse(servo_id=servo_id, pulse_us=pulse_us))
 
     async def sweep(
         self,

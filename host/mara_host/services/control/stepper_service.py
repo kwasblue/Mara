@@ -10,6 +10,23 @@ from typing import Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
 from mara_host.services.control.service_base import ConfigurableService
+from mara_host.command.payloads import (
+    StepperEnablePayload,
+    StepperMoveRelPayload,
+    StepperMoveDegPayload,
+    StepperMoveRevPayload,
+    StepperStopPayload,
+    StepperGetPositionPayload,
+    StepperResetPositionPayload,
+)
+from mara_host.services.types import (
+    StepperEnableResponse,
+    StepperMoveRelResponse,
+    StepperMoveDegResponse,
+    StepperMoveRevResponse,
+    StepperStopResponse,
+    StepperPositionResponse,
+)
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -122,15 +139,13 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_STEPPER_ENABLE",
-            {"stepper_id": stepper_id, "enable": True},
-        )
+        payload = StepperEnablePayload(stepper_id=stepper_id, enable=True)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(stepper_id)
             state.enabled = True
-            return ServiceResult.success(data={"stepper_id": stepper_id, "enabled": True})
+            return ServiceResult.success(data=StepperEnableResponse(stepper_id=stepper_id, enabled=True))
         else:
             return ServiceResult.failure(error=error or f"Failed to enable stepper {stepper_id}")
 
@@ -144,15 +159,13 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_STEPPER_ENABLE",
-            {"stepper_id": stepper_id, "enable": False},
-        )
+        payload = StepperEnablePayload(stepper_id=stepper_id, enable=False)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(stepper_id)
             state.enabled = False
-            return ServiceResult.success(data={"stepper_id": stepper_id, "enabled": False})
+            return ServiceResult.success(data=StepperEnableResponse(stepper_id=stepper_id, enabled=False))
         else:
             return ServiceResult.failure(error=error or f"Failed to disable stepper {stepper_id}")
 
@@ -179,21 +192,15 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
         if config.inverted:
             steps = -steps
 
-        ok, error = await self.client.send_reliable(
-            "CMD_STEPPER_MOVE_REL",
-            {
-                "stepper_id": stepper_id,
-                "steps": steps,
-                "speed_rps": speed_rps,
-            },
-        )
+        payload = StepperMoveRelPayload(stepper_id=stepper_id, steps=steps, speed_rps=speed_rps)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(stepper_id)
             state.target_position = state.position + steps
             state.moving = True
             return ServiceResult.success(
-                data={"stepper_id": stepper_id, "steps": steps, "speed_rps": speed_rps}
+                data=StepperMoveRelResponse(stepper_id=stepper_id, steps=steps, speed_rps=speed_rps)
             )
         else:
             return ServiceResult.failure(error=error or f"Failed to move stepper {stepper_id}")
@@ -215,20 +222,14 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_STEPPER_MOVE_DEG",
-            {
-                "stepper_id": stepper_id,
-                "degrees": degrees,
-                "speed_rps": speed_rps,
-            },
-        )
+        payload = StepperMoveDegPayload(stepper_id=stepper_id, degrees=degrees, speed_rps=speed_rps)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(stepper_id)
             state.moving = True
             return ServiceResult.success(
-                data={"stepper_id": stepper_id, "degrees": degrees}
+                data=StepperMoveDegResponse(stepper_id=stepper_id, degrees=degrees)
             )
         else:
             return ServiceResult.failure(error=error or f"Failed to rotate stepper {stepper_id}")
@@ -250,20 +251,14 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_STEPPER_MOVE_REV",
-            {
-                "stepper_id": stepper_id,
-                "revolutions": revolutions,
-                "speed_rps": speed_rps,
-            },
-        )
+        payload = StepperMoveRevPayload(stepper_id=stepper_id, revolutions=revolutions, speed_rps=speed_rps)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(stepper_id)
             state.moving = True
             return ServiceResult.success(
-                data={"stepper_id": stepper_id, "revolutions": revolutions}
+                data=StepperMoveRevResponse(stepper_id=stepper_id, revolutions=revolutions)
             )
         else:
             return ServiceResult.failure(error=error or f"Failed to rotate stepper {stepper_id}")
@@ -278,15 +273,13 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_STEPPER_STOP",
-            {"stepper_id": stepper_id},
-        )
+        payload = StepperStopPayload(stepper_id=stepper_id)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(stepper_id)
             state.moving = False
-            return ServiceResult.success(data={"stepper_id": stepper_id})
+            return ServiceResult.success(data=StepperStopResponse(stepper_id=stepper_id))
         else:
             return ServiceResult.failure(error=error or f"Failed to stop stepper {stepper_id}")
 
@@ -302,13 +295,11 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_STEPPER_GET_POS",
-            {"stepper_id": stepper_id},
-        )
+        payload = StepperGetPositionPayload(stepper_id=stepper_id)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
-            return ServiceResult.success(data={"stepper_id": stepper_id})
+            return ServiceResult.success(data=StepperPositionResponse(stepper_id=stepper_id))
         else:
             return ServiceResult.failure(error=error or f"Failed to get stepper {stepper_id} position")
 
@@ -322,16 +313,14 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_STEPPER_RESET_POS",
-            {"stepper_id": stepper_id},
-        )
+        payload = StepperResetPositionPayload(stepper_id=stepper_id)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(stepper_id)
             state.position = 0
             state.target_position = 0
-            return ServiceResult.success(data={"stepper_id": stepper_id, "position": 0})
+            return ServiceResult.success(data=StepperPositionResponse(stepper_id=stepper_id, position=0))
         else:
             return ServiceResult.failure(error=error or f"Failed to reset stepper {stepper_id} position")
 

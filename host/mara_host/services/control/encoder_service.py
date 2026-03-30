@@ -10,6 +10,18 @@ from typing import Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
 from mara_host.services.control.service_base import ConfigurableService
+from mara_host.command.payloads import (
+    EncoderAttachPayload,
+    EncoderReadPayload,
+    EncoderResetPayload,
+    EncoderDetachPayload,
+)
+from mara_host.services.types import (
+    EncoderAttachResponse,
+    EncoderReadResponse,
+    EncoderResetResponse,
+    EncoderDetachResponse,
+)
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -134,23 +146,17 @@ class EncoderService(ConfigurableService[EncoderConfig, EncoderState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_ENCODER_ATTACH",
-            {
-                "encoder_id": encoder_id,
-                "pin_a": pin_a,
-                "pin_b": pin_b,
-                "ppr": ppr,
-                "gear_ratio": gear_ratio,
-            },
+        payload = EncoderAttachPayload(
+            encoder_id=encoder_id, pin_a=pin_a, pin_b=pin_b, ppr=ppr, gear_ratio=gear_ratio
         )
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             self.configure(encoder_id, pin_a, pin_b, ppr, gear_ratio)
             state = self.get_state(encoder_id)
             state.attached = True
             return ServiceResult.success(
-                data={"encoder_id": encoder_id, "pin_a": pin_a, "pin_b": pin_b}
+                data=EncoderAttachResponse(encoder_id=encoder_id, pin_a=pin_a, pin_b=pin_b)
             )
         else:
             return ServiceResult.failure(error=error or f"Failed to attach encoder {encoder_id}")
@@ -165,15 +171,13 @@ class EncoderService(ConfigurableService[EncoderConfig, EncoderState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_ENCODER_DETACH",
-            {"encoder_id": encoder_id},
-        )
+        payload = EncoderDetachPayload(encoder_id=encoder_id)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(encoder_id)
             state.attached = False
-            return ServiceResult.success(data={"encoder_id": encoder_id})
+            return ServiceResult.success(data=EncoderDetachResponse(encoder_id=encoder_id))
         else:
             return ServiceResult.failure(error=error or f"Failed to detach encoder {encoder_id}")
 
@@ -214,15 +218,13 @@ class EncoderService(ConfigurableService[EncoderConfig, EncoderState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_ENCODER_RESET",
-            {"encoder_id": encoder_id},
-        )
+        payload = EncoderResetPayload(encoder_id=encoder_id)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(encoder_id)
             state.count = 0
-            return ServiceResult.success(data={"encoder_id": encoder_id, "count": 0})
+            return ServiceResult.success(data=EncoderResetResponse(encoder_id=encoder_id))
         else:
             return ServiceResult.failure(error=error or f"Failed to reset encoder {encoder_id}")
 

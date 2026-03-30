@@ -6,6 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from mara_host.tools.schema.control_graph.schema import ControlGraphConfig, normalize_graph_model
+from mara_host.services.persistence.types import (
+    CalibrationRecord,
+    DiagnosticRecord,
+    ControlGraphPayload,
+)
 
 
 class JsonArtifactStore:
@@ -72,12 +77,24 @@ class CalibrationStore(JsonArtifactStore):
 
     def upsert(self, name: str, values: dict[str, Any], *, calibration_type: str = "generic") -> dict[str, Any]:
         payload = self.load() or {"kind": "calibrations", "version": 1, "records": {}}
-        payload.setdefault("records", {})[name] = {
-            "type": calibration_type,
-            "saved_at": time.time(),
-            "values": values,
-        }
+        record = CalibrationRecord(
+            name=name,
+            calibration_type=calibration_type,
+            saved_at=time.time(),
+            values=values,
+        )
+        payload.setdefault("records", {})[name] = record.to_dict()
         return self.save(payload)
+
+    def get_record(self, name: str) -> CalibrationRecord | None:
+        """Get a calibration record by name."""
+        payload = self.load()
+        if not payload:
+            return None
+        records = payload.get("records", {})
+        if name not in records:
+            return None
+        return CalibrationRecord.from_dict(name, records[name])
 
 
 class DiagnosticRecordStore(JsonArtifactStore):
@@ -88,11 +105,17 @@ class DiagnosticRecordStore(JsonArtifactStore):
 
     def append(self, name: str, details: dict[str, Any]) -> dict[str, Any]:
         payload = self.load() or {"kind": "diagnostics", "version": 1, "records": []}
-        payload.setdefault("records", []).append(
-            {
-                "name": name,
-                "captured_at": time.time(),
-                "details": details,
-            }
+        record = DiagnosticRecord(
+            name=name,
+            captured_at=time.time(),
+            details=details,
         )
+        payload.setdefault("records", []).append(record.to_dict())
         return self.save(payload)
+
+    def get_records(self) -> list[DiagnosticRecord]:
+        """Get all diagnostic records."""
+        payload = self.load()
+        if not payload:
+            return []
+        return [DiagnosticRecord.from_dict(r) for r in payload.get("records", [])]

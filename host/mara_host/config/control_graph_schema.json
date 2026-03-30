@@ -64,6 +64,46 @@
               "additionalProperties": false
             },
             {
+              "title": "encoder_velocity",
+              "description": "Read encoder velocity (rad/s) as slot input. Provides feedback for velocity control loops.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "encoder_velocity"
+                },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "encoder_id": {
+                      "type": "int",
+                      "description": "Encoder channel ID (0-7).",
+                      "minimum": 0,
+                      "maximum": 7
+                    },
+                    "ticks_per_rad": {
+                      "type": "float",
+                      "description": "Encoder ticks per radian. Used to convert tick rate to rad/s.",
+                      "default": 1.0,
+                      "minimum": 0.001
+                    },
+                    "fallback": {
+                      "type": "float",
+                      "description": "Value to use if encoder is not available or not initialized.",
+                      "default": 0.0
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "encoder_id"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
               "title": "imu_axis",
               "description": "Read a derived orientation axis from the IMU.",
               "type": "object",
@@ -93,13 +133,49 @@
                 "type"
               ],
               "additionalProperties": false
+            },
+            {
+              "title": "signal_read",
+              "description": "Read a signal value from the signal bus as slot input. Enables cross-slot communication and feedback loops.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "signal_read"
+                },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "signal_id": {
+                      "type": "int",
+                      "description": "Signal ID to read from (must be pre-defined in signal bus).",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "fallback": {
+                      "type": "float",
+                      "description": "Value to use if signal is not defined or not yet written.",
+                      "default": 0.0
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "signal_id"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
             }
           ],
           "discriminator": {
             "propertyName": "type",
             "mapping": {
               "constant": "#/definitions/source/constant",
-              "imu_axis": "#/definitions/source/imu_axis"
+              "encoder_velocity": "#/definitions/source/encoder_velocity",
+              "imu_axis": "#/definitions/source/imu_axis",
+              "signal_read": "#/definitions/source/signal_read"
             }
           }
         },
@@ -227,6 +303,40 @@
                       }
                     },
                     "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "error",
+                "description": "Compute control error: current value (setpoint) minus feedback signal. Commonly used as first stage in PID loops.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "error"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "feedback_signal": {
+                        "type": "int",
+                        "description": "Signal ID containing feedback/measurement value.",
+                        "minimum": 0,
+                        "maximum": 255
+                      },
+                      "fallback": {
+                        "type": "float",
+                        "description": "Feedback value to use if signal is not defined.",
+                        "default": 0.0
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "feedback_signal"
+                    ]
                   }
                 },
                 "required": [
@@ -588,6 +698,113 @@
                 "additionalProperties": false
               },
               {
+                "title": "signal_add",
+                "description": "Add a signal value from the signal bus to the current value. Useful for merging parallel slot outputs.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "signal_add"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "signal_id": {
+                        "type": "int",
+                        "description": "Signal ID to read and add (must be pre-defined in signal bus).",
+                        "minimum": 0,
+                        "maximum": 255
+                      },
+                      "fallback": {
+                        "type": "float",
+                        "description": "Value to add if signal is not defined or not yet written.",
+                        "default": 0.0
+                      },
+                      "scale": {
+                        "type": "float",
+                        "description": "Scale factor applied to signal value before adding.",
+                        "default": 1.0
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "signal_id"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "signal_recall",
+                "description": "Replace current value with a signal from the signal bus. Similar to recall but reads from signal bus instead of local taps.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "signal_recall"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "signal_id": {
+                        "type": "int",
+                        "description": "Signal ID to read from (must be pre-defined in signal bus).",
+                        "minimum": 0,
+                        "maximum": 255
+                      },
+                      "fallback": {
+                        "type": "float",
+                        "description": "Value to use if signal is not defined or not yet written.",
+                        "default": 0.0
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "signal_id"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "title": "signal_subtract",
+                "description": "Subtract a signal value from the current value. Result is: current - signal.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "signal_subtract"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "signal_id": {
+                        "type": "int",
+                        "description": "Signal ID to read and subtract (must be pre-defined in signal bus).",
+                        "minimum": 0,
+                        "maximum": 255
+                      },
+                      "fallback": {
+                        "type": "float",
+                        "description": "Value to subtract if signal is not defined or not yet written.",
+                        "default": 0.0
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "signal_id"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
                 "title": "slew_rate",
                 "description": "Limit how quickly the output is allowed to change, in output units per second.",
                 "type": "object",
@@ -737,6 +954,7 @@
                 "deadband": "#/definitions/transform/deadband",
                 "delta_gate": "#/definitions/transform/delta_gate",
                 "derivative": "#/definitions/transform/derivative",
+                "error": "#/definitions/transform/error",
                 "hysteresis": "#/definitions/transform/hysteresis",
                 "integrator": "#/definitions/transform/integrator",
                 "lowpass": "#/definitions/transform/lowpass",
@@ -749,6 +967,9 @@
                 "pulse": "#/definitions/transform/pulse",
                 "recall": "#/definitions/transform/recall",
                 "scale": "#/definitions/transform/scale",
+                "signal_add": "#/definitions/transform/signal_add",
+                "signal_recall": "#/definitions/transform/signal_recall",
+                "signal_subtract": "#/definitions/transform/signal_subtract",
                 "slew_rate": "#/definitions/transform/slew_rate",
                 "sum": "#/definitions/transform/sum",
                 "tap": "#/definitions/transform/tap",
@@ -873,6 +1094,35 @@
                 "type"
               ],
               "additionalProperties": false
+            },
+            {
+              "title": "signal_write",
+              "description": "Write slot output value to a signal in the signal bus. Enables cross-slot communication.",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "signal_write"
+                },
+                "params": {
+                  "type": "object",
+                  "properties": {
+                    "signal_id": {
+                      "type": "int",
+                      "description": "Signal ID to write to (must be pre-defined in signal bus).",
+                      "minimum": 0,
+                      "maximum": 255
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "signal_id"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
             }
           ],
           "discriminator": {
@@ -881,7 +1131,8 @@
               "gpio_write": "#/definitions/sink/gpio_write",
               "motor_speed": "#/definitions/sink/motor_speed",
               "pwm_duty": "#/definitions/sink/pwm_duty",
-              "servo_angle": "#/definitions/sink/servo_angle"
+              "servo_angle": "#/definitions/sink/servo_angle",
+              "signal_write": "#/definitions/sink/signal_write"
             }
           }
         },
@@ -1001,6 +1252,35 @@
                   "type"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "title": "signal_write",
+                "description": "Write slot output value to a signal in the signal bus. Enables cross-slot communication.",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "signal_write"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "signal_id": {
+                        "type": "int",
+                        "description": "Signal ID to write to (must be pre-defined in signal bus).",
+                        "minimum": 0,
+                        "maximum": 255
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "signal_id"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
               }
             ],
             "discriminator": {
@@ -1009,7 +1289,8 @@
                 "gpio_write": "#/definitions/sink/gpio_write",
                 "motor_speed": "#/definitions/sink/motor_speed",
                 "pwm_duty": "#/definitions/sink/pwm_duty",
-                "servo_angle": "#/definitions/sink/servo_angle"
+                "servo_angle": "#/definitions/sink/servo_angle",
+                "signal_write": "#/definitions/sink/signal_write"
               }
             }
           },
@@ -1038,7 +1319,13 @@
       "constant": {
         "type": "object"
       },
+      "encoder_velocity": {
+        "type": "object"
+      },
       "imu_axis": {
+        "type": "object"
+      },
+      "signal_read": {
         "type": "object"
       }
     },
@@ -1056,6 +1343,9 @@
         "type": "object"
       },
       "derivative": {
+        "type": "object"
+      },
+      "error": {
         "type": "object"
       },
       "hysteresis": {
@@ -1094,6 +1384,15 @@
       "scale": {
         "type": "object"
       },
+      "signal_add": {
+        "type": "object"
+      },
+      "signal_recall": {
+        "type": "object"
+      },
+      "signal_subtract": {
+        "type": "object"
+      },
       "slew_rate": {
         "type": "object"
       },
@@ -1121,6 +1420,9 @@
         "type": "object"
       },
       "servo_angle": {
+        "type": "object"
+      },
+      "signal_write": {
         "type": "object"
       }
     }

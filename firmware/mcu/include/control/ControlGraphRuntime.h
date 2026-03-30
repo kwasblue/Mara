@@ -15,6 +15,7 @@
 #include "control/SignalBus.h"
 #include "hw/GpioManager.h"
 #include "motor/ServoManager.h"
+#include "sensor/EncoderManager.h"
 #include "sensor/ImuManager.h"
 
 struct ControlGraphSlotSummary {
@@ -36,6 +37,7 @@ public:
         Constant,
         ImuAxis,
         SignalRead,
+        EncoderVelocity,
     };
 
     enum class TransformKind : uint8_t {
@@ -67,6 +69,8 @@ public:
         // Signal bus routing
         SignalRecall,
         SignalAdd,
+        SignalSubtract,
+        Error,
     };
 
     enum class SinkKind : uint8_t {
@@ -115,6 +119,11 @@ public:
         float source_value = 0.0f;
         uint16_t source_signal_id = 0;      // For SignalRead source
         float source_signal_fallback = 0.0f; // Fallback for SignalRead
+        uint8_t encoder_id = 0;              // For EncoderVelocity source
+        float encoder_fallback = 0.0f;       // Fallback for EncoderVelocity
+        int32_t encoder_last_count = 0;      // Previous encoder count for velocity calc
+        uint32_t encoder_last_time_ms = 0;   // Previous timestamp for velocity calc
+        float encoder_ticks_per_rad = 1.0f;  // Conversion factor (ticks per radian)
         uint8_t transform_count = 0;
         TransformRuntime transforms[MAX_TRANSFORMS]{};
         uint32_t last_run_ms = 0;
@@ -195,7 +204,7 @@ public:
         }
     }
 
-    void step(uint32_t now_ms, const ModeManager* mode, GpioManager* gpio, ServoManager* servo, ImuManager* imu, SignalBus* signals = nullptr) {
+    void step(uint32_t now_ms, const ModeManager* mode, GpioManager* gpio, ServoManager* servo, ImuManager* imu, EncoderManager* encoder = nullptr, SignalBus* signals = nullptr) {
         if (!present_ || !any_enabled_) return;
 
         bool mode_ok = true;
@@ -217,7 +226,7 @@ public:
             }
 
             float value = 0.0f;
-            if (!readSource_(slot, imu, signals, value)) {
+            if (!readSource_(slot, imu, encoder, signals, now_ms, value)) {
                 copyString_(slot.error, sizeof(slot.error), "source_read_failed");
                 slot.last_run_ms = now_ms;
                 continue;
@@ -476,6 +485,13 @@ private:
             out.source = SourceKind::SignalRead;
             out.source_signal_id = static_cast<uint16_t>(source_params["signal_id"] | 0);
             out.source_signal_fallback = source_params["fallback"] | 0.0f;
+        } else if (strcmp(source_type, "encoder_velocity") == 0) {
+            out.source = SourceKind::EncoderVelocity;
+            out.encoder_id = static_cast<uint8_t>(source_params["encoder_id"] | 0);
+            out.encoder_fallback = source_params["fallback"] | 0.0f;
+            out.encoder_ticks_per_rad = source_params["ticks_per_rad"] | 1.0f;
+            out.encoder_last_count = 0;
+            out.encoder_last_time_ms = 0;
         } else {
             error = "unsupported_source";
             return false;
@@ -618,6 +634,14 @@ private:
                 tr.signal_id = static_cast<uint16_t>(params["signal_id"] | 0);
                 tr.signal_fallback = params["fallback"] | 0.0f;
                 tr.signal_scale = params["scale"] | 1.0f;
+            } else if (strcmp(t, "signal_subtract") == 0) {
+                tr.kind = TransformKind::SignalSubtract;
+                tr.signal_id = static_cast<uint16_t>(params["signal_id"] | 0);
+                tr.signal_fallback = params["fallback"] | 0.0f;
+            } else if (strcmp(t, "error") == 0) {
+                tr.kind = TransformKind::Error;
+                tr.signal_id = static_cast<uint16_t>(params["feedback_signal"] | 0);
+                tr.signal_fallback = params["fallback"] | 0.0f;
             } else {
                 error = "unsupported_transform";
                 return false;
@@ -656,7 +680,7 @@ private:
         return true;
     }
 
-    bool readSource_(const SlotRuntime& slot, ImuManager* imu, SignalBus* signals, float& value) const {
+    bool readSource_(SlotRuntime& slot, ImuManager* imu, EncoderManager* encoder, SignalBus* signals, uint32_t now_ms, float& value) {
         switch (slot.source) {
             case SourceKind::Constant:
                 value = slot.source_value;
@@ -676,6 +700,33 @@ private:
                 if (!signals->get(slot.source_signal_id, value)) {
                     value = slot.source_signal_fallback;
                 }
+                return true;
+            }
+            case SourceKind::EncoderVelocity: {
+                if (!encoder || !encoder->isAttached(slot.encoder_id)) {
+                    value = slot.encoder_fallback;
+                    return true;
+                }
+                const int32_t count = encoder->getCount(slot.encoder_id);
+                if (slot.encoder_last_time_ms == 0) {
+                    // First read - initialize state
+                    slot.encoder_last_count = count;
+                    slot.encoder_last_time_ms = now_ms;
+                    value = 0.0f;
+                    return true;
+                }
+                const uint32_t dt_ms = (now_ms >= slot.encoder_last_time_ms)
+                    ? (now_ms - slot.encoder_last_time_ms) : 1;
+                if (dt_ms == 0) {
+                    value = 0.0f;
+                    return true;
+                }
+                const int32_t delta = count - slot.encoder_last_count;
+                const float dt_s = dt_ms * 0.001f;
+                // velocity in rad/s = (delta ticks / ticks_per_rad) / dt_s
+                value = (static_cast<float>(delta) / slot.encoder_ticks_per_rad) / dt_s;
+                slot.encoder_last_count = count;
+                slot.encoder_last_time_ms = now_ms;
                 return true;
             }
             default:
@@ -918,6 +969,32 @@ private:
                     } else {
                         value += tr.signal_fallback * tr.signal_scale;
                     }
+                    break;
+                }
+                case TransformKind::SignalSubtract: {
+                    // Subtract signal bus value from current value
+                    if (signals) {
+                        float sig_val;
+                        if (signals->get(tr.signal_id, sig_val)) {
+                            value -= sig_val;
+                        } else {
+                            value -= tr.signal_fallback;
+                        }
+                    } else {
+                        value -= tr.signal_fallback;
+                    }
+                    break;
+                }
+                case TransformKind::Error: {
+                    // Control error: current (setpoint) - feedback signal
+                    float feedback = tr.signal_fallback;
+                    if (signals) {
+                        float sig_val;
+                        if (signals->get(tr.signal_id, sig_val)) {
+                            feedback = sig_val;
+                        }
+                    }
+                    value = value - feedback;
                     break;
                 }
                 default:

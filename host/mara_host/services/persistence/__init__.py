@@ -5,11 +5,25 @@ from .store import (
     DiagnosticRecordStore,
     JsonArtifactStore,
 )
+from .types import (
+    CalibrationRecord,
+    DiagnosticRecord,
+    ControlGraphPayload,
+    CalibrationData,
+    DiagnosticData,
+)
 
 __all__ = [
+    # Store classes
     "JsonArtifactStore",
     "ControlGraphStore",
     "CalibrationStore",
     "DiagnosticRecordStore",
     "McuDiagnosticsService",
+    # Typed record classes
+    "CalibrationRecord",
+    "DiagnosticRecord",
+    "ControlGraphPayload",
+    "CalibrationData",
+    "DiagnosticData",
 ]

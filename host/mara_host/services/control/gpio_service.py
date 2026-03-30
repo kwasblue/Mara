@@ -11,6 +11,19 @@ from typing import Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult, send_command
 from mara_host.services.control.service_base import ConfigurableService
+from mara_host.command.payloads import (
+    GpioRegisterChannelPayload,
+    GpioWritePayload,
+    GpioReadPayload,
+    GpioTogglePayload,
+    PwmSetPayload,
+)
+from mara_host.services.types import (
+    GpioReadResponse,
+    GpioWriteResponse,
+    GpioRegisterResponse,
+    PwmSetResponse,
+)
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -134,19 +147,13 @@ class GpioService(ConfigurableService[GpioChannel, GpioChannel]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_GPIO_REGISTER_CHANNEL",
-            {
-                "channel": channel,
-                "pin": pin,
-                "mode": mode,
-            },
-        )
+        payload = GpioRegisterChannelPayload(channel=channel, pin=pin, mode=mode)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             self.configure(channel, pin=pin, mode=mode, label=label)
             return ServiceResult.success(
-                data={"channel": channel, "pin": pin, "mode": mode}
+                data=GpioRegisterResponse(channel=channel, pin=pin, mode=mode)
             )
         else:
             return ServiceResult.failure(
@@ -166,16 +173,14 @@ class GpioService(ConfigurableService[GpioChannel, GpioChannel]):
         """
         value = 1 if value else 0
 
-        ok, error = await self.client.send_reliable(
-            "CMD_GPIO_WRITE",
-            {"channel": channel, "value": value},
-        )
+        payload = GpioWritePayload(channel=channel, value=value)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             ch = self._channels.get(channel)
             if ch:
                 ch.value = value
-            return ServiceResult.success(data={"channel": channel, "value": value})
+            return ServiceResult.success(data=GpioWriteResponse(channel=channel, value=value))
         else:
             return ServiceResult.failure(
                 error=error or f"Failed to write GPIO channel {channel}"
@@ -216,16 +221,16 @@ class GpioService(ConfigurableService[GpioChannel, GpioChannel]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_GPIO_TOGGLE",
-            {"channel": channel},
-        )
+        payload = GpioTogglePayload(channel=channel)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             ch = self._channels.get(channel)
+            new_value = 0
             if ch:
                 ch.value = 1 - ch.value  # Toggle local state
-            return ServiceResult.success(data={"channel": channel})
+                new_value = ch.value
+            return ServiceResult.success(data=GpioWriteResponse(channel=channel, value=new_value))
         else:
             return ServiceResult.failure(
                 error=error or f"Failed to toggle GPIO channel {channel}"
@@ -268,14 +273,13 @@ class GpioService(ConfigurableService[GpioChannel, GpioChannel]):
         Returns:
             ServiceResult
         """
-        payload = {"channel": channel, "duty": duty}
-        if freq_hz is not None:
-            payload["freq_hz"] = freq_hz
-
-        ok, error = await self.client.send_reliable("CMD_PWM_SET", payload)
+        payload = PwmSetPayload(channel=channel, duty=duty, freq_hz=freq_hz)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
-            return ServiceResult.success(data={"channel": channel, "duty": duty})
+            return ServiceResult.success(
+                data=PwmSetResponse(channel=channel, duty=duty, freq_hz=int(freq_hz) if freq_hz else None)
+            )
         else:
             return ServiceResult.failure(
                 error=error or f"Failed to set PWM on channel {channel}"

@@ -15,6 +15,16 @@ if TYPE_CHECKING:
     from mara_host.command.client import MaraClient, BaseMaraClient
     from mara_host.command.factory import MaraClientFactory, ClientConfig
     from mara_host.command.interfaces import IMaraClient, ITransport
+    from mara_host.command.types import (
+        IdentityMessage,
+        CommandMessage,
+        CommandAck,
+        TelemetryMessage,
+        RawFrame,
+        HelloMessage,
+        CommandResult,
+        CommandResultWithData,
+    )
 
 
 def __getattr__(name: str):
@@ -29,6 +39,15 @@ def __getattr__(name: str):
         "create_client_from_args": "mara_host.command.factory",
         "IMaraClient": "mara_host.command.interfaces",
         "ITransport": "mara_host.command.interfaces",
+        # Protocol message types
+        "IdentityMessage": "mara_host.command.types",
+        "CommandMessage": "mara_host.command.types",
+        "CommandAck": "mara_host.command.types",
+        "TelemetryMessage": "mara_host.command.types",
+        "RawFrame": "mara_host.command.types",
+        "HelloMessage": "mara_host.command.types",
+        "CommandResult": "mara_host.command.types",
+        "CommandResultWithData": "mara_host.command.types",
     }
 
     if name in _EXPORTS:
@@ -49,4 +68,13 @@ __all__ = [
     # Interfaces
     "IMaraClient",
     "ITransport",
+    # Protocol message types
+    "IdentityMessage",
+    "CommandMessage",
+    "CommandAck",
+    "TelemetryMessage",
+    "RawFrame",
+    "HelloMessage",
+    "CommandResult",
+    "CommandResultWithData",
 ]

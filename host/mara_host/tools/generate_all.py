@@ -15,6 +15,8 @@ Generated artifacts:
     - GPIO Channels: GpioChannelDefs.h, gpio_channels.py
     - Binary Commands: BinaryCommands.h, binary_commands.py, json_to_binary.py
     - CAN Bus: CanDefs.h, can_defs_generated.py
+    - Control Graph Types: control_graph/nodes.py (typed graph building API)
+    - Command Payloads: command/payloads.py (typed command payload classes)
 """
 
 import sys
@@ -70,6 +72,16 @@ def main():
     import gen_control_graph
     print("-" * 60)
     gen_control_graph.main()
+    print()
+
+    import gen_control_graph_types
+    print("-" * 60)
+    gen_control_graph_types.main()
+    print()
+
+    import gen_command_payloads
+    print("-" * 60)
+    gen_command_payloads.main()
     print()
 
     print("=" * 60)

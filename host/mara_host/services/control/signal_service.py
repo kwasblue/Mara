@@ -11,6 +11,19 @@ from enum import Enum
 from typing import Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
+from mara_host.command.payloads import (
+    CtrlSignalDefinePayload,
+    CtrlSignalDeletePayload,
+    CtrlSignalGetPayload,
+    CtrlSignalSetPayload,
+)
+from mara_host.services.types import (
+    SignalDefineResponse,
+    SignalDeleteResponse,
+    SignalGetResponse,
+    SignalSetResponse,
+    SignalListResponse,
+)
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -107,15 +120,13 @@ class SignalService:
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_CTRL_SIGNAL_DEFINE",
-            {
-                "signal_id": signal_id,
-                "name": name,
-                "signal_kind": kind,
-                "initial_value": initial_value,
-            },
+        payload = CtrlSignalDefinePayload(
+            signal_id=signal_id,
+            name=name,
+            signal_kind=kind,
+            initial_value=initial_value,
         )
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             self._signals[signal_id] = Signal(
@@ -125,7 +136,7 @@ class SignalService:
                 value=initial_value,
             )
             return ServiceResult.success(
-                data={"signal_id": signal_id, "name": name}
+                data=SignalDefineResponse(signal_id=signal_id, name=name)
             )
         else:
             return ServiceResult.failure(
@@ -142,14 +153,12 @@ class SignalService:
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_CTRL_SIGNAL_DELETE",
-            {"signal_id": signal_id},
-        )
+        payload = CtrlSignalDeletePayload(signal_id=signal_id)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             self._signals.pop(signal_id, None)
-            return ServiceResult.success(data={"signal_id": signal_id})
+            return ServiceResult.success(data=SignalDeleteResponse(signal_id=signal_id))
         else:
             return ServiceResult.failure(
                 error=error or f"Failed to delete signal {signal_id}"
@@ -166,19 +175,14 @@ class SignalService:
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_CTRL_SIGNAL_SET",
-            {
-                "signal_id": signal_id,
-                "value": value,
-            },
-        )
+        payload = CtrlSignalSetPayload(signal_id=signal_id, value=value)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             if signal_id in self._signals:
                 self._signals[signal_id].value = value
             return ServiceResult.success(
-                data={"signal_id": signal_id, "value": value}
+                data=SignalSetResponse(signal_id=signal_id, value=value)
             )
         else:
             return ServiceResult.failure(
@@ -198,10 +202,8 @@ class SignalService:
         Returns:
             ServiceResult with value in data
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_CTRL_SIGNAL_GET",
-            {"signal_id": signal_id},
-        )
+        payload = CtrlSignalGetPayload(signal_id=signal_id)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             # Note: actual value would come from response payload
@@ -209,7 +211,7 @@ class SignalService:
             cached = self._signals.get(signal_id)
             value = cached.value if cached else 0.0
             return ServiceResult.success(
-                data={"signal_id": signal_id, "value": value}
+                data=SignalGetResponse(signal_id=signal_id, value=value)
             )
         else:
             return ServiceResult.failure(
@@ -229,7 +231,9 @@ class SignalService:
         )
 
         if ok:
-            return ServiceResult.success(data={"signals": list(self._signals.keys())})
+            return ServiceResult.success(
+                data=SignalListResponse(signals=tuple(self._signals.keys()))
+            )
         else:
             return ServiceResult.failure(error=error or "Failed to list signals")
 

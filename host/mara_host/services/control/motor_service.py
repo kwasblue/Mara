@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 from mara_host.core.result import ServiceResult
 from mara_host.core.utils import clamp as clamp_value
 from mara_host.services.control.service_base import ConfigurableService
+from mara_host.command.payloads import DcSetSpeedPayload, DcStopPayload
+from mara_host.services.types import MotorSetSpeedResponse, MotorStopResponse
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -111,10 +113,12 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
         if clamp:
             speed = clamp_value(speed, config.min_speed, config.max_speed)
 
+        payload = DcSetSpeedPayload(motor_id=motor_id, speed=speed)
+
         if request_ack:
             ok, error = await self.client.send_reliable(
-                "CMD_DC_SET_SPEED",
-                {"motor_id": motor_id, "speed": speed},
+                payload._cmd,
+                payload.to_dict(),
             )
             if not ok:
                 return ServiceResult.failure(error=error or f"Failed to set motor {motor_id} speed")
@@ -124,14 +128,14 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
             # errors are not reported back. The local state update below is
             # optimistic and may diverge from firmware state if the command fails.
             await self.client.send_auto(
-                "CMD_DC_SET_SPEED",
-                {"motor_id": motor_id, "speed": speed},
+                payload._cmd,
+                payload.to_dict(),
             )
 
         # Update local state (optimistic - may diverge from firmware if fire-and-forget fails)
         state = self.get_state(motor_id)
         state.speed = speed
-        return ServiceResult.success(data={"motor_id": motor_id, "speed": speed})
+        return ServiceResult.success(data=MotorSetSpeedResponse(motor_id=motor_id, speed=speed))
 
     async def set_speed_percent(
         self,
@@ -163,15 +167,16 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
         Returns:
             ServiceResult
         """
+        payload = DcStopPayload(motor_id=motor_id)
         ok, error = await self.client.send_reliable(
-            "CMD_DC_STOP",
-            {"motor_id": motor_id},
+            payload._cmd,
+            payload.to_dict(),
         )
 
         if ok:
             state = self.get_state(motor_id)
             state.speed = 0.0
-            return ServiceResult.success(data={"motor_id": motor_id})
+            return ServiceResult.success(data=MotorStopResponse(motor_id=motor_id, brake=False))
         else:
             return ServiceResult.failure(error=error or f"Failed to stop motor {motor_id}")
 
@@ -185,15 +190,14 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_DC_STOP",
-            {"motor_id": motor_id, "brake": True},
-        )
+        # Note: brake parameter not in schema yet, using extended payload
+        payload = {**DcStopPayload(motor_id=motor_id).to_dict(), "brake": True}
+        ok, error = await self.client.send_reliable("CMD_DC_STOP", payload)
 
         if ok:
             state = self.get_state(motor_id)
             state.speed = 0.0
-            return ServiceResult.success(data={"motor_id": motor_id})
+            return ServiceResult.success(data=MotorStopResponse(motor_id=motor_id, brake=True))
         else:
             return ServiceResult.failure(error=error or f"Failed to brake motor {motor_id}")
 
@@ -244,8 +248,8 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
 
         return ServiceResult.success(
             data={
-                "left": {"motor_id": left_motor, "speed": left_speed},
-                "right": {"motor_id": right_motor, "speed": right_speed},
+                "left": MotorSetSpeedResponse(motor_id=left_motor, speed=left_speed),
+                "right": MotorSetSpeedResponse(motor_id=right_motor, speed=right_speed),
             }
         )
 

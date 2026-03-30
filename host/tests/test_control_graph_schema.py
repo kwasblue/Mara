@@ -8,6 +8,11 @@ from mara_host.tools.schema.control_graph.schema import (
     normalize_graph_config,
     normalize_graph_model,
 )
+from mara_host.tools.schema.control_graph.builders import (
+    PIDConfig,
+    build_pid_graph,
+    build_simple_pid_graph,
+)
 
 
 def test_normalize_graph_config_applies_defaults() -> None:
@@ -286,3 +291,73 @@ def test_parallel_slots_via_signals() -> None:
     assert out["slots"][0]["sink"]["type"] == "signal_write"
     assert out["slots"][1]["sink"]["type"] == "signal_write"
     assert out["slots"][2]["source"]["type"] == "signal_read"
+
+
+def test_build_simple_pid_graph() -> None:
+    """Test PID graph builder generates valid config."""
+    graph = build_simple_pid_graph(
+        motor_id=0,
+        encoder_id=0,
+        kp=1.0,
+        ki=0.1,
+        kd=0.01,
+        ticks_per_rad=400.0,
+    )
+
+    # Should validate successfully
+    out = normalize_graph_config(graph)
+
+    # Should have 6 slots: encoder, error, P, I, D, output
+    assert len(out["slots"]) == 6
+
+    # Check slot structure
+    slot_ids = [s["id"] for s in out["slots"]]
+    assert "pid_encoder" in slot_ids
+    assert "pid_error" in slot_ids
+    assert "pid_p" in slot_ids
+    assert "pid_i" in slot_ids
+    assert "pid_d" in slot_ids
+    assert "pid_output" in slot_ids
+
+    # Final slot should output to motor
+    output_slot = next(s for s in out["slots"] if s["id"] == "pid_output")
+    assert output_slot["sink"]["type"] == "motor_speed"
+    assert output_slot["sink"]["params"]["motor_id"] == 0
+
+
+def test_build_pid_graph_with_config() -> None:
+    """Test PID graph builder with full config object."""
+    config = PIDConfig(
+        motor_id=1,
+        encoder_id=1,
+        kp=2.0,
+        ki=0.5,
+        kd=0.1,
+        i_min=-50.0,
+        i_max=50.0,
+        output_min=-0.5,
+        output_max=0.5,
+        ticks_per_rad=200.0,
+        d_lowpass_alpha=0.3,  # Add lowpass filter on D term
+        prefix="motor1",
+    )
+
+    graph = build_pid_graph(config)
+    out = normalize_graph_config(graph.to_dict())
+
+    # Check custom prefix
+    slot_ids = [s["id"] for s in out["slots"]]
+    assert "motor1_encoder" in slot_ids
+    assert "motor1_output" in slot_ids
+
+    # Check D term has lowpass filter
+    d_slot = next(s for s in out["slots"] if s["id"] == "motor1_d")
+    transform_types = [t["type"] for t in d_slot["transforms"]]
+    assert "derivative" in transform_types
+    assert "lowpass" in transform_types
+
+    # Check output limits
+    output_slot = next(s for s in out["slots"] if s["id"] == "motor1_output")
+    clamp_transform = next(t for t in output_slot["transforms"] if t["type"] == "clamp")
+    assert clamp_transform["params"]["min"] == -0.5
+    assert clamp_transform["params"]["max"] == 0.5

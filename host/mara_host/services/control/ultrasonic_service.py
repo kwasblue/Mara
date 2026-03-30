@@ -11,6 +11,16 @@ from typing import Optional, TYPE_CHECKING, Any
 
 from mara_host.core.result import ServiceResult
 from mara_host.services.control.service_base import ConfigurableService
+from mara_host.command.payloads import (
+    UltrasonicAttachPayload,
+    UltrasonicDetachPayload,
+    UltrasonicReadPayload,
+)
+from mara_host.services.types import (
+    UltrasonicAttachResponse,
+    UltrasonicDetachResponse,
+    UltrasonicReadResponse,
+)
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -121,15 +131,13 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_ULTRASONIC_ATTACH",
-            {
-                "sensor_id": sensor_id,
-                "trig_pin": trig_pin,
-                "echo_pin": echo_pin,
-                "max_distance_cm": max_distance_cm,
-            },
+        payload = UltrasonicAttachPayload(
+            sensor_id=sensor_id,
+            trig_pin=trig_pin,
+            echo_pin=echo_pin,
+            max_distance_cm=max_distance_cm,
         )
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             self.configure(sensor_id, trig_pin, echo_pin, max_distance_cm)
@@ -138,11 +146,11 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
             state.degraded = False
             state.last_error = None
             return ServiceResult.success(
-                data={
-                    "sensor_id": sensor_id,
-                    "trig_pin": trig_pin,
-                    "echo_pin": echo_pin,
-                }
+                data=UltrasonicAttachResponse(
+                    sensor_id=sensor_id,
+                    trig_pin=trig_pin,
+                    echo_pin=echo_pin,
+                )
             )
         else:
             return ServiceResult.failure(
@@ -159,10 +167,8 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_ULTRASONIC_DETACH",
-            {"sensor_id": sensor_id},
-        )
+        payload = UltrasonicDetachPayload(sensor_id=sensor_id)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(sensor_id)
@@ -170,7 +176,7 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
             state.distance_cm = None
             state.degraded = False
             state.last_error = None
-            return ServiceResult.success(data={"sensor_id": sensor_id})
+            return ServiceResult.success(data=UltrasonicDetachResponse(sensor_id=sensor_id))
         else:
             return ServiceResult.failure(
                 error=error or f"Failed to detach ultrasonic sensor {sensor_id}"
@@ -197,12 +203,10 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
             if not ack_future.done():
                 ack_future.set_result(data)
 
+        payload = UltrasonicReadPayload(sensor_id=sensor_id)
         self.client.bus.subscribe(topic, _handler)
         try:
-            ok, error = await self.client.send_reliable(
-                "CMD_ULTRASONIC_READ",
-                {"sensor_id": sensor_id},
-            )
+            ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
             ack_payload: dict[str, Any] | None
             try:
                 ack_payload = await asyncio.wait_for(ack_future, timeout=0.1)

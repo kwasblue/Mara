@@ -10,6 +10,8 @@ from typing import Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
 from mara_host.services.control.service_base import ConfigurableService
+from mara_host.command.payloads import PwmSetPayload
+from mara_host.services.types import PwmSetResponse
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -102,14 +104,8 @@ class PwmService(ConfigurableService[PwmConfig, PwmState]):
         # Clamp duty cycle
         duty = max(0.0, min(1.0, duty))
 
-        payload = {
-            "channel": channel,
-            "duty": duty,
-        }
-        if freq_hz is not None:
-            payload["freq_hz"] = freq_hz
-
-        ok, error = await self.client.send_reliable("CMD_PWM_SET", payload)
+        payload = PwmSetPayload(channel=channel, duty=duty, freq_hz=freq_hz)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             state = self.get_state(channel)
@@ -117,7 +113,7 @@ class PwmService(ConfigurableService[PwmConfig, PwmState]):
             state.enabled = duty > 0
             if freq_hz is not None:
                 state.frequency_hz = freq_hz
-            return ServiceResult.success(data=payload)
+            return ServiceResult.success(data=PwmSetResponse(channel=channel, duty=duty, freq_hz=freq_hz))
         else:
             return ServiceResult.failure(
                 error=error or f"Failed to set PWM on channel {channel}"

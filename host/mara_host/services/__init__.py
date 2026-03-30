@@ -91,6 +91,20 @@ _EXPORTS = {
     "SessionInfo": "recording",
     # Persistence
     "McuDiagnosticsService": "persistence",
+    # Response types (direct import from types.py)
+    "GpioReadResponse": "types",
+    "GpioWriteResponse": "types",
+    "GpioRegisterResponse": "types",
+    "EncoderReadResponse": "types",
+    "EncoderAttachResponse": "types",
+    "ServoAttachResponse": "types",
+    "ServoSetAngleResponse": "types",
+    "MotorSetSpeedResponse": "types",
+    "MotorAttachResponse": "types",
+    "ImuReadResponse": "types",
+    "RobotStateResponse": "types",
+    "ControlGraphSlotStatus": "types",
+    "ControlGraphStatus": "types",
 }
 
 # Cache for imported modules

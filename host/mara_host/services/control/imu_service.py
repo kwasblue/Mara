@@ -10,6 +10,14 @@ from dataclasses import asdict, dataclass
 from typing import Any, Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
+from mara_host.command.payloads import (
+    ImuCalibratePayload,
+    ImuSetBiasPayload,
+)
+from mara_host.services.types import (
+    ImuCalibrateResponse,
+    ImuSetBiasResponse,
+)
 
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
@@ -182,17 +190,12 @@ class ImuService:
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_IMU_CALIBRATE",
-            {
-                "samples": samples,
-                "delay_ms": delay_ms,
-            },
-        )
+        payload = ImuCalibratePayload(samples=samples, delay_ms=delay_ms)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             return ServiceResult.success(
-                data={"samples": samples, "delay_ms": delay_ms}
+                data=ImuCalibrateResponse(samples=samples, delay_ms=delay_ms)
             )
         else:
             return ServiceResult.failure(error=error or "Failed to calibrate IMU")
@@ -220,18 +223,18 @@ class ImuService:
         Returns:
             ServiceResult
         """
-        ok, error = await self.client.send_reliable(
-            "CMD_IMU_SET_BIAS",
-            {
-                "accel_bias": [ax, ay, az],
-                "gyro_bias": [gx, gy, gz],
-            },
-        )
+        accel_bias = [ax, ay, az]
+        gyro_bias = [gx, gy, gz]
+        payload = ImuSetBiasPayload(accel_bias=accel_bias, gyro_bias=gyro_bias)
+        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             self._bias = ImuBias(ax=ax, ay=ay, az=az, gx=gx, gy=gy, gz=gz)
             return ServiceResult.success(
-                data={"accel_bias": [ax, ay, az], "gyro_bias": [gx, gy, gz]}
+                data=ImuSetBiasResponse(
+                    accel_bias=(ax, ay, az),
+                    gyro_bias=(gx, gy, gz),
+                )
             )
         else:
             return ServiceResult.failure(error=error or "Failed to set IMU bias")

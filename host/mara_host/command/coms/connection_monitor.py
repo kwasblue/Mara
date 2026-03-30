@@ -7,6 +7,7 @@ enabling better handling of reconnection scenarios.
 """
 
 import asyncio
+import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -102,6 +103,10 @@ class ConnectionMonitor:
         self._last_message_time: Optional[float] = None
         self._monitor_task: Optional[asyncio.Task] = None
 
+        # Lock to protect _state and _last_message_time which may be accessed
+        # from callbacks (potentially different thread) and the monitor task
+        self._state_lock = threading.Lock()
+
         # Statistics
         self._stats = ConnectionStats()
 
@@ -194,29 +199,31 @@ class ConnectionMonitor:
 
     def on_message_received(self) -> None:
         """Call this whenever any valid message arrives from firmware."""
-        self._last_message_time = time.monotonic()
-        self._stats.messages_received += 1
+        with self._state_lock:
+            self._last_message_time = time.monotonic()
+            self._stats.messages_received += 1
 
-        if self._state == ConnectionState.CONNECTING:
-            self._transition_to(ConnectionState.CONNECTED, "first_message")
-        elif self._state == ConnectionState.RECONNECTING:
-            self._transition_to(ConnectionState.CONNECTED, "message_after_timeout")
-        elif self._state == ConnectionState.DISCONNECTED:
-            # Received message while disconnected - transition through connecting
-            self._state = ConnectionState.CONNECTING
-            self._transition_to(ConnectionState.CONNECTED, "unexpected_message")
+            if self._state == ConnectionState.CONNECTING:
+                self._transition_to(ConnectionState.CONNECTED, "first_message")
+            elif self._state == ConnectionState.RECONNECTING:
+                self._transition_to(ConnectionState.CONNECTED, "message_after_timeout")
+            elif self._state == ConnectionState.DISCONNECTED:
+                # Received message while disconnected - transition through connecting
+                self._state = ConnectionState.CONNECTING
+                self._transition_to(ConnectionState.CONNECTED, "unexpected_message")
 
     def check(self) -> None:
         """Check for timeout. Call periodically or use start_monitoring()."""
-        if self._last_message_time is None:
-            return
+        with self._state_lock:
+            if self._last_message_time is None:
+                return
 
-        elapsed = time.monotonic() - self._last_message_time
+            elapsed = time.monotonic() - self._last_message_time
 
-        if self._state == ConnectionState.CONNECTED and elapsed > self.timeout_s:
-            self._transition_to(
-                ConnectionState.RECONNECTING, f"timeout_{elapsed:.2f}s"
-            )
+            if self._state == ConnectionState.CONNECTED and elapsed > self.timeout_s:
+                self._transition_to(
+                    ConnectionState.RECONNECTING, f"timeout_{elapsed:.2f}s"
+                )
 
     async def start_monitoring(self, interval_s: float = 0.1) -> None:
         """Start background monitoring task and enter CONNECTING state."""
@@ -253,9 +260,10 @@ class ConnectionMonitor:
     @property
     def time_since_last_message(self) -> Optional[float]:
         """Get time since last message, or None if no messages received."""
-        if self._last_message_time is None:
-            return None
-        return time.monotonic() - self._last_message_time
+        with self._state_lock:
+            if self._last_message_time is None:
+                return None
+            return time.monotonic() - self._last_message_time
 
     def get_stats(self) -> ConnectionStats:
         """Get connection statistics."""
@@ -277,6 +285,7 @@ class ConnectionMonitor:
 
     def reset(self) -> None:
         """Reset state (e.g., on manual disconnect)."""
-        if self._state != ConnectionState.DISCONNECTED:
-            self._transition_to(ConnectionState.DISCONNECTED, "manual_reset")
-        self._last_message_time = None
+        with self._state_lock:
+            if self._state != ConnectionState.DISCONNECTED:
+                self._transition_to(ConnectionState.DISCONNECTED, "manual_reset")
+            self._last_message_time = None

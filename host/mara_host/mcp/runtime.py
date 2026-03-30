@@ -17,6 +17,17 @@ from typing import Optional, Any, Literal
 from datetime import datetime, timedelta
 from enum import Enum
 
+# Fields that should be redacted in command history to prevent credential exposure
+SENSITIVE_FIELDS = {"password", "secret", "token", "key", "credential", "auth"}
+
+
+def _redact_sensitive(params: dict) -> dict:
+    """Redact sensitive fields from a parameter dictionary."""
+    return {
+        k: "***REDACTED***" if k.lower() in SENSITIVE_FIELDS else v
+        for k, v in params.items()
+    }
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Event Types
@@ -525,6 +536,27 @@ class MaraRuntime:
         raise RuntimeError("Not connected")
 
     @property
+    def motion_service(self):
+        """Get MotionService for velocity control."""
+        if self._ctx:
+            return self._ctx.motion_service
+        raise RuntimeError("Not connected")
+
+    @property
+    def signal_service(self):
+        """Get SignalService for signal bus operations."""
+        if self._ctx:
+            return self._ctx.signal_service
+        raise RuntimeError("Not connected")
+
+    @property
+    def camera_control_service(self):
+        """Get CameraControlService for camera settings."""
+        if self._ctx:
+            return self._ctx.camera_control_service
+        raise RuntimeError("Not connected")
+
+    @property
     def client(self):
         if self._ctx:
             return self._ctx.client
@@ -646,10 +678,13 @@ class MaraRuntime:
         if sent_at:
             latency_ms = (now - sent_at).total_seconds() * 1000
 
+        # Redact sensitive fields before storing to prevent credential exposure
+        safe_params = _redact_sensitive(params)
+
         record = CommandRecord(
             seq_id=seq_id,
             command=command,
-            params=params,
+            params=safe_params,
             sent_at=sent_at or now,
             acked_at=now,
             success=success,

@@ -12,6 +12,7 @@
 #endif
 
 #include "command/ModeManager.h"
+#include "control/SignalBus.h"
 #include "hw/GpioManager.h"
 #include "motor/ServoManager.h"
 #include "sensor/ImuManager.h"
@@ -34,6 +35,7 @@ public:
         Unsupported = 0,
         Constant,
         ImuAxis,
+        SignalRead,
     };
 
     enum class TransformKind : uint8_t {
@@ -62,12 +64,16 @@ public:
         Tap,
         Recall,
         Sum,
+        // Signal bus routing
+        SignalRecall,
+        SignalAdd,
     };
 
     enum class SinkKind : uint8_t {
         Unsupported = 0,
         GpioWrite,
         ServoAngle,
+        SignalWrite,
     };
 
     struct TransformRuntime {
@@ -88,12 +94,17 @@ public:
         static constexpr uint8_t MAX_SUM_INPUTS = 4;
         char sum_inputs[MAX_SUM_INPUTS][12] = {{0}};  // Names for sum inputs
         uint8_t sum_input_count = 0;
+        // Signal bus routing
+        uint16_t signal_id = 0;            // For signal_recall/signal_add
+        float signal_fallback = 0.0f;      // Fallback if signal not found
+        float signal_scale = 1.0f;         // Scale factor for signal_add
     };
 
     struct SinkRuntime {
         SinkKind kind = SinkKind::Unsupported;
         int channel = -1;      // For GPIO
         int servo_id = -1;     // For Servo
+        uint16_t signal_id = 0; // For SignalWrite
         bool last_output_high = false;
     };
 
@@ -102,6 +113,8 @@ public:
         SourceKind source = SourceKind::Unsupported;
         char imu_axis[8] = {0};
         float source_value = 0.0f;
+        uint16_t source_signal_id = 0;      // For SignalRead source
+        float source_signal_fallback = 0.0f; // Fallback for SignalRead
         uint8_t transform_count = 0;
         TransformRuntime transforms[MAX_TRANSFORMS]{};
         uint32_t last_run_ms = 0;
@@ -182,7 +195,7 @@ public:
         }
     }
 
-    void step(uint32_t now_ms, const ModeManager* mode, GpioManager* gpio, ServoManager* servo, ImuManager* imu) {
+    void step(uint32_t now_ms, const ModeManager* mode, GpioManager* gpio, ServoManager* servo, ImuManager* imu, SignalBus* signals = nullptr) {
         if (!present_ || !any_enabled_) return;
 
         bool mode_ok = true;
@@ -204,16 +217,16 @@ public:
             }
 
             float value = 0.0f;
-            if (!readSource_(slot, imu, value)) {
+            if (!readSource_(slot, imu, signals, value)) {
                 copyString_(slot.error, sizeof(slot.error), "source_read_failed");
                 slot.last_run_ms = now_ms;
                 continue;
             }
 
             bool should_emit = true;
-            value = applyTransforms_(slot, value, now_ms, should_emit);
+            value = applyTransforms_(slot, value, now_ms, signals, should_emit);
             if (should_emit) {
-                writeSink_(slot, gpio, servo, value);
+                writeSink_(slot, gpio, servo, signals, value);
             }
             slot.last_run_ms = now_ms;
             slot.run_count++;
@@ -436,6 +449,9 @@ private:
                 error = "invalid_servo_id";
                 return false;
             }
+        } else if (strcmp(sink_type, "signal_write") == 0) {
+            out.kind = SinkKind::SignalWrite;
+            out.signal_id = static_cast<uint16_t>(sink_params["signal_id"] | 0);
         } else {
             error = "unsupported_sink";
             return false;
@@ -456,6 +472,10 @@ private:
                 error = "unsupported_imu_axis";
                 return false;
             }
+        } else if (strcmp(source_type, "signal_read") == 0) {
+            out.source = SourceKind::SignalRead;
+            out.source_signal_id = static_cast<uint16_t>(source_params["signal_id"] | 0);
+            out.source_signal_fallback = source_params["fallback"] | 0.0f;
         } else {
             error = "unsupported_source";
             return false;
@@ -589,6 +609,15 @@ private:
                     copyString_(tr.sum_inputs[tr.sum_input_count], sizeof(tr.sum_inputs[0]), name);
                     tr.sum_input_count++;
                 }
+            } else if (strcmp(t, "signal_recall") == 0) {
+                tr.kind = TransformKind::SignalRecall;
+                tr.signal_id = static_cast<uint16_t>(params["signal_id"] | 0);
+                tr.signal_fallback = params["fallback"] | 0.0f;
+            } else if (strcmp(t, "signal_add") == 0) {
+                tr.kind = TransformKind::SignalAdd;
+                tr.signal_id = static_cast<uint16_t>(params["signal_id"] | 0);
+                tr.signal_fallback = params["fallback"] | 0.0f;
+                tr.signal_scale = params["scale"] | 1.0f;
             } else {
                 error = "unsupported_transform";
                 return false;
@@ -627,7 +656,7 @@ private:
         return true;
     }
 
-    bool readSource_(const SlotRuntime& slot, ImuManager* imu, float& value) const {
+    bool readSource_(const SlotRuntime& slot, ImuManager* imu, SignalBus* signals, float& value) const {
         switch (slot.source) {
             case SourceKind::Constant:
                 value = slot.source_value;
@@ -639,12 +668,22 @@ private:
                 value = (strcmp(slot.imu_axis, "roll") == 0) ? computeRollDeg_(sample) : computePitchDeg_(sample);
                 return true;
             }
+            case SourceKind::SignalRead: {
+                if (!signals) {
+                    value = slot.source_signal_fallback;
+                    return true;
+                }
+                if (!signals->get(slot.source_signal_id, value)) {
+                    value = slot.source_signal_fallback;
+                }
+                return true;
+            }
             default:
                 return false;
         }
     }
 
-    float applyTransforms_(SlotRuntime& slot, float value, uint32_t now_ms, bool& should_emit) {
+    float applyTransforms_(SlotRuntime& slot, float value, uint32_t now_ms, SignalBus* signals, bool& should_emit) {
         should_emit = true;
         for (uint8_t i = 0; i < slot.transform_count; ++i) {
             auto& tr = slot.transforms[i];
@@ -853,6 +892,34 @@ private:
                     value = sum;
                     break;
                 }
+                case TransformKind::SignalRecall: {
+                    // Replace current value with signal bus value
+                    if (signals) {
+                        float sig_val;
+                        if (signals->get(tr.signal_id, sig_val)) {
+                            value = sig_val;
+                        } else {
+                            value = tr.signal_fallback;
+                        }
+                    } else {
+                        value = tr.signal_fallback;
+                    }
+                    break;
+                }
+                case TransformKind::SignalAdd: {
+                    // Add signal bus value to current value (with optional scale)
+                    if (signals) {
+                        float sig_val;
+                        if (signals->get(tr.signal_id, sig_val)) {
+                            value += sig_val * tr.signal_scale;
+                        } else {
+                            value += tr.signal_fallback * tr.signal_scale;
+                        }
+                    } else {
+                        value += tr.signal_fallback * tr.signal_scale;
+                    }
+                    break;
+                }
                 default:
                     break;
             }
@@ -860,7 +927,7 @@ private:
         return value;
     }
 
-    void writeSink_(SlotRuntime& slot, GpioManager* gpio, ServoManager* servo, float value) {
+    void writeSink_(SlotRuntime& slot, GpioManager* gpio, ServoManager* servo, SignalBus* signals, float value) {
         for (uint8_t i = 0; i < slot.sink_count; ++i) {
             SinkRuntime& sink = slot.sinks[i];
             switch (sink.kind) {
@@ -875,6 +942,12 @@ private:
                     if (!servo) break;
                     servo->setAngle(sink.servo_id, clamp_(value, 0.0f, 180.0f));
                     sink.last_output_high = value > 90.0f;
+                    break;
+                }
+                case SinkKind::SignalWrite: {
+                    if (!signals) break;
+                    signals->set(sink.signal_id, value);
+                    sink.last_output_high = value > 0.5f;
                     break;
                 }
                 default:

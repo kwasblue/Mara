@@ -27,6 +27,32 @@ from mcp.types import Tool, TextContent
 from mara_host.mcp.runtime import MaraRuntime
 from mara_host.mcp._generated_tools import get_tool_definitions, dispatch_tool
 
+# Optional token-based authentication via environment variable
+# When set, clients must provide the token to execute tools
+AUTH_TOKEN = os.environ.get("MARA_MCP_TOKEN")
+
+# Track authenticated sessions (for stdio MCP, auth happens once at start)
+_authenticated_sessions: set[str] = set()
+
+
+def _check_auth(arguments: dict[str, Any]) -> tuple[bool, str | None]:
+    """
+    Check if the request is authenticated.
+
+    Returns:
+        (is_authenticated, error_message)
+    """
+    if not AUTH_TOKEN:
+        # No token configured, allow all requests
+        return True, None
+
+    # Check for token in arguments (initial handshake)
+    provided_token = arguments.pop("_auth_token", None)
+    if provided_token == AUTH_TOKEN:
+        return True, None
+
+    return False, "Authentication required. Set _auth_token in arguments or disable auth by unsetting MARA_MCP_TOKEN."
+
 
 def create_server(
     port: str | None = None,
@@ -46,6 +72,11 @@ def create_server(
     @server.call_tool()
     async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         """Execute a tool and return result."""
+        # Check authentication if token is configured
+        is_auth, auth_error = _check_auth(arguments)
+        if not is_auth:
+            return [TextContent(type="text", text=f"Error: {auth_error}")]
+
         try:
             result = await dispatch_tool(runtime, name, arguments)
             return [TextContent(type="text", text=str(result))]

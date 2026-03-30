@@ -142,8 +142,8 @@ async def _pid_test(args: argparse.Namespace) -> int:
         # Safety: ensure motor is stopped
         try:
             await client.send_json_cmd("CMD_DC_STOP", {"motor_id": motor_id})
-        except:
-            pass
+        except Exception:
+            pass  # Best-effort cleanup, errors intentionally ignored
         await client.stop()
 
     return 0
@@ -250,8 +250,8 @@ async def _pid_sweep(args: argparse.Namespace) -> int:
     finally:
         try:
             await client.send_json_cmd("CMD_DC_STOP", {"motor_id": motor_id})
-        except:
-            pass
+        except Exception:
+            pass  # Best-effort cleanup, errors intentionally ignored
         await client.stop()
 
     return 0

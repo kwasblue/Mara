@@ -168,3 +168,121 @@ def test_normalize_graph_config_rejects_negative_slew_rate() -> None:
         assert False, "expected validation error"
     except ControlGraphValidationError as exc:
         assert "rate" in str(exc)
+
+
+def test_normalize_graph_config_accepts_signal_read_source() -> None:
+    """Test signal_read source for cross-slot communication."""
+    cfg = {
+        "slots": [
+            {
+                "id": "read_from_signal",
+                "source": {"type": "signal_read", "params": {"signal_id": 5}},
+                "sink": {"type": "servo_angle", "params": {"servo_id": 0}},
+            }
+        ]
+    }
+
+    out = normalize_graph_config(cfg)
+    assert out["slots"][0]["source"]["type"] == "signal_read"
+    assert out["slots"][0]["source"]["params"]["signal_id"] == 5
+    assert out["slots"][0]["source"]["params"]["fallback"] == 0.0
+
+
+def test_normalize_graph_config_accepts_signal_write_sink() -> None:
+    """Test signal_write sink for cross-slot communication."""
+    cfg = {
+        "slots": [
+            {
+                "id": "write_to_signal",
+                "source": {"type": "imu_axis", "params": {"axis": "pitch"}},
+                "transforms": [{"type": "scale", "params": {"factor": 2.0}}],
+                "sink": {"type": "signal_write", "params": {"signal_id": 10}},
+            }
+        ]
+    }
+
+    out = normalize_graph_config(cfg)
+    assert out["slots"][0]["sink"]["type"] == "signal_write"
+    assert out["slots"][0]["sink"]["params"]["signal_id"] == 10
+
+
+def test_normalize_graph_config_accepts_signal_transforms() -> None:
+    """Test signal_recall and signal_add transforms for merging."""
+    cfg = {
+        "slots": [
+            {
+                "id": "merge_signals",
+                "source": {"type": "signal_read", "params": {"signal_id": 1}},
+                "transforms": [
+                    {"type": "tap", "params": {"name": "a"}},
+                    {"type": "signal_recall", "params": {"signal_id": 2}},
+                    {"type": "tap", "params": {"name": "b"}},
+                    {"type": "sum", "params": {"inputs": ["a", "b"]}},
+                ],
+                "sink": {"type": "servo_angle", "params": {"servo_id": 0}},
+            }
+        ]
+    }
+
+    out = normalize_graph_config(cfg)
+    kinds = [t["type"] for t in out["slots"][0]["transforms"]]
+    assert "signal_recall" in kinds
+
+
+def test_normalize_graph_config_signal_add_with_scale() -> None:
+    """Test signal_add transform with scale parameter."""
+    cfg = {
+        "slots": [
+            {
+                "id": "add_scaled_signal",
+                "source": {"type": "signal_read", "params": {"signal_id": 1}},
+                "transforms": [
+                    {"type": "signal_add", "params": {"signal_id": 2, "scale": 0.5}},
+                ],
+                "sink": {"type": "motor_speed", "params": {"motor_id": 0}},
+            }
+        ]
+    }
+
+    out = normalize_graph_config(cfg)
+    signal_add = out["slots"][0]["transforms"][0]
+    assert signal_add["type"] == "signal_add"
+    assert signal_add["params"]["signal_id"] == 2
+    assert signal_add["params"]["scale"] == 0.5
+
+
+def test_parallel_slots_via_signals() -> None:
+    """Test the full parallel processing pattern with signal bus."""
+    cfg = {
+        "slots": [
+            # Chain A: process IMU and write to signal 1
+            {
+                "id": "chain_a",
+                "source": {"type": "imu_axis", "params": {"axis": "pitch"}},
+                "transforms": [{"type": "scale", "params": {"factor": 0.5}}],
+                "sink": {"type": "signal_write", "params": {"signal_id": 1}},
+            },
+            # Chain B: process same IMU differently and write to signal 2
+            {
+                "id": "chain_b",
+                "source": {"type": "imu_axis", "params": {"axis": "pitch"}},
+                "transforms": [{"type": "offset", "params": {"value": 10.0}}],
+                "sink": {"type": "signal_write", "params": {"signal_id": 2}},
+            },
+            # Merger: read both signals, sum, output to servo
+            {
+                "id": "merger",
+                "source": {"type": "signal_read", "params": {"signal_id": 1}},
+                "transforms": [
+                    {"type": "signal_add", "params": {"signal_id": 2}},
+                ],
+                "sink": {"type": "servo_angle", "params": {"servo_id": 0}},
+            },
+        ]
+    }
+
+    out = normalize_graph_config(cfg)
+    assert len(out["slots"]) == 3
+    assert out["slots"][0]["sink"]["type"] == "signal_write"
+    assert out["slots"][1]["sink"]["type"] == "signal_write"
+    assert out["slots"][2]["source"]["type"] == "signal_read"

@@ -139,6 +139,7 @@ class ReliableCommander:
         self._retry_config = retry_config or RetryConfig()
 
         self._pending: Dict[int, PendingCommand] = {}
+        self._pending_lock = asyncio.Lock()
         self._update_task: Optional[asyncio.Task] = None
 
         # Stats
@@ -251,20 +252,22 @@ class ReliableCommander:
         loop = asyncio.get_event_loop()
         future: asyncio.Future[tuple[bool, Optional[str]]] = loop.create_future()
 
-        self._pending[seq] = PendingCommand(
-            seq=seq,
-            cmd_type=cmd_type,
-            payload=payload,
-            first_sent_ns=sent_ns,
-            last_sent_ns=sent_ns,
-            future=future,
-            timeout_s=cmd_timeout,  # Store per-command timeout
-        )
+        async with self._pending_lock:
+            self._pending[seq] = PendingCommand(
+                seq=seq,
+                cmd_type=cmd_type,
+                payload=payload,
+                first_sent_ns=sent_ns,
+                last_sent_ns=sent_ns,
+                future=future,
+                timeout_s=cmd_timeout,  # Store per-command timeout
+            )
 
         try:
             return await future
         except asyncio.CancelledError:
-            self._pending.pop(seq, None)
+            async with self._pending_lock:
+                self._pending.pop(seq, None)
             self._emit("cmd.cancelled", seq=seq, cmd_type=cmd_type)
             return False, "CANCELLED"
 
@@ -388,7 +391,11 @@ class ReliableCommander:
         to_retry: list[PendingCommand] = []
         stale: list[int] = []
 
-        for seq, cmd in list(self._pending.items()):
+        # Copy pending items under lock to avoid race with on_ack
+        async with self._pending_lock:
+            pending_snapshot = list(self._pending.items())
+
+        for seq, cmd in pending_snapshot:
             # Check for absolute max age (memory leak prevention)
             absolute_age_s = (now_ns - cmd.first_sent_ns) * 1e-9
             if absolute_age_s > self.MAX_PENDING_AGE_S:
@@ -406,8 +413,10 @@ class ReliableCommander:
                     timed_out.append(seq)
 
         # Handle stale commands (forced eviction)
+        # Note: Pop under lock to coordinate with on_ack
         for seq in stale:
-            cmd = self._pending.pop(seq, None)
+            async with self._pending_lock:
+                cmd = self._pending.pop(seq, None)
             if cmd is None:
                 continue
 
@@ -447,7 +456,8 @@ class ReliableCommander:
 
         # Handle final timeouts
         for seq in timed_out:
-            cmd = self._pending.pop(seq, None)
+            async with self._pending_lock:
+                cmd = self._pending.pop(seq, None)
             if cmd is None:
                 continue
 

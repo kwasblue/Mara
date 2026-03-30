@@ -120,6 +120,9 @@ class CLIContext:
         self._controller_service: Optional["ControllerService"] = None
         self._pid_service: Optional["PidService"] = None
         self._mcu_diagnostics_service = None
+        self._motion_service = None
+        self._signal_service = None
+        self._camera_control_service = None
         self._policy_robot = None
 
     @classmethod
@@ -231,6 +234,9 @@ class CLIContext:
         self._controller_service = None
         self._pid_service = None
         self._mcu_diagnostics_service = None
+        self._motion_service = None
+        self._signal_service = None
+        self._camera_control_service = None
         self._policy_robot = None
 
     async def __aenter__(self) -> "CLIContext":
@@ -427,6 +433,30 @@ class CLIContext:
             from mara_host.services.control.pid_service import PidService
             self._pid_service = PidService(self.client)
         return self._pid_service
+
+    @property
+    def motion_service(self):
+        """Get or create MotionService instance."""
+        if self._motion_service is None:
+            from mara_host.services.control.motion_service import MotionService
+            self._motion_service = MotionService(self.client)
+        return self._motion_service
+
+    @property
+    def signal_service(self):
+        """Get or create SignalService instance."""
+        if self._signal_service is None:
+            from mara_host.services.control.signal_service import SignalService
+            self._signal_service = SignalService(self.client)
+        return self._signal_service
+
+    @property
+    def camera_control_service(self):
+        """Get or create CameraControlService instance."""
+        if self._camera_control_service is None:
+            from mara_host.services.camera.camera_control_service import CameraControlService
+            self._camera_control_service = CameraControlService(self.client)
+        return self._camera_control_service
 
 
 def run_with_context(func: Callable[..., T]) -> Callable[..., int]:

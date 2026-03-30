@@ -91,7 +91,8 @@ async def _calibrate_encoder(args: argparse.Namespace) -> int:
                     if select.select([sys.stdin], [], [], 0)[0]:
                         sys.stdin.readline()
                         break
-                except:
+                except Exception:
+                    # select() may not work on all platforms (e.g., Windows)
                     await asyncio.sleep(0.5)
                     if Confirm.ask("Done rotating?", default=False):
                         break

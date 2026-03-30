@@ -105,8 +105,8 @@ async def _test_stepper(args: argparse.Namespace, stepper_ids: list[int]) -> int
                 # Try to stop on error
                 try:
                     await client.send_json_cmd("CMD_STEPPER_STOP", {"motor_id": motor_id})
-                except:
-                    pass
+                except Exception:
+                    pass  # Best-effort cleanup, errors intentionally ignored
 
     finally:
         await client.cmd_disarm()

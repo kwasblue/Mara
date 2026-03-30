@@ -33,6 +33,8 @@ using VelocityCallback = std::function<void(float vx, float omega, uint16_t seq)
 using SignalCallback = std::function<void(uint16_t id, float value)>;
 using HeartbeatCallback = std::function<void(uint8_t nodeId, uint32_t uptime, can::NodeState state)>;
 using EncoderCallback = std::function<void(uint8_t nodeId, int32_t counts, int16_t velocity)>;
+using EstopCallback = std::function<void()>;
+using StopCallback = std::function<void(uint8_t nodeId)>;
 
 /**
  * CanTransport - Hybrid CAN transport for real-time and protocol messages
@@ -77,6 +79,8 @@ public:
     void setSignalCallback(SignalCallback cb) { onSignal_ = std::move(cb); }
     void setHeartbeatCallback(HeartbeatCallback cb) { onHeartbeat_ = std::move(cb); }
     void setEncoderCallback(EncoderCallback cb) { onEncoder_ = std::move(cb); }
+    void setEstopCallback(EstopCallback cb) { onEstop_ = std::move(cb); }
+    void setStopCallback(StopCallback cb) { onStop_ = std::move(cb); }
 
     // === Native message sending ===
 
@@ -155,6 +159,8 @@ private:
     SignalCallback onSignal_;
     HeartbeatCallback onHeartbeat_;
     EncoderCallback onEncoder_;
+    EstopCallback onEstop_;
+    StopCallback onStop_;
 
     // Message handling
     void processMessage(const hal::CanMessage& msg);

@@ -283,12 +283,144 @@ TOOLS: list[ToolDef] = [
     ),
     ToolDef(
         name="stop",
-        description="Emergency stop - immediately halt all motion.",
+        description="Soft stop - zero velocities without changing robot state.",
         category="state",
         service="state_service",
         method="stop",
         requires_arm=False,
         response_format="Stopped",
+    ),
+    ToolDef(
+        name="estop",
+        description="Emergency stop - immediately halt all motion and enter ESTOP state. Requires clear_estop before resuming.",
+        category="state",
+        service="state_service",
+        method="estop",
+        requires_arm=False,
+        response_format="E-STOP activated",
+    ),
+    ToolDef(
+        name="clear_estop",
+        description="Clear emergency stop condition (ESTOP -> IDLE). Required after estop before normal operation.",
+        category="state",
+        service="state_service",
+        method="clear_estop",
+        requires_arm=False,
+        response_format="E-STOP cleared",
+    ),
+    ToolDef(
+        name="activate",
+        description="Activate the robot (ARMED -> ACTIVE). Motion commands are only accepted in ACTIVE state.",
+        category="state",
+        service="state_service",
+        method="activate",
+        requires_arm=False,
+        response_format="Activated",
+    ),
+    ToolDef(
+        name="deactivate",
+        description="Deactivate the robot (ACTIVE -> ARMED). Stops accepting motion commands.",
+        category="state",
+        service="state_service",
+        method="deactivate",
+        requires_arm=False,
+        response_format="Deactivated",
+    ),
+    ToolDef(
+        name="get_robot_state",
+        description="Query current robot state from MCU. Returns mode (IDLE/ARMED/ACTIVE/ESTOP), armed status, active status, and estop status.",
+        category="state",
+        service="state_service",
+        method="get_state",
+        requires_arm=False,
+    ),
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Motion Tools
+    # ─────────────────────────────────────────────────────────────────────────
+    ToolDef(
+        name="set_velocity",
+        description="Set robot body velocity for differential drive. Uses reliable transport with ACK.",
+        category="motion",
+        service="motion_service",
+        method="set_velocity_reliable",
+        params=(
+            ToolParam("vx", "number", "Linear velocity in m/s (positive = forward)"),
+            ToolParam("omega", "number", "Angular velocity in rad/s (positive = counter-clockwise)"),
+        ),
+        response_format="Velocity set: vx={vx:.2f} m/s, omega={omega:.2f} rad/s",
+    ),
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Signal Bus Tools
+    # ─────────────────────────────────────────────────────────────────────────
+    ToolDef(
+        name="signal_define",
+        description="Define a new signal in the MCU signal bus. Signals enable data flow between control components.",
+        category="signal",
+        service="signal_service",
+        method="define",
+        params=(
+            ToolParam("signal_id", "integer", "Signal ID (0-255)"),
+            ToolParam("name", "string", "Signal name for identification"),
+            ToolParam("kind", "string", "Signal kind: continuous, discrete, or event", required=False, default="continuous"),
+            ToolParam("initial_value", "number", "Initial signal value", required=False, default=0.0),
+        ),
+        requires_arm=False,
+        response_format="Signal {signal_id} ({name}) defined",
+    ),
+    ToolDef(
+        name="signal_set",
+        description="Set a signal value in the signal bus.",
+        category="signal",
+        service="signal_service",
+        method="set",
+        params=(
+            ToolParam("signal_id", "integer", "Signal ID"),
+            ToolParam("value", "number", "Value to set"),
+        ),
+        requires_arm=False,
+        response_format="Signal {signal_id} = {value}",
+    ),
+    ToolDef(
+        name="signal_get",
+        description="Get a signal value from the MCU signal bus.",
+        category="signal",
+        service="signal_service",
+        method="get",
+        params=(
+            ToolParam("signal_id", "integer", "Signal ID"),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="signal_list",
+        description="List all defined signals in the signal bus.",
+        category="signal",
+        service="signal_service",
+        method="list",
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="signal_delete",
+        description="Delete a signal from the signal bus.",
+        category="signal",
+        service="signal_service",
+        method="delete",
+        params=(
+            ToolParam("signal_id", "integer", "Signal ID to delete"),
+        ),
+        requires_arm=False,
+        response_format="Signal {signal_id} deleted",
+    ),
+    ToolDef(
+        name="signal_clear",
+        description="Clear all signals from the signal bus.",
+        category="signal",
+        service="signal_service",
+        method="clear",
+        requires_arm=False,
+        response_format="All signals cleared",
     ),
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -601,6 +733,115 @@ TOOLS: list[ToolDef] = [
             ToolParam("duration_ms", "integer", "Movement duration in milliseconds", required=False, default=500),
         ),
         response_format="Homed",
+    ),
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Camera Tools
+    # ─────────────────────────────────────────────────────────────────────────
+    ToolDef(
+        name="camera_set_resolution",
+        description="Set camera resolution. Available: QQVGA(160x120), QVGA(320x240), VGA(640x480), SVGA(800x600), XGA(1024x768), SXGA(1280x1024), UXGA(1600x1200).",
+        category="camera",
+        service="camera_control_service",
+        method="set_resolution",
+        params=(
+            ToolParam("resolution", "integer", "Resolution frame size (0=QQVGA, 5=QVGA, 8=VGA, 9=SVGA, 10=XGA, 12=SXGA, 13=UXGA)"),
+        ),
+        requires_arm=False,
+        response_format="Camera resolution set",
+    ),
+    ToolDef(
+        name="camera_set_quality",
+        description="Set camera JPEG compression quality. Lower values = higher quality, larger files.",
+        category="camera",
+        service="camera_control_service",
+        method="set_quality",
+        params=(
+            ToolParam("quality", "integer", "Quality value (4-63, lower is better quality)"),
+        ),
+        requires_arm=False,
+        response_format="Camera quality set to {quality}",
+    ),
+    ToolDef(
+        name="camera_set_brightness",
+        description="Set camera brightness level.",
+        category="camera",
+        service="camera_control_service",
+        method="set_brightness",
+        params=(
+            ToolParam("brightness", "integer", "Brightness level (-2 to 2)"),
+        ),
+        requires_arm=False,
+        response_format="Camera brightness set to {brightness}",
+    ),
+    ToolDef(
+        name="camera_set_contrast",
+        description="Set camera contrast level.",
+        category="camera",
+        service="camera_control_service",
+        method="set_contrast",
+        params=(
+            ToolParam("contrast", "integer", "Contrast level (-2 to 2)"),
+        ),
+        requires_arm=False,
+        response_format="Camera contrast set to {contrast}",
+    ),
+    ToolDef(
+        name="camera_set_saturation",
+        description="Set camera color saturation level.",
+        category="camera",
+        service="camera_control_service",
+        method="set_saturation",
+        params=(
+            ToolParam("saturation", "integer", "Saturation level (-2 to 2)"),
+        ),
+        requires_arm=False,
+        response_format="Camera saturation set to {saturation}",
+    ),
+    ToolDef(
+        name="camera_set_flip",
+        description="Set camera image flip/mirror settings.",
+        category="camera",
+        service="camera_control_service",
+        method="set_flip",
+        params=(
+            ToolParam("hmirror", "boolean", "Horizontal mirror", required=False, default=None),
+            ToolParam("vflip", "boolean", "Vertical flip", required=False, default=None),
+        ),
+        requires_arm=False,
+        response_format="Camera flip settings updated",
+    ),
+    ToolDef(
+        name="camera_flash",
+        description="Control camera flash LED.",
+        category="camera",
+        service="camera_control_service",
+        method="set_flash",
+        params=(
+            ToolParam("state", "string", "Flash state: on, off, or toggle"),
+        ),
+        requires_arm=False,
+        response_format="Camera flash {state}",
+    ),
+    ToolDef(
+        name="camera_apply_preset",
+        description="Apply a camera configuration preset. Presets: default, streaming, high_quality, fast, night, ml_inference.",
+        category="camera",
+        service="camera_control_service",
+        method="apply_preset",
+        params=(
+            ToolParam("preset", "string", "Preset name: default, streaming, high_quality, fast, night, ml_inference"),
+        ),
+        requires_arm=False,
+        response_format="Applied camera preset: {preset}",
+    ),
+    ToolDef(
+        name="camera_get_status",
+        description="Get current camera status and settings.",
+        category="camera",
+        service="camera_control_service",
+        method="get_status",
+        requires_arm=False,
     ),
 ]
 

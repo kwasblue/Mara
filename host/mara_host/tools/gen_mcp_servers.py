@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """
-Generate MCP and HTTP server files from tool schema.
+Generate MCP and HTTP server files from tool schema AND command schema.
 
-This generator reads `mara_host/mcp/tool_schema.py` and produces:
+This generator reads:
+- `mara_host/mcp/tool_schema.py` - Hand-crafted tool definitions with service mappings
+- `mara_host/tools/schema/commands/` - Firmware command definitions (auto-discovered)
+
+And produces:
 - mara_host/mcp/_generated_tools.py - Tool list and dispatch for MCP
 - mara_host/mcp/_generated_http.py - Handlers and routes for HTTP
+
+Commands in the schema that don't have explicit tool definitions are auto-generated
+as generic "send command" tools, ensuring complete firmware coverage.
 
 Usage:
     python -m mara_host.tools.gen_mcp_servers
@@ -15,11 +22,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from datetime import datetime
+from typing import Any
 
 # Add parent to path for imports
 TOOLS_DIR = Path(__file__).parent
 HOST_DIR = TOOLS_DIR.parent
 sys.path.insert(0, str(HOST_DIR))
+sys.path.insert(0, str(HOST_DIR.parent))
 
 # Import directly to avoid circular import through mcp/__init__.py
 import importlib.util
@@ -34,6 +43,10 @@ TOOLS = tool_schema_module.TOOLS
 ToolDef = tool_schema_module.ToolDef
 ToolParam = tool_schema_module.ToolParam
 
+# Import command schema for auto-generation
+from mara_host.tools.schema.commands import COMMANDS, COMMAND_OBJECTS
+from mara_host.tools.schema.commands.core import CommandDef, FieldDef, UNSET
+
 
 # =============================================================================
 # Output Paths
@@ -41,6 +54,119 @@ ToolParam = tool_schema_module.ToolParam
 
 MCP_OUTPUT = HOST_DIR / "mcp" / "_generated_tools.py"
 HTTP_OUTPUT = HOST_DIR / "mcp" / "_generated_http.py"
+
+
+# =============================================================================
+# Auto-Generation from Command Schema
+# =============================================================================
+
+# Commands to skip (internal/low-level)
+SKIP_COMMANDS = {
+    "CMD_ACK", "CMD_NACK", "CMD_ERROR", "CMD_UNKNOWN",
+    "CMD_HEARTBEAT",  # Internal keep-alive
+}
+
+# Type mapping from schema to JSON Schema
+SCHEMA_TYPE_MAP = {
+    "string": "string", "str": "string",
+    "int": "integer", "integer": "integer",
+    "float": "number", "number": "number",
+    "bool": "boolean", "boolean": "boolean",
+    "array": "array", "object": "object",
+}
+
+
+def cmd_to_tool_name(cmd_name: str) -> str:
+    """Convert CMD_FOO_BAR to foo_bar."""
+    return cmd_name.removeprefix("CMD_").lower()
+
+
+def is_host_to_mcu(cmd_def: CommandDef | dict) -> bool:
+    """Check if command is host->mcu."""
+    if isinstance(cmd_def, CommandDef):
+        return cmd_def.direction in ("host->mcu", "both")
+    return cmd_def.get("direction", "host->mcu") in ("host->mcu", "both")
+
+
+def field_to_json_schema(field_def: FieldDef | dict) -> dict[str, Any]:
+    """Convert a FieldDef to JSON Schema."""
+    if isinstance(field_def, FieldDef):
+        schema: dict[str, Any] = {"type": SCHEMA_TYPE_MAP.get(field_def.type, field_def.type)}
+        if field_def.description:
+            schema["description"] = field_def.description
+        if field_def.default is not UNSET:
+            schema["default"] = field_def.default
+        if field_def.enum:
+            schema["enum"] = list(field_def.enum)
+        if field_def.minimum is not None:
+            schema["minimum"] = field_def.minimum
+        if field_def.maximum is not None:
+            schema["maximum"] = field_def.maximum
+        return schema
+    else:
+        schema = {"type": SCHEMA_TYPE_MAP.get(field_def.get("type", "string"), "string")}
+        if "description" in field_def:
+            schema["description"] = field_def["description"]
+        if "default" in field_def:
+            schema["default"] = field_def["default"]
+        if "enum" in field_def:
+            schema["enum"] = field_def["enum"]
+        return schema
+
+
+def get_auto_generated_tools() -> list[tuple[str, str, dict, str]]:
+    """
+    Get tools auto-generated from command schema.
+
+    Returns list of (tool_name, cmd_name, input_schema, description) for commands
+    not already defined in tool_schema.py.
+    """
+    # Get tool names already defined in tool_schema.py
+    existing_tools = {f"mara_{t.name}" for t in TOOLS}
+
+    auto_tools = []
+
+    for cmd_name in sorted(COMMANDS.keys()):
+        if cmd_name in SKIP_COMMANDS:
+            continue
+
+        tool_name = f"mara_{cmd_to_tool_name(cmd_name)}"
+
+        # Skip if already defined manually
+        if tool_name in existing_tools:
+            continue
+
+        cmd_def = COMMAND_OBJECTS.get(cmd_name) or COMMANDS.get(cmd_name)
+        if not cmd_def or not is_host_to_mcu(cmd_def):
+            continue
+
+        # Get description
+        if isinstance(cmd_def, CommandDef):
+            description = cmd_def.description
+            payload = dict(cmd_def.payload)
+        else:
+            description = cmd_def.get("description", cmd_name)
+            payload = cmd_def.get("payload", {})
+
+        # Build input schema
+        properties = {}
+        required = []
+
+        for field_name, field_def in payload.items():
+            properties[field_name] = field_to_json_schema(field_def)
+            if isinstance(field_def, FieldDef):
+                if field_def.required:
+                    required.append(field_name)
+            elif field_def.get("required"):
+                required.append(field_name)
+
+        input_schema = {"type": "object", "properties": properties}
+        if required:
+            input_schema["required"] = required
+
+        auto_tools.append((tool_name, cmd_name, input_schema, description))
+
+    return auto_tools
 
 
 # =============================================================================
@@ -96,6 +222,18 @@ def get_tool_definitions() -> list[Tool]:
         lines.append(f'''        Tool(
             name="mara_{tool.name}",
             description="{tool.description}",
+            inputSchema={schema!r},
+        ),
+''')
+
+    # Add auto-generated tools from command schema
+    auto_tools = get_auto_generated_tools()
+    for tool_name, cmd_name, schema, description in auto_tools:
+        # Escape description for string literal
+        desc_escaped = description.replace('"', '\\"').replace('\n', ' ')
+        lines.append(f'''        Tool(
+            name="{tool_name}",
+            description="{desc_escaped}",
             inputSchema={schema!r},
         ),
 ''')
@@ -164,6 +302,24 @@ async def dispatch_tool(runtime, name: str, args: dict[str, Any]) -> str:
         if result.ok:
             return {response_ok}
         return f"FAIL: {{result.error}}"
+
+''')
+
+    # Add dispatch for auto-generated tools (generic command send)
+    for tool_name, cmd_name, schema, description in auto_tools:
+        # Extract required params for the call
+        props = schema.get("properties", {})
+        required = schema.get("required", [])
+
+        lines.append(f'''    if name == "{tool_name}":
+        await runtime.ensure_connected()
+        sent_at = datetime.now()
+        # Auto-generated: send command directly
+        ok, error, data = await runtime.client.send_with_data("{cmd_name}", args)
+        runtime.record_command("{cmd_name}", args, ok, error, sent_at=sent_at)
+        if ok:
+            return f"{cmd_name} OK" + (f": {{data}}" if data else "")
+        return f"FAIL: {{error}}"
 
 ''')
 
@@ -363,6 +519,10 @@ def get_openai_function_schema() -> list[dict]:
 def main():
     print("Generating MCP server tools...")
 
+    # Count auto-generated tools
+    auto_tools = get_auto_generated_tools()
+    total_tools = len(TOOLS) + len(auto_tools)
+
     # Generate MCP tools
     mcp_content = generate_mcp_tools()
     MCP_OUTPUT.write_text(mcp_content)
@@ -373,7 +533,7 @@ def main():
     HTTP_OUTPUT.write_text(http_content)
     print(f"  -> {HTTP_OUTPUT}")
 
-    print(f"Generated {len(TOOLS)} tools")
+    print(f"Generated {total_tools} tools ({len(TOOLS)} manual + {len(auto_tools)} auto-generated from schema)")
 
 
 if __name__ == "__main__":

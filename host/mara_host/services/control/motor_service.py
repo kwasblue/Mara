@@ -119,13 +119,16 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
             if not ok:
                 return ServiceResult.failure(error=error or f"Failed to set motor {motor_id} speed")
         else:
-            # Fire-and-forget - don't wait for ACK
+            # Fire-and-forget mode: command is sent without waiting for ACK.
+            # This provides lower latency for high-rate control loops but means
+            # errors are not reported back. The local state update below is
+            # optimistic and may diverge from firmware state if the command fails.
             await self.client.send_auto(
                 "CMD_DC_SET_SPEED",
                 {"motor_id": motor_id, "speed": speed},
             )
 
-        # Update local state
+        # Update local state (optimistic - may diverge from firmware if fire-and-forget fails)
         state = self.get_state(motor_id)
         state.speed = speed
         return ServiceResult.success(data={"motor_id": motor_id, "speed": speed})

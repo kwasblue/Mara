@@ -203,7 +203,9 @@ void CanTransport::handleNativeMessage(uint16_t id, const uint8_t* data, size_t 
     switch (baseId) {
         case can::MsgId::ESTOP:
             LOG_WARN(TAG, "E-STOP received!");
-            // TODO: Trigger safety manager
+            if (onEstop_) {
+                onEstop_();
+            }
             break;
 
         case can::MsgId::SET_VEL_BASE:
@@ -242,7 +244,9 @@ void CanTransport::handleNativeMessage(uint16_t id, const uint8_t* data, size_t 
 
         case can::MsgId::STOP_BASE:
             LOG_DEBUG(TAG, "Stop command from node %u", nodeId);
-            // TODO: Trigger stop
+            if (onStop_) {
+                onStop_(nodeId);
+            }
             break;
 
         default:

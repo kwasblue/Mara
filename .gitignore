@@ -23,7 +23,9 @@ venv/
 .claude/
 .venv/
 pip-wheel-metadata/
-logs/
+# Log directories (only at specific levels, not cli/commands/logs/)
+/logs/
+/host/logs/
 
 # ---- Stale generation artifacts (prevent root-level duplicates) ----
 # If generators run from wrong directory, these could appear at repo root

@@ -57,7 +57,7 @@ class TestCommandsDomainFiles:
         """COMMANDS should have expected number of commands."""
         from mara_host.tools.schema import COMMANDS
         # Total should be 103 commands across all domains (including WiFi and MCU diagnostics commands)
-        assert len(COMMANDS) == 106, f"Expected 106 commands, got {len(COMMANDS)}"
+        assert len(COMMANDS) == 108, f"Expected 108 commands, got {len(COMMANDS)}"
 
     def test_individual_domain_exports(self):
         """Individual domain exports should be available."""
@@ -78,7 +78,7 @@ class TestCommandsDomainFiles:
             WIFI_COMMANDS,
         )
         # Verify expected counts per domain
-        assert len(SAFETY_COMMANDS) == 10, f"SAFETY: expected 10, got {len(SAFETY_COMMANDS)}"
+        assert len(SAFETY_COMMANDS) == 12, f"SAFETY: expected 12, got {len(SAFETY_COMMANDS)}"
         assert len(RATE_COMMANDS) == 4, f"RATE: expected 4, got {len(RATE_COMMANDS)}"
         assert len(CONTROL_COMMANDS) == 19, f"CONTROL: expected 19, got {len(CONTROL_COMMANDS)}"
         assert len(CONTROL_COMMAND_OBJECTS) == 19, f"CONTROL_OBJECTS: expected 19, got {len(CONTROL_COMMAND_OBJECTS)}"

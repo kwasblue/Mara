@@ -69,6 +69,30 @@ SAFETY_COMMAND_OBJECTS: dict[str, CommandDef] = {
             "estop": FieldDef(type="bool", description="True if emergency stop active"),
         },
     ),
+    "CMD_GET_SAFETY_TIMEOUTS": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Query current safety timeout settings.",
+        response={
+            "host_timeout_ms": FieldDef(type="int", description="Host heartbeat timeout (0=disabled)"),
+            "motion_timeout_ms": FieldDef(type="int", description="Motion command timeout (0=disabled)"),
+            "enabled": FieldDef(type="bool", description="True if any timeout is active"),
+        },
+    ),
+    "CMD_SET_SAFETY_TIMEOUTS": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Set safety timeout values. Use 0 to disable a timeout.",
+        payload={
+            "host_timeout_ms": FieldDef(type="int", description="Host heartbeat timeout in ms (0=disabled)"),
+            "motion_timeout_ms": FieldDef(type="int", description="Motion command timeout in ms (0=disabled)"),
+        },
+        response={
+            "host_timeout_ms": FieldDef(type="int", description="Actual host timeout set"),
+            "motion_timeout_ms": FieldDef(type="int", description="Actual motion timeout set"),
+            "enabled": FieldDef(type="bool", description="True if any timeout is active"),
+        },
+    ),
 }
 
 SAFETY_COMMANDS: dict[str, dict] = export_command_dicts(SAFETY_COMMAND_OBJECTS)

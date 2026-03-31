@@ -17,8 +17,8 @@ namespace config {
 // Safety Configuration
 // =============================================================================
 struct Safety {
-    uint32_t host_timeout_ms = 3000;   // Time without heartbeat → DISCONNECTED
-    uint32_t motion_timeout_ms = 500;  // Time without motion cmd → auto-stop
+    uint32_t host_timeout_ms = 0;      // 0 = disabled. Time without heartbeat → DISCONNECTED
+    uint32_t motion_timeout_ms = 0;    // 0 = disabled. Time without motion cmd → auto-stop
     float max_linear_vel = 2.0f;       // m/s, commands clamped to this
     float max_angular_vel = 3.14f;     // rad/s, commands clamped to this
     int estop_pin = -1;                // Physical E-stop button pin (-1 = none)

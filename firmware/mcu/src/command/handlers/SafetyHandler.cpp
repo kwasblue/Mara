@@ -143,3 +143,29 @@ void SafetyHandler::handleGetState(CommandContext& ctx) {
     resp["estop"] = estop;
     ctx.sendAck("CMD_GET_STATE", true, resp);
 }
+
+void SafetyHandler::handleSetSafetyTimeouts(JsonVariantConst payload, CommandContext& ctx) {
+    uint32_t host_ms = payload["host_timeout_ms"] | 0;
+    uint32_t motion_ms = payload["motion_timeout_ms"] | 0;
+
+    DBG_PRINTF("[SAFETY] SET_SAFETY_TIMEOUTS host=%lu motion=%lu\n",
+               (unsigned long)host_ms, (unsigned long)motion_ms);
+
+    mode_.setTimeouts(host_ms, motion_ms);
+
+    JsonDocument resp;
+    resp["host_timeout_ms"] = mode_.getHostTimeout();
+    resp["motion_timeout_ms"] = mode_.getMotionTimeout();
+    resp["enabled"] = mode_.timeoutsEnabled();
+    ctx.sendAck("CMD_SET_SAFETY_TIMEOUTS", true, resp);
+}
+
+void SafetyHandler::handleGetSafetyTimeouts(CommandContext& ctx) {
+    DBG_PRINTLN("[SAFETY] GET_SAFETY_TIMEOUTS");
+
+    JsonDocument resp;
+    resp["host_timeout_ms"] = mode_.getHostTimeout();
+    resp["motion_timeout_ms"] = mode_.getMotionTimeout();
+    resp["enabled"] = mode_.timeoutsEnabled();
+    ctx.sendAck("CMD_GET_SAFETY_TIMEOUTS", true, resp);
+}

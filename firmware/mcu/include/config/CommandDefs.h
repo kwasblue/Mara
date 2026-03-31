@@ -64,6 +64,7 @@ enum class CmdType {
     GET_IDENTITY,
     GET_LOG_LEVELS,
     GET_RATES,
+    GET_SAFETY_TIMEOUTS,
     GET_STATE,
     GPIO_READ,
     GPIO_REGISTER_CHANNEL,
@@ -93,6 +94,7 @@ enum class CmdType {
     SERVO_SET_PULSE,
     SET_LOG_LEVEL,
     SET_MODE,
+    SET_SAFETY_TIMEOUTS,
     SET_SUBSYSTEM_LOG_LEVEL,
     SET_VEL,
     STEPPER_ENABLE,
@@ -176,6 +178,7 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_GET_IDENTITY", CmdType::GET_IDENTITY},
         {"CMD_GET_LOG_LEVELS", CmdType::GET_LOG_LEVELS},
         {"CMD_GET_RATES", CmdType::GET_RATES},
+        {"CMD_GET_SAFETY_TIMEOUTS", CmdType::GET_SAFETY_TIMEOUTS},
         {"CMD_GET_STATE", CmdType::GET_STATE},
         {"CMD_GPIO_READ", CmdType::GPIO_READ},
         {"CMD_GPIO_REGISTER_CHANNEL", CmdType::GPIO_REGISTER_CHANNEL},
@@ -205,6 +208,7 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_SERVO_SET_PULSE", CmdType::SERVO_SET_PULSE},
         {"CMD_SET_LOG_LEVEL", CmdType::SET_LOG_LEVEL},
         {"CMD_SET_MODE", CmdType::SET_MODE},
+        {"CMD_SET_SAFETY_TIMEOUTS", CmdType::SET_SAFETY_TIMEOUTS},
         {"CMD_SET_SUBSYSTEM_LOG_LEVEL", CmdType::SET_SUBSYSTEM_LOG_LEVEL},
         {"CMD_SET_VEL", CmdType::SET_VEL},
         {"CMD_STEPPER_ENABLE", CmdType::STEPPER_ENABLE},
@@ -289,6 +293,7 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::GET_IDENTITY: return "CMD_GET_IDENTITY";
         case CmdType::GET_LOG_LEVELS: return "CMD_GET_LOG_LEVELS";
         case CmdType::GET_RATES: return "CMD_GET_RATES";
+        case CmdType::GET_SAFETY_TIMEOUTS: return "CMD_GET_SAFETY_TIMEOUTS";
         case CmdType::GET_STATE: return "CMD_GET_STATE";
         case CmdType::GPIO_READ: return "CMD_GPIO_READ";
         case CmdType::GPIO_REGISTER_CHANNEL: return "CMD_GPIO_REGISTER_CHANNEL";
@@ -318,6 +323,7 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::SERVO_SET_PULSE: return "CMD_SERVO_SET_PULSE";
         case CmdType::SET_LOG_LEVEL: return "CMD_SET_LOG_LEVEL";
         case CmdType::SET_MODE: return "CMD_SET_MODE";
+        case CmdType::SET_SAFETY_TIMEOUTS: return "CMD_SET_SAFETY_TIMEOUTS";
         case CmdType::SET_SUBSYSTEM_LOG_LEVEL: return "CMD_SET_SUBSYSTEM_LOG_LEVEL";
         case CmdType::SET_VEL: return "CMD_SET_VEL";
         case CmdType::STEPPER_ENABLE: return "CMD_STEPPER_ENABLE";

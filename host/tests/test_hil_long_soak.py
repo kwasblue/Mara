@@ -363,7 +363,7 @@ async def test_hil_long_soak_link_stability(request):
 
         assert client.version_verified is True
         assert client.protocol_version is not None
-        assert client.robot_name is not None
+        assert client.platform_name is not None
 
         await call("ping", client.send_ping())
         await _wait_until(lambda: client.is_connected, timeout_s=2.0)

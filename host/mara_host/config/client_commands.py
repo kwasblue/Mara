@@ -508,6 +508,20 @@ class RobotCommandsMixin:
         payload: dict[str, Any] = {}
         await self.send_json_cmd('CMD_GET_STATE', payload)
 
+    async def cmd_get_safety_timeouts(self) -> None:
+        """Query current safety timeout settings. (CMD_GET_SAFETY_TIMEOUTS)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_GET_SAFETY_TIMEOUTS', payload)
+
+    async def cmd_set_safety_timeouts(self, host_timeout_ms: Optional[int] = None, motion_timeout_ms: Optional[int] = None) -> None:
+        """Set safety timeout values. Use 0 to disable a timeout. (CMD_SET_SAFETY_TIMEOUTS)"""
+        payload: dict[str, Any] = {}
+        if host_timeout_ms is not None:
+            payload['host_timeout_ms'] = host_timeout_ms
+        if motion_timeout_ms is not None:
+            payload['motion_timeout_ms'] = motion_timeout_ms
+        await self.send_json_cmd('CMD_SET_SAFETY_TIMEOUTS', payload)
+
     async def cmd_imu_read(self) -> None:
         """Request a one-shot IMU snapshot and return it directly in the ACK payload. (CMD_IMU_READ)"""
         payload: dict[str, Any] = {}

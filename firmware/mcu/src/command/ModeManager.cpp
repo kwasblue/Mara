@@ -40,7 +40,8 @@ void ModeManager::update(uint32_t now_ms) {
     if (halWatchdog_) halWatchdog_->reset();
     readHardwareInputs();
 
-    if (hostEverSeen_ && isConnected() && !isEstopped()) {
+    // Host timeout: 0 = disabled
+    if (cfg_.host_timeout_ms > 0 && hostEverSeen_ && isConnected() && !isEstopped()) {
         uint32_t dt = now_ms - lastHostHeartbeat_;
         if (dt > cfg_.host_timeout_ms) {
             mara::CriticalSection lock(lock_);
@@ -58,7 +59,8 @@ void ModeManager::update(uint32_t now_ms) {
         }
     }
 
-    if (mode_ == MaraMode::ACTIVE && lastMotionCmd_ > 0 && wasMoving_) {
+    // Motion timeout: 0 = disabled
+    if (cfg_.motion_timeout_ms > 0 && mode_ == MaraMode::ACTIVE && lastMotionCmd_ > 0 && wasMoving_) {
         uint32_t dtm = now_ms - lastMotionCmd_;
         if (dtm > cfg_.motion_timeout_ms) {
             mara::CriticalSection lock(lock_);
@@ -106,6 +108,13 @@ void ModeManager::onHostHeartbeat(uint32_t now_ms) {
     stopLatched_ = false;
     if (!hostEverSeen_) hostEverSeen_ = true;
     if (mode_ == MaraMode::DISCONNECTED) mode_ = MaraMode::IDLE;
+
+    // Heartbeats also reset motion timeout - if host is alive, keep MCU active
+    // This prevents timeout when using servo/GPIO commands that aren't velocity-based
+    if (lastMotionCmd_ > 0) {
+        lastMotionCmd_ = now_ms;
+    }
+
     if (persistentStateCallback_) persistentStateCallback_();
 }
 

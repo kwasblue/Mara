@@ -8,6 +8,7 @@ import shlex
 from typing import Optional, Any
 
 from rich.prompt import Prompt
+from rich.markup import escape
 
 from mara_host.cli.console import (
     console,
@@ -54,13 +55,14 @@ async def _run_interactive_shell(args: argparse.Namespace, log_level: int = logg
         if len(event_log) > max_log:
             event_log.pop(0)
 
-    # Track whether to show events live
-    show_events_live = [True]  # Use list for mutable closure
+    # Track whether to show events live (will be set on shell instance)
+    show_events_live = [False]  # Default off, use list for mutable closure
 
     def handle_event(topic: str, data: Any, style: str = "cyan") -> None:
         log_event(topic, data)
         if show_events_live[0]:
-            console.print(f"  [{style}][{topic.upper()}][/{style}] {data}")
+            safe_topic = escape(topic.upper())
+            console.print(f"  [{style}]\\[{safe_topic}][/{style}] {data}")
 
     def setup_event_handlers(client) -> None:
         """Subscribe to events on the client."""
@@ -70,6 +72,10 @@ async def _run_interactive_shell(args: argparse.Namespace, log_level: int = logg
         client.bus.subscribe("json", lambda d: handle_event("json", d, "cyan"))
         client.bus.subscribe("telemetry", lambda d: log_event("telemetry", d))
         client.bus.subscribe("error", lambda d: handle_event("error", d, "red"))
+        # State and connection events
+        client.bus.subscribe("state.changed", lambda d: handle_event("state", d, "yellow"))
+        client.bus.subscribe("connection.lost", lambda d: handle_event("disconnected", d, "red"))
+        client.bus.subscribe("connection.restored", lambda d: handle_event("reconnected", d, "green"))
 
     # Shell with connection factory
     shell = InteractiveShell(
@@ -78,6 +84,7 @@ async def _run_interactive_shell(args: argparse.Namespace, log_level: int = logg
         log_level=log_level,
         log_dir=log_dir,
         setup_event_handlers=setup_event_handlers,
+        show_events_live=show_events_live,
     )
 
     # Try to connect with default args, but don't fail if we can't
@@ -116,12 +123,14 @@ class InteractiveShell:
         log_level: int,
         log_dir: str,
         setup_event_handlers,
+        show_events_live: list,
     ):
         self.event_log = event_log
         self.default_args = default_args
         self.log_level = log_level
         self.log_dir = log_dir
         self.setup_event_handlers = setup_event_handlers
+        self.show_events_live = show_events_live  # Mutable list for toggle
 
         # Current connection state
         self.client = None
@@ -137,7 +146,7 @@ class InteractiveShell:
             "disconnect": (self.cmd_disconnect, "Disconnect from robot"),
             "ping": (self.cmd_ping, "Send ping to robot"),
             "status": (self.cmd_status, "Show connection status"),
-            "events": (self.cmd_events, "Show recent events"),
+            "events": (self.cmd_events, "Show events: events [count|all|on|off]"),
             "clear": (self.cmd_clear, "Clear event log"),
 
             # Mode commands
@@ -148,6 +157,7 @@ class InteractiveShell:
             "active": (self.cmd_active, "Set mode to ACTIVE"),
             "idle": (self.cmd_deactivate, "Set mode to IDLE"),
             "estop": (self.cmd_estop, "Emergency stop"),
+            "safety": (self.cmd_safety, "Safety timeouts: safety [on|off|status|set <host_ms> <motion_ms>]"),
 
             # LED commands
             "led": (self.cmd_led, "Control LED: led on/off/blink"),
@@ -185,6 +195,9 @@ class InteractiveShell:
 
             # Observer commands
             "observer": (self.cmd_observer, "Observer: observer config/enable/disable/status ..."),
+
+            # Logging commands
+            "log": (self.cmd_log, "MCU logging: log level <level> or log <subsystem> <level>"),
 
             # Info commands
             "info": (self.cmd_info, "Request robot info"),
@@ -229,7 +242,11 @@ class InteractiveShell:
         from mara_host.command.client import MaraClient
         client = MaraClient(
             transport,
-            connection_timeout_s=6.0,
+            # Disable timeout-based disconnect for interactive shell
+            connection_timeout_s=float('inf'),
+            # Very long command timeout for interactive shell
+            command_timeout_s=10.0,
+            max_retries=5,
             log_level=self.log_level,
             log_dir=self.log_dir,
         )
@@ -293,7 +310,17 @@ class InteractiveShell:
 
         if cmd in self.commands:
             handler, _ = self.commands[cmd]
-            return await handler(args)
+            try:
+                return await handler(args)
+            except ValueError as e:
+                print_error(f"Invalid argument: {e}")
+                return None
+            except (TypeError, IndexError) as e:
+                print_error(f"Missing or invalid argument: {e}")
+                return None
+            except Exception as e:
+                print_error(f"Command failed: {e}")
+                return None
         else:
             print_error(f"Unknown command: {cmd}")
             console.print("[dim]Type 'help' for available commands[/dim]")
@@ -309,11 +336,11 @@ class InteractiveShell:
         groups = {
             "Connection": ["connect", "disconnect", "status"],
             "General": ["help", "quit", "events", "clear", "commands"],
-            "Safety": ["arm", "disarm", "activate", "deactivate", "estop"],
+            "Safety": ["arm", "disarm", "activate", "deactivate", "estop", "safety"],
             "Actuators": ["led", "servo", "motor", "dc", "stepper", "gpio", "pwm"],
             "Sensors": ["encoder", "imu", "ultrasonic"],
             "Camera": ["cam"],
-            "Telemetry": ["telem", "wifi"],
+            "Telemetry": ["telem", "wifi", "log"],
             "Control": ["ctrl", "observer"],
             "Info": ["ping", "info", "version", "identity", "state", "rates"],
             "Advanced": ["send", "raw"],
@@ -395,6 +422,29 @@ class InteractiveShell:
         if self.connected:
             console.print(f"  Connected: [green]Yes[/green]")
             console.print(f"  Device: [cyan]{self.current_connection_info}[/cyan]")
+
+            # Show connection monitor stats
+            if self.client:
+                stats = self.client.connection.get_stats()
+                time_since = self.client.connection.time_since_last_message
+                state = self.client.connection.state.value
+
+                console.print(f"  State: [cyan]{state}[/cyan]")
+                if time_since is not None:
+                    console.print(f"  Last message: [cyan]{time_since:.2f}s ago[/cyan]")
+                console.print(f"  Messages: [cyan]{stats.messages_received}[/cyan]")
+                console.print(f"  Disconnects: [yellow]{stats.disconnects}[/yellow]")
+                console.print(f"  Reconnects: [green]{stats.reconnects}[/green]")
+                if stats.total_downtime_s > 0:
+                    console.print(f"  Total downtime: [red]{stats.total_downtime_s:.2f}s[/red]")
+
+                # Check heartbeat task status
+                hb_task = getattr(self.client, '_heartbeat_task', None)
+                if hb_task:
+                    hb_status = "running" if not hb_task.done() else "stopped"
+                    console.print(f"  Heartbeat task: [cyan]{hb_status}[/cyan]")
+                else:
+                    console.print(f"  Heartbeat task: [red]not started[/red]")
         else:
             console.print(f"  Connected: [red]No[/red]")
             # Show default connection info
@@ -404,33 +454,71 @@ class InteractiveShell:
                 console.print(f"  Default: [dim]tcp:{self.default_args.host}:{self.default_args.tcp_port}[/dim]")
             else:
                 console.print(f"  Default: [dim]ble:{self.default_args.ble_name}[/dim]")
-        console.print(f"  Events received: [cyan]{len(self.event_log)}[/cyan]")
+        console.print(f"  Events logged: [cyan]{len(self.event_log)}[/cyan]")
 
-        # Show last heartbeat if any
-        for topic, data in reversed(self.event_log):
-            if topic == "heartbeat":
-                console.print(f"  Last heartbeat: [dim]{data}[/dim]")
-                break
+        # Count heartbeats separately
+        heartbeat_count = sum(1 for t, _ in self.event_log if t == "heartbeat")
+        if heartbeat_count > 0:
+            console.print(f"  Heartbeats: [dim]{heartbeat_count}[/dim]")
 
     async def cmd_events(self, args: list[str]) -> None:
-        """Show recent events."""
-        count = int(args[0]) if args else 10
+        """Show recent events or toggle live display."""
+        # Handle on/off toggle
+        if args and args[0].lower() in ("on", "off"):
+            self.show_events_live[0] = args[0].lower() == "on"
+            status = "enabled" if self.show_events_live[0] else "disabled"
+            print_success(f"Live event display {status}")
+            return
+
+        # Parse args
+        show_all = False
+        count = 10
+        if args:
+            if args[0].lower() == "all":
+                show_all = True
+                count = int(args[1]) if len(args) > 1 else 20
+            else:
+                try:
+                    count = int(args[0])
+                except ValueError:
+                    print_error(f"Unknown argument: {args[0]}. Use: events [count|all|on|off]")
+                    return
 
         if not self.event_log:
             print_info("No events yet")
+            return
+
+        # Filter events (skip heartbeats unless show_all)
+        filtered = [(t, d) for t, d in self.event_log if show_all or t != "heartbeat"]
+
+        if not filtered:
+            print_info("No events (use 'events all' to include heartbeats)")
             return
 
         console.print()
         console.print(f"[bold]Recent Events (last {count}):[/bold]")
         console.print()
 
-        for topic, data in self.event_log[-count:]:
-            if topic == "error":
-                console.print(f"  [red][{topic}][/red] {data}")
-            elif topic == "heartbeat":
-                console.print(f"  [dim][{topic}][/dim] {data}")
+        for topic, data in filtered[-count:]:
+            # Escape topic to prevent Rich markup interpretation
+            safe_topic = escape(topic)
+            # Format data - skip empty dicts
+            if isinstance(data, dict) and not data:
+                data_str = "[dim](empty)[/dim]"
+            elif isinstance(data, dict):
+                # Format dict more readably
+                data_str = " ".join(f"{k}={v}" for k, v in data.items())
             else:
-                console.print(f"  [cyan][{topic}][/cyan] {data}")
+                data_str = str(data)
+
+            if topic == "error":
+                console.print(f"  [red]\\[{safe_topic}][/red] {data_str}")
+            elif topic == "heartbeat":
+                console.print(f"  [dim]\\[{safe_topic}][/dim] {data_str}")
+            elif topic == "state":
+                console.print(f"  [yellow]\\[{safe_topic}][/yellow] {data_str}")
+            else:
+                console.print(f"  [cyan]\\[{safe_topic}][/cyan] {data_str}")
 
     async def cmd_clear(self, args: list[str]) -> None:
         """Clear event log."""
@@ -669,17 +757,17 @@ class InteractiveShell:
     # -------------------------------------------------------------------------
 
     async def cmd_send(self, args: list[str]) -> None:
-        """Send any command by name with JSON payload."""
+        """Send any command by name with key=value payload."""
         if not args:
-            console.print("Usage: send CMD_NAME [json_payload]")
-            console.print("Example: send CMD_ENCODER_READ {\"encoder_id\": 0}")
+            console.print("Usage: send CMD_NAME [key=value ...]")
+            console.print("Example: send CMD_SERVO_SET_ANGLE servo_id=0 angle=180")
+            console.print("Example: send CMD_ENCODER_READ encoder_id=0")
             console.print("Use 'commands' to list all available commands")
             return
         if not self._require_connection():
             return
 
         from mara_host.tools.schema import COMMANDS
-        import json
 
         cmd_name = args[0].upper()
         if not cmd_name.startswith("CMD_"):
@@ -690,21 +778,66 @@ class InteractiveShell:
             console.print("Use 'commands' to list all available commands")
             return
 
-        # Parse payload if provided
+        # Parse key=value pairs
         payload = {}
-        if len(args) > 1:
-            try:
-                payload = json.loads(" ".join(args[1:]))
-            except json.JSONDecodeError as e:
-                print_error(f"Invalid JSON payload: {e}")
+        for arg in args[1:]:
+            if "=" in arg:
+                key, value = arg.split("=", 1)
+                # Try to parse as number or bool
+                try:
+                    if value.lower() == "true":
+                        payload[key] = True
+                    elif value.lower() == "false":
+                        payload[key] = False
+                    elif "." in value:
+                        payload[key] = float(value)
+                    else:
+                        payload[key] = int(value)
+                except ValueError:
+                    payload[key] = value  # Keep as string
+            else:
+                print_error(f"Invalid argument: {arg} (use key=value format)")
                 return
 
         try:
-            ok, err = await self.client.send_reliable(cmd_name, payload)
-            if ok:
-                print_success(f"{cmd_name} sent successfully")
-            else:
-                print_error(f"{cmd_name} failed: {err}")
+            # Setup response listener before sending (avoid race condition)
+            response_future: asyncio.Future = asyncio.get_event_loop().create_future()
+            response_data = {}
+
+            def on_response(data: dict) -> None:
+                nonlocal response_data
+                if not response_future.done():
+                    response_data = data
+                    response_future.set_result(data)
+
+            self.client.bus.subscribe(f"cmd.{cmd_name}", on_response)
+
+            try:
+                # Send the command
+                ok, err = await self.client.send_reliable(cmd_name, payload)
+
+                if ok:
+                    print_success(f"{cmd_name} sent successfully")
+
+                    # Wait briefly for response data (MCU sends response with ACK)
+                    try:
+                        data = await asyncio.wait_for(response_future, timeout=0.5)
+                        if data:
+                            # Filter out metadata fields to show useful response data
+                            skip_fields = {"cmd", "ok", "seq", "src", "error", "error_code", "error_code_enum"}
+                            useful_data = {k: v for k, v in data.items() if k not in skip_fields}
+                            if useful_data:
+                                console.print()
+                                console.print("[bold cyan]Response:[/bold cyan]")
+                                for key, value in useful_data.items():
+                                    console.print(f"  {key}: [green]{value}[/green]")
+                    except asyncio.TimeoutError:
+                        pass  # No additional response data
+                else:
+                    print_error(f"{cmd_name} failed: {err}")
+            finally:
+                # Unsubscribe to prevent memory leaks
+                self.client.bus.unsubscribe(f"cmd.{cmd_name}", on_response)
         except Exception as e:
             print_error(f"Error: {e}")
 
@@ -758,19 +891,167 @@ class InteractiveShell:
         await self.client.send_reliable("CMD_ESTOP", {})
         print_error("EMERGENCY STOP activated!")
 
+    async def cmd_safety(self, args: list[str]) -> None:
+        """Safety timeout control."""
+        if not args:
+            console.print("Usage:")
+            console.print("  safety status              Show current timeout settings")
+            console.print("  safety on                  Enable timeouts (3000ms host, 500ms motion)")
+            console.print("  safety off                 Disable timeouts (0ms = disabled)")
+            console.print("  safety set <host> <motion> Set specific timeout values (ms)")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+
+        if action == "status":
+            # Get current timeout settings
+            response_future: asyncio.Future = asyncio.get_event_loop().create_future()
+
+            def on_response(data: dict) -> None:
+                if not response_future.done():
+                    response_future.set_result(data)
+
+            self.client.bus.subscribe("cmd.CMD_GET_SAFETY_TIMEOUTS", on_response)
+
+            try:
+                ok, err = await self.client.send_reliable("CMD_GET_SAFETY_TIMEOUTS", {})
+                if not ok:
+                    print_error(f"Failed to get safety timeouts: {err}")
+                    return
+
+                try:
+                    data = await asyncio.wait_for(response_future, timeout=2.0)
+                    console.print()
+                    console.print("[bold]Safety Timeouts:[/bold]")
+                    host_ms = data.get("host_timeout_ms", 0)
+                    motion_ms = data.get("motion_timeout_ms", 0)
+                    enabled = data.get("enabled", False)
+
+                    status = "[green]enabled[/green]" if enabled else "[yellow]disabled[/yellow]"
+                    console.print(f"  Status: {status}")
+                    console.print(f"  Host timeout:   [cyan]{host_ms}[/cyan] ms {'(disabled)' if host_ms == 0 else ''}")
+                    console.print(f"  Motion timeout: [cyan]{motion_ms}[/cyan] ms {'(disabled)' if motion_ms == 0 else ''}")
+                except asyncio.TimeoutError:
+                    print_error("Safety timeout query timed out")
+            finally:
+                self.client.bus.unsubscribe("cmd.CMD_GET_SAFETY_TIMEOUTS", on_response)
+
+        elif action == "on":
+            # Enable with default values
+            ok, err = await self.client.send_reliable("CMD_SET_SAFETY_TIMEOUTS", {
+                "host_timeout_ms": 3000,
+                "motion_timeout_ms": 500
+            })
+            if ok:
+                print_success("Safety timeouts enabled (host=3000ms, motion=500ms)")
+            else:
+                print_error(f"Failed to enable timeouts: {err}")
+
+        elif action == "off":
+            # Disable (set to 0)
+            ok, err = await self.client.send_reliable("CMD_SET_SAFETY_TIMEOUTS", {
+                "host_timeout_ms": 0,
+                "motion_timeout_ms": 0
+            })
+            if ok:
+                print_success("Safety timeouts disabled")
+            else:
+                print_error(f"Failed to disable timeouts: {err}")
+
+        elif action == "set" and len(args) >= 3:
+            host_ms = int(args[1])
+            motion_ms = int(args[2])
+            ok, err = await self.client.send_reliable("CMD_SET_SAFETY_TIMEOUTS", {
+                "host_timeout_ms": host_ms,
+                "motion_timeout_ms": motion_ms
+            })
+            if ok:
+                print_success(f"Safety timeouts set (host={host_ms}ms, motion={motion_ms}ms)")
+            else:
+                print_error(f"Failed to set timeouts: {err}")
+
+        else:
+            print_error(f"Unknown safety action: {args[0]}")
+            console.print("Use: safety status | on | off | set <host_ms> <motion_ms>")
+
     async def cmd_state(self, args: list[str]) -> None:
         """Get robot state."""
         if not self._require_connection():
             return
-        await self.client.send_reliable("CMD_GET_STATE", {})
-        print_info("State requested (check events)")
+
+        # Setup response listener
+        response_future: asyncio.Future = asyncio.get_event_loop().create_future()
+
+        def on_response(data: dict) -> None:
+            if not response_future.done():
+                response_future.set_result(data)
+
+        self.client.bus.subscribe("cmd.CMD_GET_STATE", on_response)
+
+        try:
+            ok, err = await self.client.send_reliable("CMD_GET_STATE", {})
+            if not ok:
+                print_error(f"Failed to get state: {err}")
+                return
+
+            # Wait for response
+            try:
+                data = await asyncio.wait_for(response_future, timeout=2.0)
+                state = data.get("state", "?")
+                armed = data.get("armed", "?")
+                mode = data.get("mode", "?")
+
+                console.print()
+                console.print("[bold]Robot State:[/bold]")
+                console.print(f"  State: [green]{state}[/green]")
+                console.print(f"  Armed: [green]{armed}[/green]")
+                console.print(f"  Mode:  [green]{mode}[/green]")
+
+                # Show additional fields if present
+                skip_fields = {"cmd", "ok", "seq", "src", "state", "armed", "mode", "error", "error_code"}
+                extra = {k: v for k, v in data.items() if k not in skip_fields}
+                if extra:
+                    for key, value in extra.items():
+                        console.print(f"  {key}: [cyan]{value}[/cyan]")
+            except asyncio.TimeoutError:
+                print_error("State response timed out")
+        finally:
+            self.client.bus.unsubscribe("cmd.CMD_GET_STATE", on_response)
 
     async def cmd_rates(self, args: list[str]) -> None:
         """Get loop rates."""
         if not self._require_connection():
             return
-        await self.client.send_reliable("CMD_GET_RATES", {})
-        print_info("Rates requested (check events)")
+
+        # Setup response listener
+        response_future: asyncio.Future = asyncio.get_event_loop().create_future()
+
+        def on_response(data: dict) -> None:
+            if not response_future.done():
+                response_future.set_result(data)
+
+        self.client.bus.subscribe("cmd.CMD_GET_RATES", on_response)
+
+        try:
+            ok, err = await self.client.send_reliable("CMD_GET_RATES", {})
+            if not ok:
+                print_error(f"Failed to get rates: {err}")
+                return
+
+            # Wait for response
+            try:
+                data = await asyncio.wait_for(response_future, timeout=2.0)
+                console.print()
+                console.print("[bold]Loop Rates:[/bold]")
+                console.print(f"  Control:   [green]{data.get('ctrl_hz', '?')} Hz[/green] ({data.get('ctrl_ms', '?')} ms)")
+                console.print(f"  Safety:    [green]{data.get('safety_hz', '?')} Hz[/green] ({data.get('safety_ms', '?')} ms)")
+                console.print(f"  Telemetry: [green]{data.get('telem_hz', '?')} Hz[/green] ({data.get('telem_ms', '?')} ms)")
+            except asyncio.TimeoutError:
+                print_error("Rates response timed out")
+        finally:
+            self.client.bus.unsubscribe("cmd.CMD_GET_RATES", on_response)
 
     # -------------------------------------------------------------------------
     # DC Motor commands
@@ -1158,3 +1439,83 @@ class InteractiveShell:
             print_success(f"Observer {observer_id} reset")
         else:
             print_error(f"Unknown observer action: {args}")
+
+    # -------------------------------------------------------------------------
+    # Logging commands
+    # -------------------------------------------------------------------------
+
+    async def cmd_log(self, args: list[str]) -> None:
+        """MCU logging commands."""
+        if not args:
+            console.print("Usage:")
+            console.print("  log level <level>              Set global MCU log level (debug/info/warn/error/off)")
+            console.print("  log <subsystem> <level>        Set subsystem log level (e.g., log servo debug)")
+            console.print("  log levels                     Get current log levels")
+            console.print("  log clear                      Clear subsystem overrides")
+            console.print()
+            console.print("Subsystems: servo, motor, control, gpio, encoder, imu, safety, telem")
+            return
+        if not self._require_connection():
+            return
+
+        action = args[0].lower()
+
+        # Global level: log level <level>
+        if action == "level" and len(args) >= 2:
+            level = args[1].lower()
+            if level not in ("debug", "info", "warn", "error", "off"):
+                print_error(f"Invalid level: {level}. Use: debug, info, warn, error, off")
+                return
+            await self.client.send_reliable("CMD_SET_LOG_LEVEL", {"level": level})
+            print_success(f"MCU global log level set to {level}")
+
+        # Get levels: log levels
+        elif action == "levels":
+            response_future: asyncio.Future = asyncio.get_event_loop().create_future()
+
+            def on_response(data: dict) -> None:
+                if not response_future.done():
+                    response_future.set_result(data)
+
+            self.client.bus.subscribe("cmd.CMD_GET_LOG_LEVELS", on_response)
+
+            try:
+                ok, err = await self.client.send_reliable("CMD_GET_LOG_LEVELS", {})
+                if not ok:
+                    print_error(f"Failed to get log levels: {err}")
+                    return
+
+                try:
+                    data = await asyncio.wait_for(response_future, timeout=2.0)
+                    console.print()
+                    console.print("[bold]MCU Log Levels:[/bold]")
+                    console.print(f"  Global: [green]{data.get('global', '?')}[/green]")
+                    subsystems = data.get("subsystems", {})
+                    if subsystems:
+                        console.print("  Subsystem overrides:")
+                        for sub, level in subsystems.items():
+                            console.print(f"    {sub}: [cyan]{level}[/cyan]")
+                    else:
+                        console.print("  [dim]No subsystem overrides[/dim]")
+                except asyncio.TimeoutError:
+                    print_error("Log levels response timed out")
+            finally:
+                self.client.bus.unsubscribe("cmd.CMD_GET_LOG_LEVELS", on_response)
+
+        # Clear overrides: log clear
+        elif action == "clear":
+            await self.client.send_reliable("CMD_CLEAR_SUBSYSTEM_LOG_LEVELS", {})
+            print_success("Subsystem log level overrides cleared")
+
+        # Subsystem level: log <subsystem> <level>
+        elif len(args) >= 2:
+            subsystem = args[0].lower()
+            level = args[1].lower()
+            if level not in ("debug", "info", "warn", "error", "off"):
+                print_error(f"Invalid level: {level}. Use: debug, info, warn, error, off")
+                return
+            await self.client.send_reliable("CMD_SET_SUBSYSTEM_LOG_LEVEL", {"subsystem": subsystem, "level": level})
+            print_success(f"MCU {subsystem} log level set to {level}")
+
+        else:
+            print_error(f"Unknown log action: {args}")

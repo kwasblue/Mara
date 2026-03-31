@@ -88,6 +88,15 @@ public:
     void onEmergencyStop(StopCallback cb) { emergencyStopCallback_ = cb; }
     void onPersistentStateChanged(StopCallback cb) { persistentStateCallback_ = cb; }
 
+    // Runtime timeout control (0 = disabled)
+    void setTimeouts(uint32_t host_ms, uint32_t motion_ms) {
+        cfg_.host_timeout_ms = host_ms;
+        cfg_.motion_timeout_ms = motion_ms;
+    }
+    uint32_t getHostTimeout() const { return cfg_.host_timeout_ms; }
+    uint32_t getMotionTimeout() const { return cfg_.motion_timeout_ms; }
+    bool timeoutsEnabled() const { return cfg_.host_timeout_ms > 0 || cfg_.motion_timeout_ms > 0; }
+
     // Clock injection for testability
     void setClock(mara::IClock* clk) { clock_ = clk; }
     void setHalGpio(hal::IGpio* gpio) { halGpio_ = gpio; }

@@ -137,12 +137,14 @@ static void controlTaskFunc(void* param) {
                 }
                 for (uint8_t i = 0; i < composite.servo_count; ++i) {
                     const auto& servo = composite.servo_sets[i];
-                    if (ctx->motion) {
-                        if (servo.duration_ms == 0) {
-                            if (ctx->servo) {
-                                ctx->servo->setAngle(servo.servo_id, servo.angle_deg);
-                            }
-                        } else {
+                    if (servo.duration_ms == 0) {
+                        // Immediate move - only needs ServoManager
+                        if (ctx->servo) {
+                            ctx->servo->setAngle(servo.servo_id, servo.angle_deg);
+                        }
+                    } else {
+                        // Interpolated move - needs MotionController
+                        if (ctx->motion) {
                             ctx->motion->setServoTarget(servo.servo_id, servo.angle_deg, servo.duration_ms);
                         }
                     }
@@ -175,14 +177,20 @@ static void controlTaskFunc(void* param) {
             for (uint8_t i = 0; i < mara::IntentBuffer::MAX_SERVO_INTENTS; ++i) {
                 mara::ServoIntent servo;
                 if (ctx->intents->consumeServoIntent(i, servo)) {
-                    if (ctx->motion) {
-                        if (servo.duration_ms == 0) {
-                            // Immediate move
-                            if (ctx->servo) {
-                                ctx->servo->setAngle(servo.id, servo.angle_deg);
-                            }
+                    DBG_PRINTF("[CTRL] Servo intent: id=%d angle=%.1f dur=%u\n",
+                               servo.id, servo.angle_deg, servo.duration_ms);
+                    if (servo.duration_ms == 0) {
+                        // Immediate move - only needs ServoManager
+                        if (ctx->servo) {
+                            DBG_PRINTF("[CTRL] Calling servo->setAngle(%d, %.1f)\n",
+                                       servo.id, servo.angle_deg);
+                            ctx->servo->setAngle(servo.id, servo.angle_deg);
                         } else {
-                            // Interpolated move
+                            DBG_PRINTLN("[CTRL] ERROR: ctx->servo is null!");
+                        }
+                    } else {
+                        // Interpolated move - needs MotionController
+                        if (ctx->motion) {
                             ctx->motion->setServoTarget(servo.id, servo.angle_deg, servo.duration_ms);
                         }
                     }

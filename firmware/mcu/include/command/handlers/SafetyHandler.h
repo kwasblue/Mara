@@ -25,6 +25,8 @@ public:
             case CmdType::STOP:
             case CmdType::SET_MODE:
             case CmdType::GET_STATE:
+            case CmdType::SET_SAFETY_TIMEOUTS:
+            case CmdType::GET_SAFETY_TIMEOUTS:
                 return true;
             default:
                 return false;
@@ -43,6 +45,8 @@ public:
             case CmdType::STOP:         handleStop(ctx);              break;
             case CmdType::SET_MODE:     handleSetMode(payload, ctx);  break;
             case CmdType::GET_STATE:    handleGetState(ctx);          break;
+            case CmdType::SET_SAFETY_TIMEOUTS: handleSetSafetyTimeouts(payload, ctx); break;
+            case CmdType::GET_SAFETY_TIMEOUTS: handleGetSafetyTimeouts(ctx); break;
             default: break;
         }
     }
@@ -61,4 +65,6 @@ private:
     void handleStop(CommandContext& ctx);
     void handleSetMode(JsonVariantConst payload, CommandContext& ctx);
     void handleGetState(CommandContext& ctx);
+    void handleSetSafetyTimeouts(JsonVariantConst payload, CommandContext& ctx);
+    void handleGetSafetyTimeouts(CommandContext& ctx);
 };

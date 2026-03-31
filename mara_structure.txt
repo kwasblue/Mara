@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-31 15:09:42
+Generated: 2026-03-31 18:30:53
 Total Files: 909
-Total Lines of Code: 105,095
+Total Lines of Code: 105,122
 ================================================================================
 
 
@@ -8149,7 +8149,7 @@ FIRMWARE/MCU (C++)
     [Fn] main(int argc, char** argv)
     [Fn] UNITY_END()
 
-  firmware/mcu/test/test_command_handler_ack/native_stubs.cpp (495 lines)
+  firmware/mcu/test/test_command_handler_ack/native_stubs.cpp (522 lines)
     [Fn] getSystemClock()
     [Fn] getLoopRates()
     [Fn] maraModeToString(MaraMode mode)
@@ -8688,10 +8688,10 @@ DEFINITIONS
 
 LINES OF CODE
   Python:           80,171
-  C++:              24,924
-  Total Code:       105,095
-  Blank Lines:      28,607
-  Comment Lines:    27,928
-  Total Lines:      161,630
+  C++:              24,951
+  Total Code:       105,122
+  Blank Lines:      28,617
+  Comment Lines:    27,931
+  Total Lines:      161,670
 
 ================================================================================

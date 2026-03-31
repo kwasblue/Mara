@@ -42,4 +42,6 @@ pip-wheel-metadata/
 
 # ---- Build artifacts ----
 dist/
-/build/
+
+# ---- Claude Code internals ----
+.claire/

@@ -106,6 +106,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Verbose output",
     )
+    test_p.add_argument(
+        "--test-backend",
+        default="platformio",
+        help="Test backend to use (default: platformio)",
+    )
     test_p.set_defaults(func=cmd_test)
 
     # features

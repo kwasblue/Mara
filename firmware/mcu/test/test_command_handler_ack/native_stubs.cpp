@@ -12,6 +12,7 @@
 #include "core/Clock.h"
 #include "core/IntentBuffer.h"
 #include "module/LoggingModule.h"
+#include "persistence/McuPersistence.h"
 #include "sensor/EncoderManager.h"
 #include "module/TelemetryModule.h"
 #include "motor/MotionController.h"
@@ -27,6 +28,8 @@ extern "C" {
 namespace mara {
 uint32_t SystemClock::millis() const { return __test_millis; }
 uint32_t SystemClock::micros() const { return __test_micros; }
+void SystemClock::delay(uint32_t ms) { (void)ms; }
+void SystemClock::delayMicroseconds(uint32_t us) { (void)us; }
 static SystemClock g_systemClock;
 SystemClock& getSystemClock() { return g_systemClock; }
 } // namespace mara
@@ -325,6 +328,43 @@ LoggingModule* LoggingModule::s_instance = nullptr;
 void LoggingModule::setLogLevel(const char* level) {
     (void)level;
 }
+
+void LoggingModule::setSubsystemLevel(const char* subsystem, const char* levelStr) {
+    (void)subsystem; (void)levelStr;
+}
+
+void LoggingModule::clearSubsystemLevels() {}
+
+std::string LoggingModule::getSubsystemLevelsJson() const {
+    return "{}";
+}
+
+void LoggingModule::logDebug(const char* subsystem, const char* fmt, ...) {
+    (void)subsystem; (void)fmt;
+}
+
+void LoggingModule::logWarn(const char* subsystem, const char* fmt, ...) {
+    (void)subsystem; (void)fmt;
+}
+
+// ============================================================================
+// McuPersistence stubs
+// ============================================================================
+namespace persistence {
+
+void McuPersistence::resetDiagnostics(uint32_t now_ms) {
+    (void)now_ms;
+}
+
+void McuPersistence::fillDiagnostics(JsonObject node) const {
+    (void)node;
+}
+
+void McuPersistence::fillSnapshot(JsonObject node) const {
+    (void)node;
+}
+
+} // namespace persistence
 
 // ============================================================================
 // EncoderManager stubs - REMOVED: Now provided by header when HAS_ENCODER=0

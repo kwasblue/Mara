@@ -129,11 +129,19 @@ def features_to_flags(features: dict[str, bool] | None) -> list[str]:
     return flags
 
 
+def _find_pio() -> list[str]:
+    """Return the command prefix to invoke PlatformIO."""
+    pio = shutil.which("pio") or shutil.which("platformio")
+    if pio:
+        return [pio]
+    # Fallback: run via the current Python interpreter
+    return [sys.executable, "-m", "platformio"]
+
+
 def run_pio(args: list[str], verbose: bool = False,
             extra_flags: list[str] | None = None) -> int:
     """Run PlatformIO CLI command."""
-    # Use Python -m platformio for cross-platform compatibility (Windows)
-    cmd = [sys.executable, "-m", "platformio"] + args
+    cmd = _find_pio() + args
 
     # Set up environment with build flags
     env = os.environ.copy()

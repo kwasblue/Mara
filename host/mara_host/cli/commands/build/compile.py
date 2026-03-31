@@ -74,9 +74,11 @@ def cmd_compile(args: argparse.Namespace) -> int:
 
 def _build_with_progress(env: str, features: dict[str, bool] | None) -> int:
     """Run build with progress indicator."""
+    import shutil
     import sys
-    # Use Python -m platformio for cross-platform compatibility
-    cmd = [sys.executable, "-m", "platformio", "run", "-e", env]
+    pio = shutil.which("pio") or shutil.which("platformio")
+    pio_prefix = [pio] if pio else [sys.executable, "-m", "platformio"]
+    cmd = pio_prefix + ["run", "-e", env]
 
     env_vars = os.environ.copy()
     if features:

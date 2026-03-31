@@ -5,8 +5,8 @@
         build build-mcu build-cam flash flash-mcu flash-cam monitor-mcu monitor-cam \
         clean generate lint check-layers check-arch
 
-# Python from virtual environment (create with: python3 -m venv .venv)
-VENV := .venv
+# Python from virtual environment (create with: python3 -m venv host/.venv)
+VENV := host/.venv
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
@@ -35,11 +35,13 @@ help:
 	@echo "Building:"
 	@echo "  build          Build all firmware"
 	@echo "  build-mcu      Build MCU firmware (default env)"
-	@echo "  build-mcu-ENV  Build MCU firmware (specific env: minimal, motors, control, full)"
+	@echo "  build-mcu-ENV  Build MCU firmware (specific env: minimal, motors, control, full, hil)"
+	@echo "  build-mcu-hil  Build MCU firmware with ALL features for HIL testing"
 	@echo "  build-cam      Build CAM firmware"
 	@echo ""
 	@echo "Flashing:"
 	@echo "  flash-mcu      Flash MCU firmware"
+	@echo "  flash-mcu-hil  Flash HIL test firmware (all features enabled)"
 	@echo "  flash-cam      Flash CAM firmware"
 	@echo ""
 	@echo "Monitoring:"
@@ -74,7 +76,7 @@ install-dev:
 test: test-host test-mcu
 
 test-host:
-	cd host && ../$(PYTEST) tests/ -v
+	$(PYTEST) host/tests/ -v
 
 test-mcu:
 	cd firmware/mcu && pio test -e native
@@ -83,16 +85,16 @@ test-mcu:
 # TCP: set ROBOT_HOST (default 10.0.0.60) and ROBOT_PORT (default 3333)
 # Serial: set MCU_PORT (e.g., /dev/cu.usbserial-0001)
 test-hil:
-	cd host && MCU_PORT=$(MCU_PORT) ../$(PYTEST) tests/ -v --run-hil --mcu-port=$(MCU_PORT) --robot-host=$(ROBOT_HOST)
+	MCU_PORT=$(MCU_PORT) $(PYTEST) host/tests/ -v --run-hil --mcu-port=$(MCU_PORT) --robot-host=$(ROBOT_HOST)
 
 test-hil-serial:
-	cd host && ../$(PYTEST) tests/ -v --run-hil --mcu-port=$(MCU_PORT)
+	$(PYTEST) host/tests/ -v --run-hil --mcu-port=$(MCU_PORT)
 
 test-hil-smoke:
-	cd host && ../$(PYTEST) tests/test_hil_smoke.py -v --run-hil
+	$(PYTEST) host/tests/test_hil_smoke.py -v --run-hil
 
 test-hil-churn:
-	cd host && ../$(PYTEST) tests/test_hil_churn.py -v --run-hil --churn-cycles=10
+	$(PYTEST) host/tests/test_hil_churn.py -v --run-hil --churn-cycles=10
 
 # =============================================================================
 # Building
@@ -115,6 +117,9 @@ build-mcu-control:
 build-mcu-full:
 	cd firmware/mcu && pio run -e esp32_full
 
+build-mcu-hil:
+	cd firmware/mcu && pio run -e esp32_hil
+
 build-cam:
 	cd firmware/cam && pio run
 
@@ -124,6 +129,9 @@ build-cam:
 
 flash-mcu:
 	cd firmware/mcu && pio run -t upload
+
+flash-mcu-hil:
+	cd firmware/mcu && pio run -e esp32_hil -t upload
 
 flash-cam:
 	cd firmware/cam && pio run -t upload
@@ -143,7 +151,7 @@ monitor-cam:
 # =============================================================================
 
 generate:
-	cd host && ../$(PYTHON) -m mara_host.tools.generate_all
+	$(PYTHON) -m mara_host.tools.generate_all
 
 # =============================================================================
 # Cleanup
@@ -167,7 +175,7 @@ check-layers:
 	cd firmware/mcu && python3 tools/check_layers.py
 
 check-host-arch:
-	cd host && ../$(PYTEST) tests/test_architecture.py -v
+	$(PYTEST) host/tests/test_architecture.py -v
 
 # =============================================================================
 # Linting

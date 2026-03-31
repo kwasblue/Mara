@@ -30,6 +30,9 @@ def pytest_addoption(parser):
     parser.addoption("--mara-port", action="store", type=int, default=int(os.getenv("MARA_PORT", "3333")))
     parser.addoption("--run-hil", action="store_true", default=False, help="Run HIL tests")
     parser.addoption("--hil-timeout", action="store", type=float, default=5.0, help="HIL command timeout")
+    parser.addoption("--skip-dc-motor", action="store_true", default=False, help="Skip DC motor tests")
+    parser.addoption("--skip-stepper", action="store_true", default=False, help="Skip stepper motor tests")
+    parser.addoption("--skip-encoder", action="store_true", default=False, help="Skip encoder tests")
 
 
 def pytest_configure(config):
@@ -39,12 +42,26 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
-    """Skip HIL tests unless --run-hil is specified."""
+    """Skip HIL tests unless --run-hil is specified, and hardware-specific tests if opted out."""
     if not config.getoption("--run-hil"):
         skip_hil = pytest.mark.skip(reason="Need --run-hil option to run HIL tests")
         for item in items:
             if "hil" in item.keywords:
                 item.add_marker(skip_hil)
+
+    # Skip hardware-specific tests if opted out
+    skip_markers = {
+        "dc_motor": ("--skip-dc-motor", "DC motor tests skipped (use --skip-dc-motor=false to enable)"),
+        "stepper": ("--skip-stepper", "Stepper tests skipped"),
+        "encoder": ("--skip-encoder", "Encoder tests skipped"),
+    }
+
+    for marker, (option, reason) in skip_markers.items():
+        if config.getoption(option):
+            skip = pytest.mark.skip(reason=reason)
+            for item in items:
+                if marker in item.keywords:
+                    item.add_marker(skip)
 
 
 # ============== HIL Fixtures ==============
@@ -64,20 +81,50 @@ def hil_timeout(request) -> float:
     return request.config.getoption("--hil-timeout")
 
 
+def _find_serial_port() -> str:
+    """Auto-detect serial port for MCU."""
+    import glob
+    import sys
+
+    if sys.platform == "darwin":
+        # macOS: prefer usbmodem (ESP32-S3 native USB) over usbserial
+        patterns = ["/dev/tty.usbmodem*", "/dev/tty.usbserial*", "/dev/tty.SLAB*"]
+    elif sys.platform == "linux":
+        patterns = ["/dev/ttyACM*", "/dev/ttyUSB*"]
+    else:
+        # Windows - return empty, user must specify
+        return ""
+
+    for pattern in patterns:
+        ports = sorted(glob.glob(pattern))
+        if ports:
+            return ports[0]
+    return ""
+
+
 @pytest.fixture
-async def mcu(request, mara_host, mara_port, hil_timeout, tmp_path):
+async def mcu(request, hil_timeout, tmp_path):
     """
     Connected MaraClient for HIL tests.
+    Defaults to serial transport. Use --mcu-port to specify port.
     Ensures safe state on setup and teardown.
     """
-    from mara_host.transport.tcp_transport import AsyncTcpTransport
+    from mara_host.transport.serial_transport import SerialTransport
     from mara_host.command.client import MaraClient
 
-    transport = AsyncTcpTransport(mara_host, mara_port)
+    # Get port from CLI or auto-detect
+    port = request.config.getoption("--mcu-port")
+    if not port:
+        port = _find_serial_port()
+    if not port:
+        pytest.skip("No serial port found. Use --mcu-port to specify.")
+
+    transport = SerialTransport(port, baudrate=115200)
     client = MaraClient(
         transport,
         command_timeout_s=hil_timeout,
         handshake_timeout_s=hil_timeout * 2,
+        verbose=True,
     )
 
     # Attach event logging
@@ -137,6 +184,26 @@ def hil(mcu):
     class HIL:
         def __init__(self, client):
             self.client = client
+            self._capabilities = None
+
+        async def get_capabilities(self):
+            """Get MCU capabilities (cached). Returns features list from handshake."""
+            if self._capabilities is None:
+                # Features are populated during client handshake
+                # Access directly from client instead of sending a command
+                self._capabilities = self.client.features or []
+            return self._capabilities
+
+        async def has_capability(self, cap: str) -> bool:
+            """Check if MCU has a capability (e.g., 'dc_motor', 'servo')."""
+            features = await self.get_capabilities()
+            cap_lower = cap.lower()
+            return cap_lower in features or cap in features
+
+        async def require_capability(self, cap: str):
+            """Skip test if capability not available."""
+            if not await self.has_capability(cap):
+                pytest.skip(f"MCU does not have {cap} capability")
 
         async def send(self, cmd, payload=None):
             """Send command and return response."""

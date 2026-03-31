@@ -398,10 +398,113 @@ await client.send_stream(
 
 ---
 
+## Adding Interactive Shell Commands
+
+The interactive shell (`mara run shell`) uses a modular, decorator-based system for easy extensibility.
+
+### Shell Architecture
+
+```
+cli/shell/
+├── __init__.py        # Entry point, auto-discovers command modules
+├── registry.py        # @command decorator and command storage
+├── core.py            # InteractiveShell class (~140 lines)
+├── general.py         # help, quit, events, clear, send, raw
+├── connection.py      # connect, disconnect, ping, status
+├── safety.py          # arm, disarm, estop, activate, deactivate
+├── actuators.py       # servo, motor, gpio, pwm commands
+├── sensors.py         # encoder, ultrasonic, imu read commands
+└── telemetry_cmds.py  # telemetry interval, sections config
+```
+
+### Adding a New Shell Command
+
+1. **Choose or create a module** in `cli/shell/` based on the command's domain.
+
+2. **Add your command** using the `@command` decorator:
+
+```python
+# cli/shell/my_feature.py
+from .registry import command
+from mara_host.cli.console import print_success, print_error
+
+@command("mycommand", "Short description for help", group="MyGroup")
+async def cmd_mycommand(shell, args: list[str]) -> None:
+    """Docstring with detailed usage."""
+    if not shell.require_connection():
+        return
+
+    # Parse args
+    value = int(args[0]) if args else 42
+
+    # Send command to MCU
+    ok, err = await shell.client.send_reliable("CMD_MY_COMMAND", {"value": value})
+
+    if ok:
+        print_success(f"Command executed with value={value}")
+    else:
+        print_error(f"Failed: {err}")
+```
+
+3. **The command is automatically discovered** on shell startup (no manual registration needed).
+
+### Command Decorator Options
+
+```python
+@command(
+    name="mycommand",           # Shell command name
+    description="Does X",       # Shown in help
+    group="MyGroup"             # Help grouping (General, Safety, Actuators, etc.)
+)
+```
+
+### Available Shell Utilities
+
+```python
+# Connection check
+if not shell.require_connection():
+    return  # Prints error and returns if disconnected
+
+# Access the client
+await shell.client.send_reliable("CMD_NAME", payload)
+await shell.client.send_ping()
+
+# Print helpers
+from mara_host.cli.console import console, print_success, print_error, print_info
+print_success("Operation completed")
+print_error("Something went wrong")
+print_info("Informational message")
+console.print("[bold cyan]Rich formatting[/bold cyan]")
+
+# Access event log
+for topic, data in shell.event_log[-10:]:
+    console.print(f"{topic}: {data}")
+```
+
+### Adding Command Aliases
+
+```python
+from .registry import command, alias
+
+@command("disconnect", "Disconnect from robot", group="Connection")
+async def cmd_disconnect(shell, args: list[str]) -> None:
+    ...
+
+# Create alias
+alias("dc", "disconnect")  # 'dc' now runs cmd_disconnect
+```
+
+### Help Group Order
+
+Groups appear in help in this order: Connection, General, Safety, Actuators, Sensors, Camera, Telemetry, Control, Info, Advanced. Add new groups as needed; they appear alphabetically after the predefined ones.
+
+---
+
 ## File Locations
 
 | File | Purpose |
 |:-----|:--------|
+| `host/mara_host/cli/shell/` | Interactive shell commands |
 | `host/mara_host/tools/schema/` | Single source of truth (package) |
 | `host/mara_host/tools/schema/commands/` | Command definitions by domain |
 | `host/mara_host/tools/generate_all.py` | Run all generators |

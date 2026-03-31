@@ -7,10 +7,29 @@ from mara_host.command.client import BaseMaraClient
 from mara_host.transport.serial_transport import SerialTransport
 
 
+def _find_serial_port() -> str:
+    """Auto-detect serial port for MCU."""
+    import glob
+    import sys
+
+    if sys.platform == "darwin":
+        patterns = ["/dev/tty.usbmodem*", "/dev/tty.usbserial*", "/dev/tty.SLAB*"]
+    elif sys.platform == "linux":
+        patterns = ["/dev/ttyACM*", "/dev/ttyUSB*"]
+    else:
+        return ""
+
+    for pattern in patterns:
+        ports = sorted(glob.glob(pattern))
+        if ports:
+            return ports[0]
+    return ""
+
+
 def _get_mcu_port(request) -> str | None:
     """
-    Prefer: CLI option --mcu-port, then env var MCU_PORT.
-    Return None if no port is configured or if the port doesn't exist.
+    Prefer: CLI option --mcu-port, then env var MCU_PORT, then auto-detect.
+    Return None if no port found.
     """
     port = None
     try:
@@ -18,9 +37,8 @@ def _get_mcu_port(request) -> str | None:
     except Exception:
         port = None
 
-    port = port or os.getenv("MCU_PORT")
+    port = port or os.getenv("MCU_PORT") or _find_serial_port()
 
-    # Don't return a default - require explicit configuration for serial tests
     if not port:
         return None
 

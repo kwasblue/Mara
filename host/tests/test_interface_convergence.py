@@ -170,6 +170,14 @@ class TestMcpToolConvergence:
             "MCP disarm tool should use state_service.disarm()"
 
 
+try:
+    import PyQt6
+    HAS_PYQT = True
+except ImportError:
+    HAS_PYQT = False
+
+
+@pytest.mark.skipif(not HAS_PYQT, reason="PyQt6 not installed")
 class TestGuiControllerConvergence:
     """Test that GUI controller uses services."""
 

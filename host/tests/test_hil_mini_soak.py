@@ -31,13 +31,32 @@ def pytest_addoption(parser):
                      help="If set, dumps selected bus events to a log file")
 
 
+def _find_serial_port() -> str:
+    """Auto-detect serial port for MCU."""
+    import glob
+    import sys
+
+    if sys.platform == "darwin":
+        patterns = ["/dev/tty.usbmodem*", "/dev/tty.usbserial*", "/dev/tty.SLAB*"]
+    elif sys.platform == "linux":
+        patterns = ["/dev/ttyACM*", "/dev/ttyUSB*"]
+    else:
+        return ""
+
+    for pattern in patterns:
+        ports = sorted(glob.glob(pattern))
+        if ports:
+            return ports[0]
+    return ""
+
+
 def _get_mcu_port(request) -> str | None:
-    """Return serial port if configured and exists, else None."""
+    """Return serial port if configured and exists, else auto-detect."""
     try:
         port = request.config.getoption("--mcu-port")
     except Exception:
         port = None
-    port = port or os.getenv("MCU_PORT")
+    port = port or os.getenv("MCU_PORT") or _find_serial_port()
     if not port or not os.path.exists(port):
         return None
     return port

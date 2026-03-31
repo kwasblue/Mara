@@ -1,6 +1,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
+# Skip if pandas not installed (research module requires pandas)
+pandas = pytest.importorskip("pandas", reason="pandas not installed")
 
 
 def _import_replay():

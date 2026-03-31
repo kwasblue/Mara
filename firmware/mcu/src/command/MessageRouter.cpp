@@ -206,18 +206,24 @@ void MessageRouter::sendVersionResponse() {
     doc["name"]           = Version::NAME;
     doc["capabilities"]   = caps;
 
-    // Feature array
+    // Feature array - must match IdentityModule::publishIdentity()
     JsonArray features = doc["features"].to<JsonArray>();
     if (caps & DeviceCap::UART) features.add("uart");
     if (caps & DeviceCap::WIFI) features.add("wifi");
+    if (caps & DeviceCap::BLE) features.add("ble");
+    if (caps & DeviceCap::MQTT) features.add("mqtt");
     if (caps & DeviceCap::DC_MOTOR) features.add("dc_motor");
     if (caps & DeviceCap::SERVO) features.add("servo");
     if (caps & DeviceCap::STEPPER) features.add("stepper");
+    if (caps & DeviceCap::MOTION_CTRL) features.add("motion_ctrl");
     if (caps & DeviceCap::ENCODER) features.add("encoder");
     if (caps & DeviceCap::IMU) features.add("imu");
-    if (caps & DeviceCap::TELEMETRY) features.add("telemetry");
+    if (caps & DeviceCap::LIDAR) features.add("lidar");
+    if (caps & DeviceCap::ULTRASONIC) features.add("ultrasonic");
     if (caps & DeviceCap::SIGNAL_BUS) features.add("signal_bus");
     if (caps & DeviceCap::CONTROL_KERNEL) features.add("control_kernel");
+    if (caps & DeviceCap::OBSERVER) features.add("observer");
+    if (caps & DeviceCap::TELEMETRY) features.add("telemetry");
     if (caps & DeviceCap::GPIO) features.add("gpio");
     if (caps & DeviceCap::PWM) features.add("pwm");
 

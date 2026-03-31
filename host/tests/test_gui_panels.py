@@ -8,6 +8,9 @@ basic functionality works correctly with mocked dependencies.
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 
+# Skip all tests in this module if PyQt6 is not installed
+pytest.importorskip("PyQt6", reason="PyQt6 not installed")
+
 
 # ============== Fixtures ==============
 

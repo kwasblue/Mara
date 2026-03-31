@@ -376,6 +376,22 @@ mara_host/
 │   ├── gpio.py
 │   ├── servo.py
 │   └── ...
+├── cli/                        # Command-line interface
+│   ├── main.py                # CLI entry point
+│   ├── commands/              # Command subpackages
+│   │   ├── run/               # Connection commands
+│   │   ├── build/             # Firmware build
+│   │   └── ...
+│   └── shell/                 # Interactive shell (modular)
+│       ├── __init__.py        # Entry point, auto-discovery
+│       ├── registry.py        # @command decorator registration
+│       ├── core.py            # InteractiveShell class
+│       ├── general.py         # help, quit, events, send, raw
+│       ├── connection.py      # connect, disconnect, ping, status
+│       ├── safety.py          # arm, disarm, estop, activate
+│       ├── actuators.py       # servo, motor, gpio commands
+│       ├── sensors.py         # encoder, ultrasonic, imu
+│       └── telemetry_cmds.py  # telemetry configuration
 ├── services/                   # Business logic
 │   └── control/
 │       ├── gpio_service.py

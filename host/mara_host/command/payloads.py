@@ -45,6 +45,24 @@ class SafetySetRatePayload:
         return f"SafetySetRatePayload(...)"
 
 
+class SetSafetyTimeoutsPayload:
+    """Set safety timeout values. Use 0 to disable a timeout."""
+    _cmd = "CMD_SET_SAFETY_TIMEOUTS"
+
+    def __init__(self, host_timeout_ms: int | None = None, motion_timeout_ms: int | None = None):
+        self.host_timeout_ms = host_timeout_ms
+        self.motion_timeout_ms = motion_timeout_ms
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "host_timeout_ms": self.host_timeout_ms,
+            "motion_timeout_ms": self.motion_timeout_ms
+        }
+
+    def __repr__(self) -> str:
+        return f"SetSafetyTimeoutsPayload(...)"
+
+
 class StepperStopPayload:
     """Immediately stop a stepper motor."""
     _cmd = "CMD_STEPPER_STOP"
@@ -66,7 +84,7 @@ class StepperStopPayload:
 # =============================================================================
 
 class SetLogLevelPayload:
-    """Set MCU logging verbosity level."""
+    """Set MCU global logging verbosity level."""
     _cmd = "CMD_SET_LOG_LEVEL"
 
     def __init__(self, level: str = 'info'):
@@ -79,6 +97,24 @@ class SetLogLevelPayload:
 
     def __repr__(self) -> str:
         return f"SetLogLevelPayload(...)"
+
+
+class SetSubsystemLogLevelPayload:
+    """Set logging verbosity for a specific MCU subsystem (e.g., servo, stepper, motor)."""
+    _cmd = "CMD_SET_SUBSYSTEM_LOG_LEVEL"
+
+    def __init__(self, subsystem: str, level: str = 'info'):
+        self.subsystem = subsystem
+        self.level = level
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "subsystem": self.subsystem,
+            "level": self.level
+        }
+
+    def __repr__(self) -> str:
+        return f"SetSubsystemLogLevelPayload(...)"
 
 
 class SetVelPayload:
@@ -1166,6 +1202,8 @@ __all__ = [
     "ServoSetPulsePayload",
     "SetLogLevelPayload",
     "SetModePayload",
+    "SetSafetyTimeoutsPayload",
+    "SetSubsystemLogLevelPayload",
     "SetVelPayload",
     "StepperEnablePayload",
     "StepperGetPositionPayload",

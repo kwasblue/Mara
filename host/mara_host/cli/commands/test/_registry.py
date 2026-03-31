@@ -14,6 +14,7 @@ from .gpio import cmd_gpio
 from .latency import cmd_latency
 from .stepper import cmd_stepper
 from .commands import cmd_commands, DEFAULT_PAYLOADS
+from .hil import cmd_hil, cmd_hil_smoke, cmd_hil_churn
 from mara_host.cli.cli_config import get_serial_port as _get_port
 
 
@@ -154,6 +155,42 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Delay between commands in ms (default: 50)",
     )
     commands_p.set_defaults(func=cmd_commands)
+
+    # =========================================================================
+    # HIL (pytest) tests
+    # =========================================================================
+
+    # hil - run pytest HIL tests
+    hil_p = test_sub.add_parser(
+        "hil",
+        help="Run HIL pytest tests (full test suite)",
+    )
+    add_transport_args(hil_p)
+    hil_p.add_argument("-k", "--filter", help="pytest -k filter expression")
+    hil_p.add_argument("-t", "--test", help="Specific test file (e.g., 'smoke', 'churn', 'send_commands')")
+    hil_p.add_argument("--extra", help="Extra pytest arguments (quoted string)")
+    hil_p.set_defaults(func=cmd_hil)
+
+    # hil-smoke - quick smoke tests
+    smoke_p = test_sub.add_parser(
+        "hil-smoke",
+        help="Run quick HIL smoke tests",
+    )
+    add_transport_args(smoke_p)
+    smoke_p.add_argument("-k", "--filter", help="pytest -k filter expression")
+    smoke_p.add_argument("--extra", help="Extra pytest arguments")
+    smoke_p.set_defaults(func=cmd_hil_smoke, test=None)
+
+    # hil-churn - stress tests
+    churn_p = test_sub.add_parser(
+        "hil-churn",
+        help="Run HIL stress/churn tests",
+    )
+    add_transport_args(churn_p)
+    churn_p.add_argument("-n", "--cycles", type=int, default=10, help="Number of churn cycles (default: 10)")
+    churn_p.add_argument("-k", "--filter", help="pytest -k filter expression")
+    churn_p.add_argument("--extra", help="Extra pytest arguments")
+    churn_p.set_defaults(func=cmd_hil_churn, test=None)
 
     # Default
     test_parser.set_defaults(func=cmd_all)

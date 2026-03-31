@@ -41,9 +41,12 @@ class TestRates:
 
 
 class TestControlSignals:
+    """Control signal tests - DEFINE requires IDLE state."""
+
     @pytest.fixture(autouse=True)
     async def cleanup(self, hil):
-        """Clear signals before and after each test."""
+        """Ensure IDLE state and clear signals before and after each test."""
+        await hil.send("CMD_DISARM", {})  # Ensure IDLE for DEFINE
         await hil.clear_signals()
         yield
         await hil.clear_signals()
@@ -58,18 +61,24 @@ class TestControlSignals:
             "id": 110, "name": "sg_test", "signal_kind": "REF", "initial": 0.0
         })
         await hil.assert_ok("CMD_CTRL_SIGNAL_SET", {"id": 110, "value": 42.5})
-        await hil.assert_ok("CMD_CTRL_SIGNAL_GET", {"id": 110})
+        resp = await hil.send("CMD_CTRL_SIGNAL_GET", {"id": 110})
+        assert resp["ok"], f"SIGNAL_GET failed: {resp.get('error')}"
 
     async def test_signals_list(self, hil):
         await hil.assert_ok("CMD_CTRL_SIGNALS_LIST")
 
 
 class TestControlSlots:
-    @pytest.fixture
-    async def setup(self, hil):
+    """Control slot tests - require IDLE state for configuration."""
+
+    @pytest.fixture(autouse=True)
+    async def ensure_idle(self, hil):
+        """Ensure IDLE state and clear signals before and after each test."""
+        await hil.send("CMD_DISARM", {})  # Ensure IDLE for slot configuration
         await hil.clear_signals()
         yield
-    
+        await hil.clear_signals()
+
     @pytest.fixture
     async def slot(self, hil):
         """Configure slot 0 with signals."""
@@ -126,6 +135,12 @@ class TestLED:
 
 
 class TestServo:
+    """Servo tests - require HAS_SERVO firmware flag."""
+
+    @pytest.fixture(autouse=True)
+    async def require_servo(self, hil):
+        await hil.require_capability("servo")
+
     async def test_attach_detach(self, hil):
         await hil.assert_ok("CMD_SERVO_ATTACH", {"servo_id": 0, "channel": 0, "min_us": 1000, "max_us": 2000})
         await hil.assert_ok("CMD_SERVO_DETACH", {"servo_id": 0})
@@ -137,6 +152,12 @@ class TestServo:
 
 
 class TestStepper:
+    """Stepper tests - require HAS_STEPPER firmware flag."""
+
+    @pytest.fixture(autouse=True)
+    async def require_stepper(self, hil):
+        await hil.require_capability("stepper")
+
     async def test_enable_stop(self, hil):
         await hil.assert_ok("CMD_STEPPER_ENABLE", {"motor_id": 0, "enable": True})
         await hil.assert_ok("CMD_STEPPER_STOP", {"motor_id": 0})
@@ -148,6 +169,12 @@ class TestStepper:
 
 
 class TestEncoder:
+    """Encoder tests - require HAS_ENCODER firmware flag."""
+
+    @pytest.fixture(autouse=True)
+    async def require_encoder(self, hil):
+        await hil.require_capability("encoder")
+
     async def test_attach_read_reset(self, hil):
         await hil.assert_ok("CMD_ENCODER_ATTACH", {"encoder_id": 0, "pin_a": 32, "pin_b": 33})
         await hil.assert_ok("CMD_ENCODER_READ", {"encoder_id": 0})
@@ -155,6 +182,13 @@ class TestEncoder:
 
 
 class TestDCMotor:
+    """DC Motor tests - require HAS_DC_MOTOR firmware flag."""
+
+    @pytest.fixture(autouse=True)
+    async def require_dc_motor(self, hil):
+        """Skip all tests in this class if DC motor not available."""
+        await hil.require_capability("dc_motor")
+
     async def test_stop(self, hil):
         await hil.assert_ok("CMD_DC_STOP", {"motor_id": 0})
 
@@ -187,9 +221,12 @@ class TestLogging:
 # ------------------------------------------------------------------------------
 
 class TestObserver:
-    """Test observer configuration and operation."""
-        
-    async def setup(self, hil):
+    """Test observer configuration and operation - requires observer capability."""
+
+    @pytest.fixture(autouse=True)
+    async def require_observer(self, hil):
+        await hil.require_capability("observer")
+        await hil.send("CMD_DISARM", {})  # Ensure IDLE for signal defines
         await hil.clear_signals()
         yield
     
@@ -450,11 +487,16 @@ class TestObserver:
 
 class TestObserverStateSpace:
     """Test observer with state-space controller (full state feedback)."""
-    
-    async def setup(self, hil):
+
+    @pytest.fixture(autouse=True)
+    async def require_observer(self, hil):
+        """Require observer capability and ensure IDLE state."""
+        await hil.require_capability("observer")
+        await hil.send("CMD_DISARM", {})  # Ensure IDLE for signal defines
         await hil.clear_signals()
         yield
-    
+        await hil.clear_signals()
+
     @pytest.fixture
     async def pendulum_signals(self, hil):
         """Define signals for inverted pendulum."""

@@ -26,50 +26,21 @@ from __future__ import annotations
 
 import math
 import struct
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, Any, Optional, List, Tuple
 
 from .binary_commands import Opcode
 
 
-# Physics bounds for common command parameters
-# Values outside these bounds are rejected to prevent dangerous MCU commands
-_VALUE_BOUNDS: Dict[str, Tuple[float, float]] = {
-    "vx": (-10.0, 10.0),       # Linear velocity: ±10 m/s
-    "omega": (-20.0, 20.0),    # Angular velocity: ±20 rad/s (~3 rev/s)
-    "angle": (-720.0, 720.0),  # Degrees: ±2 full rotations
-    "speed": (-100.0, 100.0),  # Normalized speed: ±100%
-}
-
-
-def _validate_float(value: Any, name: str, check_bounds: bool = True) -> float:
+def _validate_float(value: float, name: str) -> float:
     """
-    Validate and convert a value to float, checking for finite values.
+    Validate that a float value is finite (not NaN or Inf).
 
-    Args:
-        value: The value to validate and convert
-        name: Parameter name for error messages
-        check_bounds: If True, also check against physics bounds
-
-    Raises:
-        ValueError: If value cannot be converted, is NaN/Inf, or outside bounds
+    Raises ValueError if value is NaN or Inf, as these cannot be
+    safely packed into binary and may cause undefined MCU behavior.
     """
-    # Convert to float with error handling
-    try:
-        fval = float(value)
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"{name} must be numeric, got {value!r}") from e
-
-    if math.isnan(fval) or math.isinf(fval):
-        raise ValueError(f"{name} must be finite, got {fval}")
-
-    if check_bounds:
-        bounds = _VALUE_BOUNDS.get(name)
-        if bounds and not (bounds[0] <= fval <= bounds[1]):
-            raise ValueError(
-                f"{name}={fval} outside physics bounds {bounds}"
-            )
-
-    return fval
+    if math.isnan(value) or math.isinf(value):
+        raise ValueError(f"{name} must be finite, got {value}")
+    return value
 
 
 class JsonToBinaryEncoder:
@@ -127,8 +98,8 @@ class JsonToBinaryEncoder:
 
         JSON: CMD_SET_VEL
         """
-        vx = _validate_float(cmd.get("vx", 0.0), "vx")
-        omega = _validate_float(cmd.get("omega", 0.0), "omega")
+        vx = _validate_float(float(cmd.get("vx", 0.0)), "vx")
+        omega = _validate_float(float(cmd.get("omega", 0.0)), "omega")
         return struct.pack('<Bff', Opcode.SET_VEL, vx, omega)
 
     def _encode_set_signal(self, cmd: Dict[str, Any]) -> bytes:
@@ -138,7 +109,7 @@ class JsonToBinaryEncoder:
         JSON: CMD_CTRL_SIGNAL_SET
         """
         id = int(cmd.get("id", 0))
-        value = _validate_float(cmd.get("value", 0.0), "value", check_bounds=False)
+        value = _validate_float(float(cmd.get("value", 0.0)), "value")
         return struct.pack('<BHf', Opcode.SET_SIGNAL, id, value)
 
     def _encode_heartbeat(self, cmd: Dict[str, Any]) -> bytes:

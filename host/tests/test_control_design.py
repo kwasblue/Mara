@@ -19,6 +19,15 @@ from mara_host.control.design import (
     lqe,
 )
 
+# Skip tests requiring scipy if not installed
+try:
+    import scipy
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
+requires_scipy = pytest.mark.skipif(not HAS_SCIPY, reason="scipy not installed")
+
 
 # ============================================================================
 # StateSpaceModel Tests
@@ -115,6 +124,7 @@ class TestStateSpaceModel:
         assert not model_uno.is_observable()
 
 
+@requires_scipy
 class TestDiscretization:
     """Tests for discretization functions."""
 
@@ -169,6 +179,7 @@ class TestDiscretization:
 # ============================================================================
 
 
+@requires_scipy
 class TestLQR:
     """Tests for LQR design functions."""
 
@@ -229,6 +240,7 @@ class TestLQR:
 # ============================================================================
 
 
+@requires_scipy
 class TestPolePlacement:
     """Tests for pole placement functions."""
 
@@ -279,6 +291,7 @@ class TestPolePlacement:
 # ============================================================================
 
 
+@requires_scipy
 class TestObserverGains:
     """Tests for observer gain design."""
 
@@ -394,6 +407,7 @@ class TestUtilityFunctions:
 # ============================================================================
 
 
+@requires_scipy
 class TestIntegration:
     """Integration tests for complete design workflow."""
 

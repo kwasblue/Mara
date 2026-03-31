@@ -56,6 +56,7 @@ static void publishIdentity(EventBus& bus) {
     if (caps & DeviceCap::ULTRASONIC) features.add("ultrasonic");
     if (caps & DeviceCap::SIGNAL_BUS) features.add("signal_bus");
     if (caps & DeviceCap::CONTROL_KERNEL) features.add("control_kernel");
+    if (caps & DeviceCap::OBSERVER) features.add("observer");
     if (caps & DeviceCap::TELEMETRY) features.add("telemetry");
     if (caps & DeviceCap::GPIO) features.add("gpio");
     if (caps & DeviceCap::PWM) features.add("pwm");

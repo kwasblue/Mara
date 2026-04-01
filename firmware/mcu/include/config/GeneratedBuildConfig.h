@@ -3,11 +3,11 @@
 // AUTO-GENERATED FILE - DO NOT EDIT
 // =============================================================================
 // Generated from: config/mara_build.yaml
-// Generated at:   2026-04-01T16:18:09.623790
+// Generated at:   2026-04-01T16:27:28.594689
 // Active profile: full
 //
 // To regenerate, run:
-//   python -m mara_host.tools.generate_all
+//   mara generate all
 // =============================================================================
 
 #pragma once
@@ -16,6 +16,7 @@
 // Transport Settings
 // =============================================================================
 #define MARA_BAUD_RATE 921600
+#define MARA_UPLOAD_BAUD_RATE 460800
 #define MARA_TCP_PORT 3333
 #define MARA_DEVICE_NAME "ESP32-bot"
 

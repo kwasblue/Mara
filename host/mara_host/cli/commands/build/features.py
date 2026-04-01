@@ -11,6 +11,7 @@ from mara_host.core.build_profiles import (
     FEATURE_ALIASES,
     get_profile_names,
     get_profile,
+    get_feature_categories,
 )
 
 
@@ -20,13 +21,8 @@ def cmd_features(args: argparse.Namespace) -> int:
     console.print("[bold cyan]Available Features[/bold cyan]")
     console.print()
 
-    categories = {
-        "Transport": ["wifi", "ble", "uart_transport", "mqtt_transport"],
-        "Motors": ["servo", "stepper", "dc_motor", "encoder", "motion_controller"],
-        "Sensors": ["ultrasonic", "imu", "lidar"],
-        "Control": ["signal_bus", "control_kernel", "pid_controller", "state_space", "observer", "control_module"],
-        "System": ["ota", "telemetry", "heartbeat", "logging", "identity", "audio", "benchmark"],
-    }
+    # Get categories from YAML (single source of truth)
+    categories = get_feature_categories()
 
     for category, feats in categories.items():
         table = Table(title=category, show_header=True, header_style="bold")

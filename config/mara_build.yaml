@@ -2,8 +2,8 @@
 # =============================================================================
 # MARA Build Configuration - Single Source of Truth
 # =============================================================================
-# This file defines all shared settings between firmware and host.
-# Run `python -m mara_host.tools.generate_all` to regenerate:
+# This file defines ALL shared settings between firmware and host.
+# Run `mara generate all` to regenerate:
 #   - firmware/mcu/include/config/GeneratedBuildConfig.h
 #   - host/mara_host/core/_generated_config.py
 # =============================================================================
@@ -12,9 +12,59 @@
 # Transport Settings
 # -----------------------------------------------------------------------------
 transport:
-  baud_rate: 921600
-  tcp_port: 3333
-  device_name: "ESP32-bot"
+  baud_rate: 921600        # Runtime serial communication
+  upload_baud_rate: 460800 # Firmware flashing (esptool)
+  tcp_port: 3333           # TCP server port
+  device_name: "ESP32-bot" # mDNS/BLE device name
+
+# -----------------------------------------------------------------------------
+# Feature Categories
+# -----------------------------------------------------------------------------
+# Used for CLI display and code organization
+categories:
+  Transport:
+    - wifi
+    - ble
+    - uart_transport
+    - mqtt_transport
+  Motors:
+    - servo
+    - stepper
+    - dc_motor
+    - encoder
+    - motion_controller
+  Sensors:
+    - ultrasonic
+    - imu
+    - lidar
+  Control:
+    - signal_bus
+    - control_kernel
+    - pid_controller
+    - state_space
+    - observer
+    - control_module
+  System:
+    - ota
+    - telemetry
+    - heartbeat
+    - logging
+    - identity
+  Audio:
+    - audio
+  Debug:
+    - benchmark
+
+# -----------------------------------------------------------------------------
+# Feature Dependencies
+# -----------------------------------------------------------------------------
+# Validation rules: feature -> [required features]
+dependencies:
+  mqtt_transport: [wifi]
+  control_kernel: [signal_bus]
+  observer: [signal_bus]
+  control_module: [control_kernel]
+  state_space: [control_kernel]
 
 # -----------------------------------------------------------------------------
 # Feature Profiles

@@ -1,10 +1,23 @@
 # mara_host/config/feature_flags.py
-# Central feature flag definitions - mirrors ESP32 include/config/FeatureFlags.h
-# These flags can be overridden via environment variables or runtime configuration
+"""
+Feature flags for runtime configuration.
+
+This module provides runtime feature flag validation and dependency checking.
+Profile definitions are loaded from the generated config (sourced from mara_build.yaml).
+
+DO NOT hardcode profiles here - they come from config/mara_build.yaml via generation.
+"""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
+
+# Import from generated config - single source of truth
+from mara_host.core._generated_config import (
+    PROFILES,
+    FEATURE_DEPENDENCIES,
+    validate_dependencies,
+)
 
 
 def _env_bool(key: str, default: bool) -> bool:
@@ -25,6 +38,7 @@ class FeatureFlags:
 
     Usage:
         flags = FeatureFlags.from_env()  # Load from environment
+        flags = FeatureFlags.from_profile("motors")  # Load from profile
         flags = FeatureFlags(has_wifi=True, has_dc_motor=True)  # Manual config
     """
 
@@ -35,7 +49,6 @@ class FeatureFlags:
     has_ble: bool = False
     has_uart_transport: bool = True  # Default: always have UART
     has_mqtt_transport: bool = False
-    has_tcp_transport: bool = False
 
     # ==========================================================================
     # MOTOR FLAGS
@@ -44,7 +57,6 @@ class FeatureFlags:
     has_servo: bool = False
     has_stepper: bool = False
     has_encoder: bool = False
-    has_dc_velocity_pid: bool = False
     has_motion_controller: bool = False
 
     # ==========================================================================
@@ -53,8 +65,6 @@ class FeatureFlags:
     has_imu: bool = False
     has_lidar: bool = False
     has_ultrasonic: bool = False
-    has_limit_switch: bool = False
-    has_camera: bool = False
 
     # ==========================================================================
     # CONTROL FLAGS
@@ -70,46 +80,85 @@ class FeatureFlags:
     # AUDIO FLAGS
     # ==========================================================================
     has_audio: bool = False
-    has_dsp_chain: bool = False
-    has_mic: bool = False
 
     # ==========================================================================
     # SYSTEM FLAGS
     # ==========================================================================
+    has_ota: bool = False
     has_telemetry: bool = True
     has_heartbeat: bool = True
     has_logging: bool = True
     has_identity: bool = False
-    has_binary_commands: bool = True
-    has_safety_manager: bool = True
-
-    # ==========================================================================
-    # ML/VISION FLAGS (Python Host specific)
-    # ==========================================================================
-    has_object_detection: bool = False
-    has_yolo: bool = False
+    has_benchmark: bool = False
 
     def __post_init__(self):
         """Validate dependencies between flags."""
-        # MQTT requires WiFi
-        if self.has_mqtt_transport and not self.has_wifi:
-            raise ValueError("has_mqtt_transport requires has_wifi=True")
+        # Convert to dict for validation
+        features = self.to_dict()
+        errors = validate_dependencies(features)
+        if errors:
+            raise ValueError("; ".join(errors))
 
-        # DC velocity PID requires DC motor and encoder
-        if self.has_dc_velocity_pid and not (self.has_dc_motor and self.has_encoder):
-            raise ValueError("has_dc_velocity_pid requires has_dc_motor=True and has_encoder=True")
+    def to_dict(self) -> dict[str, bool]:
+        """Convert to feature dict (without has_ prefix)."""
+        return {
+            "wifi": self.has_wifi,
+            "ble": self.has_ble,
+            "uart_transport": self.has_uart_transport,
+            "mqtt_transport": self.has_mqtt_transport,
+            "dc_motor": self.has_dc_motor,
+            "servo": self.has_servo,
+            "stepper": self.has_stepper,
+            "encoder": self.has_encoder,
+            "motion_controller": self.has_motion_controller,
+            "imu": self.has_imu,
+            "lidar": self.has_lidar,
+            "ultrasonic": self.has_ultrasonic,
+            "signal_bus": self.has_signal_bus,
+            "control_kernel": self.has_control_kernel,
+            "observer": self.has_observer,
+            "pid_controller": self.has_pid_controller,
+            "state_space": self.has_state_space,
+            "control_module": self.has_control_module,
+            "audio": self.has_audio,
+            "ota": self.has_ota,
+            "telemetry": self.has_telemetry,
+            "heartbeat": self.has_heartbeat,
+            "logging": self.has_logging,
+            "identity": self.has_identity,
+            "benchmark": self.has_benchmark,
+        }
 
-        # Control kernel requires signal bus
-        if self.has_control_kernel and not self.has_signal_bus:
-            raise ValueError("has_control_kernel requires has_signal_bus=True")
-
-        # Observer requires signal bus
-        if self.has_observer and not self.has_signal_bus:
-            raise ValueError("has_observer requires has_signal_bus=True")
-
-        # Control module requires control kernel
-        if self.has_control_module and not self.has_control_kernel:
-            raise ValueError("has_control_module requires has_control_kernel=True")
+    @classmethod
+    def from_dict(cls, features: dict[str, bool]) -> "FeatureFlags":
+        """Create from feature dict."""
+        return cls(
+            has_wifi=features.get("wifi", False),
+            has_ble=features.get("ble", False),
+            has_uart_transport=features.get("uart_transport", True),
+            has_mqtt_transport=features.get("mqtt_transport", False),
+            has_dc_motor=features.get("dc_motor", False),
+            has_servo=features.get("servo", False),
+            has_stepper=features.get("stepper", False),
+            has_encoder=features.get("encoder", False),
+            has_motion_controller=features.get("motion_controller", False),
+            has_imu=features.get("imu", False),
+            has_lidar=features.get("lidar", False),
+            has_ultrasonic=features.get("ultrasonic", False),
+            has_signal_bus=features.get("signal_bus", False),
+            has_control_kernel=features.get("control_kernel", False),
+            has_observer=features.get("observer", False),
+            has_pid_controller=features.get("pid_controller", False),
+            has_state_space=features.get("state_space", False),
+            has_control_module=features.get("control_module", False),
+            has_audio=features.get("audio", False),
+            has_ota=features.get("ota", False),
+            has_telemetry=features.get("telemetry", True),
+            has_heartbeat=features.get("heartbeat", True),
+            has_logging=features.get("logging", True),
+            has_identity=features.get("identity", False),
+            has_benchmark=features.get("benchmark", False),
+        )
 
     @classmethod
     def from_env(cls) -> "FeatureFlags":
@@ -120,20 +169,16 @@ class FeatureFlags:
             has_ble=_env_bool("HAS_BLE", False),
             has_uart_transport=_env_bool("HAS_UART_TRANSPORT", True),
             has_mqtt_transport=_env_bool("HAS_MQTT_TRANSPORT", False),
-            has_tcp_transport=_env_bool("HAS_TCP_TRANSPORT", False),
             # Motor
             has_dc_motor=_env_bool("HAS_DC_MOTOR", False),
             has_servo=_env_bool("HAS_SERVO", False),
             has_stepper=_env_bool("HAS_STEPPER", False),
             has_encoder=_env_bool("HAS_ENCODER", False),
-            has_dc_velocity_pid=_env_bool("HAS_DC_VELOCITY_PID", False),
             has_motion_controller=_env_bool("HAS_MOTION_CONTROLLER", False),
             # Sensor
             has_imu=_env_bool("HAS_IMU", False),
             has_lidar=_env_bool("HAS_LIDAR", False),
             has_ultrasonic=_env_bool("HAS_ULTRASONIC", False),
-            has_limit_switch=_env_bool("HAS_LIMIT_SWITCH", False),
-            has_camera=_env_bool("HAS_CAMERA", False),
             # Control
             has_signal_bus=_env_bool("HAS_SIGNAL_BUS", False),
             has_control_kernel=_env_bool("HAS_CONTROL_KERNEL", False),
@@ -143,115 +188,53 @@ class FeatureFlags:
             has_control_module=_env_bool("HAS_CONTROL_MODULE", False),
             # Audio
             has_audio=_env_bool("HAS_AUDIO", False),
-            has_dsp_chain=_env_bool("HAS_DSP_CHAIN", False),
-            has_mic=_env_bool("HAS_MIC", False),
             # System
+            has_ota=_env_bool("HAS_OTA", False),
             has_telemetry=_env_bool("HAS_TELEMETRY", True),
             has_heartbeat=_env_bool("HAS_HEARTBEAT", True),
             has_logging=_env_bool("HAS_LOGGING", True),
             has_identity=_env_bool("HAS_IDENTITY", False),
-            has_binary_commands=_env_bool("HAS_BINARY_COMMANDS", True),
-            has_safety_manager=_env_bool("HAS_SAFETY_MANAGER", True),
-            # ML/Vision
-            has_object_detection=_env_bool("HAS_OBJECT_DETECTION", False),
-            has_yolo=_env_bool("HAS_YOLO", False),
+            has_benchmark=_env_bool("HAS_BENCHMARK", False),
         )
 
     @classmethod
+    def from_profile(cls, profile_name: str) -> "FeatureFlags":
+        """Load feature flags from a profile defined in mara_build.yaml.
+
+        Args:
+            profile_name: One of: minimal, motors, sensors, control, full
+        """
+        if profile_name not in PROFILES:
+            available = ", ".join(PROFILES.keys())
+            raise ValueError(f"Unknown profile '{profile_name}'. Available: {available}")
+
+        return cls.from_dict(PROFILES[profile_name])
+
+    # Profile factory methods - delegate to from_profile for single source of truth
+    @classmethod
     def minimal(cls) -> "FeatureFlags":
-        """Minimal configuration: UART only."""
-        return cls(
-            has_uart_transport=True,
-            has_telemetry=True,
-            has_heartbeat=True,
-            has_logging=True,
-        )
+        """Minimal configuration from mara_build.yaml."""
+        return cls.from_profile("minimal")
 
     @classmethod
     def motors(cls) -> "FeatureFlags":
-        """Motor-focused configuration."""
-        return cls(
-            has_uart_transport=True,
-            has_dc_motor=True,
-            has_servo=True,
-            has_stepper=True,
-            has_encoder=True,
-            has_motion_controller=True,
-            has_telemetry=True,
-            has_heartbeat=True,
-            has_logging=True,
-        )
+        """Motor-focused configuration from mara_build.yaml."""
+        return cls.from_profile("motors")
 
     @classmethod
     def sensors(cls) -> "FeatureFlags":
-        """Sensor-focused configuration."""
-        return cls(
-            has_wifi=True,
-            has_tcp_transport=True,
-            has_uart_transport=True,
-            has_imu=True,
-            has_ultrasonic=True,
-            has_encoder=True,
-            has_camera=True,
-            has_telemetry=True,
-            has_heartbeat=True,
-            has_logging=True,
-        )
+        """Sensor-focused configuration from mara_build.yaml."""
+        return cls.from_profile("sensors")
 
     @classmethod
     def control(cls) -> "FeatureFlags":
-        """Control system configuration."""
-        return cls(
-            has_uart_transport=True,
-            has_dc_motor=True,
-            has_encoder=True,
-            has_dc_velocity_pid=True,
-            has_motion_controller=True,
-            has_signal_bus=True,
-            has_control_kernel=True,
-            has_observer=True,
-            has_pid_controller=True,
-            has_telemetry=True,
-            has_heartbeat=True,
-            has_logging=True,
-        )
+        """Control system configuration from mara_build.yaml."""
+        return cls.from_profile("control")
 
     @classmethod
     def full(cls) -> "FeatureFlags":
-        """Full configuration: everything enabled."""
-        return cls(
-            # Transport
-            has_wifi=True,
-            has_ble=True,
-            has_uart_transport=True,
-            has_tcp_transport=True,
-            # Motor
-            has_dc_motor=True,
-            has_servo=True,
-            has_stepper=True,
-            has_encoder=True,
-            has_dc_velocity_pid=True,
-            has_motion_controller=True,
-            # Sensor
-            has_imu=True,
-            has_ultrasonic=True,
-            has_camera=True,
-            # Control
-            has_signal_bus=True,
-            has_control_kernel=True,
-            has_observer=True,
-            has_pid_controller=True,
-            # System
-            has_telemetry=True,
-            has_heartbeat=True,
-            has_logging=True,
-            has_identity=True,
-            has_binary_commands=True,
-            has_safety_manager=True,
-            # ML
-            has_object_detection=True,
-            has_yolo=True,
-        )
+        """Full configuration from mara_build.yaml."""
+        return cls.from_profile("full")
 
     # ==========================================================================
     # DERIVED FLAGS (convenience properties)
@@ -262,11 +245,11 @@ class FeatureFlags:
 
     @property
     def has_any_sensor(self) -> bool:
-        return self.has_imu or self.has_lidar or self.has_ultrasonic or self.has_encoder or self.has_camera
+        return self.has_imu or self.has_lidar or self.has_ultrasonic or self.has_encoder
 
     @property
     def has_any_transport(self) -> bool:
-        return self.has_wifi or self.has_ble or self.has_uart_transport or self.has_tcp_transport
+        return self.has_wifi or self.has_ble or self.has_uart_transport
 
     @property
     def has_any_control(self) -> bool:
@@ -276,9 +259,9 @@ class FeatureFlags:
         """Return a summary of enabled features."""
         lines = [
             "=== Feature Flags ===",
-            f"Transport: WIFI={int(self.has_wifi)} BLE={int(self.has_ble)} UART={int(self.has_uart_transport)} TCP={int(self.has_tcp_transport)}",
+            f"Transport: WIFI={int(self.has_wifi)} BLE={int(self.has_ble)} UART={int(self.has_uart_transport)}",
             f"Motor: DC={int(self.has_dc_motor)} SERVO={int(self.has_servo)} STEPPER={int(self.has_stepper)} ENCODER={int(self.has_encoder)} MOTION={int(self.has_motion_controller)}",
-            f"Sensor: IMU={int(self.has_imu)} LIDAR={int(self.has_lidar)} ULTRASONIC={int(self.has_ultrasonic)} CAMERA={int(self.has_camera)}",
+            f"Sensor: IMU={int(self.has_imu)} LIDAR={int(self.has_lidar)} ULTRASONIC={int(self.has_ultrasonic)}",
             f"Control: SIGNAL_BUS={int(self.has_signal_bus)} KERNEL={int(self.has_control_kernel)} OBSERVER={int(self.has_observer)}",
             f"System: TELEM={int(self.has_telemetry)} HEARTBEAT={int(self.has_heartbeat)} LOG={int(self.has_logging)}",
         ]

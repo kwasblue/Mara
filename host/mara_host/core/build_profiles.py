@@ -2,12 +2,14 @@
 """
 Build profile configuration - Single source of truth.
 
-Loads profiles from config/mara_build.yaml and provides them to:
+Loads ALL configuration from config/mara_build.yaml and provides it to:
 - gen_build_config.py (code generation)
 - build_firmware.py (compile-time flags)
-- CLI commands (--preset option)
+- CLI commands (--profile option)
+- feature_flags.py (runtime validation)
+- All transport defaults
 
-This ensures profiles are defined in one place (YAML) and used everywhere.
+This ensures configuration is defined in ONE place (YAML) and used everywhere.
 """
 
 from pathlib import Path
@@ -40,10 +42,89 @@ def get_config() -> dict[str, Any]:
     return _load_config()
 
 
+# =============================================================================
+# Transport Settings
+# =============================================================================
+
 def get_transport_settings() -> dict[str, Any]:
-    """Get transport settings (baud_rate, tcp_port, device_name)."""
+    """Get transport settings (baud_rate, tcp_port, device_name, etc.)."""
     return _load_config().get("transport", {})
 
+
+def get_baud_rate() -> int:
+    """Get runtime serial baud rate."""
+    return get_transport_settings().get("baud_rate", 921600)
+
+
+def get_upload_baud_rate() -> int:
+    """Get firmware upload/flashing baud rate."""
+    return get_transport_settings().get("upload_baud_rate", 460800)
+
+
+def get_tcp_port() -> int:
+    """Get default TCP port."""
+    return get_transport_settings().get("tcp_port", 3333)
+
+
+def get_device_name() -> str:
+    """Get default device name."""
+    return get_transport_settings().get("device_name", "ESP32-bot")
+
+
+# =============================================================================
+# Feature Categories
+# =============================================================================
+
+def get_feature_categories() -> dict[str, list[str]]:
+    """Get feature categories for display and organization."""
+    return _load_config().get("categories", {})
+
+
+def get_all_feature_names() -> list[str]:
+    """Get all known feature names from categories."""
+    features = []
+    for category_features in get_feature_categories().values():
+        features.extend(category_features)
+    return features
+
+
+# =============================================================================
+# Feature Dependencies
+# =============================================================================
+
+def get_feature_dependencies() -> dict[str, list[str]]:
+    """Get feature dependency rules.
+
+    Returns:
+        Dict mapping feature -> list of required features
+    """
+    return _load_config().get("dependencies", {})
+
+
+def validate_feature_dependencies(features: dict[str, bool]) -> list[str]:
+    """Validate feature dependencies.
+
+    Args:
+        features: Dict mapping feature name to enabled state
+
+    Returns:
+        List of validation error messages (empty if valid)
+    """
+    errors = []
+    dependencies = get_feature_dependencies()
+
+    for feature, required in dependencies.items():
+        if features.get(feature, False):
+            for req in required:
+                if not features.get(req, False):
+                    errors.append(f"{feature} requires {req}")
+
+    return errors
+
+
+# =============================================================================
+# Profiles
+# =============================================================================
 
 def get_active_profile() -> str:
     """Get the active profile name."""
@@ -74,13 +155,21 @@ def get_profile(name: str) -> dict[str, bool]:
     return profiles[name]
 
 
+def get_all_profiles() -> dict[str, dict[str, bool]]:
+    """Get all profiles."""
+    return _load_config().get("profiles", {})
+
+
 def get_active_profile_features() -> dict[str, bool]:
     """Get the active profile's feature flags."""
     return get_profile(get_active_profile())
 
 
-# Feature name to C macro mapping
-# This maps the YAML feature names to C++ preprocessor defines
+# =============================================================================
+# Feature to Macro Mapping
+# =============================================================================
+
+# Maps YAML feature names to C++ preprocessor defines
 FEATURE_TO_MACRO: dict[str, str] = {
     # Transport
     "wifi": "HAS_WIFI",
@@ -142,11 +231,6 @@ def feature_to_macro(name: str) -> str:
     return f"HAS_{canonical.upper()}"
 
 
-def get_all_feature_names() -> list[str]:
-    """Get all known feature names."""
-    return list(FEATURE_TO_MACRO.keys())
-
-
 def profile_to_build_flags(profile_name: str) -> dict[str, bool]:
     """Convert a profile to build flags (macro -> enabled).
 
@@ -163,6 +247,10 @@ def profile_to_build_flags(profile_name: str) -> dict[str, bool]:
         result[macro] = enabled
     return result
 
+
+# =============================================================================
+# CLI Parsing
+# =============================================================================
 
 def parse_features(
     features_str: str | None,

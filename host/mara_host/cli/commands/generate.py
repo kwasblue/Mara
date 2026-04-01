@@ -198,7 +198,14 @@ def _run_single(gen_type: GeneratorType, title: str, files_info: str) -> int:
     service = _get_service()
     result = service.generate(gen_type)
 
-    _print_result(result)
+    name = gen_type.value.replace("_", " ").title()
+    if result.success:
+        console.print(f"  [green]✓[/green] {name} [dim]done[/dim]")
+    else:
+        console.print(f"  [red]✗[/red] {name} [red]failed[/red]")
+        if result.error:
+            console.print(f"    [red]{result.error}[/red]")
+
     console.print()
 
     if result.success:

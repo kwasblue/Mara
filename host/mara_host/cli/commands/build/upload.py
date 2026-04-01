@@ -5,11 +5,13 @@ import argparse
 from mara_host.cli.console import console, print_error, print_info, print_success
 from mara_host.services.tooling.backends import get_registry, BuildRequest, FlashRequest
 from mara_host.tools.build_firmware import MCU_PROJECT, generate as do_generate
+from mara_host.core._generated_config import DEFAULT_UPLOAD_BAUD_RATE
 
 from ._common import get_features
 
 
-DEFAULT_DIRECT_UPLOAD_BAUD = 115200
+# Use upload baud rate from generated config (single source of truth)
+DEFAULT_DIRECT_UPLOAD_BAUD = DEFAULT_UPLOAD_BAUD_RATE
 
 
 def cmd_upload(args: argparse.Namespace) -> int:

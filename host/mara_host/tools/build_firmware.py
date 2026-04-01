@@ -29,104 +29,17 @@ ENVIRONMENTS = {
     "esp32_base", "native", "esp32_test"
 }
 
-# Available feature flags (maps short name -> C macro)
-FEATURES = {
-    # Transport
-    "wifi": "HAS_WIFI",
-    "ble": "HAS_BLE",
-    "uart": "HAS_UART_TRANSPORT",
-    "mqtt": "HAS_MQTT_TRANSPORT",
-    # Motors
-    "servo": "HAS_SERVO",
-    "stepper": "HAS_STEPPER",
-    "dc_motor": "HAS_DC_MOTOR",
-    "encoder": "HAS_ENCODER",
-    "motion": "HAS_MOTION_CONTROLLER",
-    # Sensors
-    "ultrasonic": "HAS_ULTRASONIC",
-    "imu": "HAS_IMU",
-    "lidar": "HAS_LIDAR",
-    # Control
-    "signal_bus": "HAS_SIGNAL_BUS",
-    "control_kernel": "HAS_CONTROL_KERNEL",
-    "pid": "HAS_PID_CONTROLLER",
-    "state_space": "HAS_STATE_SPACE",
-    "observer": "HAS_OBSERVER",
-    "control_module": "HAS_CONTROL_MODULE",
-    # System
-    "ota": "HAS_OTA",
-    "telemetry": "HAS_TELEMETRY",
-    "heartbeat": "HAS_HEARTBEAT",
-    "logging": "HAS_LOGGING",
-    "identity": "HAS_IDENTITY",
-    "audio": "HAS_AUDIO",
-}
+# Import from single source of truth (mara_build.yaml via build_profiles)
+from mara_host.core.build_profiles import (
+    get_profile_names,
+    FEATURE_TO_MACRO as FEATURES,
+    FEATURE_ALIASES,
+    parse_features,
+    features_to_build_flags as features_to_flags,
+)
 
-# Feature presets for convenience
-PRESETS = {
-    "minimal": ["uart", "telemetry", "heartbeat"],
-    "motors": ["uart", "servo", "stepper", "dc_motor", "encoder", "motion",
-               "telemetry", "heartbeat", "logging"],
-    "sensors": ["wifi", "uart", "ultrasonic", "imu", "lidar",
-                "ota", "telemetry", "heartbeat", "logging", "identity"],
-    "control": ["wifi", "uart", "servo", "stepper", "dc_motor", "encoder", "motion",
-                "imu", "signal_bus", "control_kernel", "pid", "state_space",
-                "observer", "control_module", "ota", "telemetry", "heartbeat",
-                "logging", "identity"],
-    "full": ["wifi", "uart", "mqtt", "servo", "stepper", "dc_motor", "encoder",
-             "motion", "ultrasonic", "imu", "lidar", "signal_bus", "control_kernel",
-             "pid", "state_space", "observer", "control_module", "ota", "telemetry",
-             "heartbeat", "logging", "identity"],
-}
-
-
-def parse_features(features_str: str | None, no_features_str: str | None) -> dict[str, bool] | None:
-    """Parse feature flags from comma-separated strings.
-
-    Returns None if no features specified (use env defaults).
-    Returns dict of {macro: enabled} if features specified.
-    """
-    if not features_str and not no_features_str:
-        return None
-
-    # Start with all features disabled
-    result = {macro: False for macro in FEATURES.values()}
-
-    if features_str:
-        for feat in features_str.split(","):
-            feat = feat.strip().lower()
-            if not feat:
-                continue
-            # Check if it's a preset
-            if feat in PRESETS:
-                for preset_feat in PRESETS[feat]:
-                    result[FEATURES[preset_feat]] = True
-            elif feat in FEATURES:
-                result[FEATURES[feat]] = True
-            else:
-                print(f"[build_firmware] Warning: Unknown feature '{feat}'")
-                print(f"[build_firmware] Available: {', '.join(sorted(FEATURES.keys()))}")
-                print(f"[build_firmware] Presets: {', '.join(sorted(PRESETS.keys()))}")
-
-    # Explicitly disable features
-    if no_features_str:
-        for feat in no_features_str.split(","):
-            feat = feat.strip().lower()
-            if feat in FEATURES:
-                result[FEATURES[feat]] = False
-
-    return result
-
-
-def features_to_flags(features: dict[str, bool] | None) -> list[str]:
-    """Convert feature dict to PlatformIO build flags."""
-    if features is None:
-        return []
-
-    flags = []
-    for macro, enabled in features.items():
-        flags.append(f"-D{macro}={int(enabled)}")
-    return flags
+# For backwards compatibility, expose PRESETS as profile names
+PRESETS = {name: name for name in get_profile_names()}
 
 
 def _find_pio() -> list[str]:
@@ -307,28 +220,37 @@ def clean(env: str | None = None) -> int:
 
 def list_features() -> None:
     """Print available features and presets."""
+    from mara_host.core.build_profiles import get_profile, get_profile_names
+
     print("\nAvailable features:")
     print("-" * 40)
 
     categories = {
-        "Transport": ["wifi", "ble", "uart", "mqtt"],
-        "Motors": ["servo", "stepper", "dc_motor", "encoder", "motion"],
+        "Transport": ["wifi", "ble", "uart_transport", "mqtt_transport"],
+        "Motors": ["servo", "stepper", "dc_motor", "encoder", "motion_controller"],
         "Sensors": ["ultrasonic", "imu", "lidar"],
-        "Control": ["signal_bus", "control_kernel", "pid", "state_space",
+        "Control": ["signal_bus", "control_kernel", "pid_controller", "state_space",
                     "observer", "control_module"],
-        "System": ["ota", "telemetry", "heartbeat", "logging", "identity", "audio"],
+        "System": ["ota", "telemetry", "heartbeat", "logging", "identity", "audio", "benchmark"],
     }
 
     for category, feats in categories.items():
         print(f"\n{category}:")
         for feat in feats:
-            print(f"  {feat:20} -> {FEATURES[feat]}")
+            if feat in FEATURES:
+                print(f"  {feat:20} -> {FEATURES[feat]}")
+            # Show aliases
+            for alias, canonical in FEATURE_ALIASES.items():
+                if canonical == feat:
+                    print(f"    (alias: {alias})")
 
-    print("\n\nPresets:")
+    print("\n\nProfiles (from mara_build.yaml):")
     print("-" * 40)
-    for preset, feats in PRESETS.items():
-        print(f"\n{preset}:")
-        print(f"  {', '.join(feats)}")
+    for profile_name in get_profile_names():
+        profile = get_profile(profile_name)
+        enabled = [k for k, v in profile.items() if v]
+        print(f"\n{profile_name}:")
+        print(f"  {', '.join(enabled)}")
 
 
 def main() -> int:

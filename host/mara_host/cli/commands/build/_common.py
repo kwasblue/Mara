@@ -4,9 +4,9 @@
 import argparse
 from typing import Optional
 
-from mara_host.tools.build_firmware import (
-    ENVIRONMENTS,
-    PRESETS,
+from mara_host.tools.build_firmware import ENVIRONMENTS
+from mara_host.core.build_profiles import (
+    get_profile_names,
     parse_features,
 )
 
@@ -38,21 +38,30 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 def add_feature_args(parser: argparse.ArgumentParser) -> None:
     """Add feature-related arguments."""
+    profiles = get_profile_names()
+
     parser.add_argument(
         "--features",
         metavar="LIST",
         help="Comma-separated features to enable (e.g., wifi,ota,dc_motor) "
-             "or preset name (minimal, motors, sensors, control, full)",
+             f"or profile name ({', '.join(profiles)})",
     )
     parser.add_argument(
         "--no-features",
         metavar="LIST",
-        help="Comma-separated features to disable (use with presets)",
+        help="Comma-separated features to disable (use with profiles)",
     )
     parser.add_argument(
+        "--profile",
+        choices=profiles,
+        help="Use a build profile from mara_build.yaml",
+    )
+    # Keep --preset as alias for backwards compatibility
+    parser.add_argument(
         "--preset",
-        choices=sorted(PRESETS.keys()),
-        help="Use a feature preset",
+        choices=profiles,
+        dest="profile",
+        help=argparse.SUPPRESS,  # Hidden, use --profile instead
     )
     parser.add_argument(
         "--dry-run",
@@ -64,10 +73,10 @@ def add_feature_args(parser: argparse.ArgumentParser) -> None:
 def get_features(args: argparse.Namespace) -> Optional[dict[str, bool]]:
     """Get feature configuration from args."""
     features_str = getattr(args, 'features', None)
-    preset = getattr(args, 'preset', None)
+    profile = getattr(args, 'profile', None)
     no_features = getattr(args, 'no_features', None)
 
-    if preset:
-        features_str = preset if not features_str else f"{preset},{features_str}"
+    if profile:
+        features_str = profile if not features_str else f"{profile},{features_str}"
 
     return parse_features(features_str, no_features)

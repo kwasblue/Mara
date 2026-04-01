@@ -134,15 +134,23 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     gen_parser.set_defaults(func=cmd_all)
 
 
-def _print_result(result: GeneratorResult) -> None:
-    """Print a single generator result."""
-    name = result.generator.value.replace("_", " ").title()
+def _run_generator_with_output(gen_type: GeneratorType) -> GeneratorResult:
+    """Run a generator with colored output."""
+    name = gen_type.value.replace("_", " ").title()
+    console.print(f"[cyan]► {name}[/cyan]")
+
+    service = _get_service()
+    result = service.generate(gen_type)
+
     if result.success:
-        console.print(f"  [cyan]{name}[/cyan]... [green]done[/green]")
+        console.print(f"  [green]✓[/green] {name} [dim]done[/dim]")
     else:
-        console.print(f"  [cyan]{name}[/cyan]... [red]failed[/red]")
+        console.print(f"  [red]✗[/red] {name} [red]failed[/red]")
         if result.error:
             console.print(f"    [red]{result.error}[/red]")
+
+    console.print()
+    return result
 
 
 def cmd_all(args: argparse.Namespace) -> int:
@@ -151,18 +159,33 @@ def cmd_all(args: argparse.Namespace) -> int:
     console.print("[bold cyan]Running all code generators[/bold cyan]")
     console.print()
 
-    service = _get_service()
-    summary = service.generate_all(parallel=False)  # Sequential for cleaner output
+    # Run generators in order with colored output
+    generators = [
+        GeneratorType.BUILD_CONFIG,
+        GeneratorType.VERSION,
+        GeneratorType.COMMANDS,
+        GeneratorType.PINS,
+        GeneratorType.GPIO,
+        GeneratorType.BINARY,
+        GeneratorType.TELEMETRY,
+        GeneratorType.CAN,
+        GeneratorType.MCP,
+        GeneratorType.CONTROL_GRAPH,
+        GeneratorType.TOOLING,
+        GeneratorType.HARDWARE,
+    ]
 
-    for result in summary.results:
-        _print_result(result)
+    results = []
+    for gen_type in generators:
+        result = _run_generator_with_output(gen_type)
+        results.append(result)
 
-    console.print()
-    if summary.all_success:
+    failed = sum(1 for r in results if not r.success)
+    if failed == 0:
         print_success("All generators completed successfully")
         return 0
     else:
-        print_error(f"{summary.failed_count} generator(s) failed")
+        print_error(f"{failed} generator(s) failed")
         return 1
 
 

@@ -6,47 +6,40 @@ This generator creates:
   - firmware/mcu/include/config/GeneratedBuildConfig.h (C++ defines)
   - host/mara_host/core/_generated_config.py (Python constants)
 
+Uses mara_host.core.build_profiles as the single source of truth.
+
 Usage:
     python gen_build_config.py
 """
 
 from pathlib import Path
 from datetime import datetime
-from typing import Any, Dict
 
-import yaml
+from mara_host.core.build_profiles import (
+    get_config,
+    get_transport_settings,
+    get_active_profile,
+    get_profile,
+    feature_to_macro,
+    CONFIG_PATH,
+)
 
 
-# Paths
+# Output paths
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-CONFIG_PATH = REPO_ROOT / "config" / "mara_build.yaml"
 FIRMWARE_OUT = REPO_ROOT / "firmware" / "mcu" / "include" / "config" / "GeneratedBuildConfig.h"
 HOST_OUT = REPO_ROOT / "host" / "mara_host" / "core" / "_generated_config.py"
 
 
-def load_config() -> Dict[str, Any]:
-    """Load the mara_build.yaml config file."""
-    if not CONFIG_PATH.exists():
-        raise FileNotFoundError(f"Config file not found: {CONFIG_PATH}")
+def generate_cpp_header(profile_name: str | None = None) -> str:
+    """Generate the C++ header file content.
 
-    with open(CONFIG_PATH) as f:
-        return yaml.safe_load(f)
-
-
-def feature_to_define(name: str) -> str:
-    """Convert feature name to C++ define name."""
-    # e.g., "wifi" -> "HAS_WIFI", "dc_motor" -> "HAS_DC_MOTOR"
-    return f"HAS_{name.upper()}"
-
-
-def generate_cpp_header(config: Dict[str, Any]) -> str:
-    """Generate the C++ header file content."""
-    transport = config.get("transport", {})
-    profiles = config.get("profiles", {})
-    active_profile = config.get("active_profile", "full")
-
-    # Get the active profile's features
-    features = profiles.get(active_profile, {})
+    Args:
+        profile_name: Profile to use (default: active_profile from config)
+    """
+    transport = get_transport_settings()
+    active_profile = profile_name or get_active_profile()
+    features = get_profile(active_profile)
 
     lines = [
         "// GeneratedBuildConfig.h",
@@ -91,7 +84,7 @@ def generate_cpp_header(config: Dict[str, Any]) -> str:
         for name in feature_names:
             if name in features:
                 value = 1 if features[name] else 0
-                define_name = feature_to_define(name)
+                define_name = feature_to_macro(name)
                 lines.append(f"#define {define_name} {value}")
         lines.append("")
 
@@ -103,14 +96,15 @@ def generate_cpp_header(config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def generate_python_module(config: Dict[str, Any]) -> str:
-    """Generate the Python module content."""
-    transport = config.get("transport", {})
-    profiles = config.get("profiles", {})
-    active_profile = config.get("active_profile", "full")
+def generate_python_module(profile_name: str | None = None) -> str:
+    """Generate the Python module content.
 
-    # Get the active profile's features
-    features = profiles.get(active_profile, {})
+    Args:
+        profile_name: Profile to use (default: active_profile from config)
+    """
+    transport = get_transport_settings()
+    active_profile = profile_name or get_active_profile()
+    features = get_profile(active_profile)
 
     lines = [
         '"""',
@@ -170,36 +164,42 @@ def generate_python_module(config: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def main():
-    """Generate build config files."""
+def main(profile: str | None = None):
+    """Generate build config files.
+
+    Args:
+        profile: Profile to use (default: active_profile from config)
+    """
+    from mara_host.core.build_profiles import reload_config
+
+    # Reload config in case it was modified
+    reload_config()
+
     print("Generating build configuration...")
     print(f"  Config: {CONFIG_PATH}")
 
-    # Load config
-    config = load_config()
-    active_profile = config.get("active_profile", "full")
+    active_profile = profile or get_active_profile()
     print(f"  Active profile: {active_profile}")
 
     # Generate C++ header
-    cpp_content = generate_cpp_header(config)
+    cpp_content = generate_cpp_header(active_profile)
     FIRMWARE_OUT.parent.mkdir(parents=True, exist_ok=True)
     with open(FIRMWARE_OUT, "w") as f:
         f.write(cpp_content)
     print(f"  Generated: {FIRMWARE_OUT}")
 
     # Generate Python module
-    py_content = generate_python_module(config)
+    py_content = generate_python_module(active_profile)
     HOST_OUT.parent.mkdir(parents=True, exist_ok=True)
     with open(HOST_OUT, "w") as f:
         f.write(py_content)
     print(f"  Generated: {HOST_OUT}")
 
     # Print summary
-    transport = config.get("transport", {})
+    transport = get_transport_settings()
     print(f"  Baud rate: {transport.get('baud_rate', 921600)}")
 
-    profiles = config.get("profiles", {})
-    features = profiles.get(active_profile, {})
+    features = get_profile(active_profile)
     enabled = [k for k, v in features.items() if v]
     print(f"  Enabled features ({len(enabled)}): {', '.join(enabled[:5])}...")
 

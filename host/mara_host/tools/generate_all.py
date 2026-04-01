@@ -17,6 +17,7 @@ Generated artifacts:
     - CAN Bus: CanDefs.h, can_defs_generated.py
     - Control Graph Types: control_graph/nodes.py (typed graph building API)
     - Command Payloads: command/payloads.py (typed command payload classes)
+    - Tooling Backends: services/tooling/backends/_generated_loaders.py
 """
 
 import sys
@@ -82,6 +83,11 @@ def main():
     import gen_command_payloads
     print("-" * 60)
     gen_command_payloads.main()
+    print()
+
+    import gen_tooling_backends
+    print("-" * 60)
+    gen_tooling_backends.main()
     print()
 
     print("=" * 60)

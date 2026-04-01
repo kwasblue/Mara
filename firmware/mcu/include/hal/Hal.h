@@ -12,6 +12,7 @@
 
 #include "IGpio.h"
 #include "IPwm.h"
+#include "IServo.h"
 #include "II2c.h"
 #include "ITimer.h"
 #include "IWatchdog.h"
@@ -33,6 +34,7 @@ namespace hal {
 struct HalContext {
     IGpio*     gpio     = nullptr;
     IPwm*      pwm      = nullptr;
+    IServo*    servo    = nullptr;   // Servo motors (optional, HAS_SERVO)
     II2c*      i2c      = nullptr;   // Primary I2C bus
     II2c*      i2c1     = nullptr;   // Secondary I2C bus (optional)
     ITimer*    timer    = nullptr;

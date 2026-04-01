@@ -224,6 +224,7 @@ struct ServiceStorage {
         // Wire HAL to managers
         gpio.setHal(&hal.gpio);
         pwm.setHal(&hal.pwm);
+        servo.setHal(&hal.servo);
         imu.setHal(&hal.i2c);
         lidar.setHal(&hal.i2c);
         encoder.setHal(&hal.gpio);

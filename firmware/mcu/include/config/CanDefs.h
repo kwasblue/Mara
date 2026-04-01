@@ -78,22 +78,13 @@ enum class NodeState : uint8_t {
 
 #pragma pack(push, 1)
 
-// Set velocity command (CAN-native, 8 bytes)
-struct SetVelMsg {
-    int16_t vx_mm_s;  // m/s
-    int16_t omega_mrad_s;  // rad/s
-    uint16_t flags;
-    uint16_t seq;
+// Encoder counts and velocity (CAN-native, 8 bytes)
+struct EncoderMsg {
+    int32_t counts;
+    int16_t velocity;  // counts/s
+    uint16_t timestamp;  // ms
 };
-static_assert(sizeof(SetVelMsg) == 8, "SetVelMsg size mismatch");
-
-// Set signal value (CAN-native, 8 bytes)
-struct SetSignalMsg {
-    uint16_t signal_id;
-    float value;
-    uint16_t reserved;
-};
-static_assert(sizeof(SetSignalMsg) == 8, "SetSignalMsg size mismatch");
+static_assert(sizeof(EncoderMsg) == 8, "EncoderMsg size mismatch");
 
 // Node heartbeat (CAN-native, 8 bytes)
 struct HeartbeatMsg {
@@ -103,14 +94,6 @@ struct HeartbeatMsg {
     uint16_t errors;
 };
 static_assert(sizeof(HeartbeatMsg) == 8, "HeartbeatMsg size mismatch");
-
-// Encoder counts and velocity (CAN-native, 8 bytes)
-struct EncoderMsg {
-    int32_t counts;
-    int16_t velocity;  // counts/s
-    uint16_t timestamp;  // ms
-};
-static_assert(sizeof(EncoderMsg) == 8, "EncoderMsg size mismatch");
 
 // IMU accelerometer data (CAN-native, 8 bytes)
 struct ImuAccelMsg {
@@ -129,6 +112,23 @@ struct ImuGyroMsg {
     uint16_t timestamp;  // ms
 };
 static_assert(sizeof(ImuGyroMsg) == 8, "ImuGyroMsg size mismatch");
+
+// Set signal value (CAN-native, 8 bytes)
+struct SetSignalMsg {
+    uint16_t signal_id;
+    float value;
+    uint16_t reserved;
+};
+static_assert(sizeof(SetSignalMsg) == 8, "SetSignalMsg size mismatch");
+
+// Set velocity command (CAN-native, 8 bytes)
+struct SetVelMsg {
+    int16_t vx_mm_s;  // m/s
+    int16_t omega_mrad_s;  // rad/s
+    uint16_t flags;
+    uint16_t seq;
+};
+static_assert(sizeof(SetVelMsg) == 8, "SetVelMsg size mismatch");
 
 // Node status (CAN-native, 8 bytes)
 struct StatusMsg {

@@ -1,13 +1,17 @@
 """
 JSON command definitions for the robot platform.
 
-AUTO-DISCOVERY: Command modules are automatically discovered.
+AUTO-DISCOVERY: Command modules are automatically discovered using unified discovery.
 To add new commands, create a file `_mycommands.py` with either:
 - a legacy dict named `MYCOMMANDS_COMMANDS`, or
 - a typed-object dict named `MYCOMMANDS_COMMAND_OBJECTS`.
 
 The commands will be auto-merged into COMMANDS, while typed sources are also
 exposed via COMMAND_OBJECTS for incremental migration.
+
+Validation:
+- Duplicate command names raise ValueError at import time
+- Type mismatches raise TypeError at import time
 """
 
 from __future__ import annotations
@@ -16,23 +20,46 @@ import importlib
 from pathlib import Path
 from typing import Any
 
+from ..discovery import discover_multi_export
 from .core import CommandDef, export_command_dicts
 
 
-def _discover_commands() -> tuple[dict[str, dict], dict[str, dict], dict[str, CommandDef], dict[str, dict[str, CommandDef]]]:
+def _discover_commands() -> tuple[dict[str, dict], dict[str, CommandDef]]:
     """
-    Auto-discover command modules and merge their command registries.
+    Auto-discover command modules using unified discovery.
 
     Returns:
-        (merged_commands, legacy_groups, merged_objects, object_groups)
-    """
-    merged: dict[str, dict] = {}
-    groups: dict[str, dict] = {}
-    merged_objects: dict[str, CommandDef] = {}
-    object_groups: dict[str, dict[str, CommandDef]] = {}
+        (merged_legacy_commands, merged_command_objects)
 
-    package_dir = Path(__file__).parent
+    Raises:
+        ValueError: If duplicate command names are found
+        TypeError: If exports contain non-CommandDef values
+    """
     package_name = __name__ if __name__ != "__main__" else "mara_host.tools.schema.commands"
+
+    # Discover typed CommandDef objects (validates uniqueness)
+    command_objects = discover_multi_export(
+        __file__,
+        package_name,
+        export_suffix="_COMMAND_OBJECTS",
+        expected_type=CommandDef,
+        on_import_error="error",  # Fail fast on import errors
+    )
+
+    # Also discover legacy dict-based commands for backward compatibility
+    legacy_commands = _discover_legacy_commands(package_name, set(command_objects.keys()))
+
+    # Merge: typed objects take precedence
+    merged_legacy = dict(legacy_commands)
+    merged_legacy.update(export_command_dicts(command_objects))
+
+    return merged_legacy, command_objects
+
+
+def _discover_legacy_commands(package_name: str, typed_keys: set[str]) -> dict[str, dict]:
+    """Discover legacy dict-based commands (for backward compatibility)."""
+    merged: dict[str, dict] = {}
+    package_dir = Path(__file__).parent
 
     for module_file in sorted(package_dir.glob("_*.py")):
         if module_file.name.startswith("__"):
@@ -41,51 +68,29 @@ def _discover_commands() -> tuple[dict[str, dict], dict[str, dict], dict[str, Co
 
         try:
             module = importlib.import_module(f"{package_name}.{module_name}")
-
             for attr_name in dir(module):
-                if not attr_name.isupper():
+                if not attr_name.isupper() or not attr_name.endswith("_COMMANDS"):
+                    continue
+                # Skip if this is a typed export (ends with _COMMAND_OBJECTS)
+                if attr_name.endswith("_COMMAND_OBJECTS"):
                     continue
                 value = getattr(module, attr_name)
+                if not isinstance(value, dict):
+                    continue
+                # Skip keys that are already typed
+                for k, v in value.items():
+                    if k in typed_keys:
+                        continue
+                    if k in merged:
+                        raise ValueError(f"Duplicate legacy command name: {k!r}")
+                    merged[k] = v
+        except ImportError:
+            pass  # Handled by typed discovery
 
-                if attr_name.endswith("_COMMAND_OBJECTS") and isinstance(value, dict):
-                    if all(isinstance(spec, CommandDef) for spec in value.values()):
-                        merged_objects.update(value)
-                        object_groups[attr_name] = value
-
-                elif attr_name.endswith("_COMMANDS") and isinstance(value, dict):
-                    merged.update(value)
-                    groups[attr_name] = value
-
-        except ImportError as e:
-            import warnings
-            warnings.warn(f"Failed to import command module {module_name}: {e}")
-
-    for attr_name, obj_group in object_groups.items():
-        legacy_name = attr_name.removesuffix("_OBJECTS")
-        if legacy_name not in groups:
-            groups[legacy_name] = export_command_dicts(obj_group)
-
-    merged_from_objects = export_command_dicts(merged_objects)
-    merged.update(merged_from_objects)
-
-    return merged, groups, merged_objects, object_groups
+    return merged
 
 
-COMMANDS, _COMMAND_GROUPS, COMMAND_OBJECTS, _COMMAND_OBJECT_GROUPS = _discover_commands()
+COMMANDS, COMMAND_OBJECTS = _discover_commands()
 
 
-def __getattr__(name: str) -> Any:
-    """Lazy access to individual command groups."""
-    if name in _COMMAND_GROUPS:
-        return _COMMAND_GROUPS[name]
-    if name in _COMMAND_OBJECT_GROUPS:
-        return _COMMAND_OBJECT_GROUPS[name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def __dir__() -> list[str]:
-    """List available attributes including discovered command groups."""
-    return ["COMMANDS", "COMMAND_OBJECTS"] + list(_COMMAND_GROUPS.keys()) + list(_COMMAND_OBJECT_GROUPS.keys())
-
-
-__all__ = ["COMMANDS", "COMMAND_OBJECTS"] + list(_COMMAND_GROUPS.keys()) + list(_COMMAND_OBJECT_GROUPS.keys())
+__all__ = ["COMMANDS", "COMMAND_OBJECTS", "CommandDef", "export_command_dicts"]

@@ -52,39 +52,21 @@ class NodeState(IntEnum):
     ESTOPPED = 5
     RECOVERING = 6
 
-# Set velocity command (CAN-native, 8 bytes)
+# Encoder counts and velocity (CAN-native, 8 bytes)
 @dataclass
-class SetVelMsg:
-    vx_mm_s: int
-    omega_mrad_s: int
-    flags: int
-    seq: int
-    STRUCT_FMT = "<hhHH"
+class EncoderMsg:
+    counts: int
+    velocity: int
+    timestamp: int
+    STRUCT_FMT = "<ihH"
 
     def pack(self) -> bytes:
-        return struct.pack(self.STRUCT_FMT, self.vx_mm_s, self.omega_mrad_s, self.flags, self.seq)
+        return struct.pack(self.STRUCT_FMT, self.counts, self.velocity, self.timestamp)
 
     @classmethod
-    def unpack(cls, data: bytes) -> "SetVelMsg":
-        vx_mm_s, omega_mrad_s, flags, seq = struct.unpack(cls.STRUCT_FMT, data[:struct.calcsize(cls.STRUCT_FMT)])
-        return cls(vx_mm_s, omega_mrad_s, flags, seq)
-
-
-# Set signal value (CAN-native, 8 bytes)
-@dataclass
-class SetSignalMsg:
-    signal_id: int
-    value: float
-    reserved: int
-    STRUCT_FMT = "<HfH"
-
-    def pack(self) -> bytes:
-        return struct.pack(self.STRUCT_FMT, self.signal_id, self.value, self.reserved)
-
-    @classmethod
-    def unpack(cls, data: bytes) -> "SetSignalMsg":
-        signal_id, value, reserved = struct.unpack(cls.STRUCT_FMT, data[:struct.calcsize(cls.STRUCT_FMT)])
-        return cls(signal_id, value, reserved)
+    def unpack(cls, data: bytes) -> "EncoderMsg":
+        counts, velocity, timestamp = struct.unpack(cls.STRUCT_FMT, data[:struct.calcsize(cls.STRUCT_FMT)])
+        return cls(counts, velocity, timestamp)
 
 
 # Node heartbeat (CAN-native, 8 bytes)
@@ -103,23 +85,6 @@ class HeartbeatMsg:
     def unpack(cls, data: bytes) -> "HeartbeatMsg":
         uptime_ms, state, load_pct, errors = struct.unpack(cls.STRUCT_FMT, data[:struct.calcsize(cls.STRUCT_FMT)])
         return cls(uptime_ms, state, load_pct, errors)
-
-
-# Encoder counts and velocity (CAN-native, 8 bytes)
-@dataclass
-class EncoderMsg:
-    counts: int
-    velocity: int
-    timestamp: int
-    STRUCT_FMT = "<ihH"
-
-    def pack(self) -> bytes:
-        return struct.pack(self.STRUCT_FMT, self.counts, self.velocity, self.timestamp)
-
-    @classmethod
-    def unpack(cls, data: bytes) -> "EncoderMsg":
-        counts, velocity, timestamp = struct.unpack(cls.STRUCT_FMT, data[:struct.calcsize(cls.STRUCT_FMT)])
-        return cls(counts, velocity, timestamp)
 
 
 # IMU accelerometer data (CAN-native, 8 bytes)
@@ -156,6 +121,41 @@ class ImuGyroMsg:
     def unpack(cls, data: bytes) -> "ImuGyroMsg":
         gx, gy, gz, timestamp = struct.unpack(cls.STRUCT_FMT, data[:struct.calcsize(cls.STRUCT_FMT)])
         return cls(gx, gy, gz, timestamp)
+
+
+# Set signal value (CAN-native, 8 bytes)
+@dataclass
+class SetSignalMsg:
+    signal_id: int
+    value: float
+    reserved: int
+    STRUCT_FMT = "<HfH"
+
+    def pack(self) -> bytes:
+        return struct.pack(self.STRUCT_FMT, self.signal_id, self.value, self.reserved)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> "SetSignalMsg":
+        signal_id, value, reserved = struct.unpack(cls.STRUCT_FMT, data[:struct.calcsize(cls.STRUCT_FMT)])
+        return cls(signal_id, value, reserved)
+
+
+# Set velocity command (CAN-native, 8 bytes)
+@dataclass
+class SetVelMsg:
+    vx_mm_s: int
+    omega_mrad_s: int
+    flags: int
+    seq: int
+    STRUCT_FMT = "<hhHH"
+
+    def pack(self) -> bytes:
+        return struct.pack(self.STRUCT_FMT, self.vx_mm_s, self.omega_mrad_s, self.flags, self.seq)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> "SetVelMsg":
+        vx_mm_s, omega_mrad_s, flags, seq = struct.unpack(cls.STRUCT_FMT, data[:struct.calcsize(cls.STRUCT_FMT)])
+        return cls(vx_mm_s, omega_mrad_s, flags, seq)
 
 
 # Node status (CAN-native, 8 bytes)

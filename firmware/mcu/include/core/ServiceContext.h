@@ -51,6 +51,7 @@
 namespace hal {
     class IGpio;
     class IPwm;
+    class IServo;
     class II2c;
     class ITimer;
     class IWatchdog;
@@ -126,6 +127,7 @@ struct ServiceContext {
     // =========================================================================
     hal::IGpio*     halGpio     = nullptr;   // Platform GPIO abstraction
     hal::IPwm*      halPwm      = nullptr;   // Platform PWM abstraction
+    hal::IServo*    halServo    = nullptr;   // Platform servo abstraction
     hal::II2c*      halI2c      = nullptr;   // Platform I2C abstraction (primary bus)
     hal::II2c*      halI2c1     = nullptr;   // Platform I2C abstraction (secondary bus)
     hal::ITimer*    halTimer    = nullptr;   // Platform timer abstraction

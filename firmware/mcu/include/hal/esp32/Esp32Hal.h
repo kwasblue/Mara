@@ -6,6 +6,7 @@
 #include "config/FeatureFlags.h"
 #include "Esp32Gpio.h"
 #include "Esp32Pwm.h"
+#include "Esp32Servo.h"
 #include "Esp32I2c.h"
 #include "Esp32Timer.h"
 #include "Esp32Watchdog.h"
@@ -28,6 +29,7 @@ namespace hal {
 struct Esp32HalStorage {
     Esp32Gpio     gpio;
     Esp32Pwm      pwm;
+    Esp32Servo    servo;    // Servo motors
     Esp32I2c      i2c{0};   // Wire (primary)
     Esp32I2c      i2c1{1};  // Wire1 (secondary)
     Esp32Timer    timer;
@@ -59,6 +61,11 @@ struct Esp32HalStorage {
         return HalContext{
             .gpio     = &gpio,
             .pwm      = &pwm,
+#if HAS_SERVO
+            .servo    = &servo,
+#else
+            .servo    = nullptr,
+#endif
             .i2c      = &i2c,
             .i2c1     = &i2c1,
             .timer    = &timer,

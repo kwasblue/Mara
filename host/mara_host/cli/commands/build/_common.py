@@ -17,7 +17,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
         "-e", "--env",
         default="esp32_usb",
         choices=sorted(ENVIRONMENTS),
-        help="PlatformIO environment (default: esp32_usb)",
+        help="Build environment (default: esp32_usb)",
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -28,6 +28,11 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
         "-g", "--generate",
         action="store_true",
         help="Run code generators first",
+    )
+    parser.add_argument(
+        "--build-backend",
+        default="platformio",
+        help="Build backend to use (default: platformio)",
     )
 
 

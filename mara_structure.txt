@@ -1,8 +1,11 @@
+pathspec not installed. Install with: pip install pathspec
+Scanning: /Users/kwasiaddo/projects/Host
+Scanned 929 files (926 skipped)
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-31 18:30:53
-Total Files: 909
-Total Lines of Code: 105,122
+Generated: 2026-03-31 19:58:21
+Total Files: 929
+Total Lines of Code: 106,607
 ================================================================================
 
 
@@ -691,7 +694,7 @@ HOST (Python)
 
   host/mara_host/cli/__init__.py (2 lines)
 
-  host/mara_host/cli/cli_config.py (78 lines)
+  host/mara_host/cli/cli_config.py (81 lines)
     [Fn] find_config_file()
     [Fn] load_config()
     [Fn] get(key, default)
@@ -700,9 +703,10 @@ HOST (Python)
     [Fn] get_baudrate()
     [Fn] get_tcp_host()
     [Fn] get_tcp_port()
-    [Fn] get_build_env()
+    [Fn] get_tooling_backend()
+    [Fn] get_tooling_environment()
+    [Fn] get_tooling_preset()
     [Fn] get_robot_config_path()
-    [Fn] get_build_preset()
     [Fn] create_default_config()
     [Fn] init_config(path)
     [Fn] apply_defaults(parser_defaults)
@@ -780,16 +784,14 @@ HOST (Python)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
 
-  host/mara_host/cli/commands/flash.py (234 lines)
+  host/mara_host/cli/commands/flash.py (195 lines)
     [Fn] register(subparsers)
-    [Fn] _find_esp32_ports()
     [Fn] cmd_ports(args)
     [Fn] cmd_auto(args)
     [Fn] cmd_erase(args)
     [Fn] cmd_info(args)
-    [Fn] _run_esptool(esptool_args, port)
 
-  host/mara_host/cli/commands/generate.py (184 lines)
+  host/mara_host/cli/commands/generate.py (200 lines)
     [Fn] register(subparsers)
     [Fn] _run_generator(name, module_name)
     [Fn] cmd_all(args)
@@ -801,6 +803,7 @@ HOST (Python)
     [Fn] cmd_gpio(args)
     [Fn] cmd_mcp(args)
     [Fn] cmd_control_graph(args)
+    [Fn] cmd_tooling(args)
 
   host/mara_host/cli/commands/gpio.py (179 lines)
     [Fn] register(subparsers)
@@ -4431,6 +4434,146 @@ HOST (Python)
     [Fn] on_imu(data)
     [Fn] on_ultrasonic(data)
 
+  host/mara_host/services/tooling/__init__.py (7 lines)
+
+  host/mara_host/services/tooling/backends/__init__.py (16 lines)
+
+  host/mara_host/services/tooling/backends/_generated_loaders.py (19 lines)
+    [Fn] load_all_backends(registry)
+
+  host/mara_host/services/tooling/backends/cmake/__init__.py (13 lines)
+    [Fn] register_backends(registry)
+
+  host/mara_host/services/tooling/backends/cmake/build_backend.py (206 lines)
+    [Fn] _find_cmake()
+    [Fn] _find_idf_py()
+    [Fn] _is_espidf_project(project_dir)
+    [Fn] _features_to_cmake_defs(features)
+    [Fn] _parse_size_output(output)
+    [Class] CMakeBuildBackend
+      |-- __init__(self, build_dir)
+      |-- build(self, request)
+      |-- _build_espidf(self, request, project_dir)
+      |-- _build_cmake(self, request, project_dir, build_path)
+      |-- clean(self, environment)
+      `-- get_version(self)
+
+  host/mara_host/services/tooling/backends/cmake/flash_backend.py (159 lines)
+    [Fn] _find_esptool()
+    [Fn] _find_idf_py()
+    [Fn] _is_espidf_project(project_dir)
+    [Class] CMakeFlashBackend
+      |-- __init__(self, build_dir)
+      |-- flash(self, request)
+      |-- _flash_espidf(self, request, project_dir)
+      |-- _flash_esptool(self, request, project_dir)
+      `-- detect_devices(self)
+
+  host/mara_host/services/tooling/backends/cmake/test_backend.py (118 lines)
+    [Fn] _find_ctest()
+    [Fn] _find_idf_py()
+    [Fn] _is_espidf_project(project_dir)
+    [Class] CMakeTestBackend
+      |-- __init__(self, build_dir)
+      |-- run_tests(self, request)
+      |-- _run_native_tests(self, request, project_dir, build_path)
+      `-- _run_device_tests(self, request, project_dir)
+
+  host/mara_host/services/tooling/backends/interfaces.py (22 lines)
+    [Class] BuildBackend
+      |-- build(self, request)
+      |-- clean(self, environment)
+      `-- get_version(self)
+    [Class] FlashBackend
+      |-- flash(self, request)
+      `-- detect_devices(self)
+    [Class] TestBackend
+      `-- run_tests(self, request)
+
+  host/mara_host/services/tooling/backends/models.py (53 lines)
+    [Class] BuildRequest
+    [Class] BuildOutcome
+    [Class] FlashRequest
+    [Class] FlashOutcome
+    [Class] TestEnvironment
+      `-- __str__(self)
+    [Class] TestRequest
+    [Class] TestOutcome
+
+  host/mara_host/services/tooling/backends/platformio/__init__.py (13 lines)
+    [Fn] register_backends(registry)
+
+  host/mara_host/services/tooling/backends/platformio/build_backend.py (91 lines)
+    [Fn] _find_pio()
+    [Fn] _features_to_flags(features)
+    [Fn] _parse_size_output(output)
+    [Class] PlatformIOBuildBackend
+      |-- build(self, request)
+      |-- clean(self, environment)
+      `-- get_version(self)
+
+  host/mara_host/services/tooling/backends/platformio/flash_backend.py (132 lines)
+    [Fn] _find_pio()
+    [Fn] _find_esptool()
+    [Class] PlatformIOFlashBackend
+      |-- flash(self, request)
+      |-- _direct_flash(self, request, project_dir)
+      `-- detect_devices(self)
+
+  host/mara_host/services/tooling/backends/platformio/test_backend.py (57 lines)
+    [Fn] _find_pio()
+    [Class] PlatformIOTestBackend
+      `-- run_tests(self, request)
+
+  host/mara_host/services/tooling/backends/registry.py (33 lines)
+    [Class] BackendRegistry
+      |-- __init__(self)
+      |-- register_build(self, name, backend)
+      |-- register_flash(self, name, backend)
+      |-- register_test(self, name, backend)
+      |-- get_build(self, name)
+      |-- get_flash(self, name)
+      |-- get_test(self, name)
+      |-- list_build_backends(self)
+      |-- list_flash_backends(self)
+      `-- list_test_backends(self)
+    [Fn] get_registry()
+
+  host/mara_host/services/tooling/device_service.py (168 lines)
+    [Class] ChipType
+    [Class] UsbChip
+    [Class] DeviceInfo
+      `-- to_dict(self)
+    [Class] DeviceService
+      |-- detect_devices(self, chip_filter)
+      |-- detect_esp32_devices(self)
+      |-- get_device_info(self, port)
+      |-- get_chip_info(self, port)
+      |-- erase_flash(self, port)
+      |-- _analyze_port(self, port)
+      |-- _fallback_detection(self)
+      |-- _find_esptool(self)
+      `-- _parse_chip_info(self, output)
+
+  host/mara_host/services/tooling/tooling_service.py (135 lines)
+    [Class] ToolingConfig
+    [Class] ToolingService
+      |-- __init__(self, config)
+      |-- device_service(self)
+      |-- backend(self)
+      |-- backend(self, name)
+      |-- set_backend(self, name)
+      |-- list_backends(self)
+      |-- build(self, environment, features, verbose, project_dir)
+      |-- clean(self, environment)
+      |-- get_build_version(self)
+      |-- flash(self, port, environment, baud, direct, verbose, project_dir)
+      |-- flash_auto(self, environment, baud, direct, verbose)
+      |-- detect_devices(self)
+      |-- erase_flash(self, port)
+      |-- get_chip_info(self, port)
+      `-- test(self, native, device, filter_pattern, verbose, project_dir)
+
   host/mara_host/services/transport/__init__.py (14 lines)
 
   host/mara_host/services/transport/connection_service.py (126 lines)
@@ -4680,13 +4823,19 @@ HOST (Python)
     [Fn] generate_py_module()
     [Fn] main()
 
+  host/mara_host/tools/gen_tooling_backends.py (95 lines)
+    [Fn] discover_backends()
+    [Fn] _has_register_function(init_file)
+    [Fn] generate_loaders(backends)
+    [Fn] main()
+
   host/mara_host/tools/gen_version.py (20 lines)
     [Fn] generate_cpp_version(version)
     [Fn] generate_py_version(version)
     [Fn] write_version_files(version, cpp_path, py_path)
     [Fn] main()
 
-  host/mara_host/tools/generate_all.py (54 lines)
+  host/mara_host/tools/generate_all.py (58 lines)
     [Fn] main()
 
   host/mara_host/tools/generate_pins.py (37 lines)
@@ -5471,14 +5620,13 @@ HOST (Python)
       `-- _send_bytes(self, data)
     [Fn] test_base_transport_send_frame_encodes()
 
-  host/tests/test_build_upload_cli.py (89 lines)
+  host/tests/test_build_upload_cli.py (92 lines)
     [Fn] _args()
+    [Fn] _make_mock_registry(build_success, flash_outcomes)
+    [Fn] flash_side_effect(req)
     [Fn] test_cmd_upload_passes_direct_options(monkeypatch)
-    [Fn] fake_upload(env, verbose, features, port, upload_baud, direct)
     [Fn] test_cmd_upload_auto_retries_direct_on_failure(monkeypatch)
-    [Fn] fake_upload(env, verbose, features, port, upload_baud, direct)
     [Fn] test_cmd_upload_does_not_retry_direct_without_port(monkeypatch)
-    [Fn] fake_upload(env, verbose, features, port, upload_baud, direct)
 
   host/tests/test_cli_surface_parity.py (176 lines)
     [Class] FakeCLIContext
@@ -7157,9 +7305,10 @@ FIRMWARE/MCU (C++)
     [Struct] RuntimeConfig
     [Class] Runtime
 
-  firmware/mcu/include/core/ServiceContext.h (124 lines)
+  firmware/mcu/include/core/ServiceContext.h (126 lines)
     [Class] IGpio
     [Class] IPwm
+    [Class] IServo
     [Class] II2c
     [Class] ITimer
     [Class] IWatchdog
@@ -7199,10 +7348,10 @@ FIRMWARE/MCU (C++)
     [Class] McuPersistence
     [Struct] ServiceContext
 
-  firmware/mcu/include/core/ServiceStorage.h (119 lines)
+  firmware/mcu/include/core/ServiceStorage.h (120 lines)
     [Struct] ServiceStorage
 
-  firmware/mcu/include/hal/Hal.h (38 lines)
+  firmware/mcu/include/hal/Hal.h (40 lines)
     [Struct] HalContext
 
   firmware/mcu/include/hal/ICan.h (53 lines)
@@ -7240,6 +7389,9 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/hal/IPwm.h (16 lines)
     [Class] IPwm
+
+  firmware/mcu/include/hal/IServo.h (16 lines)
+    [Class] IServo
 
   firmware/mcu/include/hal/ISystemInfo.h (30 lines)
     [Class] ISystemInfo
@@ -7282,7 +7434,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/hal/esp32/Esp32Gpio.h (17 lines)
     [Class] Esp32Gpio
 
-  firmware/mcu/include/hal/esp32/Esp32Hal.h (85 lines)
+  firmware/mcu/include/hal/esp32/Esp32Hal.h (92 lines)
     [Struct] Esp32HalStorage
 
   firmware/mcu/include/hal/esp32/Esp32HeapMonitor.h (15 lines)
@@ -7307,6 +7459,11 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/hal/esp32/Esp32Pwm.h (24 lines)
     [Class] Esp32Pwm
     [Struct] ChannelConfig
+
+  firmware/mcu/include/hal/esp32/Esp32Servo.h (46 lines)
+    [Class] Esp32Servo
+    [Struct] ServoState
+    [Class] Esp32Servo
 
   firmware/mcu/include/hal/esp32/Esp32SystemInfo.h (19 lines)
     [Class] Esp32SystemInfo
@@ -7539,19 +7696,14 @@ FIRMWARE/MCU (C++)
     [Fn] compute(float target, float measurement, float dt)
     [Fn] clamp(float v, float lo, float hi)
 
-  firmware/mcu/include/motor/ServoManager.h (71 lines)
+  firmware/mcu/include/motor/ServoManager.h (57 lines)
     [Class] ServoManager
+    [Fn] setHal(hal::IServo* servo)
     [Fn] attach(int servoId, int pin, int minUs = 500, int maxUs = 2500)
     [Fn] detach(int servoId)
     [Fn] setAngle(int servoId, float angleDeg)
     [Fn] setOffset(float offsetDeg)
     [Fn] setScale(float scale)
-    [Class] ServoManager
-    [Fn] attach(int, int, int = 500, int = 2500)
-    [Fn] detach(int)
-    [Fn] setAngle(int, float)
-    [Fn] setOffset(float)
-    [Fn] setScale(float)
 
   firmware/mcu/include/motor/StepperManager.h (94 lines)
     [Struct] StepperConfig
@@ -7944,7 +8096,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/core/Runtime.cpp (168 lines)
 
-  firmware/mcu/src/core/ServiceStorage.cpp (189 lines)
+  firmware/mcu/src/core/ServiceStorage.cpp (190 lines)
 
   firmware/mcu/src/hal/drivers/Vl53l0x.cpp (370 lines)
 
@@ -7968,6 +8120,8 @@ FIRMWARE/MCU (C++)
   firmware/mcu/src/hal/esp32/Esp32Persistence.cpp (66 lines)
 
   firmware/mcu/src/hal/esp32/Esp32Pwm.cpp (50 lines)
+
+  firmware/mcu/src/hal/esp32/Esp32Servo.cpp (100 lines)
 
   firmware/mcu/src/hal/esp32/Esp32SystemInfo.cpp (91 lines)
 
@@ -8676,22 +8830,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     620
-  C++ Files:        289
-  Total Files:      909
+  Python Files:     637
+  C++ Files:        292
+  Total Files:      929
 
 DEFINITIONS
-  Classes:          1174
-  Structs:          168
-  Functions:        2260
-  Methods:          3203
+  Classes:          1200
+  Structs:          169
+  Functions:        2280
+  Methods:          3267
 
 LINES OF CODE
-  Python:           80,171
-  C++:              24,951
-  Total Code:       105,122
-  Blank Lines:      28,617
-  Comment Lines:    27,931
-  Total Lines:      161,670
+  Python:           81,495
+  C++:              25,112
+  Total Code:       106,607
+  Blank Lines:      29,089
+  Comment Lines:    28,354
+  Total Lines:      164,050
 
 ================================================================================

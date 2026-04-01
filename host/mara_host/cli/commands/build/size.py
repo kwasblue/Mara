@@ -1,60 +1,61 @@
 # cli/commands/build/size.py
-"""Firmware size command."""
+"""Firmware size command.
+
+Uses the ToolingService for size information.
+"""
 
 import argparse
 import re
-import subprocess
-import sys
+from pathlib import Path
 from typing import Optional
 
-from mara_host.cli.console import console, print_error
-from mara_host.tools.build_firmware import MCU_PROJECT
+from mara_host.cli.console import console, print_error, print_info
+from mara_host.services.tooling import ToolingService
+
+
+# Default firmware location (backend-agnostic)
+_DEFAULT_PROJECT = Path(__file__).resolve().parents[5] / "firmware" / "mcu"
 
 
 def cmd_size(args: argparse.Namespace) -> int:
     """Show firmware size information."""
     env = args.env
     detailed = getattr(args, 'detailed', False)
+    backend = getattr(args, 'build_backend', 'platformio')
 
     console.print()
     console.print(f"[bold cyan]Firmware Size - {env}[/bold cyan]")
+    console.print(f"  Backend: [green]{backend}[/green]")
     console.print()
 
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "platformio", "run", "-e", env, "-t", "size"],
-            cwd=MCU_PROJECT,
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError:
-        print_error("PlatformIO not found. Install with: pip install platformio")
-        return 1
+    tooling = ToolingService()
+    tooling.set_backend(backend)
 
-    output = result.stdout + result.stderr
+    # Build to get size info (dry-run style - just to trigger size output)
+    outcome = tooling.build(environment=env, verbose=detailed)
 
+    if not outcome.success:
+        print_error("Build failed - cannot determine size")
+        if outcome.error:
+            console.print(f"[red]{outcome.error}[/red]")
+        return outcome.return_code
+
+    # Parse size from build output
     if detailed:
-        console.print(output)
+        console.print(outcome.output)
     else:
-        for line in output.split('\n'):
-            if 'RAM:' in line or 'Flash:' in line:
-                if '[' in line and ']' in line:
-                    pct_match = re.search(r'(\d+\.?\d*)%', line)
-                    if pct_match:
-                        pct = float(pct_match.group(1))
-                        if pct > 90:
-                            console.print(f"[red]{line}[/red]")
-                        elif pct > 70:
-                            console.print(f"[yellow]{line}[/yellow]")
-                        else:
-                            console.print(f"[green]{line}[/green]")
-                    else:
-                        console.print(line)
-                else:
-                    console.print(line)
+        _show_size_from_output(outcome.output)
 
-    bin_path = MCU_PROJECT / ".pio" / "build" / env / "firmware.bin"
-    if bin_path.exists():
+    # Show firmware size from outcome if available
+    if outcome.firmware_size:
+        console.print()
+        console.print(f"  Firmware: [cyan]{outcome.firmware_size:,}[/cyan] bytes")
+    if outcome.ram_usage:
+        console.print(f"  RAM Used: [cyan]{outcome.ram_usage:,}[/cyan] bytes")
+
+    # Try to find binary file
+    bin_path = _find_firmware_binary(env, backend)
+    if bin_path and bin_path.exists():
         size_kb = bin_path.stat().st_size / 1024
         console.print()
         console.print(f"[dim]Binary: {bin_path.name} ({size_kb:.1f} KB)[/dim]")
@@ -62,9 +63,73 @@ def cmd_size(args: argparse.Namespace) -> int:
     return 0
 
 
-def show_size_summary(env: str) -> None:
-    """Show brief firmware size summary after build."""
-    size_info = _get_firmware_size(env)
+def _show_size_from_output(output: str) -> None:
+    """Parse and display size info from build output."""
+    for line in output.split('\n'):
+        if 'RAM:' in line or 'Flash:' in line:
+            if '[' in line and ']' in line:
+                pct_match = re.search(r'(\d+\.?\d*)%', line)
+                if pct_match:
+                    pct = float(pct_match.group(1))
+                    if pct > 90:
+                        console.print(f"[red]{line}[/red]")
+                    elif pct > 70:
+                        console.print(f"[yellow]{line}[/yellow]")
+                    else:
+                        console.print(f"[green]{line}[/green]")
+                else:
+                    console.print(line)
+            else:
+                console.print(line)
+
+
+def _find_firmware_binary(env: str, backend: str) -> Optional[Path]:
+    """Find the firmware binary based on backend."""
+    if backend == "platformio":
+        return _DEFAULT_PROJECT / ".pio" / "build" / env / "firmware.bin"
+    elif backend == "cmake":
+        build_dir = _DEFAULT_PROJECT / "build"
+        # Try common locations
+        candidates = [
+            build_dir / "firmware.bin",
+            build_dir / f"{_DEFAULT_PROJECT.name}.bin",
+            build_dir / "app.bin",
+        ]
+        for c in candidates:
+            if c.exists():
+                return c
+        # Search for any .bin
+        bins = list(build_dir.glob("*.bin"))
+        if bins:
+            return bins[0]
+    return None
+
+
+def show_size_summary(
+    env: str,
+    backend: str = "platformio",
+    firmware_size: Optional[int] = None,
+    ram_usage: Optional[int] = None,
+) -> None:
+    """Show brief firmware size summary after build.
+
+    Args:
+        env: Build environment
+        backend: Build backend name
+        firmware_size: Firmware size in bytes (from build outcome)
+        ram_usage: RAM usage in bytes (from build outcome)
+    """
+    # Use provided values or fall back to cached info
+    if firmware_size is not None:
+        size_info = {
+            'flash_used': firmware_size,
+            'flash_total': 1310720,  # 1.25MB typical app partition
+            'ram_used': ram_usage or 0,
+            'ram_total': 327680,  # 320KB typical
+        }
+    else:
+        size_info = _get_cached_size_info(env, backend)
+
     if size_info:
         flash_pct = (size_info['flash_used'] / size_info['flash_total']) * 100
         ram_pct = (size_info['ram_used'] / size_info['ram_total']) * 100
@@ -92,50 +157,20 @@ def _make_bar(percentage: float, width: int = 20) -> str:
     return f"[{color}]{'█' * filled}{'░' * empty}[/{color}]"
 
 
-def _get_firmware_size(env: str) -> Optional[dict]:
-    """Get firmware size information from PlatformIO."""
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "platformio", "run", "-e", env, "-t", "size", "--silent"],
-            cwd=MCU_PROJECT,
-            capture_output=True,
-            text=True,
-        )
+def _get_cached_size_info(env: str, backend: str) -> Optional[dict]:
+    """Get firmware size from cached build artifacts.
 
-        if result.returncode != 0:
-            return None
-
-        output = result.stdout + result.stderr
-        size_info = {}
-
-        ram_match = re.search(r'RAM:.*?(\d+\.?\d*)%.*?(\d+)\s+bytes.*?(\d+)\s+bytes', output)
-        if ram_match:
-            size_info['ram_used'] = int(ram_match.group(2))
-            size_info['ram_total'] = int(ram_match.group(3))
-
-        flash_match = re.search(r'Flash:.*?(\d+\.?\d*)%.*?(\d+)\s+bytes.*?(\d+)\s+bytes', output)
-        if flash_match:
-            size_info['flash_used'] = int(flash_match.group(2))
-            size_info['flash_total'] = int(flash_match.group(3))
-
-        if size_info:
-            return size_info
-
-        size_match = re.search(r'(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([0-9a-f]+)\s+', output)
-        if size_match:
-            text = int(size_match.group(1))
-            data = int(size_match.group(2))
-            bss = int(size_match.group(3))
-
-            size_info = {
-                'flash_used': text + data,
-                'flash_total': 1310720,
-                'ram_used': data + bss,
-                'ram_total': 327680,
-            }
-            return size_info
-
-        return None
-
-    except Exception:
-        return None
+    This reads size info without rebuilding.
+    """
+    # For now, just read binary size and estimate
+    bin_path = _find_firmware_binary(env, backend)
+    if bin_path and bin_path.exists():
+        flash_used = bin_path.stat().st_size
+        # Typical ESP32 flash and RAM sizes
+        return {
+            'flash_used': flash_used,
+            'flash_total': 1310720,  # 1.25MB typical app partition
+            'ram_used': 0,  # Can't determine without build output
+            'ram_total': 327680,  # 320KB typical
+        }
+    return None

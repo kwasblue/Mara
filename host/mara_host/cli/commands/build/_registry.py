@@ -54,17 +54,17 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     upload_p.add_argument(
         "--upload-baud",
         type=int,
-        help="Use slower direct flashing via esptool at this baud rate if needed (e.g. 115200)",
+        help="Use custom baud rate for flashing (e.g. 115200, 921600)",
     )
     upload_p.add_argument(
         "--direct",
         action="store_true",
-        help="Skip PlatformIO upload and flash directly with esptool-managed artifacts",
+        help="Use direct flash method (bypass build tool's upload target)",
     )
     upload_p.add_argument(
         "--auto-retry-direct",
         action="store_true",
-        help="If PlatformIO upload fails, retry through mara's direct esptool path at 115200 baud",
+        help="If upload fails, retry using direct flash at 115200 baud",
     )
     upload_p.set_defaults(func=cmd_upload)
 
@@ -77,6 +77,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "-e", "--env",
         default=None,
         help="Environment to clean (default: all)",
+    )
+    clean_p.add_argument(
+        "--build-backend",
+        default="platformio",
+        help="Build backend to use (default: platformio)",
     )
     clean_p.set_defaults(func=cmd_clean)
 
@@ -135,6 +140,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--detailed",
         action="store_true",
         help="Show detailed section breakdown",
+    )
+    size_p.add_argument(
+        "--build-backend",
+        default="platformio",
+        help="Build backend to use (default: platformio)",
     )
     size_p.set_defaults(func=cmd_size)
 

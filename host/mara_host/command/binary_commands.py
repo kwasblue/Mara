@@ -19,10 +19,10 @@ from typing import List, Tuple
 
 class Opcode:
     """Binary command opcodes (must match BinaryCommands.h on MCU)."""
-    SET_VEL         = 0x10  # Set velocity: vx(f32), omega(f32)
+    HEARTBEAT       = 0x20  # Heartbeat (no payload)
     SET_SIGNAL      = 0x11  # Set signal: id(u16), value(f32)
     SET_SIGNALS     = 0x12  # Set multiple signals: count(u8), [id(u16), value(f32)]*
-    HEARTBEAT       = 0x20  # Heartbeat (no payload)
+    SET_VEL         = 0x10  # Set velocity: vx(f32), omega(f32)
     STOP            = 0x21  # Stop (no payload)
 
 
@@ -33,18 +33,9 @@ class BinaryStreamer:
     All multi-byte values are little-endian to match ESP32.
     """
 
-    def encode_set_vel(self, vx: float, omega: float) -> bytes:
-        """
-        Encode SET_VEL command.
-
-        Args:
-            vx: Vx
-            omega: Omega
-
-        Returns:
-            Binary payload (9 bytes)
-        """
-        return struct.pack('<Bff', Opcode.SET_VEL, vx, omega)
+    def encode_heartbeat(self) -> bytes:
+        """Heartbeat (no payload)"""
+        return struct.pack('<B', Opcode.HEARTBEAT)
 
     def encode_set_signal(self, id: int, value: float) -> bytes:
         """
@@ -76,9 +67,18 @@ class BinaryStreamer:
             data += struct.pack('<Hf', signal_id, value)
         return data
 
-    def encode_heartbeat(self) -> bytes:
-        """Heartbeat (no payload)"""
-        return struct.pack('<B', Opcode.HEARTBEAT)
+    def encode_set_vel(self, vx: float, omega: float) -> bytes:
+        """
+        Encode SET_VEL command.
+
+        Args:
+            vx: Vx
+            omega: Omega
+
+        Returns:
+            Binary payload (9 bytes)
+        """
+        return struct.pack('<Bff', Opcode.SET_VEL, vx, omega)
 
     def encode_stop(self) -> bytes:
         """Stop (no payload)"""

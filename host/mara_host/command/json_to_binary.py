@@ -57,9 +57,9 @@ class JsonToBinaryEncoder:
 
     # Map JSON command types to binary opcodes (auto-generated)
     _COMMAND_MAP: Dict[str, int] = {
-        "CMD_SET_VEL": Opcode.SET_VEL,
-        "CMD_CTRL_SIGNAL_SET": Opcode.SET_SIGNAL,
         "CMD_HEARTBEAT": Opcode.HEARTBEAT,
+        "CMD_CTRL_SIGNAL_SET": Opcode.SET_SIGNAL,
+        "CMD_SET_VEL": Opcode.SET_VEL,
         "CMD_STOP": Opcode.STOP,
     }
 
@@ -76,12 +76,12 @@ class JsonToBinaryEncoder:
         """
         cmd_type = cmd.get("type", "")
 
-        if cmd_type == "CMD_SET_VEL":
-            return self._encode_set_vel(cmd)
+        if cmd_type == "CMD_HEARTBEAT":
+            return self._encode_heartbeat(cmd)
         elif cmd_type == "CMD_CTRL_SIGNAL_SET":
             return self._encode_set_signal(cmd)
-        elif cmd_type == "CMD_HEARTBEAT":
-            return self._encode_heartbeat(cmd)
+        elif cmd_type == "CMD_SET_VEL":
+            return self._encode_set_vel(cmd)
         elif cmd_type == "CMD_STOP":
             return self._encode_stop(cmd)
         else:
@@ -92,15 +92,13 @@ class JsonToBinaryEncoder:
         """Check if a command type has binary encoding support."""
         return cmd_type in self._COMMAND_MAP
 
-    def _encode_set_vel(self, cmd: Dict[str, Any]) -> bytes:
+    def _encode_heartbeat(self, cmd: Dict[str, Any]) -> bytes:
         """
-        Encode SET_VEL command.
+        Encode HEARTBEAT command.
 
-        JSON: CMD_SET_VEL
+        JSON: CMD_HEARTBEAT
         """
-        vx = _validate_float(float(cmd.get("vx", 0.0)), "vx")
-        omega = _validate_float(float(cmd.get("omega", 0.0)), "omega")
-        return struct.pack('<Bff', Opcode.SET_VEL, vx, omega)
+        return struct.pack('<B', Opcode.HEARTBEAT)
 
     def _encode_set_signal(self, cmd: Dict[str, Any]) -> bytes:
         """
@@ -112,13 +110,15 @@ class JsonToBinaryEncoder:
         value = _validate_float(float(cmd.get("value", 0.0)), "value")
         return struct.pack('<BHf', Opcode.SET_SIGNAL, id, value)
 
-    def _encode_heartbeat(self, cmd: Dict[str, Any]) -> bytes:
+    def _encode_set_vel(self, cmd: Dict[str, Any]) -> bytes:
         """
-        Encode HEARTBEAT command.
+        Encode SET_VEL command.
 
-        JSON: CMD_HEARTBEAT
+        JSON: CMD_SET_VEL
         """
-        return struct.pack('<B', Opcode.HEARTBEAT)
+        vx = _validate_float(float(cmd.get("vx", 0.0)), "vx")
+        omega = _validate_float(float(cmd.get("omega", 0.0)), "omega")
+        return struct.pack('<Bff', Opcode.SET_VEL, vx, omega)
 
     def _encode_stop(self, cmd: Dict[str, Any]) -> bytes:
         """

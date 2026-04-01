@@ -109,19 +109,24 @@ def get_tcp_port() -> int:
     return int(get("tcp.port", 3333))
 
 
-def get_build_env() -> str:
-    """Get default PlatformIO environment."""
-    return get("build.env", "esp32_usb")
+def get_tooling_backend() -> str:
+    """Get default tooling backend (platformio, cmake, etc.)."""
+    return get("tooling.backend", "platformio")
+
+
+def get_tooling_environment() -> str:
+    """Get default build environment/target."""
+    return get("tooling.environment", "esp32_usb")
+
+
+def get_tooling_preset() -> Optional[str]:
+    """Get default feature preset."""
+    return get("tooling.preset")
 
 
 def get_robot_config_path() -> Optional[str]:
     """Get default robot YAML config path for config-aware service wiring."""
     return get("robot.config")
-
-
-def get_build_preset() -> Optional[str]:
-    """Get default build preset."""
-    return get("build.preset")
 
 
 def create_default_config() -> str:
@@ -142,10 +147,14 @@ tcp:
   host: 192.168.4.1
   port: 3333
 
-# Build defaults
-build:
-  env: esp32_usb
-  # preset: motors  # Uncomment to set default preset
+# Tooling configuration (build/flash/test)
+tooling:
+  # Backend: platformio, cmake, or other registered backends
+  backend: platformio
+  # Build environment/target
+  environment: esp32_usb
+  # Feature preset: minimal, motors, sensors, control, full
+  # preset: motors
 
 # CAN bus defaults
 can:
@@ -190,8 +199,9 @@ def apply_defaults(parser_defaults: dict) -> dict:
         "serial.baudrate": "baudrate",
         "tcp.host": "host",
         "tcp.port": "tcp_port",
-        "build.env": "env",
-        "build.preset": "preset",
+        "tooling.backend": "backend",
+        "tooling.environment": "env",
+        "tooling.preset": "preset",
         "robot.config": "robot_config",
         "can.channel": "channel",
         "can.bustype": "bustype",

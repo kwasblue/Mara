@@ -58,7 +58,7 @@ class FieldDef:
         return cls(name, "B", 1, 1.0, 0.0, description)
 
 
-@dataclass
+@dataclass(frozen=True)
 class TelemetrySectionDef:
     """
     Definition of a telemetry section.
@@ -82,14 +82,15 @@ class TelemetrySectionDef:
     model_class: Optional[type] = None
 
     def __post_init__(self):
-        # Build struct format from fields
+        # Build struct format from fields (use object.__setattr__ for frozen)
         if self.fields and not self.variable_length:
             fmt = "<" + "".join(f.fmt for f in self.fields)
-            self._struct = struct.Struct(fmt)
-            self._size = self._struct.size
+            compiled = struct.Struct(fmt)
+            object.__setattr__(self, "_struct", compiled)
+            object.__setattr__(self, "_size", compiled.size)
         else:
-            self._struct = None
-            self._size = None
+            object.__setattr__(self, "_struct", None)
+            object.__setattr__(self, "_size", None)
 
     @property
     def size(self) -> Optional[int]:

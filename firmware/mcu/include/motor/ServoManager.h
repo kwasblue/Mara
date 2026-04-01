@@ -1,55 +1,56 @@
 #pragma once
 
 #include "config/FeatureFlags.h"
-
-#if HAS_SERVO
-
-#include <Arduino.h>
-#include <ESP32Servo.h>
+#include "hal/IServo.h"
 #include "core/Debug.h"
 
+/// Servo motor manager using HAL abstraction.
+/// Supports multiple servos with calibration (offset/scale).
 class ServoManager {
 public:
     ServoManager() = default;
 
+    /// Set the HAL servo interface (required before use)
+    void setHal(hal::IServo* servo) { hal_ = servo; }
+
     void attach(int servoId, int pin, int minUs = 500, int maxUs = 2500) {
-        if (servoId != 0) {
-            DBG_PRINTF("[ServoManager] attach: unsupported servoId=%d (only 0 allowed)\n",
-                       servoId);
+        if (!hal_) {
+            DBG_PRINTLN("[ServoManager] attach: HAL not set");
             return;
         }
 
-        pin_   = pin;
-        minUs_ = minUs;
-        maxUs_ = maxUs;
+        if (servoId < 0 || servoId >= static_cast<int>(hal_->maxServos())) {
+            DBG_PRINTF("[ServoManager] attach: invalid servoId=%d (max=%d)\n",
+                       servoId, hal_->maxServos());
+            return;
+        }
 
         DBG_PRINTF("[ServoManager] attach id=%d pin=%d min=%d max=%d\n",
                    servoId, pin, minUs, maxUs);
 
-        // IMPORTANT: no setPeriodHertz() here – it was breaking your program.
-        int ch = servo_.attach(pin, minUs, maxUs);
-        DBG_PRINTF("[ServoManager] attach returned channel=%d\n", ch);
+        bool ok = hal_->attach(static_cast<uint8_t>(servoId),
+                               static_cast<uint8_t>(pin),
+                               static_cast<uint16_t>(minUs),
+                               static_cast<uint16_t>(maxUs));
 
-        attached_ = (ch >= 0);
-        if (!attached_) {
+        if (!ok) {
             DBG_PRINTLN("[ServoManager] attach FAILED");
         }
     }
 
     void detach(int servoId) {
-        if (servoId != 0) return;
-        if (!attached_)  return;
+        if (!hal_) return;
+        if (servoId < 0 || servoId >= static_cast<int>(hal_->maxServos())) return;
+        if (!hal_->attached(static_cast<uint8_t>(servoId))) return;
 
         DBG_PRINTF("[ServoManager] detach id=%d\n", servoId);
-
-        servo_.detach();
-        attached_ = false;
-        pin_ = -1;
+        hal_->detach(static_cast<uint8_t>(servoId));
     }
 
     void setAngle(int servoId, float angleDeg) {
-        if (servoId != 0) return;
-        if (!attached_) {
+        if (!hal_) return;
+        if (servoId < 0 || servoId >= static_cast<int>(hal_->maxServos())) return;
+        if (!hal_->attached(static_cast<uint8_t>(servoId))) {
             DBG_PRINTLN("[ServoManager] setAngle ignored, not attached");
             return;
         }
@@ -59,14 +60,14 @@ public:
         // logicalAngle → internal = offset + scale * angle
         logical = offsetDeg_ + scale_ * logical;
 
-        // Clamp for servo library [0, 180]
+        // Clamp for servo [0, 180]
         if (logical < 0.0f)   logical = 0.0f;
         if (logical > 180.0f) logical = 180.0f;
 
-        DBG_PRINTF("[ServoManager] setAngle id=%d cmd=%.1f internal=%.1f on pin=%d\n",
-                   servoId, angleDeg, logical, pin_);
+        DBG_PRINTF("[ServoManager] setAngle id=%d cmd=%.1f internal=%.1f\n",
+                   servoId, angleDeg, logical);
 
-        servo_.write(logical);
+        hal_->write(static_cast<uint8_t>(servoId), logical);
     }
 
     // Optional calibration APIs
@@ -74,27 +75,8 @@ public:
     void setScale(float scale)      { scale_ = scale; }
 
 private:
-    Servo servo_;
-    bool  attached_ = false;
-    int   pin_      = -1;
-    int   minUs_    = 500;
-    int   maxUs_    = 2400;
+    hal::IServo* hal_ = nullptr;
 
     float offsetDeg_ = 0.0f;
     float scale_     = 1.0f;
 };
-
-#else // !HAS_SERVO
-
-// Stub when servo is disabled
-class ServoManager {
-public:
-    ServoManager() = default;
-    void attach(int, int, int = 500, int = 2500) {}
-    void detach(int) {}
-    void setAngle(int, float) {}
-    void setOffset(float) {}
-    void setScale(float) {}
-};
-
-#endif // HAS_SERVO

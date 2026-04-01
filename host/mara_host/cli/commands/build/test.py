@@ -4,8 +4,8 @@
 import argparse
 
 from mara_host.cli.console import console, print_success, print_error
-from mara_host.services.build.backends import get_registry, TestRequest
-from mara_host.services.build.backends.models import TestEnvironment
+from mara_host.services.tooling.backends import get_registry, TestRequest
+from mara_host.services.tooling.backends.models import TestEnvironment
 
 
 def cmd_test(args: argparse.Namespace) -> int:

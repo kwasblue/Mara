@@ -93,6 +93,20 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     cg_p.set_defaults(func=cmd_control_graph)
 
+    # tooling
+    tooling_p = gen_sub.add_parser(
+        "tooling",
+        help="Generate tooling backend loaders",
+    )
+    tooling_p.set_defaults(func=cmd_tooling)
+
+    # hardware
+    hw_p = gen_sub.add_parser(
+        "hardware",
+        help="Generate hardware stubs (sensors, actuators, transports)",
+    )
+    hw_p.set_defaults(func=cmd_hardware)
+
     # Default handler
     gen_parser.set_defaults(func=cmd_all)
 
@@ -132,6 +146,8 @@ def cmd_all(args: argparse.Namespace) -> int:
         ("CAN bus definitions", "gen_can"),
         ("MCP/HTTP tools", "gen_mcp_servers"),
         ("Control graph registry", "gen_control_graph"),
+        ("Tooling backends", "gen_tooling_backends"),
+        ("Hardware stubs", "gen_hardware"),
     ]
 
     errors = 0
@@ -265,4 +281,34 @@ def cmd_control_graph(args: argparse.Namespace) -> int:
     if rc == 0:
         print_success("Control-graph registry generated")
         print_info("Generated: control_graph_registry.json, control_graph_defs.py, control_graph_schema.json")
+    return rc
+
+
+def cmd_tooling(args: argparse.Namespace) -> int:
+    """Generate tooling backend loaders."""
+    console.print()
+    console.print("[bold cyan]Generating tooling backend loaders[/bold cyan]")
+    console.print()
+
+    rc = _run_generator("Tooling backends", "gen_tooling_backends")
+
+    console.print()
+    if rc == 0:
+        print_success("Tooling backend loaders generated")
+        print_info("Generated: services/tooling/backends/_generated_loaders.py")
+    return rc
+
+
+def cmd_hardware(args: argparse.Namespace) -> int:
+    """Generate hardware stubs from typed schema definitions."""
+    console.print()
+    console.print("[bold cyan]Generating hardware stubs[/bold cyan]")
+    console.print()
+
+    rc = _run_generator("Hardware stubs", "gen_hardware")
+
+    console.print()
+    if rc == 0:
+        print_success("Hardware stubs generated")
+        print_info("Generated: firmware stubs (sensor/actuator/transport) and Python API classes")
     return rc

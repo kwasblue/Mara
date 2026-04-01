@@ -1,12 +1,14 @@
 # mara_host/cli/commands/flash.py
-"""Firmware flashing commands for MARA CLI."""
+"""Firmware flashing commands for MARA CLI.
+
+Uses the ToolingService abstraction - no direct tool calls.
+"""
 
 import argparse
-import subprocess
-import sys
 
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.prompt import IntPrompt, Confirm
 
 from mara_host.cli.console import (
     console,
@@ -15,16 +17,15 @@ from mara_host.cli.console import (
     print_warning,
     print_info,
 )
-
-from mara_host.tools.build_firmware import MCU_PROJECT
+from mara_host.services.tooling import ToolingService, DeviceService
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
     """Register flash command."""
     flash_parser = subparsers.add_parser(
         "flash",
-        help="Flash firmware to ESP32",
-        description="Flash firmware to ESP32 with auto-detection",
+        help="Flash firmware to device",
+        description="Flash firmware with auto-detection",
     )
 
     flash_sub = flash_parser.add_subparsers(
@@ -41,7 +42,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     auto_p.add_argument(
         "-e", "--env",
         default="esp32_usb",
-        help="PlatformIO environment (default: esp32_usb)",
+        help="Build environment (default: esp32_usb)",
+    )
+    auto_p.add_argument(
+        "--backend",
+        default="platformio",
+        help="Build backend to use (default: platformio)",
     )
     auto_p.add_argument(
         "--erase",
@@ -60,7 +66,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     # erase - erase flash
     erase_p = flash_sub.add_parser(
         "erase",
-        help="Erase ESP32 flash memory",
+        help="Erase device flash memory",
     )
     erase_p.add_argument(
         "-p", "--port",
@@ -71,7 +77,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     # info - show chip info
     info_p = flash_sub.add_parser(
         "info",
-        help="Show ESP32 chip information",
+        help="Show device chip information",
     )
     info_p.add_argument(
         "-p", "--port",
@@ -83,74 +89,34 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     flash_parser.set_defaults(func=cmd_auto)
 
 
-def _find_esp32_ports() -> list[dict]:
-    """Find ESP32 serial ports."""
-    ports = []
-
-    try:
-        import serial.tools.list_ports
-        for port in serial.tools.list_ports.comports():
-            # Check for common ESP32 USB-UART chips
-            is_esp32 = False
-            chip_type = "Unknown"
-
-            desc = (port.description or "").lower()
-            hwid = (port.hwid or "").lower()
-
-            if "cp210" in desc or "cp210" in hwid:
-                is_esp32 = True
-                chip_type = "CP2102/CP2104"
-            elif "ch340" in desc or "ch340" in hwid:
-                is_esp32 = True
-                chip_type = "CH340"
-            elif "ftdi" in desc or "ftdi" in hwid:
-                is_esp32 = True
-                chip_type = "FTDI"
-            elif "usb" in desc and "serial" in desc:
-                is_esp32 = True
-                chip_type = "USB Serial"
-
-            if is_esp32:
-                ports.append({
-                    "port": port.device,
-                    "description": port.description,
-                    "chip": chip_type,
-                    "hwid": port.hwid,
-                })
-
-    except ImportError:
-        # Try platform-specific detection
-        import glob
-        if sys.platform == "darwin":
-            for p in glob.glob("/dev/cu.usbserial-*") + glob.glob("/dev/cu.SLAB_USBtoUART*"):
-                ports.append({"port": p, "description": "USB Serial", "chip": "Unknown"})
-        elif sys.platform == "linux":
-            for p in glob.glob("/dev/ttyUSB*") + glob.glob("/dev/ttyACM*"):
-                ports.append({"port": p, "description": "USB Serial", "chip": "Unknown"})
-
-    return ports
-
-
 def cmd_ports(args: argparse.Namespace) -> int:
     """List available serial ports."""
+    device_service = DeviceService()
+
     console.print()
     console.print("[bold cyan]Available Serial Ports[/bold cyan]")
     console.print()
 
-    ports = _find_esp32_ports()
+    devices = device_service.detect_devices()
 
-    if not ports:
-        print_warning("No ESP32-compatible serial ports found")
-        print_info("Make sure your ESP32 is connected via USB")
+    if not devices:
+        print_warning("No compatible serial ports found")
+        print_info("Make sure your device is connected via USB")
         return 0
 
     table = Table(show_header=True)
     table.add_column("Port", style="green")
-    table.add_column("Chip", style="cyan")
+    table.add_column("USB Chip", style="cyan")
+    table.add_column("MCU", style="yellow")
     table.add_column("Description", style="dim")
 
-    for p in ports:
-        table.add_row(p["port"], p.get("chip", ""), p.get("description", ""))
+    for d in devices:
+        table.add_row(
+            d.port,
+            d.usb_chip.value,
+            d.mcu_chip.value,
+            d.description,
+        )
 
     console.print(table)
     return 0
@@ -159,34 +125,40 @@ def cmd_ports(args: argparse.Namespace) -> int:
 def cmd_auto(args: argparse.Namespace) -> int:
     """Auto-detect port and flash."""
     env = getattr(args, 'env', 'esp32_usb')
+    backend = getattr(args, 'backend', 'platformio')
     erase = getattr(args, 'erase', False)
+
+    tooling = ToolingService()
+    tooling.set_backend(backend)
 
     console.print()
     console.print("[bold cyan]Auto Flash[/bold cyan]")
+    console.print(f"  Backend: [green]{backend}[/green]")
     console.print()
 
-    # Find ports
-    ports = _find_esp32_ports()
+    # Find devices
+    devices = tooling.detect_devices()
 
-    if not ports:
-        print_error("No ESP32 serial ports detected")
-        print_info("Connect your ESP32 via USB and try again")
+    if not devices:
+        print_error("No devices detected")
+        print_info("Connect your device via USB and try again")
         return 1
 
-    if len(ports) == 1:
-        port = ports[0]["port"]
-        console.print(f"  Detected: [green]{port}[/green] ({ports[0].get('chip', 'Unknown')})")
+    if len(devices) == 1:
+        device = devices[0]
+        port = device.port
+        console.print(f"  Detected: [green]{port}[/green] ({device.usb_chip.value})")
     else:
-        console.print("  Multiple ports detected:")
-        for i, p in enumerate(ports):
-            console.print(f"    [{i}] {p['port']} ({p.get('chip', '')})")
+        console.print("  Multiple devices detected:")
+        for i, d in enumerate(devices):
+            console.print(f"    [{i}] {d.port} ({d.usb_chip.value})")
 
-        from rich.prompt import IntPrompt
-        idx = IntPrompt.ask("Select port", default=0)
-        if idx < 0 or idx >= len(ports):
+        idx = IntPrompt.ask("Select device", default=0)
+        if idx < 0 or idx >= len(devices):
             print_error("Invalid selection")
             return 1
-        port = ports[idx]["port"]
+        device = devices[idx]
+        port = device.port
 
     console.print(f"  Environment: [green]{env}[/green]")
     console.print()
@@ -194,10 +166,12 @@ def cmd_auto(args: argparse.Namespace) -> int:
     # Erase if requested
     if erase:
         print_info("Erasing flash...")
-        rc = _run_esptool(["erase_flash"], port)
-        if rc != 0:
-            print_error("Erase failed")
-            return rc
+        success, message = tooling.erase_flash(port)
+        if not success:
+            print_error(f"Erase failed: {message}")
+            return 1
+        print_success("Flash erased")
+        console.print()
 
     # Flash
     print_info("Uploading firmware...")
@@ -208,107 +182,81 @@ def cmd_auto(args: argparse.Namespace) -> int:
         console=console,
         transient=True,
     ) as progress:
-        task = progress.add_task("Flashing...", total=None)
+        progress.add_task("Flashing...", total=None)
+        outcome = tooling.flash(port=port, environment=env)
 
-        cmd = [sys.executable, "-m", "platformio", "run", "-e", env, "-t", "upload", "--upload-port", port]
-        result = subprocess.run(cmd, cwd=MCU_PROJECT, capture_output=True, text=True)
-
-    if result.returncode == 0:
+    if outcome.success:
         print_success("Firmware uploaded successfully")
         console.print()
         print_info(f"Connect with: mara run serial -p {port}")
     else:
         print_error("Upload failed")
-        if result.stderr:
-            console.print(f"[red]{result.stderr}[/red]")
-        return 1
+        if outcome.error:
+            console.print(f"[red]{outcome.error}[/red]")
+        return outcome.return_code
 
     return 0
 
 
 def cmd_erase(args: argparse.Namespace) -> int:
-    """Erase ESP32 flash."""
+    """Erase device flash."""
     port = args.port
+    tooling = ToolingService()
 
     if not port:
-        ports = _find_esp32_ports()
-        if not ports:
-            print_error("No ESP32 detected")
+        devices = tooling.detect_devices()
+        if not devices:
+            print_error("No devices detected")
             return 1
-        port = ports[0]["port"]
+        port = devices[0].port
 
     console.print()
     console.print("[bold cyan]Erasing Flash[/bold cyan]")
     console.print(f"  Port: [green]{port}[/green]")
     console.print()
 
-    from rich.prompt import Confirm
     if not Confirm.ask("[yellow]This will erase all data. Continue?[/yellow]", default=False):
         console.print("[dim]Cancelled[/dim]")
         return 0
 
-    rc = _run_esptool(["erase_flash"], port)
+    success, message = tooling.erase_flash(port)
 
-    if rc == 0:
+    if success:
         print_success("Flash erased")
     else:
-        print_error("Erase failed")
+        print_error(f"Erase failed: {message}")
+        return 1
 
-    return rc
+    return 0
 
 
 def cmd_info(args: argparse.Namespace) -> int:
-    """Show ESP32 chip info."""
+    """Show device chip info."""
     port = args.port
+    tooling = ToolingService()
 
     if not port:
-        ports = _find_esp32_ports()
-        if not ports:
-            print_error("No ESP32 detected")
+        devices = tooling.detect_devices()
+        if not devices:
+            print_error("No devices detected")
             return 1
-        port = ports[0]["port"]
+        port = devices[0].port
 
     console.print()
-    console.print("[bold cyan]ESP32 Chip Information[/bold cyan]")
+    console.print("[bold cyan]Device Information[/bold cyan]")
     console.print(f"  Port: [green]{port}[/green]")
     console.print()
 
-    result = subprocess.run(
-        ["esptool.py", "--port", port, "chip_id"],
-        capture_output=True,
-        text=True,
-    )
+    info = tooling.get_chip_info(port)
 
-    if result.returncode == 0:
-        # Parse and display info
-        for line in result.stdout.split('\n'):
-            if ':' in line and not line.startswith('esptool'):
-                console.print(f"  {line.strip()}")
+    if info:
+        for key, value in info.items():
+            # Format key nicely
+            display_key = key.replace('_', ' ').title()
+            console.print(f"  {display_key}: [cyan]{value}[/cyan]")
     else:
-        # Try with pio
-        result = subprocess.run(
-            [sys.executable, "-m", "platformio", "device", "list", "--serial"],
-            capture_output=True,
-            text=True,
-        )
-        console.print(result.stdout)
+        print_warning("Could not read chip info")
+        print_info("Device may not be in bootloader mode or esptool not available")
+        return 1
 
-    return result.returncode
-
-
-def _run_esptool(esptool_args: list[str], port: str) -> int:
-    """Run esptool.py command."""
-    try:
-        cmd = ["esptool.py", "--port", port] + esptool_args
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        return result.returncode
-    except FileNotFoundError:
-        # Try via PlatformIO
-        try:
-            pio_cmd = [sys.executable, "-m", "platformio"]
-            cmd = pio_cmd + ["run", "-t", "erase"] if "erase" in esptool_args else pio_cmd + ["device", "list"]
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            return result.returncode
-        except FileNotFoundError:
-            print_error("Neither esptool.py nor PlatformIO found")
-            return 1
+    return 0

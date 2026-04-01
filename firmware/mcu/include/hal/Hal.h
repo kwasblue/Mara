@@ -10,6 +10,7 @@
 //   - src/hal/stm32/   (STM32 family) [future]
 //   - src/hal/rp2040/  (Raspberry Pi Pico) [future]
 
+#include "IClock.h"
 #include "IGpio.h"
 #include "IPwm.h"
 #include "IServo.h"
@@ -32,6 +33,8 @@ namespace hal {
 
 /// HAL context - provides access to all hardware interfaces
 struct HalContext {
+    // Core interfaces (always available)
+    IClock*    clock    = nullptr;   // Timing/delays (replaces millis/micros)
     IGpio*     gpio     = nullptr;
     IPwm*      pwm      = nullptr;
     IServo*    servo    = nullptr;   // Servo motors (optional, HAS_SERVO)
@@ -41,7 +44,7 @@ struct HalContext {
     IWatchdog* watchdog = nullptr;
     ICan*      can      = nullptr;   // CAN bus (optional)
 
-    // New interfaces for portability
+    // System interfaces for portability
     ICriticalSection* critical    = nullptr;
     IHeapMonitor*     heapMonitor = nullptr;  // Optional (debug)
     II2sAudio*        i2sAudio    = nullptr;  // Optional (HAS_AUDIO)

@@ -6,7 +6,7 @@
 #if HAS_CAN
 
 #include "utils/Logger.h"
-#include <Arduino.h>
+#include "core/Clock.h"
 
 static const char* TAG = "CANTransport";
 
@@ -62,7 +62,7 @@ void CanTransport::loop() {
     }
 
     // Timeout stale protocol reassembly (after 500ms)
-    uint32_t now = millis();
+    uint32_t now = mara::getSystemClock().millis();
     for (auto& rx : protoRx_) {
         if (rx.expectedFrames > 0 && (now - rx.lastFrameTime) > 500) {
             LOG_WARN(TAG, "Proto reassembly timeout for msg %u", rx.msgId);
@@ -98,7 +98,7 @@ bool CanTransport::sendHeartbeat(uint32_t uptime, can::NodeState state, uint8_t 
 
 bool CanTransport::sendEncoder(int32_t counts, int16_t velocity) {
     uint8_t data[8];
-    can::encodeEncoder(counts, velocity, millis() & 0xFFFF, data);
+    can::encodeEncoder(counts, velocity, mara::getSystemClock().millis() & 0xFFFF, data);
     return sendCanFrame(can::makeId(can::MsgId::ENCODER_BASE, nodeId_), data, 8);
 }
 
@@ -288,7 +288,7 @@ void CanTransport::handleProtocolFrame(uint8_t srcNode, const uint8_t* data, siz
     size_t offset = frameId * can::PROTO_PAYLOAD_SIZE;
     memcpy(rx.data + offset, pf.payload, can::PROTO_PAYLOAD_SIZE);
     rx.receivedMask |= (1 << frameId);
-    rx.lastFrameTime = millis();
+    rx.lastFrameTime = mara::getSystemClock().millis();
 
     // Update total length (last frame determines actual length)
     if (frameId == totalFrames - 1) {

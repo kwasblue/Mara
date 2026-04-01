@@ -8,6 +8,7 @@
 #include "core/ServiceStorage.h"
 #include "core/LoopRates.h"
 #include "core/LoopTiming.h"
+#include "core/Clock.h"
 #include "sensor/SensorRegistry.h"
 
 // Setup modules
@@ -77,6 +78,9 @@ void setup() {
     // Set up debug logger for DBG_* macros
     auto halCtx = g_storage.hal.buildContext();
     mara::setDebugLogger(halCtx.logger);
+
+    // Wire HAL clock to mara::SystemClock for portable timing
+    mara::setHalClock(halCtx.clock);
 
     Serial.printf("\n[MCU] Booting with USB Serial @ %lu baud + WiFi (AP+STA)...\n", serial_baud);
 
@@ -187,8 +191,8 @@ void loop() {
         return;
     }
 
-    uint32_t loop_start_us = micros();
-    uint32_t now_ms = millis();
+    uint32_t loop_start_us = mara::getSystemClock().micros();
+    uint32_t now_ms = mara::getSystemClock().millis();
 
     // Get timing reference
     mara::LoopTiming& timing = mara::getLoopTiming();
@@ -201,18 +205,18 @@ void loop() {
 
     // Rate-limited safety loop
     if (g_ctx.safetyScheduler && g_ctx.safetyScheduler->tick(now_ms)) {
-        uint32_t t0 = micros();
+        uint32_t t0 = mara::getSystemClock().micros();
         mara::runSafetyLoop(g_ctx, now_ms);
-        timing.safety_us = micros() - t0;
+        timing.safety_us = mara::getSystemClock().micros() - t0;
     }
 
     // Rate-limited control loop (skip if FreeRTOS task is handling it)
     if (!mara::isControlTaskRunning()) {
         if (g_ctx.controlScheduler && g_ctx.controlScheduler->tick(now_ms)) {
-            uint32_t t0 = micros();
+            uint32_t t0 = mara::getSystemClock().micros();
             float ctrl_dt = getLoopRates().ctrl_period_ms() / 1000.0f;
             mara::runControlLoop(g_ctx, now_ms, ctrl_dt);
-            timing.control_us = micros() - t0;
+            timing.control_us = mara::getSystemClock().micros() - t0;
         }
     } else {
         // Get timing from FreeRTOS task
@@ -225,11 +229,11 @@ void loop() {
 
     // Rate-limited telemetry
     if (g_ctx.telemetryScheduler && g_ctx.telemetryScheduler->tick(now_ms)) {
-        uint32_t t0 = micros();
+        uint32_t t0 = mara::getSystemClock().micros();
         if (g_ctx.telemetry) {
             g_ctx.telemetry->loop(now_ms);
         }
-        timing.telemetry_us = micros() - t0;
+        timing.telemetry_us = mara::getSystemClock().micros() - t0;
     }
 
     // Sensor sampling (non-critical, handles own rate limiting)
@@ -244,7 +248,7 @@ void loop() {
 
     // Host + router + transports (always run)
     {
-        uint32_t t0 = micros();
+        uint32_t t0 = mara::getSystemClock().micros();
         if (g_ctx.host) {
             g_ctx.host->loop(now_ms);
         }
@@ -256,11 +260,11 @@ void loop() {
             g_ctx.ble->loop();
         }
 #endif
-        timing.host_us = micros() - t0;
+        timing.host_us = mara::getSystemClock().micros() - t0;
     }
 
     // Total loop time
-    timing.total_us = micros() - loop_start_us;
+    timing.total_us = mara::getSystemClock().micros() - loop_start_us;
 
     // Track peaks and overruns
     timing.updatePeaks();

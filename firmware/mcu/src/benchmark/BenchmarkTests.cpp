@@ -6,7 +6,7 @@
 #include "benchmark/BenchmarkRunner.h"
 #include "benchmark/BenchmarkTypes.h"
 #include "config/FeatureFlags.h"
-#include <Arduino.h>
+#include "core/Clock.h"
 
 // Optional subsystem includes (no external dependencies)
 #if HAS_SIGNAL_BUS
@@ -29,7 +29,7 @@ namespace benchmark {
 // ---------------------------------------------------------------------------
 static bool test_loop_timing() {
     // Minimal work to measure loop overhead
-    volatile uint32_t dummy = micros();
+    volatile uint32_t dummy = mara::getSystemClock().micros();
     (void)dummy;
     return true;
 }
@@ -62,8 +62,8 @@ static bool test_signal_bus_latency() {
     }
 
     // Set and get
-    float value = static_cast<float>(micros() % 1000);
-    bench_signal_bus.set(bench_signal_id, value, millis());
+    float value = static_cast<float>(mara::getSystemClock().micros() % 1000);
+    bench_signal_bus.set(bench_signal_id, value, mara::getSystemClock().millis());
 
     float out = 0.0f;
     bench_signal_bus.get(bench_signal_id, out);
@@ -94,7 +94,7 @@ static BenchmarkRegistrar reg_signal_bus{
 // ---------------------------------------------------------------------------
 static bool test_ping_internal() {
     // Simulate ping processing without actual serial I/O
-    volatile uint32_t ts = micros();
+    volatile uint32_t ts = mara::getSystemClock().micros();
     volatile uint32_t response = ts + 1;  // Minimal computation
     (void)response;
     return true;
@@ -155,7 +155,7 @@ static bool test_telem_encode() {
     size_t offset = 0;
 
     // Pack some test data (little-endian)
-    uint32_t ts = millis();
+    uint32_t ts = mara::getSystemClock().millis();
     memcpy(buffer + offset, &ts, sizeof(ts)); offset += sizeof(ts);
 
     float values[4] = {1.0f, 2.0f, 3.0f, 4.0f};
@@ -188,7 +188,7 @@ static BenchmarkRegistrar reg_telem_encode{
 static bool test_telem_json_encode() {
     JsonDocument doc;
 
-    doc["ts"] = millis();
+    doc["ts"] = mara::getSystemClock().millis();
     doc["v1"] = 1.0f;
     doc["v2"] = 2.0f;
     doc["v3"] = 3.0f;

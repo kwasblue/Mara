@@ -1,8 +1,8 @@
 #include "module/LoggingModule.h"
 #include "core/Debug.h"
 #include "core/Event.h"
+#include "core/Clock.h"
 
-#include <Arduino.h>
 #include <ArduinoJson.h>
 #include <cstdarg>
 #include <cstdio>
@@ -236,7 +236,7 @@ void LoggingModule::doLog(const char* subsystem, LogLevel level, const char* msg
         msg);
 
     // Send to host
-    sendLog(levelToString(level), subsystem, msg, millis());
+    sendLog(levelToString(level), subsystem, msg, mara::getSystemClock().millis());
 }
 
 void LoggingModule::sendLog(const char* level,

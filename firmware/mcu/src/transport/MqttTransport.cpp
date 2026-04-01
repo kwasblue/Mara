@@ -7,7 +7,13 @@
 #include "transport/MqttTransport.h"
 #include "config/Version.h"
 #include "core/Protocol.h"
+#include "core/Clock.h"
 #include <ArduinoJson.h>
+
+#if HAS_FREERTOS
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#endif
 
 MqttTransport::MqttTransport(
     const char* broker,
@@ -40,7 +46,7 @@ void MqttTransport::begin() {
         this->onMessage(topic, payload, length);
     });
 
-    nextReconnectAttemptMs_ = millis();
+    nextReconnectAttemptMs_ = mara::getSystemClock().millis();
 }
 
 void MqttTransport::loop() {
@@ -62,7 +68,7 @@ void MqttTransport::loop() {
         return;
     }
 
-    uint32_t now = millis();
+    uint32_t now = mara::getSystemClock().millis();
     if (now < nextReconnectAttemptMs_) {
         return;
     }
@@ -92,14 +98,15 @@ void MqttTransport::reconnect() {
                 Serial.printf("[MQTT] Failed to start connect task (HAL); giving up after %u attempts\n",
                     static_cast<unsigned>(MAX_RETRIES));
             } else {
-                nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
+                nextReconnectAttemptMs_ = mara::getSystemClock().millis() + nextReconnectDelayMs();
                 Serial.println("[MQTT] Failed to start connect task (HAL); backing off");
             }
         }
         return;
     }
 
-    // Direct FreeRTOS path (legacy)
+#if HAS_FREERTOS
+    // Direct FreeRTOS path (legacy fallback)
     BaseType_t ok = xTaskCreatePinnedToCore(
         &MqttTransport::connectTaskEntry,
         "mqtt_connect",
@@ -119,10 +126,15 @@ void MqttTransport::reconnect() {
             Serial.printf("[MQTT] Failed to start connect task; giving up after %u attempts\n",
                 static_cast<unsigned>(MAX_RETRIES));
         } else {
-            nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
+            nextReconnectAttemptMs_ = mara::getSystemClock().millis() + nextReconnectDelayMs();
             Serial.println("[MQTT] Failed to start connect task; backing off");
         }
     }
+#else
+    // No scheduler available - cannot start async connect
+    connectInProgress_ = false;
+    Serial.println("[MQTT] No task scheduler available for async connect");
+#endif
 }
 
 void MqttTransport::connectTaskEntry(void* arg) {
@@ -134,7 +146,7 @@ void MqttTransport::connectTaskBody() {
     Serial.printf("[MQTT] Connecting to %s:%d as %s...\n",
         broker_.c_str(), port_, robotId_.c_str());
 
-    const uint32_t startMs = millis();
+    const uint32_t startMs = mara::getSystemClock().millis();
 
     bool connected = false;
     if (username_.empty()) {
@@ -143,7 +155,7 @@ void MqttTransport::connectTaskBody() {
         connected = mqtt_.connect(robotId_.c_str(), username_.c_str(), password_.c_str());
     }
 
-    const uint32_t elapsedMs = millis() - startMs;
+    const uint32_t elapsedMs = mara::getSystemClock().millis() - startMs;
 
     if (connected) {
         Serial.printf("[MQTT] Connected in %lu ms\n", static_cast<unsigned long>(elapsedMs));
@@ -155,7 +167,7 @@ void MqttTransport::connectTaskBody() {
         Serial.printf("[MQTT] Sub discover=%d (%s)\n", ok2, topicDiscovery_.c_str());
 
         consecutiveFailures_ = 0;
-        nextReconnectAttemptMs_ = millis() + RECONNECT_INTERVAL_MS;
+        nextReconnectAttemptMs_ = mara::getSystemClock().millis() + RECONNECT_INTERVAL_MS;
         publishDiscoveryResponse();
     } else {
         consecutiveFailures_++;
@@ -166,11 +178,11 @@ void MqttTransport::connectTaskBody() {
                 mqtt_.state(),
                 static_cast<unsigned>(MAX_RETRIES));
         } else {
-            nextReconnectAttemptMs_ = millis() + nextReconnectDelayMs();
+            nextReconnectAttemptMs_ = mara::getSystemClock().millis() + nextReconnectDelayMs();
             Serial.printf("[MQTT] Failed after %lu ms, rc=%d, next retry in %lu ms\n",
                 static_cast<unsigned long>(elapsedMs),
                 mqtt_.state(),
-                static_cast<unsigned long>(nextReconnectAttemptMs_ - millis()));
+                static_cast<unsigned long>(nextReconnectAttemptMs_ - mara::getSystemClock().millis()));
         }
     }
 
@@ -181,9 +193,12 @@ void MqttTransport::connectTaskBody() {
     // Delete self - use HAL if available
     if (halScheduler_) {
         halScheduler_->deleteCurrentTask();
-    } else {
+    }
+#if HAS_FREERTOS
+    else {
         vTaskDelete(nullptr);
     }
+#endif
 }
 
 uint32_t MqttTransport::nextReconnectDelayMs() const {

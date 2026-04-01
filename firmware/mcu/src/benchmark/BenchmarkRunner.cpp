@@ -4,7 +4,7 @@
 #ifdef FEATURE_BENCHMARK
 
 #include "benchmark/BenchmarkRunner.h"
-#include <Arduino.h>
+#include "core/Clock.h"
 #include <algorithm>
 #include <cmath>
 
@@ -76,7 +76,7 @@ bool BenchmarkRunner::run(const BenchConfig& config, BenchResult& result) {
     if (!test) {
         result.state = BenchState::ERROR;
         result.error = BenchError::UNKNOWN_TEST;
-        result.timestamp_ms = millis();
+        result.timestamp_ms = mara::getSystemClock().millis();
         return false;
     }
 
@@ -96,21 +96,21 @@ bool BenchmarkRunner::run(const BenchConfig& config, BenchResult& result) {
     if (cancelled_) {
         result.state = BenchState::ERROR;
         result.error = BenchError::CANCELLED;
-        result.timestamp_ms = millis();
+        result.timestamp_ms = mara::getSystemClock().millis();
         running_ = false;
         return false;
     }
 
     // Timed iterations
-    uint32_t total_start_us = micros();
+    uint32_t total_start_us = mara::getSystemClock().micros();
     uint32_t budget_violations = 0;
 
     for (uint16_t i = 0; i < config.iterations && !cancelled_; i++) {
-        uint32_t start_us = micros();
+        uint32_t start_us = mara::getSystemClock().micros();
 
         bool success = test->func();
 
-        uint32_t elapsed_us = micros() - start_us;
+        uint32_t elapsed_us = mara::getSystemClock().micros() - start_us;
 
         // Only record successful iterations
         if (success && sampleCount_ < MAX_SAMPLE_COUNT) {
@@ -123,13 +123,13 @@ bool BenchmarkRunner::run(const BenchConfig& config, BenchResult& result) {
         }
     }
 
-    uint32_t total_elapsed_us = micros() - total_start_us;
+    uint32_t total_elapsed_us = mara::getSystemClock().micros() - total_start_us;
     running_ = false;
 
     if (cancelled_) {
         result.state = BenchState::ERROR;
         result.error = BenchError::CANCELLED;
-        result.timestamp_ms = millis();
+        result.timestamp_ms = mara::getSystemClock().millis();
         return false;
     }
 
@@ -143,7 +143,7 @@ bool BenchmarkRunner::run(const BenchConfig& config, BenchResult& result) {
     }
 
     result.state = BenchState::COMPLETE;
-    result.timestamp_ms = millis();
+    result.timestamp_ms = mara::getSystemClock().millis();
 
     // Throughput (stored as Hz * 100 for precision without floats)
     if (total_elapsed_us > 0 && config.iterations > 0) {

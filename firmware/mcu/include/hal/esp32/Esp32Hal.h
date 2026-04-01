@@ -4,6 +4,7 @@
 // Include this header for ESP32-specific HAL classes
 
 #include "config/FeatureFlags.h"
+#include "Esp32Clock.h"
 #include "Esp32Gpio.h"
 #include "Esp32Pwm.h"
 #include "Esp32Servo.h"
@@ -27,6 +28,9 @@ namespace hal {
 
 /// ESP32 HAL storage - owns all HAL instances
 struct Esp32HalStorage {
+    // Core timing (always available)
+    Esp32Clock    clock;
+
     Esp32Gpio     gpio;
     Esp32Pwm      pwm;
     Esp32Servo    servo;    // Servo motors
@@ -38,7 +42,7 @@ struct Esp32HalStorage {
     Esp32Can      can;      // CAN bus (TWAI)
 #endif
 
-    // New HAL components for portability
+    // System HAL components for portability
     Esp32CriticalSection critical;
     Esp32HeapMonitor     heapMonitor;
 #if HAS_AUDIO
@@ -59,6 +63,7 @@ struct Esp32HalStorage {
     /// Build HalContext with pointers to owned instances
     HalContext buildContext() {
         return HalContext{
+            .clock    = &clock,
             .gpio     = &gpio,
             .pwm      = &pwm,
 #if HAS_SERVO

@@ -1,5 +1,6 @@
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
+#include "core/Clock.h"
 
 #include <Arduino.h>
 #include "command/ModeManager.h"
@@ -35,10 +36,10 @@ public:
         ctx.mode->configure(config);
         ctx.mode->begin();
         if (ctx.persistence) {
-            ctx.persistence->begin(maraCfg, millis());
-            ctx.persistence->updateFromMode(*ctx.mode, millis());
+            ctx.persistence->begin(maraCfg, mara::getSystemClock().millis());
+            ctx.persistence->updateFromMode(*ctx.mode, mara::getSystemClock().millis());
             ctx.mode->onPersistentStateChanged([mode = ctx.mode, persist = ctx.persistence]() {
-                persist->updateFromMode(*mode, millis());
+                persist->updateFromMode(*mode, mara::getSystemClock().millis());
             });
         }
 

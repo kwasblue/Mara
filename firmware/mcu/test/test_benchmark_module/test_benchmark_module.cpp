@@ -3,36 +3,16 @@
 
 #include <unity.h>
 #include <vector>
+#include <functional>
 
 // Define feature flag before including headers
 #define FEATURE_BENCHMARK 1
 
-// Mock EventBus for testing
-class EventBus {
-public:
-    void publish(const struct Event& evt) { lastEventType = static_cast<int>(evt.type); }
-    void subscribe(void (*fn)(const struct Event&)) { (void)fn; }
-    int lastEventType = -1;
-};
+// Include real Event types first (before any mocks)
+#include "core/Event.h"
+#include "core/EventBus.h"
 
-// Minimal Event definition for testing
-enum class EventType : uint8_t {
-    BENCHMARK_COMPLETE = 100
-};
-
-struct EventPayload {
-    int32_t i32 = 0;
-    float f32 = 0.0f;
-    uint8_t u8 = 0;
-};
-
-struct Event {
-    EventType type;
-    uint32_t timestamp_ms;
-    EventPayload payload;
-};
-
-// Mock TelemetryModule
+// Mock TelemetryModule (TelemetryModule is not in Event.h so we can mock it)
 class TelemetryModule {
 public:
     using BinProviderFn = std::function<void(std::vector<uint8_t>&)>;

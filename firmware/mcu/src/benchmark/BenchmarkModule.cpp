@@ -9,7 +9,7 @@
 #include "module/TelemetryModule.h"
 #include "telemetry/TelemetrySections.h"
 #include "core/Debug.h"
-#include <Arduino.h>
+#include "core/Clock.h"
 
 namespace benchmark {
 
@@ -44,7 +44,7 @@ void BenchmarkModule::setup() {
     // Schedule boot tests
     bootTestsComplete_ = false;
     bootTestIndex_ = 0;
-    lastRunMs_ = millis();
+    lastRunMs_ = mara::getSystemClock().millis();
 }
 
 void BenchmarkModule::loop(uint32_t now_ms) {

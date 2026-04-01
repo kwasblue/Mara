@@ -1,55 +1,38 @@
 // src/core/Clock.cpp
+//
+// SystemClock now delegates to hal::IClock for platform portability.
+// The HAL clock must be set via setHalClock() during initialization.
 
 #include "core/Clock.h"
-#include "config/PlatformConfig.h"
-
-#if PLATFORM_HAS_ARDUINO
-#include <Arduino.h>
-#else
-// Native build stubs
-extern "C" {
-    extern uint32_t __test_millis;
-    extern uint32_t __test_micros;
-}
-// For native builds, provide a simple busy-wait delay stub
-#include <thread>
-#include <chrono>
-#endif
+#include "hal/IClock.h"
 
 namespace mara {
 
+// HAL clock instance (set during HAL initialization)
+static hal::IClock* g_halClock = nullptr;
+
+void setHalClock(hal::IClock* clock) {
+    g_halClock = clock;
+}
+
+hal::IClock* getHalClock() {
+    return g_halClock;
+}
+
 uint32_t SystemClock::millis() const {
-#if PLATFORM_HAS_ARDUINO
-    return ::millis();
-#else
-    return __test_millis;
-#endif
+    return g_halClock ? g_halClock->millis() : 0;
 }
 
 uint32_t SystemClock::micros() const {
-#if PLATFORM_HAS_ARDUINO
-    return ::micros();
-#else
-    return __test_micros;
-#endif
+    return g_halClock ? g_halClock->micros() : 0;
 }
 
 void SystemClock::delay(uint32_t ms) {
-#if PLATFORM_HAS_ARDUINO
-    ::delay(ms);
-#else
-    // Native build: use std::this_thread::sleep_for
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-#endif
+    if (g_halClock) g_halClock->delayMs(ms);
 }
 
 void SystemClock::delayMicroseconds(uint32_t us) {
-#if PLATFORM_HAS_ARDUINO
-    ::delayMicroseconds(us);
-#else
-    // Native build: use std::this_thread::sleep_for
-    std::this_thread::sleep_for(std::chrono::microseconds(us));
-#endif
+    if (g_halClock) g_halClock->delayUs(us);
 }
 
 // Global system clock instance

@@ -1,7 +1,14 @@
+#include "config/FeatureFlags.h"
+
+#if HAS_WIFI
+
 #include "command/IStringHandler.h"
 #include "command/CommandContext.h"
 #include "command/HandlerMacros.h"
+#include "core/Clock.h"
 
+// TODO: Migrate to hal::IWifiManager for full platform portability
+// Currently uses ESP32 WiFi APIs directly
 #include <Arduino.h>
 #include <WiFi.h>
 
@@ -81,8 +88,8 @@ private:
 
         bool connected = (WiFi.status() == WL_CONNECTED);
         if (wait_for_connect) {
-            uint32_t start = millis();
-            while (WiFi.status() != WL_CONNECTED && (millis() - start) < static_cast<uint32_t>(timeout_ms)) {
+            uint32_t start = mara::getSystemClock().millis();
+            while (WiFi.status() != WL_CONNECTED && (mara::getSystemClock().millis() - start) < static_cast<uint32_t>(timeout_ms)) {
                 delay(100);
             }
             connected = (WiFi.status() == WL_CONNECTED);
@@ -131,3 +138,5 @@ constexpr const char* WifiCommandHandler::CMDS[];
 REGISTER_HANDLER(WifiCommandHandler);
 
 } // namespace
+
+#endif // HAS_WIFI

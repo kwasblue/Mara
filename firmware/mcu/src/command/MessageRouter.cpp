@@ -3,6 +3,7 @@
 #include "command/BinaryCommands.h"
 #include "config/Version.h"
 #include "config/DeviceManifest.h"
+#include "core/Clock.h"
 #include <ArduinoJson.h>
 
 MessageRouter* MessageRouter::s_instance = nullptr;
@@ -38,7 +39,7 @@ void MessageRouter::onEventStatic(const Event& evt) {
 void MessageRouter::onFrame(const uint8_t* frame, size_t len) {
     if (len == 0) return;
     uint8_t msgType = frame[0];
-    uint32_t now_ms = millis();
+    uint32_t now_ms = mara::getSystemClock().millis();
 
     switch (msgType) {
     case Protocol::MSG_PING: {

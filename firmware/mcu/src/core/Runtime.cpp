@@ -5,6 +5,7 @@
 #include "setup/SetupControlTask.h"
 #include "loop/LoopFunctions.h"
 #include "sensor/SensorRegistry.h"
+#include "core/Clock.h"
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 
@@ -63,7 +64,7 @@ void Runtime::loop() {
         return;
     }
 
-    uint32_t now_ms = millis();
+    uint32_t now_ms = getSystemClock().millis();
     runMainLoop(now_ms);
 }
 
@@ -140,7 +141,7 @@ void Runtime::updateLoopSchedulers() {
 }
 
 void Runtime::runMainLoop(uint32_t now_ms) {
-    uint32_t loop_start_us = micros();
+    uint32_t loop_start_us = getSystemClock().micros();
     LoopTiming& timing = getLoopTiming();
 
     // OTA
@@ -151,18 +152,18 @@ void Runtime::runMainLoop(uint32_t now_ms) {
 
     // Rate-limited safety loop
     if (ctx_.safetyScheduler && ctx_.safetyScheduler->tick(now_ms)) {
-        uint32_t t0 = micros();
+        uint32_t t0 = getSystemClock().micros();
         runSafetyLoop(ctx_, now_ms);
-        timing.safety_us = micros() - t0;
+        timing.safety_us = getSystemClock().micros() - t0;
     }
 
     // Rate-limited control loop (skip if FreeRTOS task is handling it)
     if (!isControlTaskRunning()) {
         if (ctx_.controlScheduler && ctx_.controlScheduler->tick(now_ms)) {
-            uint32_t t0 = micros();
+            uint32_t t0 = getSystemClock().micros();
             float ctrl_dt = getLoopRates().ctrl_period_ms() / 1000.0f;
             runControlLoop(ctx_, now_ms, ctrl_dt);
-            timing.control_us = micros() - t0;
+            timing.control_us = getSystemClock().micros() - t0;
         }
     } else {
         ControlTaskStats taskStats = getControlTaskStats();
@@ -174,11 +175,11 @@ void Runtime::runMainLoop(uint32_t now_ms) {
 
     // Rate-limited telemetry
     if (ctx_.telemetryScheduler && ctx_.telemetryScheduler->tick(now_ms)) {
-        uint32_t t0 = micros();
+        uint32_t t0 = getSystemClock().micros();
         if (ctx_.telemetry) {
             ctx_.telemetry->loop(now_ms);
         }
-        timing.telemetry_us = micros() - t0;
+        timing.telemetry_us = getSystemClock().micros() - t0;
     }
 
     // Sensor sampling (self-registered + legacy)
@@ -191,7 +192,7 @@ void Runtime::runMainLoop(uint32_t now_ms) {
 
     // Host + router + transports
     {
-        uint32_t t0 = micros();
+        uint32_t t0 = getSystemClock().micros();
         if (ctx_.host) {
             ctx_.host->loop(now_ms);
         }
@@ -203,11 +204,11 @@ void Runtime::runMainLoop(uint32_t now_ms) {
             ctx_.ble->loop();
         }
 #endif
-        timing.host_us = micros() - t0;
+        timing.host_us = getSystemClock().micros() - t0;
     }
 
     // Total loop time
-    timing.total_us = micros() - loop_start_us;
+    timing.total_us = getSystemClock().micros() - loop_start_us;
     timing.updatePeaks();
 
     if (timing.total_us > 10000) {

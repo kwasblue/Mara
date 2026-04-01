@@ -1,6 +1,13 @@
+#include "config/FeatureFlags.h"
+
+#if HAS_WIFI
+
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
+#include "core/Clock.h"
 
+// TODO: Migrate to hal::IWifiManager for full platform portability
+// Currently uses ESP32 WiFi APIs directly
 #include <Arduino.h>
 #include <WiFi.h>
 
@@ -83,10 +90,10 @@ public:
 
         WiFi.begin(WIFI_STA_SSID, WIFI_STA_PASSWORD);
 
-        uint32_t start = millis();
+        uint32_t start = mara::getSystemClock().millis();
         const uint32_t timeoutMs = 15000;  // Increased timeout
 
-        while (WiFi.status() != WL_CONNECTED && millis() - start < timeoutMs) {
+        while (WiFi.status() != WL_CONNECTED && mara::getSystemClock().millis() - start < timeoutMs) {
             delay(500);
             Serial.print(".");
         }
@@ -133,3 +140,14 @@ SetupWifiModule g_setupWifi;
 mara::ISetupModule* getSetupWifiModule() {
     return &g_setupWifi;
 }
+
+#else // !HAS_WIFI
+
+// Stub for non-WiFi platforms
+#include "setup/ISetupModule.h"
+
+mara::ISetupModule* getSetupWifiModule() {
+    return nullptr;
+}
+
+#endif // HAS_WIFI

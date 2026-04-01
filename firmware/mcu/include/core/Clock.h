@@ -1,11 +1,24 @@
 // include/core/Clock.h
 // Time abstraction for testability and deterministic replay
+//
+// SystemClock delegates to hal::IClock for platform portability.
+// Call setHalClock() during HAL initialization.
 
 #pragma once
 
 #include <cstdint>
 
+// Forward declaration
+namespace hal { class IClock; }
+
 namespace mara {
+
+/// Set the HAL clock that SystemClock will delegate to
+/// @note Must be called during HAL initialization
+void setHalClock(hal::IClock* clock);
+
+/// Get the HAL clock (for direct HAL access)
+hal::IClock* getHalClock();
 
 /**
  * Clock interface for time abstraction.

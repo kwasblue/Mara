@@ -1,5 +1,6 @@
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
+#include "core/Clock.h"
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -250,7 +251,7 @@ public:
             ctx.telemetry->registerProvider(
                 "persistence",
                 [&ctx](ArduinoJson::JsonObject node) {
-                    ctx.persistence->updateFromMode(*ctx.mode, millis());
+                    ctx.persistence->updateFromMode(*ctx.mode, mara::getSystemClock().millis());
                     ctx.persistence->fillTelemetry(node);
                 }
             );

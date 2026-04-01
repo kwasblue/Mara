@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-04-01 15:18:51
-Total Files: 1029
-Total Lines of Code: 116,444
+Generated: 2026-04-01 19:18:36
+Total Files: 1039
+Total Lines of Code: 117,460
 ================================================================================
 
 
@@ -929,7 +929,7 @@ HOST (Python)
   host/mara_host/cli/commands/calibrate/wheels.py (40 lines)
     [Fn] cmd_wheels(args)
 
-  host/mara_host/cli/commands/camera.py (281 lines)
+  host/mara_host/cli/commands/camera.py (250 lines)
     [Fn] register(subparsers)
     [Fn] cmd_list_resolutions(args)
 
@@ -974,10 +974,13 @@ HOST (Python)
     [Fn] cmd_erase(args)
     [Fn] cmd_info(args)
 
-  host/mara_host/cli/commands/generate.py (216 lines)
+  host/mara_host/cli/commands/generate.py (218 lines)
+    [Fn] _get_service()
     [Fn] register(subparsers)
-    [Fn] _run_generator(name, module_name)
+    [Fn] _run_generator_with_output(gen_type)
     [Fn] cmd_all(args)
+    [Fn] _run_single(gen_type, title, files_info)
+    [Fn] cmd_build_config(args)
     [Fn] cmd_commands(args)
     [Fn] cmd_pins(args)
     [Fn] cmd_can(args)
@@ -1131,7 +1134,7 @@ HOST (Python)
     [Fn] get_log_params(args)
     [Fn] show_transports()
 
-  host/mara_host/cli/commands/run/_registry.py (180 lines)
+  host/mara_host/cli/commands/run/_registry.py (181 lines)
     [Fn] register(subparsers)
 
   host/mara_host/cli/commands/run/ble.py (66 lines)
@@ -1244,7 +1247,7 @@ HOST (Python)
     [Fn] add_port_arg(parser)
     [Fn] cmd_help(parser)
 
-  host/mara_host/cli/commands/wifi.py (126 lines)
+  host/mara_host/cli/commands/wifi.py (127 lines)
     [Fn] register(subparsers)
 
   host/mara_host/cli/completions.py (288 lines)
@@ -1268,7 +1271,7 @@ HOST (Python)
     [Fn] format_pin_status(gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
     [Fn] confirm(message, default)
 
-  host/mara_host/cli/context.py (363 lines)
+  host/mara_host/cli/context.py (364 lines)
     [Class] CLIContextConfig
     [Class] CLIContext
       |-- __init__(self, port, baudrate, host, tcp_port, ble_name, verbose, robot_config, robot_config_path)
@@ -1468,7 +1471,7 @@ HOST (Python)
       `-- stats(self)
     [Fn] percentile(p)
 
-  host/mara_host/command/factory.py (151 lines)
+  host/mara_host/command/factory.py (152 lines)
     [Fn] _default_serial_port()
     [Class] ClientConfig
     [Class] MaraClientFactory
@@ -1500,7 +1503,7 @@ HOST (Python)
       |-- encode_signals(self, signals)
       `-- encode_signal_cmds(self, cmds)
 
-  host/mara_host/command/payloads.py (808 lines)
+  host/mara_host/command/payloads.py (840 lines)
     [Class] DcStopPayload
       |-- __init__(self, motor_id)
       |-- to_dict(self)
@@ -1657,6 +1660,14 @@ HOST (Python)
       |-- __init__(self, actions)
       |-- to_dict(self)
       `-- __repr__(self)
+    [Class] BenchGetResultsPayload
+      |-- __init__(self, max)
+      |-- to_dict(self)
+      `-- __repr__(self)
+    [Class] BenchStartPayload
+      |-- __init__(self, test_id, iterations, warmup, budget_us, rt_safe, stream)
+      |-- to_dict(self)
+      `-- __repr__(self)
     [Class] CtrlGraphEnablePayload
       |-- __init__(self, enable)
       |-- to_dict(self)
@@ -1771,11 +1782,14 @@ HOST (Python)
 
   host/mara_host/config/control_graph_defs.py (44 lines)
 
-  host/mara_host/config/feature_flags.py (204 lines)
+  host/mara_host/config/feature_flags.py (185 lines)
     [Fn] _env_bool(key, default)
     [Class] FeatureFlags
       |-- __post_init__(self)
+      |-- to_dict(self)
+      |-- from_dict(cls, features)
       |-- from_env(cls)
+      |-- from_profile(cls, profile_name)
       |-- minimal(cls)
       |-- motors(cls)
       |-- sensors(cls)
@@ -1793,7 +1807,7 @@ HOST (Python)
 
   host/mara_host/config/pin_config.py (16 lines)
 
-  host/mara_host/config/robot_config.py (361 lines)
+  host/mara_host/config/robot_config.py (362 lines)
     [Fn] _parse_bool(value, default)
     [Class] ValidationReport
       `-- ok(self)
@@ -2034,6 +2048,13 @@ HOST (Python)
 
   host/mara_host/core/__init__.py (31 lines)
 
+  host/mara_host/core/_generated_config.py (205 lines)
+    [Fn] has_feature(name)
+    [Fn] get_enabled_features()
+    [Fn] get_profile(name)
+    [Fn] get_profile_names()
+    [Fn] validate_dependencies(features)
+
   host/mara_host/core/base_module.py (45 lines)
     [Class] BaseModule
       |-- __init__(self)
@@ -2043,6 +2064,29 @@ HOST (Python)
       |-- _get_handler_for_topic(self, topic)
       |-- topics(self)
       `-- __repr__(self)
+
+  host/mara_host/core/build_profiles.py (141 lines)
+    [Fn] _load_config()
+    [Fn] get_config()
+    [Fn] get_transport_settings()
+    [Fn] get_baud_rate()
+    [Fn] get_upload_baud_rate()
+    [Fn] get_tcp_port()
+    [Fn] get_device_name()
+    [Fn] get_feature_categories()
+    [Fn] get_all_feature_names()
+    [Fn] get_feature_dependencies()
+    [Fn] validate_feature_dependencies(features)
+    [Fn] get_active_profile()
+    [Fn] get_profile_names()
+    [Fn] get_profile(name)
+    [Fn] get_all_profiles()
+    [Fn] get_active_profile_features()
+    [Fn] feature_to_macro(name)
+    [Fn] profile_to_build_flags(profile_name)
+    [Fn] parse_features(features_str, no_features_str)
+    [Fn] features_to_build_flags(features)
+    [Fn] reload_config()
 
   host/mara_host/core/event_bus.py (74 lines)
     [Class] EventBus
@@ -2089,7 +2133,7 @@ HOST (Python)
       |-- map(self, fn)
       `-- and_then(self, fn)
 
-  host/mara_host/core/settings.py (64 lines)
+  host/mara_host/core/settings.py (65 lines)
     [Fn] _load_yaml()
     [Class] TransportSettings
     [Class] MQTTSettings
@@ -3713,7 +3757,7 @@ HOST (Python)
     [Fn] create_generated_routes(runtime)
     [Fn] get_openai_function_schema()
 
-  host/mara_host/mcp/_generated_tools.py (1690 lines)
+  host/mara_host/mcp/_generated_tools.py (1780 lines)
     [Fn] get_tool_definitions()
 
   host/mara_host/mcp/http_server.py (104 lines)
@@ -3786,7 +3830,7 @@ HOST (Python)
     [Fn] _check_auth(arguments)
     [Fn] create_server(port, host, ble_name, tcp_port)
 
-  host/mara_host/mcp/tool_schema.py (946 lines)
+  host/mara_host/mcp/tool_schema.py (982 lines)
     [Class] ToolParam
       `-- to_json_schema(self)
     [Class] ToolDef
@@ -4079,7 +4123,7 @@ HOST (Python)
     [Fn] model(params, v)
     [Fn] cost(params)
 
-  host/mara_host/robot.py (308 lines)
+  host/mara_host/robot.py (309 lines)
     [Class] Session
       |-- __init__(self, robot, name, log_dir)
       |-- start(self)
@@ -4217,7 +4261,7 @@ HOST (Python)
     [Class] EncoderHostModule
       `-- __init__(self, bus, client, defaults)
 
-  host/mara_host/services/__init__.py (77 lines)
+  host/mara_host/services/__init__.py (80 lines)
     [Fn] __getattr__(name)
     [Fn] __dir__()
 
@@ -4256,7 +4300,7 @@ HOST (Python)
 
   host/mara_host/services/codegen/__init__.py (12 lines)
 
-  host/mara_host/services/codegen/generator_service.py (149 lines)
+  host/mara_host/services/codegen/generator_service.py (190 lines)
     [Class] GeneratorType
     [Class] GeneratorResult
     [Class] GenerationSummary
@@ -4444,7 +4488,7 @@ HOST (Python)
       `-- update_reading(self, sensor_id, distance_cm)
     [Fn] _handler(data)
 
-  host/mara_host/services/control/wifi_service.py (44 lines)
+  host/mara_host/services/control/wifi_service.py (51 lines)
     [Class] WifiService
       `-- __init__(self, client)
 
@@ -4613,9 +4657,18 @@ HOST (Python)
       |-- _on_json_telemetry(self, data)
       `-- _on_state_changed(self, data)
 
-  host/mara_host/services/testing/__init__.py (2 lines)
+  host/mara_host/services/testing/__init__.py (12 lines)
 
-  host/mara_host/services/testing/test_service.py (394 lines)
+  host/mara_host/services/testing/firmware_test_service.py (89 lines)
+    [Class] FirmwareTestResult
+    [Class] FirmwareTestService
+      |-- __init__(self, backend_name)
+      |-- list_backends(self)
+      |-- run_tests(self, environments, filter_pattern, verbose, project_dir)
+      |-- run_native(self, filter_pattern, verbose)
+      `-- run_device(self, filter_pattern, verbose)
+
+  host/mara_host/services/testing/test_service.py (397 lines)
     [Class] TestStatus
     [Class] TestResult
     [Class] TestService
@@ -4772,7 +4825,7 @@ HOST (Python)
 
   host/mara_host/services/transport/__init__.py (14 lines)
 
-  host/mara_host/services/transport/connection_service.py (126 lines)
+  host/mara_host/services/transport/connection_service.py (127 lines)
     [Class] TransportType
     [Class] ConnectionConfig
     [Class] ConnectionInfo
@@ -4923,9 +4976,7 @@ HOST (Python)
 
   host/mara_host/telemetry/telemetry_sections.py (100 lines)
 
-  host/mara_host/tools/build_firmware.py (240 lines)
-    [Fn] parse_features(features_str, no_features_str)
-    [Fn] features_to_flags(features)
+  host/mara_host/tools/build_firmware.py (183 lines)
     [Fn] _find_pio()
     [Fn] run_pio(args, verbose, extra_flags)
     [Fn] generate()
@@ -4950,6 +5001,11 @@ HOST (Python)
     [Fn] generate_py_binary_commands()
     [Fn] generate_py_json_to_binary()
     [Fn] main()
+
+  host/mara_host/tools/gen_build_config.py (211 lines)
+    [Fn] generate_cpp_header(profile_name)
+    [Fn] generate_python_module(profile_name)
+    [Fn] main(profile)
 
   host/mara_host/tools/gen_can.py (216 lines)
     [Fn] calc_struct_size(fields)
@@ -5014,7 +5070,7 @@ HOST (Python)
     [Fn] main()
     [Fn] generate_python_api_init()
 
-  host/mara_host/tools/gen_mcp_servers.py (196 lines)
+  host/mara_host/tools/gen_mcp_servers.py (258 lines)
     [Fn] cmd_to_tool_name(cmd_name)
     [Fn] is_host_to_mcu(cmd_def)
     [Fn] field_to_json_schema(field_def)
@@ -5044,7 +5100,7 @@ HOST (Python)
     [Fn] write_version_files(version, cpp_path, py_path)
     [Fn] main()
 
-  host/mara_host/tools/generate_all.py (58 lines)
+  host/mara_host/tools/generate_all.py (62 lines)
     [Fn] main()
 
   host/mara_host/tools/generate_pins.py (37 lines)
@@ -5540,7 +5596,7 @@ HOST (Python)
       |-- stop(self)
       `-- _send_bytes(self, data)
 
-  host/mara_host/transport/bluetooth_transport.py (37 lines)
+  host/mara_host/transport/bluetooth_transport.py (38 lines)
     [Class] BluetoothSerialTransport
       |-- __init__(self, port, baudrate)
       `-- auto(cls, device_name, baudrate)
@@ -5726,7 +5782,7 @@ HOST (Python)
       |-- _publish_event(self, event, data)
       `-- _on_message(self, message)
 
-  host/mara_host/transport/serial_transport.py (53 lines)
+  host/mara_host/transport/serial_transport.py (54 lines)
     [Class] SerialTransport
       |-- __init__(self, port, baudrate)
       |-- _open(self)
@@ -7387,10 +7443,12 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/config/FeatureFlags.h (230 lines)
     [Fn] buildCapabilityMask()
 
+  firmware/mcu/include/config/GeneratedBuildConfig.h (31 lines)
+
   firmware/mcu/include/config/GpioChannelDefs.h (20 lines)
     [Struct] GpioChannelDef
 
-  firmware/mcu/include/config/MaraConfig.h (71 lines)
+  firmware/mcu/include/config/MaraConfig.h (72 lines)
     [Struct] Safety
     [Struct] LoopRates
     [Struct] ControlTask
@@ -7653,7 +7711,9 @@ FIRMWARE/MCU (C++)
     [Fn] signalKindToString(SignalBus::Kind)
     [Fn] signalKindFromString(const char*)
 
-  firmware/mcu/include/core/Clock.h (40 lines)
+  firmware/mcu/include/core/Clock.h (43 lines)
+    [Fn] setHalClock(hal::IClock* clock)
+    [Fn] getHalClock()
     [Class] IClock
     [Class] SystemClock
     [Class] MockClock
@@ -7894,13 +7954,16 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/core/ServiceStorage.h (127 lines)
     [Struct] ServiceStorage
 
-  firmware/mcu/include/hal/Hal.h (40 lines)
+  firmware/mcu/include/hal/Hal.h (42 lines)
     [Struct] HalContext
 
   firmware/mcu/include/hal/ICan.h (53 lines)
     [Struct] CanMessage
     [Struct] CanErrors
     [Class] ICan
+
+  firmware/mcu/include/hal/IClock.h (16 lines)
+    [Class] IClock
 
   firmware/mcu/include/hal/ICriticalSection.h (16 lines)
     [Struct] SpinlockHandle
@@ -7971,13 +8034,16 @@ FIRMWARE/MCU (C++)
     [Class] Esp32Can
     [Class] Esp32Can
 
+  firmware/mcu/include/hal/esp32/Esp32Clock.h (40 lines)
+    [Class] Esp32Clock
+
   firmware/mcu/include/hal/esp32/Esp32CriticalSection.h (18 lines)
     [Class] Esp32CriticalSection
 
   firmware/mcu/include/hal/esp32/Esp32Gpio.h (17 lines)
     [Class] Esp32Gpio
 
-  firmware/mcu/include/hal/esp32/Esp32Hal.h (92 lines)
+  firmware/mcu/include/hal/esp32/Esp32Hal.h (95 lines)
     [Struct] Esp32HalStorage
 
   firmware/mcu/include/hal/esp32/Esp32HeapMonitor.h (15 lines)
@@ -8027,6 +8093,9 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/hal/esp32/Esp32WifiManager.h (32 lines)
     [Class] Esp32WifiManager
+
+  firmware/mcu/include/hal/native/NativeClock.h (43 lines)
+    [Class] NativeClock
 
   firmware/mcu/include/hal/native/NativeLogger.h (42 lines)
     [Class] NativeLogger
@@ -8602,13 +8671,13 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/command/HandlerRegistry.cpp (165 lines)
 
-  firmware/mcu/src/command/MessageRouter.cpp (202 lines)
+  firmware/mcu/src/command/MessageRouter.cpp (203 lines)
 
   firmware/mcu/src/command/ModeManager.cpp (155 lines)
     [Fn] maraModeToString(MaraMode m)
     [Fn] lock(lock_)
 
-  firmware/mcu/src/command/WifiCommandHandler.cpp (114 lines)
+  firmware/mcu/src/command/WifiCommandHandler.cpp (118 lines)
     [Fn] wifiStatusToString(wl_status_t status)
     [Class] WifiCommandHandler
 
@@ -8673,7 +8742,9 @@ FIRMWARE/MCU (C++)
     [Fn] set(id, v, now_ms)
     [Fn] lock(lock_)
 
-  firmware/mcu/src/core/Clock.cpp (46 lines)
+  firmware/mcu/src/core/Clock.cpp (27 lines)
+    [Fn] setHalClock(hal::IClock* clock)
+    [Fn] getHalClock()
     [Fn] getSystemClock()
 
   firmware/mcu/src/core/DebugLogger.cpp (11 lines)
@@ -8694,7 +8765,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/src/core/ModuleManager.cpp (84 lines)
     [Fn] domainToString(LoopDomain d)
 
-  firmware/mcu/src/core/Runtime.cpp (168 lines)
+  firmware/mcu/src/core/Runtime.cpp (169 lines)
 
   firmware/mcu/src/core/ServiceStorage.cpp (203 lines)
 
@@ -8741,7 +8812,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/src/loop/LoopSafety.cpp (9 lines)
     [Fn] runSafetyLoop(ServiceContext& ctx, uint32_t now_ms)
 
-  firmware/mcu/src/main.cpp (162 lines)
+  firmware/mcu/src/main.cpp (165 lines)
     [Fn] updateLoopSchedulers()
     [Fn] setup()
     [Fn] loop()
@@ -8802,7 +8873,7 @@ FIRMWARE/MCU (C++)
     [Class] SetupOtaModule
     [Fn] getSetupOtaModule()
 
-  firmware/mcu/src/setup/SetupSafety.cpp (65 lines)
+  firmware/mcu/src/setup/SetupSafety.cpp (66 lines)
     [Class] SetupSafetyModule
     [Fn] getSetupSafetyModule()
 
@@ -8811,7 +8882,7 @@ FIRMWARE/MCU (C++)
     [Class] SetupSensorsModule
     [Fn] getSetupSensorsModule()
 
-  firmware/mcu/src/setup/SetupTelemetry.cpp (459 lines)
+  firmware/mcu/src/setup/SetupTelemetry.cpp (460 lines)
     [Struct] SensorHealthEntry
     [Fn] buildImuHealth(ImuManager* imu)
     [Fn] buildUltrasonicHealth(UltrasonicManager* ultrasonic, uint8_t sensor_id = 0)
@@ -8823,14 +8894,15 @@ FIRMWARE/MCU (C++)
     [Class] SetupTransportModule
     [Fn] getSetupTransportModule()
 
-  firmware/mcu/src/setup/SetupWifi.cpp (96 lines)
+  firmware/mcu/src/setup/SetupWifi.cpp (105 lines)
     [Fn] onWiFiEvent(WiFiEvent_t event)
     [Class] SetupWifiModule
+    [Fn] getSetupWifiModule()
     [Fn] getSetupWifiModule()
 
   firmware/mcu/src/transport/CanTransport.cpp (230 lines)
 
-  firmware/mcu/src/transport/MqttTransport.cpp (224 lines)
+  firmware/mcu/src/transport/MqttTransport.cpp (237 lines)
     [Fn] t(topic)
 
   firmware/mcu/src/transport/TransportRegistry.cpp (70 lines)
@@ -8903,11 +8975,10 @@ FIRMWARE/MCU (C++)
     [Fn] main(int argc, char** argv)
     [Fn] UNITY_END()
 
-  firmware/mcu/test/test_benchmark/test_benchmark_module.cpp (227 lines)
-    [Class] EventBus
-    [Fn] publish(const struct Event& evt)
-    [Struct] EventPayload
-    [Struct] Event
+  firmware/mcu/test/test_benchmark_module/native_stubs.cpp (20 lines)
+    [Fn] getSystemClock()
+
+  firmware/mcu/test/test_benchmark_module/test_benchmark_module.cpp (211 lines)
     [Class] TelemetryModule
     [Fn] registerBinProvider(uint8_t id, BinProviderFn fn)
     [Struct] ServiceContext
@@ -8923,7 +8994,10 @@ FIRMWARE/MCU (C++)
     [Fn] main(int argc, char** argv)
     [Fn] UNITY_END()
 
-  firmware/mcu/test/test_benchmark/test_benchmark_runner.cpp (199 lines)
+  firmware/mcu/test/test_benchmark_runner/native_stubs.cpp (20 lines)
+    [Fn] getSystemClock()
+
+  firmware/mcu/test/test_benchmark_runner/test_benchmark_runner.cpp (199 lines)
     [Fn] simple_test_func()
     [Fn] slow_test_func()
     [Fn] setUp()
@@ -8942,7 +9016,7 @@ FIRMWARE/MCU (C++)
     [Fn] main(int argc, char** argv)
     [Fn] UNITY_END()
 
-  firmware/mcu/test/test_benchmark/test_benchmark_types.cpp (92 lines)
+  firmware/mcu/test/test_benchmark_types/test_benchmark_types.cpp (92 lines)
     [Fn] setUp()
     [Fn] tearDown()
     [Fn] test_bench_result_size_is_56_bytes()
@@ -9485,22 +9559,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     712
-  C++ Files:        317
-  Total Files:      1029
+  Python Files:     716
+  C++ Files:        323
+  Total Files:      1039
 
 DEFINITIONS
-  Classes:          1308
-  Structs:          184
-  Functions:        2430
-  Methods:          3452
+  Classes:          1314
+  Structs:          182
+  Functions:        2466
+  Methods:          3466
 
 LINES OF CODE
-  Python:           89,327
-  C++:              27,117
-  Total Code:       116,444
-  Blank Lines:      31,776
-  Comment Lines:    30,940
-  Total Lines:      179,160
+  Python:           90,166
+  C++:              27,294
+  Total Code:       117,460
+  Blank Lines:      32,076
+  Comment Lines:    31,280
+  Total Lines:      180,816
 
 ================================================================================

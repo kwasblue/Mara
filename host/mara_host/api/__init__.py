@@ -62,8 +62,13 @@ Control:
     PIDController - Velocity PID for DC motors
     DifferentialDrive - Motion primitives for diff drive robots
     SignalBus - Signal bus for control systems
-    ControllerSlotManager - Controller slot management
     ObserverSlotManager - Observer slot management
+
+Note: For state-space controllers, use mara_host.control.upload:
+    from mara_host.control.upload import ControllerConfig, upload_controller
+
+Note: For PID via control graphs, use mara_host.tools.schema.control_graph.builders:
+    from mara_host.tools.schema.control_graph.builders import PIDConfig, build_pid_graph
 
 Utilities:
     Recording - Session recording and replay
@@ -87,7 +92,6 @@ from .pwm import PWM
 from .pid_controller import PIDController, PIDGains
 from .differential_drive import DifferentialDrive, DriveConfig
 from .signals import SignalBus, Signal, SignalKind
-from .controller_slot import ControllerSlotManager, ControllerSlot, ControllerConfig
 from .observer_slot import ObserverSlotManager, ObserverSlot, ObserverConfig
 from .recording import Recording, RecordingSession, RecordingEvent
 from .testing import Testing, TestResult, TestSuite, TestStatus
@@ -137,9 +141,6 @@ __all__ = [
     "SignalBus",
     "Signal",
     "SignalKind",
-    "ControllerSlotManager",
-    "ControllerSlot",
-    "ControllerConfig",
     "ObserverSlotManager",
     "ObserverSlot",
     "ObserverConfig",

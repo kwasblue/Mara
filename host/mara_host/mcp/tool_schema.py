@@ -843,6 +843,215 @@ TOOLS: list[ToolDef] = [
         method="get_status",
         requires_arm=False,
     ),
+
+    # =========================================================================
+    # Controller Slot Tools
+    # =========================================================================
+    ToolDef(
+        name="ctrl_slot_config",
+        description="Configure a control slot with controller type and signal routing. For PID: use ref_id, meas_id, out_id. For STATE_SPACE: use num_states, num_inputs, state_ids, ref_ids, output_ids. Only allowed when IDLE.",
+        category="control-slot",
+        service="controller_service",
+        method="controller_config",
+        params=(
+            ToolParam("slot", "integer", "Slot index (0-7)"),
+            ToolParam("controller_type", "string", "Controller type: PID or STATE_SPACE", default="PID"),
+            ToolParam("rate_hz", "integer", "Controller update rate in Hz", default=100),
+            # PID mode parameters
+            ToolParam("ref_id", "integer", "Signal ID for reference/setpoint (PID mode)", required=False),
+            ToolParam("meas_id", "integer", "Signal ID for measurement/feedback (PID mode)", required=False),
+            ToolParam("out_id", "integer", "Signal ID for control output (PID mode)", required=False),
+            # STATE_SPACE mode parameters
+            ToolParam("num_states", "integer", "Number of state variables 1-6 (STATE_SPACE mode)", required=False),
+            ToolParam("num_inputs", "integer", "Number of control inputs 1-2 (STATE_SPACE mode)", required=False),
+            ToolParam("state_ids", "array", "Signal IDs for state measurements (STATE_SPACE mode)", required=False,
+                      json_schema={"type": "array", "items": {"type": "integer"}}),
+            ToolParam("ref_ids", "array", "Signal IDs for state references (STATE_SPACE mode)", required=False,
+                      json_schema={"type": "array", "items": {"type": "integer"}}),
+            ToolParam("output_ids", "array", "Signal IDs for control outputs (STATE_SPACE mode)", required=False,
+                      json_schema={"type": "array", "items": {"type": "integer"}}),
+            # Safety parameters
+            ToolParam("require_armed", "boolean", "Only run when robot is armed", default=True),
+            ToolParam("require_active", "boolean", "Only run when robot is active", default=True),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="ctrl_slot_enable",
+        description="Enable or disable a configured control slot.",
+        category="control-slot",
+        service="controller_service",
+        method="controller_enable",
+        params=(
+            ToolParam("slot", "integer", "Slot index (0-7)"),
+            ToolParam("enable", "boolean", "True to enable, False to disable", default=True),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="ctrl_slot_set_param",
+        description="Set a scalar parameter on a control slot (e.g., kp, ki, kd for PID).",
+        category="control-slot",
+        service="controller_service",
+        method="controller_set_param",
+        params=(
+            ToolParam("slot", "integer", "Slot index (0-7)"),
+            ToolParam("key", "string", "Parameter name (e.g., kp, ki, kd, out_min, out_max)"),
+            ToolParam("value", "number", "Parameter value"),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="ctrl_slot_set_param_array",
+        description="Set an array parameter on a control slot (e.g., K matrix for state-space).",
+        category="control-slot",
+        service="controller_service",
+        method="controller_set_param_array",
+        params=(
+            ToolParam("slot", "integer", "Slot index (0-7)"),
+            ToolParam("key", "string", "Parameter name (K, Kr, Ki)"),
+            ToolParam("values", "array", "Array of float values in row-major order",
+                      json_schema={"type": "array", "items": {"type": "number"}}),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="ctrl_slot_reset",
+        description="Reset a control slot's internal state (integrators, etc).",
+        category="control-slot",
+        service="controller_service",
+        method="controller_reset",
+        params=(
+            ToolParam("slot", "integer", "Slot index (0-7)"),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="ctrl_slot_status",
+        description="Get status of a control slot.",
+        category="control-slot",
+        client_method="send_json_cmd",
+        params=(
+            ToolParam("slot", "integer", "Slot index (0-7)"),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="ctrl_set_rate",
+        description="Set control loop rate in Hz. Only allowed when IDLE.",
+        category="control-slot",
+        client_method="send_json_cmd",
+        params=(
+            ToolParam("hz", "integer", "Control loop frequency in Hz (5-200)"),
+        ),
+        requires_arm=False,
+    ),
+
+    # =========================================================================
+    # Observer Tools
+    # =========================================================================
+    ToolDef(
+        name="observer_config",
+        description="Configure a Luenberger state observer for state estimation. Requires defining signal routing for inputs (u), outputs (y), and estimates (x̂).",
+        category="observer",
+        service="controller_service",
+        method="observer_config",
+        params=(
+            ToolParam("slot", "integer", "Observer slot index (0-3)"),
+            ToolParam("num_states", "integer", "Number of states to estimate (1-6)"),
+            ToolParam("num_outputs", "integer", "Number of measurements y (1-4)"),
+            ToolParam("num_inputs", "integer", "Number of control inputs u (1-2)", default=1),
+            ToolParam("rate_hz", "integer", "Observer update rate in Hz (50-1000)", default=200),
+            ToolParam("input_ids", "array", "Signal IDs for control inputs (u)", required=False,
+                      json_schema={"type": "array", "items": {"type": "integer"}}),
+            ToolParam("output_ids", "array", "Signal IDs for measurements (y)", required=False,
+                      json_schema={"type": "array", "items": {"type": "integer"}}),
+            ToolParam("estimate_ids", "array", "Signal IDs where state estimates are written", required=False,
+                      json_schema={"type": "array", "items": {"type": "integer"}}),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="observer_enable",
+        description="Enable or disable a configured observer.",
+        category="observer",
+        service="controller_service",
+        method="observer_enable",
+        params=(
+            ToolParam("slot", "integer", "Observer slot index (0-3)"),
+            ToolParam("enable", "boolean", "True to enable, False to disable", default=True),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="observer_set_param",
+        description="Set individual matrix element on an observer (e.g., A01, L10).",
+        category="observer",
+        client_method="send_json_cmd",
+        params=(
+            ToolParam("slot", "integer", "Observer slot index (0-3)"),
+            ToolParam("key", "string", "Matrix element: Aij, Bij, Cij, or Lij"),
+            ToolParam("value", "number", "Parameter value"),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="observer_set_param_array",
+        description="Set full matrix (A, B, C, or L) on an observer in row-major order.",
+        category="observer",
+        client_method="send_json_cmd",
+        params=(
+            ToolParam("slot", "integer", "Observer slot index (0-3)"),
+            ToolParam("key", "string", "Matrix name: A, B, C, or L"),
+            ToolParam("values", "array", "Matrix values in row-major order",
+                      json_schema={"type": "array", "items": {"type": "number"}}),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="observer_reset",
+        description="Reset observer state estimate to zero.",
+        category="observer",
+        client_method="send_json_cmd",
+        params=(
+            ToolParam("slot", "integer", "Observer slot index (0-3)"),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="observer_status",
+        description="Get observer status and current state estimates.",
+        category="observer",
+        client_method="send_json_cmd",
+        params=(
+            ToolParam("slot", "integer", "Observer slot index (0-3)"),
+        ),
+        requires_arm=False,
+    ),
+
+    # =========================================================================
+    # Telemetry Tools
+    # =========================================================================
+    ToolDef(
+        name="telem_set_interval",
+        description="Set telemetry publish interval in milliseconds. Set to 0 to disable.",
+        category="telemetry",
+        client_method="send_json_cmd",
+        params=(
+            ToolParam("interval_ms", "integer", "Telemetry interval in milliseconds (0 = disable)"),
+        ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="telem_set_rate",
+        description="Set telemetry loop rate in Hz. Only allowed when IDLE.",
+        category="telemetry",
+        client_method="send_json_cmd",
+        params=(
+            ToolParam("hz", "integer", "Telemetry frequency in Hz (1-50)"),
+        ),
+        requires_arm=False,
+    ),
 ]
 
 

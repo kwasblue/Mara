@@ -239,6 +239,14 @@ class ControllerService:
         meas_id: Optional[int] = None,
         out_id: Optional[int] = None,
         rate_hz: int = 100,
+        # STATE_SPACE specific parameters
+        num_states: Optional[int] = None,
+        num_inputs: Optional[int] = None,
+        state_ids: Optional[list[int]] = None,
+        ref_ids: Optional[list[int]] = None,
+        output_ids: Optional[list[int]] = None,
+        require_armed: bool = True,
+        require_active: bool = True,
     ) -> ServiceResult:
         """
         Configure a controller slot.
@@ -246,10 +254,17 @@ class ControllerService:
         Args:
             slot: Slot number (0-7)
             controller_type: Controller type (PID, STATE_SPACE)
-            ref_id: Reference signal ID
-            meas_id: Measurement signal ID
-            out_id: Output signal ID
+            ref_id: Reference signal ID (PID mode)
+            meas_id: Measurement signal ID (PID mode)
+            out_id: Output signal ID (PID mode)
             rate_hz: Control rate in Hz
+            num_states: Number of state variables (STATE_SPACE mode, 1-6)
+            num_inputs: Number of control inputs (STATE_SPACE mode, 1-2)
+            state_ids: Signal IDs for state measurements (STATE_SPACE mode)
+            ref_ids: Signal IDs for state references (STATE_SPACE mode)
+            output_ids: Signal IDs for control outputs (STATE_SPACE mode)
+            require_armed: Only run when robot is armed
+            require_active: Only run when robot is active
 
         Returns:
             ServiceResult
@@ -259,12 +274,30 @@ class ControllerService:
             "controller_type": controller_type,
             "rate_hz": rate_hz,
         }
+
+        # PID mode parameters
         if ref_id is not None:
             payload["ref_id"] = ref_id
         if meas_id is not None:
             payload["meas_id"] = meas_id
         if out_id is not None:
             payload["out_id"] = out_id
+
+        # STATE_SPACE mode parameters
+        if num_states is not None:
+            payload["num_states"] = num_states
+        if num_inputs is not None:
+            payload["num_inputs"] = num_inputs
+        if state_ids is not None:
+            payload["state_ids"] = state_ids
+        if ref_ids is not None:
+            payload["ref_ids"] = ref_ids
+        if output_ids is not None:
+            payload["output_ids"] = output_ids
+
+        # Safety requirements
+        payload["require_armed"] = require_armed
+        payload["require_active"] = require_active
 
         ok, error = await self.client.send_reliable(
             "CMD_CTRL_SLOT_CONFIG",
@@ -429,38 +462,56 @@ class ControllerService:
     async def observer_config(
         self,
         slot: int,
-        observer_type: str = "KALMAN",
-        rate_hz: int = 100,
+        num_states: int,
+        num_outputs: int,
+        num_inputs: int = 1,
+        rate_hz: int = 200,
+        input_ids: Optional[list[int]] = None,
+        output_ids: Optional[list[int]] = None,
+        estimate_ids: Optional[list[int]] = None,
     ) -> ServiceResult:
         """
-        Configure an observer slot.
+        Configure a Luenberger state observer.
 
         Args:
-            slot: Slot number (0-7)
-            observer_type: Observer type (KALMAN, LUENBERGER, EKF)
-            rate_hz: Update rate in Hz
+            slot: Observer slot number (0-3)
+            num_states: Number of states to estimate (1-6)
+            num_outputs: Number of measurements (1-4)
+            num_inputs: Number of control inputs (1-2)
+            rate_hz: Observer update rate in Hz (50-1000)
+            input_ids: Signal IDs for control inputs (u)
+            output_ids: Signal IDs for measurements (y)
+            estimate_ids: Signal IDs where state estimates (x̂) are written
 
         Returns:
             ServiceResult
         """
+        payload = {
+            "slot": slot,
+            "num_states": num_states,
+            "num_inputs": num_inputs,
+            "num_outputs": num_outputs,
+            "rate_hz": rate_hz,
+        }
+
+        if input_ids is not None:
+            payload["input_ids"] = input_ids
+        if output_ids is not None:
+            payload["output_ids"] = output_ids
+        if estimate_ids is not None:
+            payload["estimate_ids"] = estimate_ids
+
         ok, error = await self.client.send_reliable(
             "CMD_OBSERVER_CONFIG",
-            {
-                "slot": slot,
-                "observer_type": observer_type,
-                "rate_hz": rate_hz,
-            },
+            payload,
         )
 
         if ok:
             self._observers[slot] = ObserverSlot(
                 slot=slot,
-                observer_type=ObserverType(observer_type),
                 rate_hz=rate_hz,
             )
-            return ServiceResult.success(
-                data={"slot": slot, "observer_type": observer_type}
-            )
+            return ServiceResult.success(data=payload)
         else:
             return ServiceResult.failure(
                 error=error or f"Failed to configure observer slot {slot}"

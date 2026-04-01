@@ -379,6 +379,95 @@ async def _handle_robot_pose(runtime, args: dict) -> str:
     if not runtime.robot_loaded:
         return "Robot not loaded. Call load_robot(config_path) first."
     return runtime.robot_context.format_pose()
+
+
+# Testing handlers
+async def _handle_firmware_test(runtime, args: dict) -> str:
+    from mara_host.services import FirmwareTestService
+
+    envs_str = args.get("environments", "native")
+    environments = [e.strip() for e in envs_str.split(",")]
+    filter_pattern = args.get("filter")
+    verbose = args.get("verbose", False)
+
+    service = FirmwareTestService()
+    result = service.run_tests(
+        environments=environments,
+        filter_pattern=filter_pattern,
+        verbose=verbose,
+    )
+
+    if result.success:
+        return f"All tests passed: {result.message}"
+    return f"FAIL: {result.message}"
+
+
+async def _handle_robot_test_connection(runtime, args: dict) -> str:
+    if not runtime.is_connected:
+        return "Not connected. Use mara_connect first."
+
+    import asyncio
+    from datetime import datetime
+
+    start = datetime.now()
+    try:
+        ok, error = await asyncio.wait_for(
+            runtime.client.send_reliable("CMD_HEARTBEAT", {}),
+            timeout=1.0
+        )
+        duration = (datetime.now() - start).total_seconds() * 1000
+
+        if ok:
+            return f"Connection OK: ping {duration:.1f}ms"
+        return f"FAIL: {error}"
+    except asyncio.TimeoutError:
+        return "FAIL: Timeout after 1000ms"
+
+
+async def _handle_robot_test_latency(runtime, args: dict) -> str:
+    if not runtime.is_connected:
+        return "Not connected. Use mara_connect first."
+
+    import asyncio
+    from datetime import datetime
+
+    samples = args.get("samples", 10)
+    latencies = []
+
+    for _ in range(samples):
+        start = datetime.now()
+        try:
+            await runtime.client.send_reliable("CMD_HEARTBEAT", {})
+            latency = (datetime.now() - start).total_seconds() * 1000
+            latencies.append(latency)
+        except Exception:
+            pass
+
+    if not latencies:
+        return "FAIL: No successful pings"
+
+    avg = sum(latencies) / len(latencies)
+    min_lat = min(latencies)
+    max_lat = max(latencies)
+
+    return f"Latency: avg={avg:.1f}ms, min={min_lat:.1f}ms, max={max_lat:.1f}ms ({len(latencies)}/{samples} samples)"
+
+
+async def _handle_robot_test_all(runtime, args: dict) -> str:
+    if not runtime.is_connected:
+        return "Not connected. Use mara_connect first."
+
+    results = []
+
+    # Test connection
+    conn_result = await _handle_robot_test_connection(runtime, {})
+    results.append(f"Connection: {conn_result}")
+
+    # Test latency
+    lat_result = await _handle_robot_test_latency(runtime, {"samples": 5})
+    results.append(f"Latency: {lat_result}")
+
+    return "\\n".join(results)
 ''')
 
     return "".join(lines)

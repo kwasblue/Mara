@@ -13,6 +13,7 @@ from enum import Enum
 from typing import Callable
 
 from mara_host.command.client import MaraClient
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE
 
 
 class TestStatus(Enum):
@@ -56,18 +57,21 @@ class TestService:
         self._results: list[TestResult] = []
 
     @classmethod
-    async def create(cls, port: str, baudrate: int = 115200) -> "TestService":
+    async def create(cls, port: str, baudrate: int = None) -> "TestService":
         """
         Create a test service and connect to the robot.
 
         Args:
             port: Serial port path
-            baudrate: Baud rate
+            baudrate: Baud rate (defaults to DEFAULT_BAUD_RATE from config)
 
         Returns:
             Connected TestService instance
         """
         from mara_host.transport.serial_transport import SerialTransport
+
+        if baudrate is None:
+            baudrate = DEFAULT_BAUD_RATE
 
         transport = SerialTransport(port, baudrate=baudrate)
         client = MaraClient(transport, connection_timeout_s=6.0)

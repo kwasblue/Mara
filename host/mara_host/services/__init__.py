@@ -69,6 +69,9 @@ _EXPORTS = {
     # Testing
     "TestService": "testing",
     "TestResult": "testing",
+    "TestStatus": "testing",
+    "FirmwareTestService": "testing",
+    "FirmwareTestResult": "testing",
     # Transport
     "ConnectionService": "transport",
     "ConnectionConfig": "transport",

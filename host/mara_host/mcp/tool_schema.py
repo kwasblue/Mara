@@ -1052,6 +1052,46 @@ TOOLS: list[ToolDef] = [
         ),
         requires_arm=False,
     ),
+
+    # =========================================================================
+    # Testing Tools
+    # =========================================================================
+    ToolDef(
+        name="firmware_test",
+        description="Run firmware unit tests locally using PlatformIO. Does not require robot connection.",
+        category="testing",
+        custom_handler=True,
+        requires_arm=False,
+        params=(
+            ToolParam("environments", "string", "Comma-separated environments: native,device", required=False, default="native"),
+            ToolParam("filter", "string", "Glob pattern to filter tests", required=False, default=None),
+            ToolParam("verbose", "boolean", "Enable verbose output", required=False, default=False),
+        ),
+    ),
+    ToolDef(
+        name="robot_test_connection",
+        description="Test robot connection with a ping/pong round-trip.",
+        category="testing",
+        custom_handler=True,
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="robot_test_latency",
+        description="Measure command round-trip latency over multiple samples.",
+        category="testing",
+        custom_handler=True,
+        requires_arm=False,
+        params=(
+            ToolParam("samples", "integer", "Number of samples to take", required=False, default=10),
+        ),
+    ),
+    ToolDef(
+        name="robot_test_all",
+        description="Run all robot hardware self-tests (connection, motors, servos, GPIO).",
+        category="testing",
+        custom_handler=True,
+        requires_arm=False,
+    ),
 ]
 
 

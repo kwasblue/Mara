@@ -48,6 +48,11 @@
 #include "module/ControlModule.h"
 #include "persistence/McuPersistence.h"
 
+// Optional modules (feature-flagged)
+#ifdef FEATURE_BENCHMARK
+#include "benchmark/BenchmarkModule.h"
+#endif
+
 namespace mara {
 
 // =============================================================================
@@ -206,6 +211,14 @@ struct ServiceStorage {
     ControlHandler*   controlHandler   = nullptr;
     ObserverHandler*  observerHandler  = nullptr;
     IdentityHandler*  identityHandler  = nullptr;
+
+#ifdef FEATURE_BENCHMARK
+    // =========================================================================
+    // Benchmark System (optional, feature-flagged)
+    // =========================================================================
+    benchmark::BenchmarkModule* benchmarkModule  = nullptr;
+    BenchmarkHandler*           benchmarkHandler = nullptr;
+#endif
 
     // =========================================================================
     // Loop Schedulers

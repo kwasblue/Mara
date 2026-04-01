@@ -1,0 +1,82 @@
+{
+  "benchmark": "mcu_benchmark",
+  "timestamp": "2026-04-01T15:08:40.954138",
+  "transport": "serial",
+  "port": "serial:/dev/cu.usbserial-0001",
+  "results": [
+    {
+      "test_id": 1,
+      "test_name": "LOOP_TIMING",
+      "samples": 50,
+      "mean_us": 2.94,
+      "min_us": 1,
+      "max_us": 5,
+      "p50_us": 1,
+      "p95_us": 2,
+      "p99_us": 2,
+      "jitter_us": 0,
+      "total_us": 147,
+      "throughput_hz": 340136
+    },
+    {
+      "test_id": 2,
+      "test_name": "SIGNAL_BUS",
+      "samples": 50,
+      "mean_us": 6.2,
+      "min_us": 5,
+      "max_us": 8,
+      "p50_us": 5,
+      "p95_us": 5,
+      "p99_us": 8,
+      "jitter_us": 0,
+      "total_us": 310,
+      "throughput_hz": 161290.3
+    },
+    {
+      "test_id": 32,
+      "test_name": "PING_INTERNAL",
+      "samples": 50,
+      "mean_us": 2.52,
+      "min_us": 1,
+      "max_us": 6,
+      "p50_us": 1,
+      "p95_us": 2,
+      "p99_us": 2,
+      "jitter_us": 0,
+      "total_us": 126,
+      "throughput_hz": 396825.4
+    },
+    {
+      "test_id": 35,
+      "test_name": "TELEM_JSON",
+      "samples": 256,
+      "mean_us": 3369.35546875,
+      "min_us": 84,
+      "max_us": 242,
+      "p50_us": 84,
+      "p95_us": 92,
+      "p99_us": 155,
+      "jitter_us": 14,
+      "total_us": 862555,
+      "throughput_hz": 11593.46
+    },
+    {
+      "test_id": 65,
+      "test_name": "HEAP_512B",
+      "samples": 256,
+      "mean_us": 1061.84765625,
+      "min_us": 25,
+      "max_us": 283,
+      "p50_us": 26,
+      "p95_us": 27,
+      "p99_us": 34,
+      "jitter_us": 16,
+      "total_us": 271833,
+      "throughput_hz": 36787.29
+    }
+  ],
+  "summary": {
+    "test_count": 5,
+    "total_samples": 662
+  }
+}

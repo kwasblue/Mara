@@ -185,6 +185,7 @@ struct ServiceContext {
     IModule* heartbeat = nullptr;
     IModule* logger    = nullptr;
     IModule* identity  = nullptr;
+    IModule* benchmark = nullptr;  // BenchmarkModule (optional, FEATURE_BENCHMARK)
     ObserverManager* observers = nullptr;
 
     // =========================================================================

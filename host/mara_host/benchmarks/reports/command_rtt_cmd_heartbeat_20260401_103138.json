@@ -1,0 +1,43 @@
+{
+  "benchmark": "command_rtt_cmd_heartbeat",
+  "environment": {
+    "transport": "serial",
+    "port_or_host": "/dev/tty.usbserial-0001",
+    "baud_rate": 115200,
+    "protocol": "json",
+    "git_sha": "13652f0",
+    "timestamp": "2026-04-01T14:31:38.850102+00:00",
+    "robot_config": null
+  },
+  "results": {
+    "name": "command_rtt_cmd_heartbeat",
+    "mean_ms": 75.217755015,
+    "p50_ms": 72.62366700000001,
+    "p95_ms": 103.2110048,
+    "p99_ms": 114.42527199999999,
+    "min_ms": 42.497458,
+    "max_ms": 117.201041,
+    "jitter_ms": 23.957830766327913,
+    "samples": 200,
+    "throughput_hz": null,
+    "error_count": 0,
+    "retry_count": 0,
+    "metadata": {
+      "cmd_type": "CMD_HEARTBEAT",
+      "encoding": "json",
+      "encode_time_us": {
+        "mean": 111.338945,
+        "min": 11.625,
+        "max": 198.209
+      },
+      "ack_wait_ms": {
+        "mean": 75.217755015,
+        "min": 42.497458,
+        "max": 117.201041
+      },
+      "total_retries": 0,
+      "timeout_count": 0,
+      "pending_queue_depth": 0
+    }
+  }
+}

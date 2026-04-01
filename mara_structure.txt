@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-31 21:50:51
-Total Files: 997
-Total Lines of Code: 109,821
+Generated: 2026-03-31 22:47:27
+Total Files: 996
+Total Lines of Code: 110,203
 ================================================================================
 
 
@@ -82,21 +82,7 @@ HOST (Python)
 
   host/mara_host/__main__.py (4 lines)
 
-  host/mara_host/api/__init__.py (84 lines)
-
-  host/mara_host/api/controller_slot.py (116 lines)
-    [Class] ControllerType
-    [Class] ControllerConfig
-    [Class] ControllerSlot
-      |-- __init__(self, robot, slot)
-      |-- slot(self)
-      |-- config(self)
-      `-- is_enabled(self)
-    [Class] ControllerSlotManager
-      |-- __init__(self, robot)
-      |-- __getitem__(self, index)
-      |-- __iter__(self)
-      `-- __len__(self)
+  host/mara_host/api/__init__.py (80 lines)
 
   host/mara_host/api/dc_motor.py (48 lines)
     [Class] DCMotor
@@ -3570,18 +3556,18 @@ HOST (Python)
 
   host/mara_host/mcp/__main__.py (3 lines)
 
-  host/mara_host/mcp/_generated_http.py (902 lines)
+  host/mara_host/mcp/_generated_http.py (1199 lines)
     [Fn] _serialize_result_data(data)
     [Fn] create_generated_routes(runtime)
     [Fn] get_openai_function_schema()
 
-  host/mara_host/mcp/_generated_tools.py (1623 lines)
+  host/mara_host/mcp/_generated_tools.py (1599 lines)
     [Fn] get_tool_definitions()
 
   host/mara_host/mcp/http_server.py (104 lines)
     [Fn] create_http_app(runtime)
 
-  host/mara_host/mcp/runtime.py (584 lines)
+  host/mara_host/mcp/runtime.py (589 lines)
     [Fn] _redact_sensitive(params)
     [Class] EventType
     [Class] Event
@@ -3625,6 +3611,7 @@ HOST (Python)
       |-- motion_service(self)
       |-- signal_service(self)
       |-- camera_control_service(self)
+      |-- controller_service(self)
       |-- client(self)
       |-- telemetry(self)
       |-- robot_loaded(self)
@@ -3647,7 +3634,7 @@ HOST (Python)
     [Fn] _check_auth(arguments)
     [Fn] create_server(port, host, ble_name, tcp_port)
 
-  host/mara_host/mcp/tool_schema.py (752 lines)
+  host/mara_host/mcp/tool_schema.py (946 lines)
     [Class] ToolParam
       `-- to_json_schema(self)
     [Class] ToolDef
@@ -4159,7 +4146,7 @@ HOST (Python)
       |-- persistence_store(self)
       `-- _graph_for_safe_restore(graph)
 
-  host/mara_host/services/control/controller_service.py (329 lines)
+  host/mara_host/services/control/controller_service.py (359 lines)
     [Class] SignalKind
     [Class] ControllerType
     [Class] ObserverType
@@ -9206,22 +9193,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     691
+  Python Files:     690
   C++ Files:        306
-  Total Files:      997
+  Total Files:      996
 
 DEFINITIONS
-  Classes:          1271
+  Classes:          1267
   Structs:          177
   Functions:        2319
-  Methods:          3392
+  Methods:          3385
 
 LINES OF CODE
-  Python:           84,275
+  Python:           84,657
   C++:              25,546
-  Total Code:       109,821
-  Blank Lines:      30,163
-  Comment Lines:    29,491
-  Total Lines:      169,475
+  Total Code:       110,203
+  Blank Lines:      30,148
+  Comment Lines:    29,453
+  Total Lines:      169,804
 
 ================================================================================

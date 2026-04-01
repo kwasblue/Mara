@@ -10,6 +10,48 @@ class RobotCommandsMixin:
     Requires that the inheriting client defines:
         async def send_json_cmd(self, type_str: str, payload: dict | None = None) -> None
     """
+    async def cmd_bench_start(self, test_id: int, iterations: int = 100, warmup: int = 10, budget_us: int = 0, rt_safe: bool = False, stream: bool = False) -> None:
+        """Start a benchmark test on the MCU. (CMD_BENCH_START)"""
+        payload: dict[str, Any] = {}
+        payload['test_id'] = test_id
+        payload['iterations'] = iterations
+        payload['warmup'] = warmup
+        payload['budget_us'] = budget_us
+        payload['rt_safe'] = rt_safe
+        payload['stream'] = stream
+        await self.send_json_cmd('CMD_BENCH_START', payload)
+
+    async def cmd_bench_stop(self) -> None:
+        """Cancel all running and queued benchmarks. (CMD_BENCH_STOP)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_BENCH_STOP', payload)
+
+    async def cmd_bench_status(self) -> None:
+        """Get current benchmark system status. (CMD_BENCH_STATUS)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_BENCH_STATUS', payload)
+
+    async def cmd_bench_list_tests(self) -> None:
+        """List all available benchmark tests. (CMD_BENCH_LIST_TESTS)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_BENCH_LIST_TESTS', payload)
+
+    async def cmd_bench_get_results(self, max: int = 4) -> None:
+        """Get benchmark result history. (CMD_BENCH_GET_RESULTS)"""
+        payload: dict[str, Any] = {}
+        payload['max'] = max
+        await self.send_json_cmd('CMD_BENCH_GET_RESULTS', payload)
+
+    async def cmd_bench_run_boot_tests(self) -> None:
+        """Manually trigger boot-time benchmark tests. (CMD_BENCH_RUN_BOOT_TESTS)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_BENCH_RUN_BOOT_TESTS', payload)
+
+    async def cmd_perf_reset(self) -> None:
+        """Reset MCU performance counters and statistics. (CMD_PERF_RESET)"""
+        payload: dict[str, Any] = {}
+        await self.send_json_cmd('CMD_PERF_RESET', payload)
+
     async def cmd_cam_get_status(self, camera_id: int = 0) -> None:
         """Get camera device status (IP, RSSI, heap, uptime). (CMD_CAM_GET_STATUS)"""
         payload: dict[str, Any] = {}

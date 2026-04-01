@@ -1,5 +1,270 @@
 {
   "commands": {
+    "CMD_BENCH_START": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Start a benchmark test on the MCU.",
+      "payload": {
+        "test_id": {
+          "type": "int",
+          "required": true,
+          "description": "Test ID to run (see CMD_BENCH_LIST_TESTS for available tests)",
+          "min": 0,
+          "max": 255
+        },
+        "iterations": {
+          "type": "int",
+          "description": "Number of test iterations",
+          "default": 100,
+          "min": 1,
+          "max": 10000
+        },
+        "warmup": {
+          "type": "int",
+          "description": "Number of warmup iterations (not timed)",
+          "default": 10,
+          "min": 0,
+          "max": 1000
+        },
+        "budget_us": {
+          "type": "int",
+          "description": "Max time budget per iteration in microseconds (0 = unlimited)",
+          "default": 0,
+          "min": 0,
+          "units": "us"
+        },
+        "rt_safe": {
+          "type": "bool",
+          "description": "Run in real-time safe context",
+          "default": false
+        },
+        "stream": {
+          "type": "bool",
+          "description": "Stream results as they complete",
+          "default": false
+        }
+      },
+      "response": {
+        "test_id": {
+          "type": "int",
+          "description": "Queued test ID"
+        },
+        "iterations": {
+          "type": "int",
+          "description": "Actual iterations"
+        },
+        "warmup": {
+          "type": "int",
+          "description": "Warmup iterations"
+        },
+        "queue_depth": {
+          "type": "int",
+          "description": "Current queue depth"
+        }
+      }
+    },
+    "CMD_BENCH_STOP": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Cancel all running and queued benchmarks.",
+      "payload": {},
+      "response": {
+        "cancelled": {
+          "type": "bool",
+          "description": "True if cancellation succeeded"
+        }
+      }
+    },
+    "CMD_BENCH_STATUS": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Get current benchmark system status.",
+      "payload": {},
+      "response": {
+        "state": {
+          "type": "int",
+          "description": "Current state (0=idle, 1=running, 2=complete, 3=error, 4=queued)"
+        },
+        "state_name": {
+          "type": "string",
+          "description": "Human-readable state name"
+        },
+        "active_test": {
+          "type": "int",
+          "description": "Currently running test ID (0 if none)"
+        },
+        "queue_depth": {
+          "type": "int",
+          "description": "Number of queued benchmarks"
+        },
+        "result_count": {
+          "type": "int",
+          "description": "Number of available results"
+        },
+        "registered_tests": {
+          "type": "int",
+          "description": "Number of registered tests"
+        }
+      }
+    },
+    "CMD_BENCH_LIST_TESTS": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "List all available benchmark tests.",
+      "payload": {},
+      "response": {
+        "tests": {
+          "type": "array",
+          "description": "Array of test definitions",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "int",
+                "description": "Test ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Test name"
+              },
+              "desc": {
+                "type": "string",
+                "description": "Test description"
+              },
+              "rt_safe": {
+                "type": "bool",
+                "description": "Can run in RT context"
+              },
+              "boot_test": {
+                "type": "bool",
+                "description": "Runs at boot"
+              }
+            }
+          }
+        },
+        "count": {
+          "type": "int",
+          "description": "Number of tests"
+        }
+      }
+    },
+    "CMD_BENCH_GET_RESULTS": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Get benchmark result history.",
+      "payload": {
+        "max": {
+          "type": "int",
+          "description": "Maximum number of results to return",
+          "default": 4,
+          "min": 1,
+          "max": 8
+        }
+      },
+      "response": {
+        "results": {
+          "type": "array",
+          "description": "Array of benchmark results",
+          "items": {
+            "type": "object",
+            "properties": {
+              "test_id": {
+                "type": "int",
+                "description": "Test ID"
+              },
+              "state": {
+                "type": "int",
+                "description": "Result state"
+              },
+              "error": {
+                "type": "int",
+                "description": "Error code"
+              },
+              "timestamp_ms": {
+                "type": "int",
+                "description": "Completion time"
+              },
+              "samples": {
+                "type": "int",
+                "description": "Number of samples"
+              },
+              "mean_us": {
+                "type": "int",
+                "description": "Mean time in us"
+              },
+              "min_us": {
+                "type": "int",
+                "description": "Min time in us"
+              },
+              "max_us": {
+                "type": "int",
+                "description": "Max time in us"
+              },
+              "p50_us": {
+                "type": "int",
+                "description": "50th percentile in us"
+              },
+              "p95_us": {
+                "type": "int",
+                "description": "95th percentile in us"
+              },
+              "p99_us": {
+                "type": "int",
+                "description": "99th percentile in us"
+              },
+              "jitter_us": {
+                "type": "int",
+                "description": "Jitter (stddev) in us"
+              },
+              "total_us": {
+                "type": "int",
+                "description": "Total test time in us"
+              },
+              "budget_violations": {
+                "type": "int",
+                "description": "Budget exceeded count"
+              },
+              "throughput_hz": {
+                "type": "float",
+                "description": "Throughput in Hz"
+              }
+            }
+          }
+        },
+        "count": {
+          "type": "int",
+          "description": "Number of results returned"
+        },
+        "available": {
+          "type": "int",
+          "description": "Total results available"
+        }
+      }
+    },
+    "CMD_BENCH_RUN_BOOT_TESTS": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Manually trigger boot-time benchmark tests.",
+      "payload": {},
+      "response": {
+        "scheduled": {
+          "type": "bool",
+          "description": "True if boot tests scheduled"
+        }
+      }
+    },
+    "CMD_PERF_RESET": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Reset MCU performance counters and statistics.",
+      "payload": {},
+      "response": {
+        "reset": {
+          "type": "bool",
+          "description": "True if counters reset"
+        }
+      }
+    },
     "CMD_CAM_GET_STATUS": {
       "kind": "cmd",
       "direction": "host->camera",

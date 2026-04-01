@@ -9,6 +9,12 @@ enum class CmdType {
     ACTIVATE,
     ARM,
     BATCH_APPLY,
+    BENCH_GET_RESULTS,
+    BENCH_LIST_TESTS,
+    BENCH_RUN_BOOT_TESTS,
+    BENCH_START,
+    BENCH_STATUS,
+    BENCH_STOP,
     CAM_APPLY_PRESET,
     CAM_CAPTURE_FRAME,
     CAM_FLASH,
@@ -86,6 +92,7 @@ enum class CmdType {
     OBSERVER_SET_PARAM,
     OBSERVER_SET_PARAM_ARRAY,
     OBSERVER_STATUS,
+    PERF_RESET,
     PWM_SET,
     SAFETY_SET_RATE,
     SERVO_ATTACH,
@@ -123,6 +130,12 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_ACTIVATE", CmdType::ACTIVATE},
         {"CMD_ARM", CmdType::ARM},
         {"CMD_BATCH_APPLY", CmdType::BATCH_APPLY},
+        {"CMD_BENCH_GET_RESULTS", CmdType::BENCH_GET_RESULTS},
+        {"CMD_BENCH_LIST_TESTS", CmdType::BENCH_LIST_TESTS},
+        {"CMD_BENCH_RUN_BOOT_TESTS", CmdType::BENCH_RUN_BOOT_TESTS},
+        {"CMD_BENCH_START", CmdType::BENCH_START},
+        {"CMD_BENCH_STATUS", CmdType::BENCH_STATUS},
+        {"CMD_BENCH_STOP", CmdType::BENCH_STOP},
         {"CMD_CAM_APPLY_PRESET", CmdType::CAM_APPLY_PRESET},
         {"CMD_CAM_CAPTURE_FRAME", CmdType::CAM_CAPTURE_FRAME},
         {"CMD_CAM_FLASH", CmdType::CAM_FLASH},
@@ -200,6 +213,7 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_OBSERVER_SET_PARAM", CmdType::OBSERVER_SET_PARAM},
         {"CMD_OBSERVER_SET_PARAM_ARRAY", CmdType::OBSERVER_SET_PARAM_ARRAY},
         {"CMD_OBSERVER_STATUS", CmdType::OBSERVER_STATUS},
+        {"CMD_PERF_RESET", CmdType::PERF_RESET},
         {"CMD_PWM_SET", CmdType::PWM_SET},
         {"CMD_SAFETY_SET_RATE", CmdType::SAFETY_SET_RATE},
         {"CMD_SERVO_ATTACH", CmdType::SERVO_ATTACH},
@@ -238,6 +252,12 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::ACTIVATE: return "CMD_ACTIVATE";
         case CmdType::ARM: return "CMD_ARM";
         case CmdType::BATCH_APPLY: return "CMD_BATCH_APPLY";
+        case CmdType::BENCH_GET_RESULTS: return "CMD_BENCH_GET_RESULTS";
+        case CmdType::BENCH_LIST_TESTS: return "CMD_BENCH_LIST_TESTS";
+        case CmdType::BENCH_RUN_BOOT_TESTS: return "CMD_BENCH_RUN_BOOT_TESTS";
+        case CmdType::BENCH_START: return "CMD_BENCH_START";
+        case CmdType::BENCH_STATUS: return "CMD_BENCH_STATUS";
+        case CmdType::BENCH_STOP: return "CMD_BENCH_STOP";
         case CmdType::CAM_APPLY_PRESET: return "CMD_CAM_APPLY_PRESET";
         case CmdType::CAM_CAPTURE_FRAME: return "CMD_CAM_CAPTURE_FRAME";
         case CmdType::CAM_FLASH: return "CMD_CAM_FLASH";
@@ -315,6 +335,7 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::OBSERVER_SET_PARAM: return "CMD_OBSERVER_SET_PARAM";
         case CmdType::OBSERVER_SET_PARAM_ARRAY: return "CMD_OBSERVER_SET_PARAM_ARRAY";
         case CmdType::OBSERVER_STATUS: return "CMD_OBSERVER_STATUS";
+        case CmdType::PERF_RESET: return "CMD_PERF_RESET";
         case CmdType::PWM_SET: return "CMD_PWM_SET";
         case CmdType::SAFETY_SET_RATE: return "CMD_SAFETY_SET_RATE";
         case CmdType::SERVO_ATTACH: return "CMD_SERVO_ATTACH";

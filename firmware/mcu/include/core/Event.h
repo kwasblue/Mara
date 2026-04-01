@@ -18,6 +18,9 @@ enum class EventType : uint8_t {
     ESTOP_TRIGGERED,
     ESTOP_CLEARED,
     MODE_CHANGED,
+#ifdef FEATURE_BENCHMARK
+    BENCHMARK_COMPLETE,
+#endif
 };
 
 struct TelemetrySystemPayload {

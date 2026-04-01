@@ -23,6 +23,7 @@ enum class SectionId : uint8_t {
     TELEM_CTRL_SIGNALS   = 0x10,  // Control signal bus values
     TELEM_CTRL_OBSERVERS = 0x11,  // Observer state estimates
     TELEM_CTRL_SLOTS     = 0x12,  // Control slot status
+    TELEM_BENCHMARK      = 0x13,  // Benchmark system state and latest results
 };
 
 // Helper to get section ID as raw byte
@@ -66,6 +67,9 @@ inline uint8_t id(SectionId s) {
 //   Size: variable
 //
 // TELEM_CTRL_SLOTS: 
+//   Size: variable
+//
+// TELEM_BENCHMARK: bench_state(u8) active_test(u8) queue_depth(u8) result_count(u8)
 //   Size: variable
 //
 

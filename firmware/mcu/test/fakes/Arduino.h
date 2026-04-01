@@ -65,8 +65,14 @@ static inline unsigned long millis(void) {
   static const auto t0 = steady_clock::now();
   return (unsigned long)duration_cast<milliseconds>(steady_clock::now() - t0).count();
 }
+static inline unsigned long micros(void) {
+  using namespace std::chrono;
+  static const auto t0 = steady_clock::now();
+  return (unsigned long)duration_cast<microseconds>(steady_clock::now() - t0).count();
+}
 #else
 static inline unsigned long millis(void) { return 0UL; }
+static inline unsigned long micros(void) { return 0UL; }
 #endif
 
 // LEDC PWM stubs (ESP32 Arduino)

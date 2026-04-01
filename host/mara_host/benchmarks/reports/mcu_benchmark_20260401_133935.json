@@ -1,0 +1,26 @@
+{
+  "benchmark": "mcu_benchmark",
+  "timestamp": "2026-04-01T13:39:35.823365",
+  "transport": "serial",
+  "port": "serial:/dev/cu.usbserial-0001",
+  "results": [
+    {
+      "test_id": 1,
+      "test_name": "LOOP_TIMING",
+      "samples": 50,
+      "mean_us": 2.74,
+      "min_us": 1,
+      "max_us": 2,
+      "p50_us": 1,
+      "p95_us": 2,
+      "p99_us": 2,
+      "jitter_us": 0,
+      "total_us": 137,
+      "throughput_hz": 364963.5
+    }
+  ],
+  "summary": {
+    "test_count": 1,
+    "total_samples": 50
+  }
+}

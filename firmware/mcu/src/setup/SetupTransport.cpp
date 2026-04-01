@@ -35,6 +35,7 @@ public:
         if (ctx.heartbeat) ctx.host->addModule(ctx.heartbeat);
         if (ctx.logger)    ctx.host->addModule(ctx.logger);
         if (ctx.identity)  ctx.host->addModule(ctx.identity);
+        if (ctx.benchmark) ctx.host->addModule(ctx.benchmark);
 
         // Setup host with ServiceContext for self-registered modules
         ctx.host->setup(&ctx);

@@ -14,3 +14,8 @@
 #include "command/handlers/ControlHandler.h"
 #include "command/handlers/ObserverHandler.h"
 #include "command/handlers/IdentityHandler.h"
+
+// Optional handlers (feature-flagged)
+#ifdef FEATURE_BENCHMARK
+#include "command/handlers/BenchmarkHandler.h"
+#endif

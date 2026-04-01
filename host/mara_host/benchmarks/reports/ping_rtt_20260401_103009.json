@@ -1,0 +1,30 @@
+{
+  "benchmark": "ping_rtt",
+  "environment": {
+    "transport": "serial",
+    "port_or_host": "/dev/tty.usbserial-0001",
+    "baud_rate": 115200,
+    "protocol": "binary",
+    "git_sha": "13652f0",
+    "timestamp": "2026-04-01T14:30:09.068291+00:00",
+    "robot_config": null
+  },
+  "results": {
+    "name": "ping_rtt",
+    "mean_ms": 54.60917103220709,
+    "p50_ms": 54.33062498923391,
+    "p95_ms": 86.56920060166152,
+    "p99_ms": 94.77055489725899,
+    "min_ms": 12.763540958985686,
+    "max_ms": 101.26445803325623,
+    "jitter_ms": 17.400400426358104,
+    "samples": 500,
+    "throughput_hz": 18.311942501566737,
+    "error_count": 0,
+    "retry_count": 0,
+    "metadata": {
+      "timeout_count": 0,
+      "warmup": 10
+    }
+  }
+}

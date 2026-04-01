@@ -1,0 +1,35 @@
+{
+  "benchmark": "sustained_stream",
+  "environment": {
+    "transport": "serial",
+    "port_or_host": "/dev/tty.usbserial-0001",
+    "baud_rate": 115200,
+    "protocol": "json",
+    "git_sha": "13652f0",
+    "timestamp": "2026-04-01T14:46:43.546362+00:00",
+    "robot_config": null
+  },
+  "results": {
+    "name": "sustained_stream",
+    "mean_ms": 0.5107879758995816,
+    "p50_ms": 0.409042,
+    "p95_ms": 1.0391123000000002,
+    "p99_ms": 2.1082026600000017,
+    "min_ms": 0.079875,
+    "max_ms": 14.669583,
+    "jitter_ms": 0.41530875424075614,
+    "samples": 5975,
+    "throughput_hz": 199.14881905587407,
+    "error_count": 0,
+    "retry_count": 0,
+    "metadata": {
+      "requested_rate_hz": 200.0,
+      "achieved_rate_hz": 199.14881905587407,
+      "rate_achievement_pct": 99.57440952793704,
+      "total_sent": 5975,
+      "total_dropped": 0,
+      "duration_s": 30.002688583976123,
+      "mode": "fire_and_forget"
+    }
+  }
+}

@@ -28,6 +28,10 @@ ServiceStorage::~ServiceStorage() {
     delete gpioHandler;
     delete motionHandler;
     delete safetyHandler;
+#ifdef FEATURE_BENCHMARK
+    delete benchmarkHandler;
+    delete benchmarkModule;
+#endif
 
     // Modules
     delete identity;
@@ -127,6 +131,16 @@ void ServiceStorage::initCommands() {
     commands->registerHandler(observerHandler);
     commands->registerHandler(identityHandler);
 
+#ifdef FEATURE_BENCHMARK
+    // Create benchmark module and handler
+    benchmarkModule  = new benchmark::BenchmarkModule(bus);
+    benchmarkHandler = new BenchmarkHandler(*benchmarkModule);
+    commands->registerHandler(benchmarkHandler);
+
+    // Register telemetry provider
+    benchmarkModule->registerTelemetry(&telemetry);
+#endif
+
     // Set available capabilities from feature flags
     HandlerRegistry::instance().setAvailableCaps(buildCapabilityMask());
 
@@ -212,6 +226,9 @@ ServiceContext ServiceStorage::buildContext() {
     ctx.heartbeat = &heartbeat;
     ctx.logger    = &logger;
     ctx.identity  = identity;
+#ifdef FEATURE_BENCHMARK
+    ctx.benchmark = benchmarkModule;
+#endif
     if (control) {
         ctx.observers = &control->observers();
     }

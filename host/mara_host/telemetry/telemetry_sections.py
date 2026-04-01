@@ -21,6 +21,7 @@ TELEM_SENSOR_HEALTH  = 0x08  # Compact sensor health and degraded-state summary
 TELEM_CTRL_SIGNALS   = 0x10  # Control signal bus values
 TELEM_CTRL_OBSERVERS = 0x11  # Observer state estimates
 TELEM_CTRL_SLOTS     = 0x12  # Control slot status
+TELEM_BENCHMARK      = 0x13  # Benchmark system state and latest results
 
 __all__ = [
     "TELEM_IMU",
@@ -34,6 +35,7 @@ __all__ = [
     "TELEM_CTRL_SIGNALS",
     "TELEM_CTRL_OBSERVERS",
     "TELEM_CTRL_SLOTS",
+    "TELEM_BENCHMARK",
 ]
 
 
@@ -103,6 +105,12 @@ SECTION_INFO = {
         "name": "TELEM_CTRL_SLOTS",
         "description": "Control slot status",
         "format": "",
+        "size": None,
+    },
+    0x13: {
+        "name": "TELEM_BENCHMARK",
+        "description": "Benchmark system state and latest results",
+        "format": "bench_state(u8) active_test(u8) queue_depth(u8) result_count(u8)",
         "size": None,
     },
 }

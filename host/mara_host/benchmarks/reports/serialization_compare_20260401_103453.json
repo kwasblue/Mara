@@ -1,0 +1,37 @@
+{
+  "benchmark": "serialization_compare",
+  "environment": {
+    "transport": "none",
+    "port_or_host": "localhost",
+    "baud_rate": null,
+    "protocol": "comparison",
+    "git_sha": "13652f0",
+    "timestamp": "2026-04-01T14:34:53.037894+00:00",
+    "robot_config": null
+  },
+  "results": {
+    "name": "serialization_comparison",
+    "mean_ms": 0.002294864,
+    "p50_ms": 0.002294864,
+    "p95_ms": 0.002294864,
+    "p99_ms": 0.002294864,
+    "min_ms": 0.002294864,
+    "max_ms": 0.002294864,
+    "jitter_ms": 0.0,
+    "samples": 1,
+    "throughput_hz": null,
+    "error_count": 0,
+    "retry_count": 0,
+    "metadata": {
+      "json_encode_us": 2.294864,
+      "binary_encode_us": 0.141059,
+      "encode_speedup": 16.26882368370682,
+      "json_size_bytes": 66,
+      "binary_size_bytes": 11,
+      "size_reduction_pct": 83.33333333333334,
+      "json_rtt_ms": null,
+      "binary_rtt_ms": null,
+      "rtt_speedup": null
+    }
+  }
+}

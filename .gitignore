@@ -26,6 +26,7 @@ pip-wheel-metadata/
 # Log directories (only at specific levels, not cli/commands/logs/)
 /logs/
 /host/logs/
+reports/
 
 # ---- Stale generation artifacts (prevent root-level duplicates) ----
 # If generators run from wrong directory, these could appear at repo root
@@ -42,6 +43,7 @@ pip-wheel-metadata/
 
 # ---- Build artifacts ----
 dist/
+
 
 # ---- Claude Code internals ----
 .claire/

@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-31 22:47:27
-Total Files: 996
-Total Lines of Code: 110,203
+Generated: 2026-04-01 15:18:51
+Total Files: 1029
+Total Lines of Code: 116,444
 ================================================================================
 
 
@@ -386,6 +386,30 @@ HOST (Python)
       |-- is_moving(self)
       `-- __repr__(self)
 
+  host/mara_host/benchmarks/__init__.py (28 lines)
+
+  host/mara_host/benchmarks/camera/frame_latency.py (196 lines)
+    [Class] FrameTimings
+    [Class] CameraBenchmarkStats
+      `-- drop_rate_pct(self)
+    [Class] CameraBenchmark
+      |-- __init__(self, base_url, timeout)
+      `-- run(self, duration_s, target_fps)
+    [Fn] run_benchmark(host, port, duration, target_fps, timeout, save_report)
+    [Fn] main()
+
+  host/mara_host/benchmarks/commands/command_rtt.py (267 lines)
+    [Class] CommandTiming
+    [Class] CommandRTTBenchmark
+      `-- __init__(self, client, bus)
+    [Fn] main()
+
+  host/mara_host/benchmarks/commands/ping_rtt.py (172 lines)
+    [Class] PingBenchmark
+      |-- __init__(self, client, bus)
+      `-- _on_pong(self, msg)
+    [Fn] main()
+
   host/mara_host/benchmarks/commands/send_all/__init__.py (32 lines)
 
   host/mara_host/benchmarks/commands/send_all/__main__.py (3 lines)
@@ -425,6 +449,46 @@ HOST (Python)
     [Class] CmdResult
     [Class] RunContext
 
+  host/mara_host/benchmarks/core.py (241 lines)
+    [Class] BenchmarkResult
+      |-- __str__(self)
+      `-- to_dict(self)
+    [Class] BenchmarkEnvironment
+      |-- capture(cls, transport, port_or_host, baud_rate, protocol, robot_config)
+      `-- to_dict(self)
+    [Class] BenchmarkReport
+      |-- to_dict(self)
+      `-- save(self, filename)
+    [Fn] get_git_sha()
+    [Fn] percentile(data, p)
+    [Fn] compute_stats(times_ms)
+    [Fn] make_result(name, times_ms, error_count, retry_count, throughput_hz, metadata)
+    [Class] Timer
+      |-- __init__(self)
+      |-- __enter__(self)
+      |-- __exit__(self)
+      |-- elapsed_ns(self)
+      |-- elapsed_us(self)
+      `-- elapsed_ms(self)
+    [Fn] timed_loop(func, iterations, warmup, disable_gc)
+    [Fn] print_header(title, width)
+    [Fn] print_section(title)
+    [Fn] print_result(result)
+    [Fn] print_comparison(name, a_label, a_ms, b_label, b_ms)
+
+  host/mara_host/benchmarks/e2e/motor_response.py (208 lines)
+    [Class] MotorResponseBenchmark
+      |-- __init__(self, client, bus)
+      `-- _on_telemetry(self, msg)
+    [Fn] main()
+
+  host/mara_host/benchmarks/e2e/servo_completion.py (222 lines)
+    [Class] ServoCompletionBenchmark
+      |-- __init__(self, client, bus)
+      |-- _on_servo_ack(self, msg)
+      `-- _on_servo_telemetry(self, msg)
+    [Fn] main()
+
   host/mara_host/benchmarks/efficiency_eval.py (62 lines)
     [Class] BenchmarkResult
       `-- __str__(self)
@@ -454,6 +518,83 @@ HOST (Python)
     [Fn] on_led_ack(msg)
 
   host/mara_host/benchmarks/latency/run_benchmarks.py (36 lines)
+    [Fn] main()
+
+  host/mara_host/benchmarks/mcu/__init__.py (28 lines)
+
+  host/mara_host/benchmarks/mcu/perf_monitor.py (194 lines)
+    [Class] PerfMetrics
+      |-- from_telemetry(cls, data)
+      |-- to_dict(self)
+      `-- __str__(self)
+    [Class] PerfSession
+      |-- add_sample(self, metrics)
+      |-- duration_s(self)
+      `-- get_summary(self)
+    [Class] PerfMonitor
+      `-- __init__(self, transport, telemetry_section_id)
+
+  host/mara_host/benchmarks/mcu/test_catalog.py (151 lines)
+    [Class] TestId
+    [Class] BenchState
+    [Class] BenchError
+    [Class] TestInfo
+    [Fn] get_test_name(test_id)
+    [Fn] get_test_description(test_id)
+
+  host/mara_host/benchmarks/mcu/triggered_benchmark.py (150 lines)
+    [Class] MCUBenchmarkResult
+      |-- __post_init__(self)
+      |-- from_dict(cls, data)
+      `-- __str__(self)
+    [Class] TriggeredBenchmark
+      `-- __init__(self, transport, timeout_s, poll_interval_s)
+
+  host/mara_host/benchmarks/serialization/binary_bench.py (135 lines)
+    [Fn] encode_binary_minimal(seq)
+    [Fn] encode_binary_velocity(seq, vx, omega)
+    [Fn] encode_binary_servo(seq, channel, position, speed)
+    [Fn] benchmark_binary_encode(encoder_name, iterations, warmup)
+    [Fn] benchmark_binary_decode(encoder_name, iterations, warmup)
+    [Fn] run_benchmark(iterations, payload_name)
+    [Fn] main()
+
+  host/mara_host/benchmarks/serialization/compare.py (234 lines)
+    [Class] SerializationComparison
+    [Fn] benchmark_encoding_comparison(iterations)
+    [Fn] run_benchmark(iterations, port, tcp_host, tcp_port, save_report)
+    [Fn] main()
+
+  host/mara_host/benchmarks/serialization/json_bench.py (129 lines)
+    [Fn] benchmark_json_encode(payload, iterations, warmup)
+    [Fn] benchmark_json_decode(payload, iterations, warmup)
+    [Fn] run_benchmark(iterations, payload_name)
+    [Fn] main()
+
+  host/mara_host/benchmarks/streaming/sustained_stream.py (341 lines)
+    [Class] StreamStats
+      |-- rate_achievement_pct(self)
+      `-- drop_rate_pct(self)
+    [Class] StreamingBenchmark
+      `-- __init__(self, client, bus)
+    [Fn] main()
+
+  host/mara_host/benchmarks/transport/compare.py (256 lines)
+    [Class] TransportMetrics
+    [Fn] on_pong(msg)
+    [Fn] percentile(data, p)
+    [Fn] main()
+
+  host/mara_host/benchmarks/transport/serial_bench.py (174 lines)
+    [Class] SerialBenchmark
+      |-- __init__(self, client, bus)
+      `-- _on_pong(self, msg)
+    [Fn] main()
+
+  host/mara_host/benchmarks/transport/tcp_bench.py (204 lines)
+    [Class] TcpBenchmark
+      |-- __init__(self, client, bus)
+      `-- _on_pong(self, msg)
     [Fn] main()
 
   host/mara_host/camera/__init__.py (96 lines)
@@ -1178,6 +1319,17 @@ HOST (Python)
 
   host/mara_host/cli/shell/actuators.py (184 lines)
 
+  host/mara_host/cli/shell/benchmarks.py (687 lines)
+    [Fn] _print_usage()
+    [Fn] on_pong(data)
+    [Fn] _print_result(result)
+    [Fn] _save_report(shell, benchmark_name, result)
+    [Fn] _print_mcu_usage()
+    [Fn] on_response(data)
+    [Fn] _state_color(state)
+    [Fn] _get_test_name(test_id)
+    [Fn] _save_mcu_results(shell, results)
+
   host/mara_host/cli/shell/camera.py (40 lines)
 
   host/mara_host/cli/shell/connection.py (81 lines)
@@ -1612,10 +1764,10 @@ HOST (Python)
 
   host/mara_host/config/__init__.py (32 lines)
 
-  host/mara_host/config/client_commands.py (514 lines)
+  host/mara_host/config/client_commands.py (542 lines)
     [Class] RobotCommandsMixin
 
-  host/mara_host/config/command_defs.py (218 lines)
+  host/mara_host/config/command_defs.py (232 lines)
 
   host/mara_host/config/control_graph_defs.py (44 lines)
 
@@ -3561,7 +3713,7 @@ HOST (Python)
     [Fn] create_generated_routes(runtime)
     [Fn] get_openai_function_schema()
 
-  host/mara_host/mcp/_generated_tools.py (1599 lines)
+  host/mara_host/mcp/_generated_tools.py (1690 lines)
     [Fn] get_tool_definitions()
 
   host/mara_host/mcp/http_server.py (104 lines)
@@ -4769,7 +4921,7 @@ HOST (Python)
     [Fn] get_section_registry()
     [Fn] parse_unknown_section(section_id, body, ts_ms)
 
-  host/mara_host/telemetry/telemetry_sections.py (92 lines)
+  host/mara_host/telemetry/telemetry_sections.py (100 lines)
 
   host/mara_host/tools/build_firmware.py (240 lines)
     [Fn] parse_features(features_str, no_features_str)
@@ -5008,6 +5160,8 @@ HOST (Python)
     [Fn] _do_discovery()
     [Fn] __getattr__(name)
     [Fn] __dir__()
+
+  host/mara_host/tools/schema/commands/_benchmark.py (171 lines)
 
   host/mara_host/tools/schema/commands/_camera.py (182 lines)
 
@@ -5315,6 +5469,9 @@ HOST (Python)
     [Fn] _load_pins(path)
 
   host/mara_host/tools/schema/telemetry/__init__.py (4 lines)
+
+  host/mara_host/tools/schema/telemetry/_benchmark.py (61 lines)
+    [Fn] parse_benchmark_section(body, ts_ms)
 
   host/mara_host/tools/schema/telemetry/_ctrl_observers.py (36 lines)
     [Fn] _parse_ctrl_observers(body, ts_ms)
@@ -5765,6 +5922,40 @@ HOST (Python)
 
   host/scripts/test_rig_hardware.py (154 lines)
     [Fn] main()
+
+  host/tests/benchmarks/test_mcu_benchmark.py (280 lines)
+    [Class] TestTestCatalog
+      |-- test_test_id_enum_values(self)
+      |-- test_bench_state_enum_values(self)
+      |-- test_bench_error_enum_values(self)
+      |-- test_get_test_name_known(self)
+      |-- test_get_test_name_unknown(self)
+      |-- test_get_test_description_known(self)
+      |-- test_get_test_description_unknown(self)
+      |-- test_test_catalog_has_expected_entries(self)
+      `-- test_test_info_fields(self)
+    [Class] TestMCUBenchmarkResult
+      |-- test_from_dict_basic(self)
+      |-- test_from_dict_computes_milliseconds(self)
+      |-- test_from_dict_handles_missing_optional_fields(self)
+      `-- test_str_format(self)
+    [Class] TestPerfMetrics
+      |-- test_from_telemetry(self)
+      |-- test_to_dict(self)
+      `-- test_str_format(self)
+    [Class] TestPerfSession
+      |-- test_add_sample(self)
+      |-- test_get_summary(self)
+      `-- test_empty_session_summary(self)
+    [Class] TestTelemetryBenchmarkSection
+      |-- test_section_definition(self)
+      |-- test_parse_header_only(self)
+      |-- test_parse_with_result(self)
+      `-- test_parse_too_short(self)
+    [Class] TestBenchmarkCommands
+      |-- test_commands_defined(self)
+      |-- test_bench_start_payload(self)
+      `-- test_legacy_export(self)
 
   host/tests/conftest.py (202 lines)
     [Fn] bus()
@@ -6830,6 +7021,21 @@ FIRMWARE/MCU (C++)
     [Class] BiquadNode
     [Class] PeakLimiterNode
 
+  firmware/mcu/include/benchmark/BenchmarkModule.h (55 lines)
+    [Class] EventBus
+    [Class] TelemetryModule
+    [Class] BenchmarkModule
+
+  firmware/mcu/include/benchmark/BenchmarkRunner.h (47 lines)
+    [Struct] RegisteredTest
+    [Class] BenchmarkRunner
+    [Class] BenchmarkRegistrar
+
+  firmware/mcu/include/benchmark/BenchmarkTypes.h (123 lines)
+    [Struct] BenchConfig
+    [Struct] BenchResult
+    [Struct] TestInfo
+
   firmware/mcu/include/command/BinaryCommands.h (131 lines)
     [Struct] SetSignalCmd
     [Struct] SetSignalsCmd
@@ -6999,7 +7205,20 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/command/decoders/ObserverDecoders.h (15 lines)
     [Struct] ObserverConfigResult
 
-  firmware/mcu/include/command/handlers/AllHandlers.h (12 lines)
+  firmware/mcu/include/command/handlers/AllHandlers.h (15 lines)
+
+  firmware/mcu/include/command/handlers/BenchmarkHandler.h (47 lines)
+    [Class] BenchmarkHandler
+    [Fn] name()
+    [Fn] canHandle(CmdType cmd)
+    [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
+    [Fn] handleStart(JsonVariantConst payload, CommandContext& ctx)
+    [Fn] handleStop(CommandContext& ctx)
+    [Fn] handleStatus(CommandContext& ctx)
+    [Fn] handleListTests(CommandContext& ctx)
+    [Fn] handleGetResults(JsonVariantConst payload, CommandContext& ctx)
+    [Fn] handleRunBootTests(CommandContext& ctx)
+    [Fn] handlePerfReset(CommandContext& ctx)
 
   firmware/mcu/include/command/handlers/ControlHandler.h (82 lines)
     [Class] ControlHandler
@@ -7154,7 +7373,7 @@ FIRMWARE/MCU (C++)
     [Struct] SetVelMsg
     [Struct] StatusMsg
 
-  firmware/mcu/include/config/CommandDefs.h (341 lines)
+  firmware/mcu/include/config/CommandDefs.h (362 lines)
     [Fn] cmdTypeFromString(const std::string& s)
     [Fn] cmdTypeToString(CmdType c)
 
@@ -7457,7 +7676,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/core/ErrorCodes.h (71 lines)
     [Fn] errorCodeToString(ErrorCode code)
 
-  firmware/mcu/include/core/Event.h (50 lines)
+  firmware/mcu/include/core/Event.h (53 lines)
     [Struct] TelemetrySystemPayload
     [Struct] TelemetryMotionPayload
     [Struct] TelemetryServosPayload
@@ -7629,7 +7848,7 @@ FIRMWARE/MCU (C++)
     [Struct] RuntimeConfig
     [Class] Runtime
 
-  firmware/mcu/include/core/ServiceContext.h (126 lines)
+  firmware/mcu/include/core/ServiceContext.h (127 lines)
     [Class] IGpio
     [Class] IPwm
     [Class] IServo
@@ -7672,7 +7891,7 @@ FIRMWARE/MCU (C++)
     [Class] McuPersistence
     [Struct] ServiceContext
 
-  firmware/mcu/include/core/ServiceStorage.h (120 lines)
+  firmware/mcu/include/core/ServiceStorage.h (127 lines)
     [Struct] ServiceStorage
 
   firmware/mcu/include/hal/Hal.h (40 lines)
@@ -8251,7 +8470,7 @@ FIRMWARE/MCU (C++)
     [Fn] getSetupManifest()
     [Fn] getSetupManifestSize()
 
-  firmware/mcu/include/telemetry/TelemetrySections.h (20 lines)
+  firmware/mcu/include/telemetry/TelemetrySections.h (21 lines)
     [Fn] id(SectionId s)
 
   firmware/mcu/include/transport/BleTransport.h (105 lines)
@@ -8363,6 +8582,22 @@ FIRMWARE/MCU (C++)
     [Fn] designLowShelf(float sr, float freq, float Q, float db)
     [Fn] designHighShelf(float sr, float freq, float Q, float db)
 
+  firmware/mcu/src/benchmark/BenchmarkModule.cpp (210 lines)
+
+  firmware/mcu/src/benchmark/BenchmarkRunner.cpp (187 lines)
+
+  firmware/mcu/src/benchmark/BenchmarkTests.cpp (186 lines)
+    [Fn] test_loop_timing()
+    [Fn] test_signal_bus_latency()
+    [Fn] test_ping_internal()
+    [Fn] test_cmd_decode()
+    [Fn] test_telem_encode()
+    [Fn] test_telem_json_encode()
+    [Fn] bench_pid(1.0f, 0.1f, 0.01f)
+    [Fn] test_pid_step()
+    [Fn] test_heap_alloc_small()
+    [Fn] test_heap_alloc_medium()
+
   firmware/mcu/src/command/CommandRegistry.cpp (154 lines)
 
   firmware/mcu/src/command/HandlerRegistry.cpp (165 lines)
@@ -8380,6 +8615,8 @@ FIRMWARE/MCU (C++)
   firmware/mcu/src/command/decoders/ControlDecoders.cpp (75 lines)
 
   firmware/mcu/src/command/decoders/ObserverDecoders.cpp (31 lines)
+
+  firmware/mcu/src/command/handlers/BenchmarkHandler.cpp (142 lines)
 
   firmware/mcu/src/command/handlers/ControlHandler.cpp (341 lines)
 
@@ -8459,7 +8696,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/core/Runtime.cpp (168 lines)
 
-  firmware/mcu/src/core/ServiceStorage.cpp (190 lines)
+  firmware/mcu/src/core/ServiceStorage.cpp (203 lines)
 
   firmware/mcu/src/hal/drivers/Vl53l0x.cpp (370 lines)
 
@@ -8582,7 +8819,7 @@ FIRMWARE/MCU (C++)
     [Class] SetupTelemetryModule
     [Fn] getSetupTelemetryModule()
 
-  firmware/mcu/src/setup/SetupTransport.cpp (36 lines)
+  firmware/mcu/src/setup/SetupTransport.cpp (37 lines)
     [Class] SetupTransportModule
     [Fn] getSetupTransportModule()
 
@@ -8614,7 +8851,7 @@ FIRMWARE/MCU (C++)
     [Fn] getSystemClock()
     [Fn] maraModeToString(MaraMode mode)
 
-  firmware/mcu/test/fakes/Arduino.h (58 lines)
+  firmware/mcu/test/fakes/Arduino.h (64 lines)
     [Fn] pinMode(int pin, int mode)
     [Fn] digitalWrite(int pin, int val)
     [Fn] digitalRead(int pin)
@@ -8663,6 +8900,61 @@ FIRMWARE/MCU (C++)
     [Fn] telem(bus)
     [Fn] setUp(void)
     [Fn] tearDown(void)
+    [Fn] main(int argc, char** argv)
+    [Fn] UNITY_END()
+
+  firmware/mcu/test/test_benchmark/test_benchmark_module.cpp (227 lines)
+    [Class] EventBus
+    [Fn] publish(const struct Event& evt)
+    [Struct] EventPayload
+    [Struct] Event
+    [Class] TelemetryModule
+    [Fn] registerBinProvider(uint8_t id, BinProviderFn fn)
+    [Struct] ServiceContext
+    [Fn] setUp()
+    [Fn] tearDown()
+    [Fn] test_queue_enqueue_dequeue()
+    [Fn] test_queue_wraps_around()
+    [Fn] test_result_history_stores_results()
+    [Fn] test_result_history_wraps_around()
+    [Fn] test_telemetry_provider_output_format()
+    [Fn] test_telemetry_provider_includes_result()
+    [Fn] test_state_transitions()
+    [Fn] main(int argc, char** argv)
+    [Fn] UNITY_END()
+
+  firmware/mcu/test/test_benchmark/test_benchmark_runner.cpp (199 lines)
+    [Fn] simple_test_func()
+    [Fn] slow_test_func()
+    [Fn] setUp()
+    [Fn] tearDown()
+    [Fn] test_register_test_succeeds()
+    [Fn] test_get_test_info_returns_registered_test()
+    [Fn] test_get_test_info_returns_null_for_unknown()
+    [Fn] test_get_registered_tests()
+    [Fn] test_run_executes_test_iterations()
+    [Fn] test_run_fills_result_correctly()
+    [Fn] test_run_computes_statistics()
+    [Fn] test_run_unknown_test_returns_error()
+    [Fn] test_cancel_stops_execution()
+    [Fn] test_run_with_zero_iterations()
+    [Fn] test_run_handles_failing_iterations()
+    [Fn] main(int argc, char** argv)
+    [Fn] UNITY_END()
+
+  firmware/mcu/test/test_benchmark/test_benchmark_types.cpp (92 lines)
+    [Fn] setUp()
+    [Fn] tearDown()
+    [Fn] test_bench_result_size_is_56_bytes()
+    [Fn] test_bench_result_clear_resets_all_fields()
+    [Fn] test_bench_config_size_is_10_bytes()
+    [Fn] test_bench_config_defaults()
+    [Fn] test_bench_config_flags()
+    [Fn] test_test_info_flags()
+    [Fn] test_test_id_values()
+    [Fn] test_bench_state_values()
+    [Fn] test_bench_error_values()
+    [Fn] test_constants()
     [Fn] main(int argc, char** argv)
     [Fn] UNITY_END()
 
@@ -9193,22 +9485,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     690
-  C++ Files:        306
-  Total Files:      996
+  Python Files:     712
+  C++ Files:        317
+  Total Files:      1029
 
 DEFINITIONS
-  Classes:          1267
-  Structs:          177
-  Functions:        2319
-  Methods:          3385
+  Classes:          1308
+  Structs:          184
+  Functions:        2430
+  Methods:          3452
 
 LINES OF CODE
-  Python:           84,657
-  C++:              25,546
-  Total Code:       110,203
-  Blank Lines:      30,148
-  Comment Lines:    29,453
-  Total Lines:      169,804
+  Python:           89,327
+  C++:              27,117
+  Total Code:       116,444
+  Blank Lines:      31,776
+  Comment Lines:    30,940
+  Total Lines:      179,160
 
 ================================================================================

@@ -15,12 +15,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..interfaces import BuildBackend
-from ..models import BuildRequest, BuildOutcome
+from ...interfaces import BuildBackend
+from ...models import BuildRequest, BuildOutcome
 
 
 # Default firmware project path (same as build_firmware.py)
-_DEFAULT_PROJECT = Path(__file__).resolve().parents[6] / "firmware" / "mcu"
+_DEFAULT_PROJECT = Path(__file__).resolve().parents[7] / "firmware" / "mcu"
 
 
 def _find_pio() -> list[str]:

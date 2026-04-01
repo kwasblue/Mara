@@ -2,8 +2,8 @@
 """
 Generate tooling backend registry from discovered backend packages.
 
-This generator scans `services/tooling/backends/*/` for backend packages
-and generates the auto-loading code for the registry.
+This generator scans `services/tooling/backends/implementations/*/` for backend
+packages and generates the auto-loading code for the registry.
 
 Each backend package must have:
 - __init__.py with a `register_backends(registry)` function
@@ -26,6 +26,7 @@ from pathlib import Path
 TOOLS_DIR = Path(__file__).parent
 HOST_DIR = TOOLS_DIR.parent
 BACKENDS_DIR = HOST_DIR / "services" / "tooling" / "backends"
+IMPLEMENTATIONS_DIR = BACKENDS_DIR / "implementations"
 OUTPUT_FILE = BACKENDS_DIR / "_generated_loaders.py"
 
 
@@ -35,17 +36,17 @@ OUTPUT_FILE = BACKENDS_DIR / "_generated_loaders.py"
 
 def discover_backends() -> list[str]:
     """
-    Discover backend packages under services/tooling/backends/.
+    Discover backend packages under services/tooling/backends/implementations/.
 
     Returns list of package names (e.g., ["platformio", "cmake"]) that have
     a register_backends function in their __init__.py.
     """
     backends = []
 
-    if not BACKENDS_DIR.exists():
+    if not IMPLEMENTATIONS_DIR.exists():
         return backends
 
-    for item in sorted(BACKENDS_DIR.iterdir()):
+    for item in sorted(IMPLEMENTATIONS_DIR.iterdir()):
         if not item.is_dir():
             continue
 
@@ -129,7 +130,7 @@ def generate_loaders(backends: list[str]) -> str:
     for name in backends:
         lines.append(f"    # {name}")
         lines.append("    try:")
-        lines.append(f"        from .{name} import register_backends as register_{name}")
+        lines.append(f"        from .implementations.{name} import register_backends as register_{name}")
         lines.append(f"        register_{name}(registry)")
         lines.append(f'        loaded.append("{name}")')
         lines.append("    except ImportError:")

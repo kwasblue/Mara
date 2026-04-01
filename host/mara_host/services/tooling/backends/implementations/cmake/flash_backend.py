@@ -12,12 +12,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..interfaces import FlashBackend
-from ..models import FlashRequest, FlashOutcome
+from ...interfaces import FlashBackend
+from ...models import FlashRequest, FlashOutcome
 
 
 # Default firmware project path
-_DEFAULT_PROJECT = Path(__file__).resolve().parents[6] / "firmware" / "mcu"
+_DEFAULT_PROJECT = Path(__file__).resolve().parents[7] / "firmware" / "mcu"
 
 
 def _find_esptool() -> str | None:

@@ -10,12 +10,12 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from ..interfaces import TestBackend
-from ..models import TestEnvironment, TestRequest, TestOutcome
+from ...interfaces import TestBackend
+from ...models import TestEnvironment, TestRequest, TestOutcome
 
 
 # Default firmware project path
-_DEFAULT_PROJECT = Path(__file__).resolve().parents[6] / "firmware" / "mcu"
+_DEFAULT_PROJECT = Path(__file__).resolve().parents[7] / "firmware" / "mcu"
 
 
 def _find_ctest() -> str | None:

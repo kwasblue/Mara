@@ -1,11 +1,8 @@
-pathspec not installed. Install with: pip install pathspec
-Scanning: /Users/kwasiaddo/projects/Host
-Scanned 929 files (926 skipped)
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-03-31 19:58:21
-Total Files: 929
-Total Lines of Code: 106,607
+Generated: 2026-03-31 21:50:51
+Total Files: 997
+Total Lines of Code: 109,821
 ================================================================================
 
 
@@ -85,7 +82,7 @@ HOST (Python)
 
   host/mara_host/__main__.py (4 lines)
 
-  host/mara_host/api/__init__.py (57 lines)
+  host/mara_host/api/__init__.py (84 lines)
 
   host/mara_host/api/controller_slot.py (116 lines)
     [Class] ControllerType
@@ -132,6 +129,65 @@ HOST (Python)
       |-- revolutions(self)
       |-- is_attached(self)
       `-- __repr__(self)
+
+  host/mara_host/api/generated/__init__.py (29 lines)
+
+  host/mara_host/api/generated/dc_motor.py (30 lines)
+    [Class] DcMotorState
+    [Class] DcMotor
+      |-- __init__(self, robot, actuator_id)
+      |-- robot(self)
+      `-- actuator_id(self)
+
+  host/mara_host/api/generated/encoder.py (24 lines)
+    [Class] EncoderReading
+    [Class] Encoder
+      |-- __init__(self, robot, sensor_id, auto_subscribe)
+      `-- _parse_reading(self, data)
+
+  host/mara_host/api/generated/imu.py (40 lines)
+    [Class] ImuReading
+    [Class] Imu
+      |-- __init__(self, robot, sensor_id, auto_subscribe)
+      `-- _parse_reading(self, data)
+
+  host/mara_host/api/generated/ir.py (28 lines)
+    [Class] IrReading
+    [Class] IrSensor
+      |-- __init__(self, robot, sensor_id, auto_subscribe)
+      `-- _parse_reading(self, data)
+
+  host/mara_host/api/generated/lidar.py (30 lines)
+    [Class] LidarReading
+    [Class] Lidar
+      |-- __init__(self, robot, sensor_id, auto_subscribe)
+      `-- _parse_reading(self, data)
+
+  host/mara_host/api/generated/servo.py (26 lines)
+    [Class] ServoState
+    [Class] Servo
+      |-- __init__(self, robot, actuator_id)
+      |-- robot(self)
+      `-- actuator_id(self)
+
+  host/mara_host/api/generated/stepper.py (39 lines)
+    [Class] StepperState
+    [Class] Stepper
+      |-- __init__(self, robot, actuator_id)
+      |-- robot(self)
+      `-- actuator_id(self)
+
+  host/mara_host/api/generated/temp.py (28 lines)
+    [Class] TemperatureReading
+    [Class] Temperature
+      |-- __init__(self, robot, sensor_id, auto_subscribe)
+      `-- _parse_reading(self, data)
+
+  host/mara_host/api/generated/ultrasonic.py (30 lines)
+    [Class] UltrasonicReading
+    [Class] Ultrasonic
+      |-- __init__(self, robot, sensor_id, auto_subscribe)
+      `-- _parse_reading(self, data)
 
   host/mara_host/api/gpio.py (55 lines)
     [Class] GPIO
@@ -791,7 +847,7 @@ HOST (Python)
     [Fn] cmd_erase(args)
     [Fn] cmd_info(args)
 
-  host/mara_host/cli/commands/generate.py (200 lines)
+  host/mara_host/cli/commands/generate.py (216 lines)
     [Fn] register(subparsers)
     [Fn] _run_generator(name, module_name)
     [Fn] cmd_all(args)
@@ -804,6 +860,7 @@ HOST (Python)
     [Fn] cmd_mcp(args)
     [Fn] cmd_control_graph(args)
     [Fn] cmd_tooling(args)
+    [Fn] cmd_hardware(args)
 
   host/mara_host/cli/commands/gpio.py (179 lines)
     [Fn] register(subparsers)
@@ -1181,10 +1238,10 @@ HOST (Python)
   host/mara_host/command/binary_commands.py (26 lines)
     [Class] Opcode
     [Class] BinaryStreamer
-      |-- encode_set_vel(self, vx, omega)
+      |-- encode_heartbeat(self)
       |-- encode_set_signal(self, id, value)
       |-- encode_set_signals(self, signals)
-      |-- encode_heartbeat(self)
+      |-- encode_set_vel(self, vx, omega)
       `-- encode_stop(self)
 
   host/mara_host/command/binary_mixin.py (35 lines)
@@ -1297,9 +1354,9 @@ HOST (Python)
     [Class] JsonToBinaryEncoder
       |-- encode(self, cmd)
       |-- supports_binary(self, cmd_type)
-      |-- _encode_set_vel(self, cmd)
-      |-- _encode_set_signal(self, cmd)
       |-- _encode_heartbeat(self, cmd)
+      |-- _encode_set_signal(self, cmd)
+      |-- _encode_set_vel(self, cmd)
       `-- _encode_stop(self, cmd)
     [Class] JsonToBinaryBatchEncoder
       |-- encode_signals(self, signals)
@@ -4441,10 +4498,10 @@ HOST (Python)
   host/mara_host/services/tooling/backends/_generated_loaders.py (19 lines)
     [Fn] load_all_backends(registry)
 
-  host/mara_host/services/tooling/backends/cmake/__init__.py (13 lines)
+  host/mara_host/services/tooling/backends/implementations/cmake/__init__.py (13 lines)
     [Fn] register_backends(registry)
 
-  host/mara_host/services/tooling/backends/cmake/build_backend.py (206 lines)
+  host/mara_host/services/tooling/backends/implementations/cmake/build_backend.py (237 lines)
     [Fn] _find_cmake()
     [Fn] _find_idf_py()
     [Fn] _is_espidf_project(project_dir)
@@ -4458,7 +4515,7 @@ HOST (Python)
       |-- clean(self, environment)
       `-- get_version(self)
 
-  host/mara_host/services/tooling/backends/cmake/flash_backend.py (159 lines)
+  host/mara_host/services/tooling/backends/implementations/cmake/flash_backend.py (159 lines)
     [Fn] _find_esptool()
     [Fn] _find_idf_py()
     [Fn] _is_espidf_project(project_dir)
@@ -4469,7 +4526,7 @@ HOST (Python)
       |-- _flash_esptool(self, request, project_dir)
       `-- detect_devices(self)
 
-  host/mara_host/services/tooling/backends/cmake/test_backend.py (118 lines)
+  host/mara_host/services/tooling/backends/implementations/cmake/test_backend.py (118 lines)
     [Fn] _find_ctest()
     [Fn] _find_idf_py()
     [Fn] _is_espidf_project(project_dir)
@@ -4478,6 +4535,31 @@ HOST (Python)
       |-- run_tests(self, request)
       |-- _run_native_tests(self, request, project_dir, build_path)
       `-- _run_device_tests(self, request, project_dir)
+
+  host/mara_host/services/tooling/backends/implementations/platformio/__init__.py (13 lines)
+    [Fn] register_backends(registry)
+
+  host/mara_host/services/tooling/backends/implementations/platformio/build_backend.py (107 lines)
+    [Fn] _find_pio()
+    [Fn] _features_to_flags(features)
+    [Fn] _parse_size_output(output)
+    [Class] PlatformIOBuildBackend
+      |-- build(self, request)
+      |-- clean(self, environment)
+      `-- get_version(self)
+
+  host/mara_host/services/tooling/backends/implementations/platformio/flash_backend.py (132 lines)
+    [Fn] _find_pio()
+    [Fn] _find_esptool()
+    [Class] PlatformIOFlashBackend
+      |-- flash(self, request)
+      |-- _direct_flash(self, request, project_dir)
+      `-- detect_devices(self)
+
+  host/mara_host/services/tooling/backends/implementations/platformio/test_backend.py (57 lines)
+    [Fn] _find_pio()
+    [Class] PlatformIOTestBackend
+      `-- run_tests(self, request)
 
   host/mara_host/services/tooling/backends/interfaces.py (22 lines)
     [Class] BuildBackend
@@ -4490,7 +4572,7 @@ HOST (Python)
     [Class] TestBackend
       `-- run_tests(self, request)
 
-  host/mara_host/services/tooling/backends/models.py (53 lines)
+  host/mara_host/services/tooling/backends/models.py (56 lines)
     [Class] BuildRequest
     [Class] BuildOutcome
     [Class] FlashRequest
@@ -4499,31 +4581,6 @@ HOST (Python)
       `-- __str__(self)
     [Class] TestRequest
     [Class] TestOutcome
-
-  host/mara_host/services/tooling/backends/platformio/__init__.py (13 lines)
-    [Fn] register_backends(registry)
-
-  host/mara_host/services/tooling/backends/platformio/build_backend.py (91 lines)
-    [Fn] _find_pio()
-    [Fn] _features_to_flags(features)
-    [Fn] _parse_size_output(output)
-    [Class] PlatformIOBuildBackend
-      |-- build(self, request)
-      |-- clean(self, environment)
-      `-- get_version(self)
-
-  host/mara_host/services/tooling/backends/platformio/flash_backend.py (132 lines)
-    [Fn] _find_pio()
-    [Fn] _find_esptool()
-    [Class] PlatformIOFlashBackend
-      |-- flash(self, request)
-      |-- _direct_flash(self, request, project_dir)
-      `-- detect_devices(self)
-
-  host/mara_host/services/tooling/backends/platformio/test_backend.py (57 lines)
-    [Fn] _find_pio()
-    [Class] PlatformIOTestBackend
-      `-- run_tests(self, request)
 
   host/mara_host/services/tooling/backends/registry.py (33 lines)
     [Class] BackendRegistry
@@ -4805,6 +4862,19 @@ HOST (Python)
     [Fn] generate_all()
     [Fn] main()
 
+  host/mara_host/tools/gen_hardware.py (193 lines)
+    [Fn] cpp_type_for_field(field)
+    [Fn] python_type_for_field(field)
+    [Fn] python_default_for_field(field)
+    [Fn] generate_sensor_firmware_stub(sensor)
+    [Fn] generate_actuator_firmware_stub(actuator)
+    [Fn] generate_transport_firmware_stub(transport)
+    [Fn] generate_sensor_python_api(sensor)
+    [Fn] generate_actuator_python_api(actuator)
+    [Fn] write_file_if_changed(path, content)
+    [Fn] main()
+    [Fn] generate_python_api_init()
+
   host/mara_host/tools/gen_mcp_servers.py (196 lines)
     [Fn] cmd_to_tool_name(cmd_name)
     [Fn] is_host_to_mcu(cmd_def)
@@ -4823,7 +4893,7 @@ HOST (Python)
     [Fn] generate_py_module()
     [Fn] main()
 
-  host/mara_host/tools/gen_tooling_backends.py (95 lines)
+  host/mara_host/tools/gen_tooling_backends.py (96 lines)
     [Fn] discover_backends()
     [Fn] _has_register_function(init_file)
     [Fn] generate_loaders(backends)
@@ -4873,12 +4943,82 @@ HOST (Python)
 
   host/mara_host/tools/schema/__init__.py (66 lines)
 
-  host/mara_host/tools/schema/binary.py (46 lines)
+  host/mara_host/tools/schema/binary/__init__.py (16 lines)
+    [Fn] _build_legacy_dict()
 
-  host/mara_host/tools/schema/can.py (118 lines)
+  host/mara_host/tools/schema/binary/_heartbeat.py (8 lines)
 
-  host/mara_host/tools/schema/commands/__init__.py (49 lines)
-    [Fn] _discover_commands()
+  host/mara_host/tools/schema/binary/_set_signal.py (11 lines)
+
+  host/mara_host/tools/schema/binary/_set_signals.py (15 lines)
+
+  host/mara_host/tools/schema/binary/_set_vel.py (11 lines)
+
+  host/mara_host/tools/schema/binary/_stop.py (8 lines)
+
+  host/mara_host/tools/schema/binary/core.py (97 lines)
+    [Class] BinaryFieldDef
+      |-- __post_init__(self)
+      |-- cpp_type(self)
+      |-- py_struct(self)
+      |-- size(self)
+      |-- py_type(self)
+      |-- to_dict(self)
+      |-- u8(cls, name, description)
+      |-- u16(cls, name, description)
+      |-- u32(cls, name, description)
+      |-- i8(cls, name, description)
+      |-- i16(cls, name, description)
+      |-- i32(cls, name, description)
+      `-- f32(cls, name, description)
+    [Class] BinaryCommandDef
+      |-- __post_init__(self)
+      |-- payload_size(self)
+      |-- struct_format(self)
+      |-- pascal_case_name(self)
+      |-- snake_case_name(self)
+      `-- to_legacy_dict(self)
+
+  host/mara_host/tools/schema/can/__init__.py (64 lines)
+    [Fn] _build_legacy_dict()
+
+  host/mara_host/tools/schema/can/_encoder.py (12 lines)
+
+  host/mara_host/tools/schema/can/_heartbeat.py (13 lines)
+
+  host/mara_host/tools/schema/can/_imu_accel.py (13 lines)
+
+  host/mara_host/tools/schema/can/_imu_gyro.py (13 lines)
+
+  host/mara_host/tools/schema/can/_set_signal.py (12 lines)
+
+  host/mara_host/tools/schema/can/_set_vel.py (13 lines)
+
+  host/mara_host/tools/schema/can/_status.py (14 lines)
+
+  host/mara_host/tools/schema/can/core.py (85 lines)
+    [Class] CanFieldDef
+      |-- __post_init__(self)
+      |-- cpp_type(self)
+      |-- py_struct(self)
+      |-- size(self)
+      |-- to_dict(self)
+      |-- u8(cls, name, unit)
+      |-- u16(cls, name, scale, unit)
+      |-- u32(cls, name, scale, unit)
+      |-- i8(cls, name, unit)
+      |-- i16(cls, name, scale, unit)
+      |-- i32(cls, name, scale, unit)
+      `-- f32(cls, name, unit)
+    [Class] CanMessageDef
+      |-- __post_init__(self)
+      |-- struct_size(self)
+      |-- struct_format(self)
+      `-- to_legacy_dict(self)
+
+  host/mara_host/tools/schema/commands/__init__.py (67 lines)
+    [Fn] _discover_legacy_commands(package_name, typed_keys)
+    [Fn] _do_discovery()
     [Fn] __getattr__(name)
     [Fn] __dir__()
 
@@ -4917,7 +5057,8 @@ HOST (Python)
       `-- to_dict(self)
     [Fn] export_command_dicts(commands)
 
-  host/mara_host/tools/schema/control/__init__.py (37 lines)
+  host/mara_host/tools/schema/control/__init__.py (81 lines)
+    [Fn] _discover_control_blocks()
     [Fn] get_block_config(block_type)
     [Fn] get_blocks_by_category(category)
     [Fn] get_palette_entries()
@@ -4947,6 +5088,21 @@ HOST (Python)
   host/mara_host/tools/schema/control/_filters.py (352 lines)
 
   host/mara_host/tools/schema/control/_observers.py (185 lines)
+
+  host/mara_host/tools/schema/control/core.py (142 lines)
+    [Class] PortDef
+    [Class] GuiConfig
+      `-- to_dict(self)
+    [Class] ParameterDef
+      `-- to_dict(self)
+    [Class] FirmwareConfig
+      `-- to_dict(self)
+    [Class] StateSpaceConfig
+      `-- to_dict(self)
+    [Class] ControlBlockDef
+      `-- to_dict(self)
+    [Fn] port(id, label, description)
+    [Fn] ports_from_legacy(legacy)
 
   host/mara_host/tools/schema/control_graph/__init__.py (25 lines)
 
@@ -5072,23 +5228,104 @@ HOST (Python)
 
   host/mara_host/tools/schema/control_graph/transforms/_toggle.py (19 lines)
 
+  host/mara_host/tools/schema/discovery.py (105 lines)
+    [Class] DiscoveryConfig
+    [Fn] discover_defs(package_file, package_name, config)
+    [Fn] discover_multi_export(package_file, package_name, export_suffix, expected_type, key_attr, on_import_error)
+
   host/mara_host/tools/schema/error_codes.py (68 lines)
     [Class] ErrorCode
     [Fn] get_error_message(code)
 
-  host/mara_host/tools/schema/gpio_channels.py (73 lines)
+  host/mara_host/tools/schema/gpio_channels/__init__.py (25 lines)
     [Fn] validate_gpio_channels()
+    [Fn] _build_legacy_list()
 
-  host/mara_host/tools/schema/hardware/__init__.py (6 lines)
+  host/mara_host/tools/schema/gpio_channels/_encoder.py (7 lines)
 
-  host/mara_host/tools/schema/hardware/_sensors.py (272 lines)
+  host/mara_host/tools/schema/gpio_channels/_encoder_b.py (7 lines)
+
+  host/mara_host/tools/schema/gpio_channels/_led_status.py (7 lines)
+
+  host/mara_host/tools/schema/gpio_channels/_motor_left.py (7 lines)
+
+  host/mara_host/tools/schema/gpio_channels/_motor_left_in2.py (7 lines)
+
+  host/mara_host/tools/schema/gpio_channels/_stepper_en.py (7 lines)
+
+  host/mara_host/tools/schema/gpio_channels/_ultrasonic.py (7 lines)
+
+  host/mara_host/tools/schema/gpio_channels/_ultrasonic_echo.py (7 lines)
+
+  host/mara_host/tools/schema/gpio_channels/core.py (32 lines)
+    [Class] GpioChannelDef
+      |-- __post_init__(self)
+      |-- to_dict(self)
+      |-- output(cls, name, channel, pin_name, description)
+      |-- input(cls, name, channel, pin_name, description)
+      `-- input_pullup(cls, name, channel, pin_name, description)
+
+  host/mara_host/tools/schema/hardware/__init__.py (110 lines)
+    [Fn] _validate_hardware()
+    [Fn] _build_sensor_legacy()
+    [Fn] _build_actuator_legacy()
+    [Fn] _build_transport_legacy()
+    [Fn] _build_hardware_dict()
+    [Fn] get_all_commands()
+    [Fn] get_all_telemetry()
+
+  host/mara_host/tools/schema/hardware/actuators/__init__.py (11 lines)
+
+  host/mara_host/tools/schema/hardware/actuators/_dc_motor.py (130 lines)
+
+  host/mara_host/tools/schema/hardware/actuators/_servo.py (74 lines)
+
+  host/mara_host/tools/schema/hardware/actuators/_stepper.py (117 lines)
+
+  host/mara_host/tools/schema/hardware/core.py (131 lines)
+    [Class] GuiBlockDef
+      `-- to_dict(self)
+    [Class] FirmwareHints
+      `-- to_dict(self)
+    [Class] PythonHints
+      `-- to_dict(self)
+    [Class] SensorDef
+      `-- to_legacy_dict(self)
+    [Class] ActuatorDef
+      `-- to_legacy_dict(self)
+    [Class] TransportDef
+      `-- to_legacy_dict(self)
+
+  host/mara_host/tools/schema/hardware/sensors/__init__.py (11 lines)
+
+  host/mara_host/tools/schema/hardware/sensors/_encoder.py (62 lines)
+
+  host/mara_host/tools/schema/hardware/sensors/_imu.py (51 lines)
+
+  host/mara_host/tools/schema/hardware/sensors/_ir.py (55 lines)
+
+  host/mara_host/tools/schema/hardware/sensors/_lidar.py (46 lines)
+
+  host/mara_host/tools/schema/hardware/sensors/_temp.py (55 lines)
+
+  host/mara_host/tools/schema/hardware/sensors/_ultrasonic.py (56 lines)
+
+  host/mara_host/tools/schema/hardware/transports/__init__.py (11 lines)
+
+  host/mara_host/tools/schema/hardware/transports/_ble.py (42 lines)
+
+  host/mara_host/tools/schema/hardware/transports/_can.py (81 lines)
+
+  host/mara_host/tools/schema/hardware/transports/_mqtt.py (74 lines)
+
+  host/mara_host/tools/schema/hardware/transports/_uart.py (35 lines)
+
+  host/mara_host/tools/schema/hardware/transports/_wifi.py (73 lines)
 
   host/mara_host/tools/schema/paths.py (11 lines)
 
   host/mara_host/tools/schema/pins.py (18 lines)
     [Fn] _load_pins(path)
-
-  host/mara_host/tools/schema/telemetry.py (69 lines)
 
   host/mara_host/tools/schema/telemetry/__init__.py (4 lines)
 
@@ -5118,7 +5355,7 @@ HOST (Python)
 
   host/mara_host/tools/schema/telemetry/_ultrasonic.py (12 lines)
 
-  host/mara_host/tools/schema/telemetry/core.py (95 lines)
+  host/mara_host/tools/schema/telemetry/core.py (96 lines)
     [Class] FieldDef
       |-- uint8(cls, name, scale, description)
       |-- int8(cls, name, scale, description)
@@ -5135,7 +5372,7 @@ HOST (Python)
       |-- parse(self, body, ts_ms)
       `-- to_legacy_dict(self)
 
-  host/mara_host/tools/schema/telemetry/discovery.py (37 lines)
+  host/mara_host/tools/schema/telemetry/discovery.py (14 lines)
     [Fn] discover_sections(package_file, package_name)
 
   host/mara_host/tools/schema/version.py (20 lines)
@@ -5218,22 +5455,22 @@ HOST (Python)
   host/mara_host/transport/can_defs_generated.py (130 lines)
     [Class] MsgId
     [Class] NodeState
-    [Class] SetVelMsg
-      |-- pack(self)
-      `-- unpack(cls, data)
-    [Class] SetSignalMsg
+    [Class] EncoderMsg
       |-- pack(self)
       `-- unpack(cls, data)
     [Class] HeartbeatMsg
-      |-- pack(self)
-      `-- unpack(cls, data)
-    [Class] EncoderMsg
       |-- pack(self)
       `-- unpack(cls, data)
     [Class] ImuAccelMsg
       |-- pack(self)
       `-- unpack(cls, data)
     [Class] ImuGyroMsg
+      |-- pack(self)
+      `-- unpack(cls, data)
+    [Class] SetSignalMsg
+      |-- pack(self)
+      `-- unpack(cls, data)
+    [Class] SetVelMsg
       |-- pack(self)
       `-- unpack(cls, data)
     [Class] StatusMsg
@@ -5520,7 +5757,8 @@ HOST (Python)
       |-- __init__(self, client)
       `-- name(self)
 
-  host/scripts/monitor_control_graph.py (126 lines)
+  host/scripts/monitor_control_graph.py (140 lines)
+    [Fn] _resolve_graph_path(graph_arg)
     [Fn] main()
 
   host/scripts/structure.py (444 lines)
@@ -6243,6 +6481,34 @@ HOST (Python)
       |-- test_schema_exports_match_init_all(self)
       `-- test_commands_package_exports_match_init_all(self)
 
+  host/tests/test_schema_extensibility.py (327 lines)
+    [Fn] get_schema_ids()
+    [Class] TestSchemaDiscovery
+      |-- test_schema_imports_successfully(self, schema)
+      |-- test_registry_exists(self, schema)
+      |-- test_registry_not_empty(self, schema)
+      `-- test_registry_keys_are_strings(self, schema)
+    [Class] TestSchemaTypes
+      |-- test_items_are_correct_type(self, schema)
+      |-- test_items_are_dataclasses(self, schema)
+      `-- test_dataclasses_are_frozen(self, schema)
+    [Class] TestLegacyCompatibility
+      |-- test_items_have_to_dict_method(self, schema)
+      |-- test_to_dict_returns_dict(self, schema)
+      `-- test_to_dict_is_json_serializable(self, schema)
+    [Class] TestSchemaUniqueness
+      |-- test_keys_match_item_attribute(self, schema)
+      |-- test_telemetry_section_ids_unique(self)
+      |-- test_binary_command_opcodes_unique(self)
+      `-- test_gpio_channel_ids_unique(self)
+    [Class] TestSchemaFileStructure
+      |-- test_schema_dir_exists(self, name, path)
+      |-- test_has_init_py(self, name, path)
+      |-- test_has_core_py(self, name, path)
+      `-- test_has_definition_files(self, name, path)
+    [Class] TestGeneratorIntegration
+      `-- test_mara_generate_all_succeeds(self)
+
   host/tests/test_sensors_facade.py (133 lines)
     [Fn] test_robot_sensors_facade_builds_interfaces_from_config()
     [Fn] test_robot_sensors_facade_updates_health_from_telemetry()
@@ -6416,6 +6682,66 @@ HOST (Python)
       |-- test_default_values(self)
       `-- test_with_data(self)
 
+  host/tests/test_tooling_backends.py (402 lines)
+    [Fn] fresh_registry()
+    [Fn] loaded_registry()
+    [Class] MockSubprocessResult
+      `-- output(self)
+    [Fn] mock_subprocess()
+    [Fn] _mock(returncode, stdout, stderr)
+    [Fn] mock_shutil_which()
+    [Fn] _mock(return_value)
+    [Class] TestBackendRegistry
+      |-- test_fresh_registry_is_empty(self, fresh_registry)
+      |-- test_register_and_lookup_build_backend(self, fresh_registry)
+      |-- test_register_and_lookup_flash_backend(self, fresh_registry)
+      |-- test_register_and_lookup_test_backend(self, fresh_registry)
+      |-- test_lookup_missing_backend_raises_keyerror(self, fresh_registry)
+      `-- test_global_registry_loads_backends(self, loaded_registry)
+    [Class] TestBackendDiscovery
+      |-- test_generated_loaders_exists(self)
+      `-- test_load_all_backends_populates_registry(self, fresh_registry)
+    [Fn] get_all_build_backends()
+    [Fn] get_all_flash_backends()
+    [Fn] get_all_test_backends()
+    [Class] TestBuildBackendCompliance
+      |-- test_implements_build_method(self, name, backend)
+      |-- test_implements_clean_method(self, name, backend)
+      |-- test_implements_get_version_method(self, name, backend)
+      `-- test_get_version_returns_string_or_none(self, name, backend)
+    [Class] TestFlashBackendCompliance
+      |-- test_implements_flash_method(self, name, backend)
+      |-- test_implements_detect_devices_method(self, name, backend)
+      `-- test_detect_devices_returns_list(self, name, backend)
+    [Class] TestTestBackendCompliance
+      `-- test_implements_run_tests_method(self, name, backend)
+    [Class] TestBuildBackendBehavior
+      |-- test_build_success_returns_success_outcome(self, name, backend)
+      |-- test_build_failure_returns_failure_outcome(self, name, backend)
+      `-- test_clean_returns_outcome(self, name, backend)
+    [Class] TestFlashBackendBehavior
+      |-- test_flash_success_returns_success_outcome(self, name, backend)
+      `-- test_flash_failure_returns_failure_outcome(self, name, backend)
+    [Class] TestTestBackendBehavior
+      |-- test_run_tests_returns_outcome(self, name, backend)
+      `-- test_run_tests_with_filter(self, name, backend)
+    [Class] TestBuildRequest
+      |-- test_default_values(self)
+      `-- test_custom_values(self)
+    [Class] TestBuildOutcome
+      |-- test_success_outcome(self)
+      `-- test_failure_outcome(self)
+    [Class] TestFlashRequest
+      |-- test_default_values(self)
+      `-- test_direct_flash_mode(self)
+    [Class] TestTestRequest
+      |-- test_default_environment_is_native(self)
+      `-- test_multiple_environments(self)
+    [Class] TestPlatformIOIntegration
+      `-- test_get_version_returns_version_string(self, loaded_registry)
+    [Class] TestCMakeIntegration
+      `-- test_get_version_returns_version_string(self, loaded_registry)
+
   host/tests/transport_mqtt/test_discovery.py (136 lines)
     [Class] MockMessage
       `-- __init__(self, topic, payload)
@@ -6472,6 +6798,17 @@ HOST (Python)
 --------------------------------------------------------------------------------
 FIRMWARE/MCU (C++)
 --------------------------------------------------------------------------------
+  firmware/mcu/include/actuator/generated/DcMotorActuator.h (31 lines)
+    [Class] DcMotorActuator
+    [Struct] State
+
+  firmware/mcu/include/actuator/generated/ServoActuator.h (21 lines)
+    [Class] ServoActuator
+
+  firmware/mcu/include/actuator/generated/StepperActuator.h (41 lines)
+    [Class] StepperActuator
+    [Struct] State
+
   firmware/mcu/include/audio/AudioGraphManager.h (23 lines)
     [Class] CommandRegistry
     [Class] AudioGraphManager
@@ -6507,17 +6844,17 @@ FIRMWARE/MCU (C++)
     [Class] PeakLimiterNode
 
   firmware/mcu/include/command/BinaryCommands.h (131 lines)
-    [Struct] SetVelCmd
     [Struct] SetSignalCmd
     [Struct] SetSignalsCmd
+    [Struct] SetVelCmd
     [Struct] DecodeResult
     [Fn] read_u16_le(const uint8_t* buf)
     [Fn] read_f32_le(const uint8_t* buf)
     [Fn] decode(const uint8_t* data, size_t len, uint8_t opcode)
     [Fn] parseSignal(const uint8_t* data, uint8_t index, uint16_t& id_out, float& value_out)
-    [Fn] encodeSetVel(float vx, float omega, uint8_t* buf)
-    [Fn] encodeSetSignal(uint16_t id, float value, uint8_t* buf)
     [Fn] encodeHeartbeat(uint8_t* buf)
+    [Fn] encodeSetSignal(uint16_t id, float value, uint8_t* buf)
+    [Fn] encodeSetVel(float vx, float omega, uint8_t* buf)
     [Fn] encodeStop(uint8_t* buf)
 
   firmware/mcu/include/command/CommandContext.h (203 lines)
@@ -6822,12 +7159,12 @@ FIRMWARE/MCU (C++)
     [Fn] handleClearSubsystemLogLevels(CommandContext& ctx)
 
   firmware/mcu/include/config/CanDefs.h (98 lines)
-    [Struct] SetVelMsg
-    [Struct] SetSignalMsg
-    [Struct] HeartbeatMsg
     [Struct] EncoderMsg
+    [Struct] HeartbeatMsg
     [Struct] ImuAccelMsg
     [Struct] ImuGyroMsg
+    [Struct] SetSignalMsg
+    [Struct] SetVelMsg
     [Struct] StatusMsg
 
   firmware/mcu/include/config/CommandDefs.h (341 lines)
@@ -7876,6 +8213,30 @@ FIRMWARE/MCU (C++)
     [Struct] Reading
     [Class] UltrasonicSensor
 
+  firmware/mcu/include/sensor/generated/EncoderSensor.h (30 lines)
+    [Class] EncoderSensor
+    [Struct] Reading
+
+  firmware/mcu/include/sensor/generated/ImuSensor.h (46 lines)
+    [Class] ImuSensor
+    [Struct] Reading
+
+  firmware/mcu/include/sensor/generated/IrSensor.h (34 lines)
+    [Class] IrSensor
+    [Struct] Reading
+
+  firmware/mcu/include/sensor/generated/LidarSensor.h (36 lines)
+    [Class] LidarSensor
+    [Struct] Reading
+
+  firmware/mcu/include/sensor/generated/TemperatureSensor.h (34 lines)
+    [Class] TemperatureSensor
+    [Struct] Reading
+
+  firmware/mcu/include/sensor/generated/UltrasonicSensor.h (36 lines)
+    [Class] UltrasonicSensor
+    [Struct] Reading
+
   firmware/mcu/include/setup/ISetupModule.h (12 lines)
     [Struct] ServiceContext
     [Class] ISetupModule
@@ -7982,6 +8343,21 @@ FIRMWARE/MCU (C++)
     [Fn] begin()
     [Fn] loop()
     [Fn] sendBytes(const uint8_t*, size_t)
+
+  firmware/mcu/include/transport/generated/BleTransport.h (25 lines)
+    [Class] BleTransport
+
+  firmware/mcu/include/transport/generated/CanTransport.h (25 lines)
+    [Class] CanTransport
+
+  firmware/mcu/include/transport/generated/MqttTransport.h (25 lines)
+    [Class] MqttTransport
+
+  firmware/mcu/include/transport/generated/UartTransport.h (25 lines)
+    [Class] UartTransport
+
+  firmware/mcu/include/transport/generated/WifiTransport.h (25 lines)
+    [Class] WifiTransport
 
   firmware/mcu/scripts/generate_all_sensors.py (29 lines)
     [Fn] _resolve_script_path()
@@ -8830,22 +9206,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     637
-  C++ Files:        292
-  Total Files:      929
+  Python Files:     691
+  C++ Files:        306
+  Total Files:      997
 
 DEFINITIONS
-  Classes:          1200
-  Structs:          169
-  Functions:        2280
-  Methods:          3267
+  Classes:          1271
+  Structs:          177
+  Functions:        2319
+  Methods:          3392
 
 LINES OF CODE
-  Python:           81,495
-  C++:              25,112
-  Total Code:       106,607
-  Blank Lines:      29,089
-  Comment Lines:    28,354
-  Total Lines:      164,050
+  Python:           84,275
+  C++:              25,546
+  Total Code:       109,821
+  Blank Lines:      30,163
+  Comment Lines:    29,491
+  Total Lines:      169,475
 
 ================================================================================

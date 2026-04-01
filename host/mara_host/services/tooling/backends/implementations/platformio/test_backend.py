@@ -14,12 +14,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..interfaces import TestBackend
-from ..models import TestEnvironment, TestRequest, TestOutcome
+from ...interfaces import TestBackend
+from ...models import TestEnvironment, TestRequest, TestOutcome
 
 
 # Default firmware project path (same as build_firmware.py)
-_DEFAULT_PROJECT = Path(__file__).resolve().parents[6] / "firmware" / "mcu"
+_DEFAULT_PROJECT = Path(__file__).resolve().parents[7] / "firmware" / "mcu"
 
 # Map MARA-level environment names to PlatformIO environment names
 _ENV_MAP: dict[TestEnvironment, str] = {

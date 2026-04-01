@@ -445,7 +445,7 @@ class TestFlashBackendBehavior:
         if name == "cmake":
             patches.append(
                 patch(
-                    "mara_host.services.tooling.backends.cmake.flash_backend._find_esptool",
+                    "mara_host.services.tooling.backends.implementations.cmake.flash_backend._find_esptool",
                     return_value="/usr/bin/esptool.py",
                 )
             )

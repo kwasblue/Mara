@@ -67,6 +67,9 @@ class FlashOutcome:
 
 class TestEnvironment(str, Enum):
     """Standard test environments MARA understands."""
+
+    __test__ = False  # Prevent pytest collection
+
     NATIVE = "native"          # Desktop / host-compiled unit tests
     DEVICE = "device"          # On-target tests via serial
 
@@ -77,6 +80,9 @@ class TestEnvironment(str, Enum):
 @dataclass
 class TestRequest:
     """What MARA needs to run firmware tests."""
+
+    __test__ = False  # Prevent pytest collection
+
     environments: list[TestEnvironment] = field(
         default_factory=lambda: [TestEnvironment.NATIVE],
     )
@@ -88,6 +94,9 @@ class TestRequest:
 @dataclass
 class TestOutcome:
     """What MARA gets back after running tests."""
+
+    __test__ = False  # Prevent pytest collection
+
     success: bool
     return_code: int
     output: str = ""

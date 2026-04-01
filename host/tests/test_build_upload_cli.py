@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from unittest.mock import MagicMock
 
 from mara_host.cli.commands.build.upload import DEFAULT_DIRECT_UPLOAD_BAUD, cmd_upload
-from mara_host.services.build.backends import BuildOutcome, FlashOutcome
+from mara_host.services.tooling.backends.models import BuildOutcome, FlashOutcome
 
 
 def _args(**overrides):

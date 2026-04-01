@@ -763,6 +763,48 @@ class BatchApplyPayload:
         return f"BatchApplyPayload(...)"
 
 
+class BenchGetResultsPayload:
+    """Get benchmark result history."""
+    _cmd = "CMD_BENCH_GET_RESULTS"
+
+    def __init__(self, max: int = 4):
+        self.max = max
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "max": self.max
+        }
+
+    def __repr__(self) -> str:
+        return f"BenchGetResultsPayload(...)"
+
+
+class BenchStartPayload:
+    """Start a benchmark test on the MCU."""
+    _cmd = "CMD_BENCH_START"
+
+    def __init__(self, test_id: int, iterations: int = 100, warmup: int = 10, budget_us: int = 0, rt_safe: bool = False, stream: bool = False):
+        self.test_id = test_id
+        self.iterations = iterations
+        self.warmup = warmup
+        self.budget_us = budget_us
+        self.rt_safe = rt_safe
+        self.stream = stream
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "test_id": self.test_id,
+            "iterations": self.iterations,
+            "warmup": self.warmup,
+            "budget_us": self.budget_us,
+            "rt_safe": self.rt_safe,
+            "stream": self.stream
+        }
+
+    def __repr__(self) -> str:
+        return f"BenchStartPayload(...)"
+
+
 class CtrlGraphEnablePayload:
     """Enable or disable all stored control-graph slots."""
     _cmd = "CMD_CTRL_GRAPH_ENABLE"
@@ -1159,6 +1201,8 @@ class UltrasonicReadPayload:
 
 __all__ = [
     "BatchApplyPayload",
+    "BenchGetResultsPayload",
+    "BenchStartPayload",
     "CtrlGraphEnablePayload",
     "CtrlGraphUploadPayload",
     "CtrlSetRatePayload",

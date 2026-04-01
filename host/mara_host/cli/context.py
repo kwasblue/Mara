@@ -13,6 +13,8 @@ import functools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Optional, TypeVar, ParamSpec
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE as DEFAULT_BAUDRATE
+
 if TYPE_CHECKING:
     from mara_host.command.client import MaraClient
     from mara_host.services.control.motor_service import MotorService
@@ -41,7 +43,7 @@ class CLIContextConfig:
     """Configuration for CLI context."""
 
     port: Optional[str] = None  # Uses cli_config default if not set
-    baudrate: int = 115200
+    baudrate: int = DEFAULT_BAUDRATE
     host: Optional[str] = None  # For TCP connections
     tcp_port: int = 3333
     ble_name: Optional[str] = None  # For Bluetooth SPP connections

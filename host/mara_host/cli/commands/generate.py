@@ -1,9 +1,11 @@
 # mara_host/cli/commands/generate.py
-"""Code generation commands for MARA CLI."""
+"""Code generation commands for MARA CLI.
+
+All generation is routed through CodeGeneratorService so that
+MCP, HTTP, and other entry points have access to the same functionality.
+"""
 
 import argparse
-import sys
-from pathlib import Path
 
 from mara_host.cli.console import (
     console,
@@ -11,9 +13,23 @@ from mara_host.cli.console import (
     print_error,
     print_info,
 )
+from mara_host.services.codegen.generator_service import (
+    CodeGeneratorService,
+    GeneratorType,
+    GeneratorResult,
+)
 
-# Path to tools directory
-TOOLS_DIR = Path(__file__).parent.parent.parent / "tools"
+
+# Singleton service instance
+_service: CodeGeneratorService | None = None
+
+
+def _get_service() -> CodeGeneratorService:
+    """Get or create the generator service."""
+    global _service
+    if _service is None:
+        _service = CodeGeneratorService()
+    return _service
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -36,6 +52,13 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="Run all code generators",
     )
     all_p.set_defaults(func=cmd_all)
+
+    # build-config (first - others may depend on it)
+    bc_p = gen_sub.add_parser(
+        "build-config",
+        help="Generate build configuration (C++ header + Python module)",
+    )
+    bc_p.set_defaults(func=cmd_build_config)
 
     # commands
     cmd_p = gen_sub.add_parser(
@@ -111,24 +134,15 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     gen_parser.set_defaults(func=cmd_all)
 
 
-def _run_generator(name: str, module_name: str) -> int:
-    """Run a single generator module."""
-    console.print(f"  [cyan]{name}[/cyan]...", end=" ")
-
-    try:
-        # Ensure tools dir is in path
-        if str(TOOLS_DIR) not in sys.path:
-            sys.path.insert(0, str(TOOLS_DIR))
-
-        # Import and run the generator
-        module = __import__(module_name)
-        module.main()
-        console.print("[green]done[/green]")
-        return 0
-    except Exception as e:
-        console.print(f"[red]failed[/red]")
-        console.print(f"    [red]{e}[/red]")
-        return 1
+def _print_result(result: GeneratorResult) -> None:
+    """Print a single generator result."""
+    name = result.generator.value.replace("_", " ").title()
+    if result.success:
+        console.print(f"  [cyan]{name}[/cyan]... [green]done[/green]")
+    else:
+        console.print(f"  [cyan]{name}[/cyan]... [red]failed[/red]")
+        if result.error:
+            console.print(f"    [red]{result.error}[/red]")
 
 
 def cmd_all(args: argparse.Namespace) -> int:
@@ -137,178 +151,135 @@ def cmd_all(args: argparse.Namespace) -> int:
     console.print("[bold cyan]Running all code generators[/bold cyan]")
     console.print()
 
-    generators = [
-        ("Command definitions", "gen_commands"),
-        ("Pin configuration", "generate_pins"),
-        ("GPIO channel mappings", "gpio_mapping_gen"),
-        ("Binary commands", "gen_binary_commands"),
-        ("Telemetry sections", "gen_telemetry"),
-        ("CAN bus definitions", "gen_can"),
-        ("MCP/HTTP tools", "gen_mcp_servers"),
-        ("Control graph registry", "gen_control_graph"),
-        ("Tooling backends", "gen_tooling_backends"),
-        ("Hardware stubs", "gen_hardware"),
-    ]
+    service = _get_service()
+    summary = service.generate_all(parallel=False)  # Sequential for cleaner output
 
-    errors = 0
-    for name, module in generators:
-        rc = _run_generator(name, module)
-        if rc != 0:
-            errors += 1
+    for result in summary.results:
+        _print_result(result)
 
     console.print()
-    if errors == 0:
+    if summary.all_success:
         print_success("All generators completed successfully")
+        return 0
     else:
-        print_error(f"{errors} generator(s) failed")
+        print_error(f"{summary.failed_count} generator(s) failed")
+        return 1
 
-    return 1 if errors > 0 else 0
+
+def _run_single(gen_type: GeneratorType, title: str, files_info: str) -> int:
+    """Run a single generator and print results."""
+    console.print()
+    console.print(f"[bold cyan]{title}[/bold cyan]")
+    console.print()
+
+    service = _get_service()
+    result = service.generate(gen_type)
+
+    _print_result(result)
+    console.print()
+
+    if result.success:
+        print_success(f"{title.split()[-1]} generated")
+        if files_info:
+            print_info(f"Generated: {files_info}")
+        return 0
+    return 1
+
+
+def cmd_build_config(args: argparse.Namespace) -> int:
+    """Generate build configuration from mara_build.yaml."""
+    return _run_single(
+        GeneratorType.BUILD_CONFIG,
+        "Generating build configuration",
+        "GeneratedBuildConfig.h, _generated_config.py",
+    )
 
 
 def cmd_commands(args: argparse.Namespace) -> int:
     """Generate command definitions."""
-    console.print()
-    console.print("[bold cyan]Generating command definitions[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("Commands", "gen_commands")
-
-    console.print()
-    if rc == 0:
-        print_success("Command definitions generated")
-        print_info("Generated: CommandDefs.h, command_defs.py, client_commands.py, commands.json")
-    return rc
+    return _run_single(
+        GeneratorType.COMMANDS,
+        "Generating command definitions",
+        "CommandDefs.h, command_defs.py, client_commands.py, commands.json",
+    )
 
 
 def cmd_pins(args: argparse.Namespace) -> int:
     """Generate pin configuration."""
-    console.print()
-    console.print("[bold cyan]Generating pin configuration[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("Pins", "generate_pins")
-
-    console.print()
-    if rc == 0:
-        print_success("Pin configuration generated")
-        print_info("Generated: PinConfig.h, pin_config.py")
-    return rc
+    return _run_single(
+        GeneratorType.PINS,
+        "Generating pin configuration",
+        "PinConfig.h, pin_config.py",
+    )
 
 
 def cmd_can(args: argparse.Namespace) -> int:
     """Generate CAN bus definitions."""
-    console.print()
-    console.print("[bold cyan]Generating CAN bus definitions[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("CAN", "gen_can")
-
-    console.print()
-    if rc == 0:
-        print_success("CAN bus definitions generated")
-        print_info("Generated: CanDefs.h, can_defs_generated.py")
-    return rc
+    return _run_single(
+        GeneratorType.CAN,
+        "Generating CAN bus definitions",
+        "CanDefs.h, can_defs_generated.py",
+    )
 
 
 def cmd_telemetry(args: argparse.Namespace) -> int:
     """Generate telemetry sections."""
-    console.print()
-    console.print("[bold cyan]Generating telemetry sections[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("Telemetry", "gen_telemetry")
-
-    console.print()
-    if rc == 0:
-        print_success("Telemetry sections generated")
-    return rc
+    return _run_single(
+        GeneratorType.TELEMETRY,
+        "Generating telemetry sections",
+        "TelemetrySections.h, telemetry_sections.py",
+    )
 
 
 def cmd_binary(args: argparse.Namespace) -> int:
     """Generate binary command definitions."""
-    console.print()
-    console.print("[bold cyan]Generating binary command definitions[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("Binary commands", "gen_binary_commands")
-
-    console.print()
-    if rc == 0:
-        print_success("Binary command definitions generated")
-        print_info("Generated: BinaryCommands.h, binary_commands.py, json_to_binary.py")
-    return rc
+    return _run_single(
+        GeneratorType.BINARY,
+        "Generating binary command definitions",
+        "BinaryCommands.h, binary_commands.py, json_to_binary.py",
+    )
 
 
 def cmd_gpio(args: argparse.Namespace) -> int:
     """Generate GPIO channel mappings."""
-    console.print()
-    console.print("[bold cyan]Generating GPIO channel mappings[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("GPIO channels", "gpio_mapping_gen")
-
-    console.print()
-    if rc == 0:
-        print_success("GPIO channel mappings generated")
-        print_info("Generated: GpioChannelDefs.h, gpio_channels.py")
-    return rc
+    return _run_single(
+        GeneratorType.GPIO,
+        "Generating GPIO channel mappings",
+        "GpioChannelDefs.h, gpio_channels.py",
+    )
 
 
 def cmd_mcp(args: argparse.Namespace) -> int:
     """Generate MCP/HTTP server tools."""
-    console.print()
-    console.print("[bold cyan]Generating MCP/HTTP server tools[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("MCP/HTTP tools", "gen_mcp_servers")
-
-    console.print()
-    if rc == 0:
-        print_success("MCP/HTTP server tools generated")
-        print_info("Generated: _generated_tools.py, _generated_http.py")
-    return rc
+    return _run_single(
+        GeneratorType.MCP,
+        "Generating MCP/HTTP server tools",
+        "_generated_tools.py, _generated_http.py",
+    )
 
 
 def cmd_control_graph(args: argparse.Namespace) -> int:
     """Generate control-graph type registry."""
-    console.print()
-    console.print("[bold cyan]Generating control-graph registry[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("Control graph registry", "gen_control_graph")
-
-    console.print()
-    if rc == 0:
-        print_success("Control-graph registry generated")
-        print_info("Generated: control_graph_registry.json, control_graph_defs.py, control_graph_schema.json")
-    return rc
+    return _run_single(
+        GeneratorType.CONTROL_GRAPH,
+        "Generating control-graph registry",
+        "control_graph_registry.json, control_graph_defs.py, control_graph_schema.json",
+    )
 
 
 def cmd_tooling(args: argparse.Namespace) -> int:
     """Generate tooling backend loaders."""
-    console.print()
-    console.print("[bold cyan]Generating tooling backend loaders[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("Tooling backends", "gen_tooling_backends")
-
-    console.print()
-    if rc == 0:
-        print_success("Tooling backend loaders generated")
-        print_info("Generated: services/tooling/backends/_generated_loaders.py")
-    return rc
+    return _run_single(
+        GeneratorType.TOOLING,
+        "Generating tooling backend loaders",
+        "_generated_loaders.py",
+    )
 
 
 def cmd_hardware(args: argparse.Namespace) -> int:
     """Generate hardware stubs from typed schema definitions."""
-    console.print()
-    console.print("[bold cyan]Generating hardware stubs[/bold cyan]")
-    console.print()
-
-    rc = _run_generator("Hardware stubs", "gen_hardware")
-
-    console.print()
-    if rc == 0:
-        print_success("Hardware stubs generated")
-        print_info("Generated: firmware stubs (sensor/actuator/transport) and Python API classes")
-    return rc
+    return _run_single(
+        GeneratorType.HARDWARE,
+        "Generating hardware stubs",
+        "firmware stubs (sensor/actuator/transport) and Python API classes",
+    )

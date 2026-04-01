@@ -11,6 +11,8 @@ from enum import Enum
 from typing import Optional, Callable, Any
 import logging
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE as DEFAULT_BAUDRATE
+
 
 class TransportType(Enum):
     """Supported transport types."""
@@ -28,7 +30,7 @@ class ConnectionConfig:
 
     # Serial options
     port: str = "/dev/ttyUSB0"
-    baudrate: int = 115200
+    baudrate: int = DEFAULT_BAUDRATE
 
     # TCP options
     host: str = "192.168.4.1"

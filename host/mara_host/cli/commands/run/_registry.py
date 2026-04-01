@@ -11,6 +11,7 @@ from .can import cmd_can
 from .mqtt import cmd_mqtt
 from .shell import cmd_shell
 from mara_host.cli.cli_config import get_serial_port as _get_port
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE as DEFAULT_BAUDRATE
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -40,8 +41,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     serial_p.add_argument(
         "-b", "--baudrate",
         type=int,
-        default=115200,
-        help="Baud rate (default: 115200)",
+        default=DEFAULT_BAUDRATE,
+        help="Baud rate (default: %(default)s)",
     )
     serial_p.add_argument(
         "--shell",
@@ -64,8 +65,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     ble_p.add_argument(
         "-b", "--baudrate",
         type=int,
-        default=115200,
-        help="Baud rate hint (default: 115200)",
+        default=DEFAULT_BAUDRATE,
+        help="Baud rate hint (default: 921600)",
     )
     ble_p.add_argument(
         "--shell",
@@ -176,8 +177,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     shell_p.add_argument(
         "-b", "--baudrate",
         type=int,
-        default=115200,
-        help="Baud rate for serial/BLE transport (default: 115200)",
+        default=DEFAULT_BAUDRATE,
+        help="Baud rate for serial/BLE transport (default: 921600)",
     )
     shell_p.add_argument(
         "--ble-name",

@@ -138,9 +138,10 @@ async def cmd_scan(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Scan for available networks."""
     print_info("Scanning for networks...")
 
-    ok, error, data = await ctx.client.send_with_data("CMD_WIFI_SCAN", {})
+    result = await ctx.wifi_service.scan()
 
-    if ok and data:
+    if result.ok:
+        data = result.data or {}
         networks = data.get("networks", [])
 
         if not networks:
@@ -166,5 +167,5 @@ async def cmd_scan(args: argparse.Namespace, ctx: CLIContext) -> int:
         console.print(table)
         return 0
     else:
-        print_error(f"Scan failed: {error}")
+        print_error(f"Scan failed: {result.error}")
         return 1

@@ -64,7 +64,11 @@ static void updateLoopSchedulers() {
 // setup()
 // -----------------------------------------------------------------------------
 void setup() {
-    Serial.begin(115200);
+    // Get serial baud rate from config
+    auto& maraCfg = config::getMaraConfig();
+    const uint32_t serial_baud = maraCfg.network.serial_baud;
+
+    Serial.begin(serial_baud);
     delay(500);
 
     // Wire HAL to managers first (this initializes the logger)
@@ -74,9 +78,8 @@ void setup() {
     auto halCtx = g_storage.hal.buildContext();
     mara::setDebugLogger(halCtx.logger);
 
-    Serial.println("\n[MCU] Booting with USB Serial + WiFi (AP+STA)...");
+    Serial.printf("\n[MCU] Booting with USB Serial @ %lu baud + WiFi (AP+STA)...\n", serial_baud);
 
-    auto& maraCfg = config::getMaraConfig();
     const auto cfgIssues = maraCfg.validate();
     for (const auto& issue : cfgIssues) {
         Serial.printf("[CONFIG] %s\n", issue.c_str());
@@ -89,7 +92,7 @@ void setup() {
     // Phase 1: Initialize storage components that need runtime parameters
     // =========================================================================
 
-    g_storage.initTransports(Serial, 115200, 3333,
+    g_storage.initTransports(Serial, serial_baud, 3333,
                               MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_ROBOT_ID);
     g_storage.initRouter();
     g_storage.initCommands();

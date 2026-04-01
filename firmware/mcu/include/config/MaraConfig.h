@@ -11,6 +11,9 @@
 #include <string>
 #include <vector>
 
+// Import generated build config (single source of truth for baud rate, etc.)
+#include "config/GeneratedBuildConfig.h"
+
 namespace config {
 
 // =============================================================================
@@ -63,9 +66,9 @@ struct ControlTask {
 // Network Configuration
 // =============================================================================
 struct Network {
-    const char* device_name = "ESP32-bot";
-    uint32_t serial_baud = 115200;
-    uint16_t tcp_port = 3333;
+    const char* device_name = MARA_DEVICE_NAME;
+    uint32_t serial_baud = MARA_BAUD_RATE;
+    uint16_t tcp_port = MARA_TCP_PORT;
 
     // WiFi (configured via separate AP/STA config)
     bool wifi_enabled = true;

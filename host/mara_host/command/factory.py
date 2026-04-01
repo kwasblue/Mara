@@ -10,6 +10,8 @@ from typing import Optional, Any, TYPE_CHECKING
 import logging
 import sys
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE as DEFAULT_BAUDRATE
+
 
 def _default_serial_port() -> str:
     if sys.platform.startswith("linux"):
@@ -66,7 +68,7 @@ class MaraClientFactory:
     def create_serial_client(
         self,
         port: str,
-        baudrate: int = 115200,
+        baudrate: int = DEFAULT_BAUDRATE,
         config: Optional[ClientConfig] = None,
         bus: Optional["EventBus"] = None,
     ) -> "MaraClient":
@@ -75,7 +77,7 @@ class MaraClientFactory:
 
         Args:
             port: Serial port path (e.g., "/dev/cu.usbserial-0001")
-            baudrate: Baud rate (default: 115200)
+            baudrate: Baud rate (default: 921600)
             config: Optional client configuration
             bus: Optional event bus override
 
@@ -251,7 +253,7 @@ class MaraClientFactory:
         # Default: serial
         return self.create_serial_client(
             port=getattr(args, "port", None) or _default_serial_port(),
-            baudrate=getattr(args, "baudrate", 115200),
+            baudrate=getattr(args, "baudrate", DEFAULT_BAUDRATE),
             config=config,
             bus=bus,
         )

@@ -4,6 +4,7 @@ from typing import Optional
 
 import serial
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE as DEFAULT_BAUDRATE
 from mara_host.transport.stream_transport import StreamTransport
 
 
@@ -18,7 +19,7 @@ class SerialTransport(StreamTransport):
       - Windows:     COM3, COM5, ...
     """
 
-    def __init__(self, port: str, baudrate: int = 115200) -> None:
+    def __init__(self, port: str, baudrate: int = DEFAULT_BAUDRATE) -> None:
         super().__init__()
         self.port = port
         self.baudrate = baudrate

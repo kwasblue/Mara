@@ -6,6 +6,13 @@ from typing import Optional, TYPE_CHECKING
 
 from ..config.pin_config import ENC0_A, ENC0_B
 
+# =============================================================================
+# Import from generated config (single source of truth)
+# =============================================================================
+# Import here for backwards compatibility - other modules should import
+# directly from _generated_config to avoid circular imports
+from ._generated_config import DEFAULT_BAUD_RATE as DEFAULT_BAUDRATE
+
 if TYPE_CHECKING:
     import yaml
 
@@ -22,7 +29,7 @@ class TransportSettings:
     host: Optional[str] = None
     port: Optional[int] = None
     serial_port: Optional[str] = None
-    baudrate: int = 115200
+    baudrate: int = DEFAULT_BAUDRATE
     ble_name: Optional[str] = None
 
 

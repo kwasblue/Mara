@@ -90,6 +90,11 @@ def main():
     gen_tooling_backends.main()
     print()
 
+    import gen_build_config
+    print("-" * 60)
+    gen_build_config.main()
+    print()
+
     print("=" * 60)
     print("All generators completed successfully!")
     print("=" * 60)

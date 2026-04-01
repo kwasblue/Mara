@@ -87,21 +87,21 @@
     #define PLATFORM_HAS_CAN_CAPABLE 1      // ESP32 has TWAI (CAN)
     #define PLATFORM_HAS_I2S_CAPABLE 1
     #define PLATFORM_HAS_DUAL_CORE 1
-    #define PLATFORM_DEFAULT_SERIAL_BAUD 115200
+    #define PLATFORM_DEFAULT_SERIAL_BAUD 921600
 #elif PLATFORM_STM32
     #define PLATFORM_HAS_WIFI_CAPABLE 0     // Requires external module
     #define PLATFORM_HAS_BLE_CAPABLE 0      // Requires external module
     #define PLATFORM_HAS_CAN_CAPABLE 1      // Most STM32 have CAN
     #define PLATFORM_HAS_I2S_CAPABLE 1
     #define PLATFORM_HAS_DUAL_CORE 0        // Most STM32 are single-core
-    #define PLATFORM_DEFAULT_SERIAL_BAUD 115200
+    #define PLATFORM_DEFAULT_SERIAL_BAUD 921600
 #elif PLATFORM_RP2040
     #define PLATFORM_HAS_WIFI_CAPABLE 0     // RP2040 base has no WiFi (Pico W does)
     #define PLATFORM_HAS_BLE_CAPABLE 0
     #define PLATFORM_HAS_CAN_CAPABLE 0      // No native CAN
     #define PLATFORM_HAS_I2S_CAPABLE 1      // PIO can do I2S
     #define PLATFORM_HAS_DUAL_CORE 1
-    #define PLATFORM_DEFAULT_SERIAL_BAUD 115200
+    #define PLATFORM_DEFAULT_SERIAL_BAUD 921600
 #else
     // Native/test build - no hardware capabilities
     #define PLATFORM_HAS_WIFI_CAPABLE 0
@@ -109,7 +109,7 @@
     #define PLATFORM_HAS_CAN_CAPABLE 0
     #define PLATFORM_HAS_I2S_CAPABLE 0
     #define PLATFORM_HAS_DUAL_CORE 0
-    #define PLATFORM_DEFAULT_SERIAL_BAUD 115200
+    #define PLATFORM_DEFAULT_SERIAL_BAUD 921600
 #endif
 
 // =============================================================================

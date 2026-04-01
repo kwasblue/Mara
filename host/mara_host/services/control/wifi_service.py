@@ -63,3 +63,16 @@ class WifiService(ConfigurableService[dict, dict]):
             error_message="Failed to disconnect Wi-Fi",
             ack_timeout_s=0.25,
         )
+
+    async def scan(self) -> ServiceResult:
+        """Scan for available Wi-Fi networks.
+
+        Returns:
+            ServiceResult with networks list in data["networks"]
+        """
+        return await self._send_reliable_with_ack_payload(
+            "CMD_WIFI_SCAN",
+            {},
+            error_message="Failed to scan Wi-Fi networks",
+            ack_timeout_s=5.0,  # Scanning can take a few seconds
+        )

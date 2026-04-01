@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from serial.tools import list_ports
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE as DEFAULT_BAUDRATE
 from mara_host.transport.serial_transport import SerialTransport
 
 
@@ -16,7 +17,7 @@ class BluetoothSerialTransport(SerialTransport):
     Bluetooth SPP name (e.g., "ESP32-SPP").
     """
 
-    def __init__(self, port: str, baudrate: int = 115200) -> None:
+    def __init__(self, port: str, baudrate: int = DEFAULT_BAUDRATE) -> None:
         super().__init__(port=port, baudrate=baudrate)
         self.is_bluetooth = True  # purely informational
 
@@ -24,7 +25,7 @@ class BluetoothSerialTransport(SerialTransport):
     def auto(
         cls,
         device_name: str = "ESP32-SPP",
-        baudrate: int = 115200,
+        baudrate: int = DEFAULT_BAUDRATE,
     ) -> "BluetoothSerialTransport":
         """
         Try to automatically find a Bluetooth SPP serial device whose

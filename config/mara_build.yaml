@@ -1,0 +1,177 @@
+# config/mara_build.yaml
+# =============================================================================
+# MARA Build Configuration - Single Source of Truth
+# =============================================================================
+# This file defines all shared settings between firmware and host.
+# Run `python -m mara_host.tools.generate_all` to regenerate:
+#   - firmware/mcu/include/config/GeneratedBuildConfig.h
+#   - host/mara_host/core/_generated_config.py
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Transport Settings
+# -----------------------------------------------------------------------------
+transport:
+  baud_rate: 921600
+  tcp_port: 3333
+  device_name: "ESP32-bot"
+
+# -----------------------------------------------------------------------------
+# Feature Profiles
+# -----------------------------------------------------------------------------
+# Each profile defines which features are compiled into firmware.
+# The host uses this to know what capabilities to expect.
+
+profiles:
+  # MINIMAL: UART only, basic telemetry, smallest flash footprint (~350KB)
+  minimal:
+    # Transport
+    wifi: false
+    ble: false
+    uart_transport: true
+    mqtt_transport: false
+    # Motors
+    servo: false
+    stepper: false
+    dc_motor: false
+    encoder: false
+    motion_controller: false
+    # Sensors
+    ultrasonic: false
+    imu: false
+    lidar: false
+    # Control
+    signal_bus: false
+    control_kernel: false
+    pid_controller: false
+    state_space: false
+    observer: false
+    control_module: false
+    # System
+    ota: false
+    telemetry: true
+    heartbeat: true
+    logging: false
+    identity: false
+    # Audio
+    audio: false
+    # Benchmark
+    benchmark: false
+
+  # MOTORS: Motor control without network (~550KB)
+  motors:
+    wifi: false
+    ble: false
+    uart_transport: true
+    mqtt_transport: false
+    servo: true
+    stepper: true
+    dc_motor: true
+    encoder: true
+    motion_controller: true
+    ultrasonic: false
+    imu: false
+    lidar: false
+    signal_bus: false
+    control_kernel: false
+    pid_controller: false
+    state_space: false
+    observer: false
+    control_module: false
+    ota: false
+    telemetry: true
+    heartbeat: true
+    logging: true
+    identity: false
+    audio: false
+    benchmark: false
+
+  # SENSORS: WiFi + all sensors, data collection (~600KB)
+  sensors:
+    wifi: true
+    ble: false
+    uart_transport: true
+    mqtt_transport: false
+    servo: false
+    stepper: false
+    dc_motor: false
+    encoder: false
+    motion_controller: false
+    ultrasonic: true
+    imu: true
+    lidar: true
+    signal_bus: false
+    control_kernel: false
+    pid_controller: false
+    state_space: false
+    observer: false
+    control_module: false
+    ota: true
+    telemetry: true
+    heartbeat: true
+    logging: true
+    identity: true
+    audio: false
+    benchmark: false
+
+  # CONTROL: Full control system with motors (~750KB)
+  control:
+    wifi: true
+    ble: false
+    uart_transport: true
+    mqtt_transport: false
+    servo: true
+    stepper: true
+    dc_motor: true
+    encoder: true
+    motion_controller: true
+    ultrasonic: false
+    imu: true
+    lidar: false
+    signal_bus: true
+    control_kernel: true
+    pid_controller: true
+    state_space: true
+    observer: true
+    control_module: true
+    ota: true
+    telemetry: true
+    heartbeat: true
+    logging: true
+    identity: true
+    audio: false
+    benchmark: true
+
+  # FULL: Everything enabled (~870KB)
+  full:
+    wifi: true
+    ble: true
+    uart_transport: true
+    mqtt_transport: true
+    servo: true
+    stepper: true
+    dc_motor: true
+    encoder: true
+    motion_controller: true
+    ultrasonic: true
+    imu: true
+    lidar: true
+    signal_bus: true
+    control_kernel: true
+    pid_controller: true
+    state_space: true
+    observer: true
+    control_module: true
+    ota: true
+    telemetry: true
+    heartbeat: true
+    logging: true
+    identity: true
+    audio: false
+    benchmark: true
+
+# -----------------------------------------------------------------------------
+# Active Profile
+# -----------------------------------------------------------------------------
+# Change this to switch which profile is used for builds
+active_profile: full

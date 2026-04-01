@@ -28,6 +28,7 @@ from typing import Any, Dict, Iterator, List, Optional, Union
 
 import yaml
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE as DEFAULT_BAUDRATE
 from .robot_config_schema import (
     ROBOT_CONFIG_SCHEMA,
     ConfigValidationError,
@@ -77,7 +78,7 @@ class TransportConfig:
     type: str = "serial"
     # Serial
     port: Optional[str] = None
-    baudrate: int = 115200
+    baudrate: int = DEFAULT_BAUDRATE
     # TCP
     host: Optional[str] = None
     tcp_port: int = 3333
@@ -90,7 +91,7 @@ class TransportConfig:
         return cls(
             type=transport_type,
             port=data.get("port"),
-            baudrate=data.get("baudrate", 115200),
+            baudrate=data.get("baudrate", DEFAULT_BAUDRATE),
             host=data.get("host"),
             tcp_port=data.get("port", 3333) if transport_type == "tcp" else data.get("tcp_port", 3333),
             ble_name=data.get("ble_name") or (data.get("port") if transport_type == "ble" else None),

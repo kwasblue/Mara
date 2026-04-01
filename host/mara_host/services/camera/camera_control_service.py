@@ -352,13 +352,13 @@ class CameraControlService:
         Returns:
             ServiceResult with status data
         """
-        ok, error = await self.client.send_reliable(
+        ok, error, data = await self.client.send_with_data(
             "CMD_CAM_GET_STATUS",
             {"camera_id": self.camera_id},
         )
 
         if ok:
-            return ServiceResult.success()
+            return ServiceResult.success(data=data)
         else:
             return ServiceResult.failure(error=error or "Failed to get camera status")
 

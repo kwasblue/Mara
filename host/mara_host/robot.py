@@ -40,6 +40,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Callable, Any, Dict, Union
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE as DEFAULT_BAUDRATE
+
 if TYPE_CHECKING:
     from .command.client import MaraClient
     from .core.event_bus import EventBus
@@ -151,7 +153,7 @@ class Robot:
         host: Optional[str] = None,
         ble_name: Optional[str] = None,
         tcp_port: int = 3333,
-        baudrate: int = 115200,
+        baudrate: int = DEFAULT_BAUDRATE,
     ) -> None:
         selected = sum(bool(v) for v in (port, host, ble_name))
         if selected != 1:

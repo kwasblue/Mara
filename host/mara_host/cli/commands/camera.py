@@ -1,5 +1,8 @@
 # mara_host/cli/commands/camera.py
-"""Camera control commands."""
+"""Camera control commands.
+
+All commands route through CameraControlService.
+"""
 
 import argparse
 
@@ -9,23 +12,23 @@ from mara_host.cli.console import (
     console,
     print_success,
     print_error,
-    print_info,
 )
 from mara_host.cli.context import CLIContext, run_with_context
 from mara_host.cli.commands._common import add_port_arg, cmd_help
+from mara_host.services.camera.camera_control_service import Resolution
 
 
 RESOLUTIONS = {
-    "qqvga": (0, "160x120"),
-    "qcif": (2, "176x144"),
-    "hqvga": (3, "240x176"),
-    "qvga": (5, "320x240"),
-    "cif": (6, "400x296"),
-    "vga": (8, "640x480"),
-    "svga": (9, "800x600"),
-    "xga": (10, "1024x768"),
-    "sxga": (12, "1280x1024"),
-    "uxga": (13, "1600x1200"),
+    "qqvga": Resolution.QQVGA,
+    "qcif": Resolution.QCIF,
+    "hqvga": Resolution.HQVGA,
+    "qvga": Resolution.QVGA,
+    "cif": Resolution.CIF,
+    "vga": Resolution.VGA,
+    "svga": Resolution.SVGA,
+    "xga": Resolution.XGA,
+    "sxga": Resolution.SXGA,
+    "uxga": Resolution.UXGA,
 }
 
 PRESETS = ["default", "streaming", "high_quality", "fast", "night", "ml_inference"]
@@ -148,10 +151,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 @run_with_context
 async def cmd_status(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Get camera status."""
-    ok, error, data = await ctx.client.send_with_data("CMD_CAM_GET_STATUS", {"camera_id": 0})
+    result = await ctx.camera_control_service.get_status()
 
-    if ok:
-        data = data or {}
+    if result.ok:
+        data = result.data or {}
         table = Table(title="Camera Status", show_header=False)
         table.add_column("Property", style="cyan")
         table.add_column("Value")
@@ -168,206 +171,169 @@ async def cmd_status(args: argparse.Namespace, ctx: CLIContext) -> int:
         console.print(table)
         return 0
     else:
-        print_error(f"Failed to get status: {error}")
+        print_error(f"Failed to get status: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_resolution(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set camera resolution."""
-    res_value, res_dims = RESOLUTIONS[args.resolution]
+    resolution = RESOLUTIONS[args.resolution]
+    result = await ctx.camera_control_service.set_resolution(resolution)
 
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_SET_RESOLUTION",
-        {"camera_id": 0, "size": res_value},
-    )
-
-    if ok:
-        print_success(f"Resolution set to {args.resolution.upper()} ({res_dims})")
+    if result.ok:
+        dims = resolution.dimensions
+        print_success(f"Resolution set to {args.resolution.upper()} ({dims[0]}x{dims[1]})")
         return 0
     else:
-        print_error(f"Failed to set resolution: {error}")
+        print_error(f"Failed to set resolution: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_quality(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set JPEG quality."""
-    quality = max(4, min(63, args.quality))
+    result = await ctx.camera_control_service.set_quality(args.quality)
 
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_SET_QUALITY",
-        {"camera_id": 0, "quality": quality},
-    )
-
-    if ok:
-        print_success(f"Quality set to {quality}")
+    if result.ok:
+        print_success(f"Quality set to {result.data.get('quality', args.quality)}")
         return 0
     else:
-        print_error(f"Failed to set quality: {error}")
+        print_error(f"Failed to set quality: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_brightness(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set brightness."""
-    level = max(-2, min(2, args.level))
+    result = await ctx.camera_control_service.set_brightness(args.level)
 
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_SET_BRIGHTNESS",
-        {"camera_id": 0, "brightness": level},
-    )
-
-    if ok:
-        print_success(f"Brightness set to {level}")
+    if result.ok:
+        print_success(f"Brightness set to {result.data.get('brightness', args.level)}")
         return 0
     else:
-        print_error(f"Failed to set brightness: {error}")
+        print_error(f"Failed to set brightness: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_contrast(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set contrast."""
-    level = max(-2, min(2, args.level))
+    result = await ctx.camera_control_service.set_contrast(args.level)
 
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_SET_CONTRAST",
-        {"camera_id": 0, "contrast": level},
-    )
-
-    if ok:
-        print_success(f"Contrast set to {level}")
+    if result.ok:
+        print_success(f"Contrast set to {result.data.get('contrast', args.level)}")
         return 0
     else:
-        print_error(f"Failed to set contrast: {error}")
+        print_error(f"Failed to set contrast: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_saturation(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set saturation."""
-    level = max(-2, min(2, args.level))
+    result = await ctx.camera_control_service.set_saturation(args.level)
 
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_SET_SATURATION",
-        {"camera_id": 0, "saturation": level},
-    )
-
-    if ok:
-        print_success(f"Saturation set to {level}")
+    if result.ok:
+        print_success(f"Saturation set to {result.data.get('saturation', args.level)}")
         return 0
     else:
-        print_error(f"Failed to set saturation: {error}")
+        print_error(f"Failed to set saturation: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_flip(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Set image flip/mirror."""
-    payload = {"camera_id": 0}
+    hmirror = None
+    vflip = None
 
     if args.hmirror:
-        payload["hmirror"] = True
+        hmirror = True
     elif args.no_hmirror:
-        payload["hmirror"] = False
+        hmirror = False
 
     if args.vflip:
-        payload["vflip"] = True
+        vflip = True
     elif args.no_vflip:
-        payload["vflip"] = False
+        vflip = False
 
-    if len(payload) == 1:
+    if hmirror is None and vflip is None:
         print_error("Specify at least one flip option (--hmirror, --vflip, --no-hmirror, --no-vflip)")
         return 1
 
-    ok, error = await ctx.client.send_reliable("CMD_CAM_SET_FLIP", payload)
+    result = await ctx.camera_control_service.set_flip(hmirror=hmirror, vflip=vflip)
 
-    if ok:
+    if result.ok:
         print_success("Flip settings updated")
         return 0
     else:
-        print_error(f"Failed to set flip: {error}")
+        print_error(f"Failed to set flip: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_flash(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Control flash LED."""
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_FLASH",
-        {"camera_id": 0, "state": args.state},
-    )
+    result = await ctx.camera_control_service.set_flash(args.state)
 
-    if ok:
+    if result.ok:
         print_success(f"Flash {args.state}")
         return 0
     else:
-        print_error(f"Failed to control flash: {error}")
+        print_error(f"Failed to control flash: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_preset(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Apply camera preset."""
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_APPLY_PRESET",
-        {"camera_id": 0, "preset": args.preset},
-    )
+    result = await ctx.camera_control_service.apply_preset(args.preset)
 
-    if ok:
+    if result.ok:
         print_success(f"Applied preset: {args.preset}")
         return 0
     else:
-        print_error(f"Failed to apply preset: {error}")
+        print_error(f"Failed to apply preset: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_capture(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Capture a single frame."""
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_CAPTURE_FRAME",
-        {"camera_id": 0, "publish": True},
-    )
+    result = await ctx.camera_control_service.capture_frame(publish=True)
 
-    if ok:
+    if result.ok:
         print_success("Frame captured")
         return 0
     else:
-        print_error(f"Failed to capture: {error}")
+        print_error(f"Failed to capture: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_start(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Start continuous capture."""
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_START_CAPTURE",
-        {"camera_id": 0, "mode": "polling", "fps": args.fps},
-    )
+    result = await ctx.camera_control_service.start_capture(mode="polling", fps=args.fps)
 
-    if ok:
+    if result.ok:
         print_success(f"Started capture at {args.fps} FPS")
         return 0
     else:
-        print_error(f"Failed to start capture: {error}")
+        print_error(f"Failed to start capture: {result.error}")
         return 1
 
 
 @run_with_context
 async def cmd_stop(args: argparse.Namespace, ctx: CLIContext) -> int:
     """Stop continuous capture."""
-    ok, error = await ctx.client.send_reliable(
-        "CMD_CAM_STOP_CAPTURE",
-        {"camera_id": 0},
-    )
+    result = await ctx.camera_control_service.stop_capture()
 
-    if ok:
+    if result.ok:
         print_success("Capture stopped")
         return 0
     else:
-        print_error(f"Failed to stop capture: {error}")
+        print_error(f"Failed to stop capture: {result.error}")
         return 1
 
 
@@ -378,8 +344,9 @@ def cmd_list_resolutions(args: argparse.Namespace) -> int:
     table.add_column("Dimensions", justify="right")
     table.add_column("Value", justify="center")
 
-    for name, (value, dims) in RESOLUTIONS.items():
-        table.add_row(name.upper(), dims, str(value))
+    for name, resolution in RESOLUTIONS.items():
+        dims = resolution.dimensions
+        table.add_row(name.upper(), f"{dims[0]}x{dims[1]}", str(resolution.value))
 
     console.print(table)
     return 0

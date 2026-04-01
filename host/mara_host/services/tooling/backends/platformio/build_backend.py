@@ -80,25 +80,42 @@ class PlatformIOBuildBackend(BuildBackend):
             print(f"[pio-build] Build flags: {flags_str}")
 
         print(f"[pio-build] Running: {' '.join(cmd)}")
-        result = subprocess.run(
-            cmd,
-            cwd=project_dir,
-            env=env,
-            capture_output=not request.verbose,
-            text=True,
-        )
 
-        output = ""
-        error = ""
-        if not request.verbose:
+        if request.verbose:
+            # In verbose mode, use Popen to stream output while capturing it
+            process = subprocess.Popen(
+                cmd,
+                cwd=project_dir,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            output_lines = []
+            for line in process.stdout:
+                print(line, end="")  # Stream to console
+                output_lines.append(line)
+            process.wait()
+            output = "".join(output_lines)
+            error = ""
+            return_code = process.returncode
+        else:
+            result = subprocess.run(
+                cmd,
+                cwd=project_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
             output = result.stdout or ""
             error = result.stderr or ""
+            return_code = result.returncode
 
         firmware_size, ram_usage = _parse_size_output(output)
 
         return BuildOutcome(
-            success=result.returncode == 0,
-            return_code=result.returncode,
+            success=return_code == 0,
+            return_code=return_code,
             output=output,
             error=error,
             firmware_size=firmware_size,

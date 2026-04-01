@@ -25,10 +25,36 @@ DEFAULT_PIN = 18
 POLL_INTERVAL = 0.5  # seconds between status polls
 
 
+def _resolve_graph_path(graph_arg: str) -> Path:
+    """Resolve graph path, handling various user input formats."""
+    graph_path = Path(graph_arg)
+
+    # If it exists as given, use it
+    if graph_path.exists():
+        return graph_path
+
+    # If starts with "/" but doesn't exist, try as project-relative
+    # e.g., "/examples/..." -> "examples/..." relative to script parent
+    if graph_arg.startswith("/"):
+        project_relative = Path(__file__).parent.parent / graph_arg.lstrip("/")
+        if project_relative.exists():
+            return project_relative
+
+    # Try relative to script's parent directory (host/)
+    script_relative = Path(__file__).parent.parent / graph_arg
+    if script_relative.exists():
+        return script_relative
+
+    # Return original path (will fail with helpful error)
+    return graph_path
+
+
 async def run(args: argparse.Namespace) -> int:
-    graph_path = Path(args.graph)
+    graph_path = _resolve_graph_path(args.graph)
     if not graph_path.exists():
-        print(f"ERROR: graph file not found: {graph_path}")
+        print(f"ERROR: graph file not found: {args.graph}")
+        print(f"  Tried: {graph_path}")
+        print(f"  Hint: Use relative path like 'examples/control_graphs/...'")
         return 1
 
     with open(graph_path) as f:

@@ -118,25 +118,42 @@ class CMakeBuildBackend(BuildBackend):
                 env["EXTRA_COMPONENT_DIRS"] = " ".join(cmake_defs)
 
         print(f"[cmake-build] Running: {' '.join(cmd)}")
-        result = subprocess.run(
-            cmd,
-            cwd=project_dir,
-            env=env,
-            capture_output=not request.verbose,
-            text=True,
-        )
 
-        output = ""
-        error = ""
-        if not request.verbose:
+        if request.verbose:
+            # Stream output while capturing
+            process = subprocess.Popen(
+                cmd,
+                cwd=project_dir,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            output_lines = []
+            for line in process.stdout:
+                print(line, end="")
+                output_lines.append(line)
+            process.wait()
+            output = "".join(output_lines)
+            error = ""
+            return_code = process.returncode
+        else:
+            result = subprocess.run(
+                cmd,
+                cwd=project_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
             output = result.stdout or ""
             error = result.stderr or ""
+            return_code = result.returncode
 
         firmware_size, ram_usage = _parse_size_output(output + error)
 
         return BuildOutcome(
-            success=result.returncode == 0,
-            return_code=result.returncode,
+            success=return_code == 0,
+            return_code=return_code,
             output=output,
             error=error,
             firmware_size=firmware_size,
@@ -192,24 +209,40 @@ class CMakeBuildBackend(BuildBackend):
         build_cmd.extend(["--parallel"])
 
         print(f"[cmake-build] Building: {' '.join(build_cmd)}")
-        result = subprocess.run(
-            build_cmd,
-            cwd=project_dir,
-            capture_output=not request.verbose,
-            text=True,
-        )
 
-        output = ""
-        error = ""
-        if not request.verbose:
+        if request.verbose:
+            # Stream output while capturing
+            process = subprocess.Popen(
+                build_cmd,
+                cwd=project_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            output_lines = []
+            for line in process.stdout:
+                print(line, end="")
+                output_lines.append(line)
+            process.wait()
+            output = "".join(output_lines)
+            error = ""
+            return_code = process.returncode
+        else:
+            result = subprocess.run(
+                build_cmd,
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
             output = result.stdout or ""
             error = result.stderr or ""
+            return_code = result.returncode
 
         firmware_size, ram_usage = _parse_size_output(output)
 
         return BuildOutcome(
-            success=result.returncode == 0,
-            return_code=result.returncode,
+            success=return_code == 0,
+            return_code=return_code,
             output=output,
             error=error,
             firmware_size=firmware_size,

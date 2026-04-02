@@ -4,6 +4,7 @@
 #pragma once
 
 #include "config/FeatureFlags.h"
+#include "config/GeneratedLimits.h"
 
 #if HAS_OBSERVER
 
@@ -17,9 +18,9 @@ class SignalBus;  // Forward declaration
 // Observer Configuration
 // -----------------------------------------------------------------------------
 struct ObserverConfig {
-    static constexpr size_t MAX_STATES = 6;
-    static constexpr size_t MAX_INPUTS = 2;
-    static constexpr size_t MAX_OUTPUTS = 4;
+    static constexpr size_t MAX_STATES = MARA_MAX_STATES;
+    static constexpr size_t MAX_INPUTS = MARA_MAX_INPUTS;
+    static constexpr size_t MAX_OUTPUTS = MARA_MAX_OUTPUTS;
     
     uint8_t num_states = 2;
     uint8_t num_inputs = 1;
@@ -104,8 +105,8 @@ private:
 // -----------------------------------------------------------------------------
 class ObserverManager {
 public:
-    static constexpr size_t MAX_OBSERVERS = 4;
-    static constexpr size_t MAX_SLOTS = 4;
+    static constexpr size_t MAX_OBSERVERS = MARA_MAX_OBSERVERS;
+    static constexpr size_t MAX_SLOTS = MARA_MAX_OBSERVERS;
 
     
     struct Slot {
@@ -155,9 +156,9 @@ class SignalBus;
 
 // Stub ObserverConfig
 struct ObserverConfig {
-    static constexpr size_t MAX_STATES = 6;
-    static constexpr size_t MAX_INPUTS = 2;
-    static constexpr size_t MAX_OUTPUTS = 4;
+    static constexpr size_t MAX_STATES = MARA_MAX_STATES;
+    static constexpr size_t MAX_INPUTS = MARA_MAX_INPUTS;
+    static constexpr size_t MAX_OUTPUTS = MARA_MAX_OUTPUTS;
     uint8_t num_states = 2;
     uint8_t num_inputs = 1;
     uint8_t num_outputs = 1;
@@ -169,9 +170,9 @@ struct ObserverConfig {
 // Stub LuenbergerObserver
 class LuenbergerObserver {
 public:
-    static constexpr size_t MAX_STATES = 6;
-    static constexpr size_t MAX_INPUTS = 2;
-    static constexpr size_t MAX_OUTPUTS = 4;
+    static constexpr size_t MAX_STATES = MARA_MAX_STATES;
+    static constexpr size_t MAX_INPUTS = MARA_MAX_INPUTS;
+    static constexpr size_t MAX_OUTPUTS = MARA_MAX_OUTPUTS;
 
     LuenbergerObserver() {}
     void configure(uint8_t, uint8_t, uint8_t) {}
@@ -196,8 +197,8 @@ public:
 // Stub ObserverManager
 class ObserverManager {
 public:
-    static constexpr size_t MAX_OBSERVERS = 4;
-    static constexpr size_t MAX_SLOTS = 4;
+    static constexpr size_t MAX_OBSERVERS = MARA_MAX_OBSERVERS;
+    static constexpr size_t MAX_SLOTS = MARA_MAX_OBSERVERS;
 
     struct Slot {
         bool configured = false;

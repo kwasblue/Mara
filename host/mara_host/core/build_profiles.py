@@ -323,3 +323,55 @@ def reload_config() -> None:
     """Force reload of config from disk."""
     global _config
     _config = None
+
+
+# =============================================================================
+# Resource Limits
+# =============================================================================
+
+# Default limits (used if not specified in config)
+DEFAULT_LIMITS: dict[str, int] = {
+    "max_signals": 128,
+    "max_control_slots": 8,
+    "max_states": 6,
+    "max_inputs": 2,
+    "max_observers": 4,
+    "max_outputs": 4,
+    "max_graph_slots": 8,
+}
+
+# Maps YAML limit names to C++ macro names
+LIMIT_TO_MACRO: dict[str, str] = {
+    "max_signals": "MARA_MAX_SIGNALS",
+    "max_control_slots": "MARA_MAX_CONTROL_SLOTS",
+    "max_states": "MARA_MAX_STATES",
+    "max_inputs": "MARA_MAX_INPUTS",
+    "max_observers": "MARA_MAX_OBSERVERS",
+    "max_outputs": "MARA_MAX_OUTPUTS",
+    "max_graph_slots": "MARA_MAX_GRAPH_SLOTS",
+}
+
+
+def get_limits() -> dict[str, int]:
+    """Get resource limits from config.
+
+    Returns:
+        Dict mapping limit name to value, with defaults applied
+    """
+    config_limits = _load_config().get("limits", {})
+    # Merge with defaults (config overrides defaults)
+    result = DEFAULT_LIMITS.copy()
+    result.update(config_limits)
+    return result
+
+
+def get_limit(name: str) -> int:
+    """Get a specific resource limit.
+
+    Args:
+        name: Limit name (e.g., "max_signals")
+
+    Returns:
+        Limit value
+    """
+    return get_limits().get(name, DEFAULT_LIMITS.get(name, 0))

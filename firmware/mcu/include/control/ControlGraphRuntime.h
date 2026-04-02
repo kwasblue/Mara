@@ -12,6 +12,7 @@
 #endif
 
 #include "command/ModeManager.h"
+#include "config/GeneratedLimits.h"
 #include "control/SignalBus.h"
 #include "hw/GpioManager.h"
 #include "motor/ServoManager.h"
@@ -29,7 +30,7 @@ struct ControlGraphSlotSummary {
 
 class ControlGraphRuntime {
 public:
-    static constexpr uint8_t MAX_SLOTS = 8;
+    static constexpr uint8_t MAX_SLOTS = MARA_MAX_GRAPH_SLOTS;
     static constexpr uint8_t MAX_TRANSFORMS = 8;
 
     enum class SourceKind : uint8_t {

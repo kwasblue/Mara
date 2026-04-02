@@ -8,6 +8,7 @@
 #include <cstring>
 #include <functional>
 #include "control/SignalBus.h"
+#include "config/GeneratedLimits.h"
 
 // Forward declaration
 class IController;
@@ -44,7 +45,7 @@ public:
     void resetStats();
 
 private:
-    static constexpr size_t MAX_SLOTS = 8;
+    static constexpr size_t MAX_SLOTS = MARA_MAX_CONTROL_SLOTS;
 
     struct SlotTiming {
         uint32_t start_ms = 0;
@@ -62,8 +63,8 @@ private:
 // State-Space Configuration
 // -----------------------------------------------------------------------------
 struct StateSpaceIO {
-    static constexpr size_t MAX_STATES = 6;
-    static constexpr size_t MAX_INPUTS = 2;
+    static constexpr size_t MAX_STATES = MARA_MAX_STATES;
+    static constexpr size_t MAX_INPUTS = MARA_MAX_INPUTS;
     
     uint8_t num_states = 0;
     uint8_t num_inputs = 1;
@@ -256,7 +257,7 @@ private:
 // -----------------------------------------------------------------------------
 class ControlKernel {
 public:
-    static constexpr size_t MAX_SLOTS = 8;
+    static constexpr size_t MAX_SLOTS = MARA_MAX_CONTROL_SLOTS;
 
     ControlKernel() = default;
     ~ControlKernel() = default;

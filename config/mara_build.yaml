@@ -221,6 +221,33 @@ profiles:
     benchmark: true
 
 # -----------------------------------------------------------------------------
+# Resource Limits
+# -----------------------------------------------------------------------------
+# Compile-time limits for control system resources.
+# These affect memory allocation and must be set appropriately for your use case.
+limits:
+  # SignalBus: Maximum number of signals that can be defined
+  max_signals: 128
+
+  # ControlKernel: Maximum controller slots
+  max_control_slots: 8
+
+  # ControlKernel: Maximum state dimension for state-space controllers
+  max_states: 6
+
+  # ControlKernel: Maximum input dimension for controllers
+  max_inputs: 2
+
+  # Observer: Maximum number of observer instances
+  max_observers: 4
+
+  # Observer: Maximum output dimension
+  max_outputs: 4
+
+  # ControlGraph: Maximum slots in a control graph
+  max_graph_slots: 8
+
+# -----------------------------------------------------------------------------
 # Active Profile
 # -----------------------------------------------------------------------------
 # Change this to switch which profile is used for builds

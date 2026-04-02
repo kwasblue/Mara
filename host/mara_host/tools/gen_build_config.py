@@ -23,7 +23,9 @@ from mara_host.core.build_profiles import (
     get_all_profiles,
     get_feature_categories,
     get_feature_dependencies,
+    get_limits,
     feature_to_macro,
+    LIMIT_TO_MACRO,
     CONFIG_PATH,
 )
 
@@ -31,6 +33,7 @@ from mara_host.core.build_profiles import (
 # Output paths
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 FIRMWARE_OUT = REPO_ROOT / "firmware" / "mcu" / "include" / "config" / "GeneratedBuildConfig.h"
+FIRMWARE_LIMITS_OUT = REPO_ROOT / "firmware" / "mcu" / "include" / "config" / "GeneratedLimits.h"
 HOST_OUT = REPO_ROOT / "host" / "mara_host" / "core" / "_generated_config.py"
 
 
@@ -74,6 +77,7 @@ def generate_cpp_header(profile_name: str | None = None) -> str:
     ]
 
     # Group features by category
+    # These are the authoritative values from mara_build.yaml
     for category, feature_names in categories.items():
         lines.append(f"// {category}")
         for name in feature_names:
@@ -88,6 +92,55 @@ def generate_cpp_header(profile_name: str | None = None) -> str:
     lines.append(f"#define MARA_BUILD_PROFILE \"{active_profile}\"")
     lines.append("")
 
+    # Add resource limits
+    limits = get_limits()
+    lines.append("// =============================================================================")
+    lines.append("// Resource Limits")
+    lines.append("// =============================================================================")
+    for name, value in sorted(limits.items()):
+        macro = LIMIT_TO_MACRO.get(name, f"MARA_{name.upper()}")
+        lines.append(f"#define {macro} {value}")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def generate_limits_header() -> str:
+    """Generate a separate header with only resource limits.
+
+    This header is safe to include from any file without pulling in feature flags,
+    which allows native tests to override feature flags via command-line while
+    still using the configured limits.
+    """
+    limits = get_limits()
+
+    lines = [
+        "// GeneratedLimits.h",
+        "// =============================================================================",
+        "// AUTO-GENERATED FILE - DO NOT EDIT",
+        "// =============================================================================",
+        f"// Generated from: config/mara_build.yaml",
+        f"// Generated at:   {datetime.now().isoformat()}",
+        "//",
+        "// Resource limits only - safe to include without affecting feature flags.",
+        "// For feature flags, include GeneratedBuildConfig.h instead.",
+        "//",
+        "// To regenerate, run:",
+        "//   mara generate all",
+        "// =============================================================================",
+        "",
+        "#pragma once",
+        "",
+        "// =============================================================================",
+        "// Resource Limits",
+        "// =============================================================================",
+    ]
+
+    for name, value in sorted(limits.items()):
+        macro = LIMIT_TO_MACRO.get(name, f"MARA_{name.upper()}")
+        lines.append(f"#define {macro} {value}")
+
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -103,6 +156,7 @@ def generate_python_module(profile_name: str | None = None) -> str:
     all_profiles = get_all_profiles()
     active_profile = profile_name or get_active_profile()
     features = get_profile(active_profile)
+    limits = get_limits()
 
     lines = [
         '"""',
@@ -184,6 +238,16 @@ def generate_python_module(profile_name: str | None = None) -> str:
     lines.append("}")
     lines.append("")
 
+    # Add resource limits
+    lines.append("# =============================================================================")
+    lines.append("# Resource Limits")
+    lines.append("# =============================================================================")
+    lines.append("LIMITS: Dict[str, int] = {")
+    for name, value in sorted(limits.items()):
+        lines.append(f"    \"{name}\": {value},")
+    lines.append("}")
+    lines.append("")
+
     # Add convenience functions
     lines.extend([
         "",
@@ -230,6 +294,11 @@ def generate_python_module(profile_name: str | None = None) -> str:
         "                    errors.append(f\"{feature} requires {req}\")",
         "    return errors",
         "",
+        "",
+        "def get_limit(name: str) -> int:",
+        '    """Get a specific resource limit."""',
+        "    return LIMITS.get(name, 0)",
+        "",
     ])
 
     return "\n".join(lines)
@@ -252,12 +321,19 @@ def main(profile: str | None = None):
     active_profile = profile or get_active_profile()
     print(f"  Active profile: {active_profile}")
 
-    # Generate C++ header
+    # Generate C++ header (feature flags + limits)
     cpp_content = generate_cpp_header(active_profile)
     FIRMWARE_OUT.parent.mkdir(parents=True, exist_ok=True)
     with open(FIRMWARE_OUT, "w") as f:
         f.write(cpp_content)
     print(f"  Generated: {FIRMWARE_OUT}")
+
+    # Generate C++ limits-only header (safe to include without affecting feature flags)
+    limits_content = generate_limits_header()
+    FIRMWARE_LIMITS_OUT.parent.mkdir(parents=True, exist_ok=True)
+    with open(FIRMWARE_LIMITS_OUT, "w") as f:
+        f.write(limits_content)
+    print(f"  Generated: {FIRMWARE_LIMITS_OUT}")
 
     # Generate Python module
     py_content = generate_python_module(active_profile)

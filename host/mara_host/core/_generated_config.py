@@ -4,7 +4,7 @@ _generated_config.py
 AUTO-GENERATED FILE - DO NOT EDIT
 =============================================================================
 Generated from: config/mara_build.yaml
-Generated at:   2026-04-02T15:02:55.576876
+Generated at:   2026-04-02T16:23:43.929130
 Active profile: full
 
 To regenerate, run:
@@ -228,6 +228,19 @@ FEATURE_DEPENDENCIES: Dict[str, List[str]] = {
     "state_space": ['control_kernel'],
 }
 
+# =============================================================================
+# Resource Limits
+# =============================================================================
+LIMITS: Dict[str, int] = {
+    "max_control_slots": 8,
+    "max_graph_slots": 8,
+    "max_inputs": 2,
+    "max_observers": 4,
+    "max_outputs": 4,
+    "max_signals": 128,
+    "max_states": 6,
+}
+
 
 # =============================================================================
 # Convenience Functions
@@ -271,3 +284,8 @@ def validate_dependencies(features: Dict[str, bool]) -> List[str]:
                 if not features.get(req, False):
                     errors.append(f"{feature} requires {req}")
     return errors
+
+
+def get_limit(name: str) -> int:
+    """Get a specific resource limit."""
+    return LIMITS.get(name, 0)

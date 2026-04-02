@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT
 // =============================================================================
 // Generated from: config/mara_build.yaml
-// Generated at:   2026-04-02T15:02:55.576667
+// Generated at:   2026-04-02T16:23:43.928797
 // Active profile: full
 //
 // To regenerate, run:
@@ -64,3 +64,14 @@
 
 // Active profile name
 #define MARA_BUILD_PROFILE "full"
+
+// =============================================================================
+// Resource Limits
+// =============================================================================
+#define MARA_MAX_CONTROL_SLOTS 8
+#define MARA_MAX_GRAPH_SLOTS 8
+#define MARA_MAX_INPUTS 2
+#define MARA_MAX_OBSERVERS 4
+#define MARA_MAX_OUTPUTS 4
+#define MARA_MAX_SIGNALS 128
+#define MARA_MAX_STATES 6

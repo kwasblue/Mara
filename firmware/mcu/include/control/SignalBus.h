@@ -10,6 +10,7 @@
 #pragma once
 
 #include "config/FeatureFlags.h"
+#include "config/GeneratedLimits.h"
 
 #if HAS_SIGNAL_BUS
 
@@ -44,8 +45,8 @@ public:
     // Fixed-size name buffer to avoid dangling pointer issues with JSON strings
     static constexpr size_t NAME_MAX_LEN = 64;
 
-    // Maximum number of signals that can be defined
-    static constexpr size_t MAX_SIGNALS = 128;
+    // Maximum number of signals that can be defined (configured in mara_build.yaml)
+    static constexpr size_t MAX_SIGNALS = MARA_MAX_SIGNALS;
 
     struct SignalDef {
         uint16_t id = 0;

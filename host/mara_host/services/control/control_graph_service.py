@@ -180,18 +180,25 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         return ServiceResult.success(data=payload)
 
     async def apply(self, graph: dict[str, Any] | ControlGraphConfig, enable: bool = True) -> ServiceResult:
+        # Pre-check policy BEFORE upload to avoid uploading a graph we can't enable
+        if enable:
+            try:
+                normalized_model = normalize_graph_model(graph)
+                normalized = normalized_model.to_dict()
+                policy = self._evaluate_graph_policy(normalized)
+                if policy is not None and policy["blocking"]:
+                    return ServiceResult.failure(
+                        error="Control graph blocked by sensor policy",
+                        data={"graph": normalized, "policy": policy, "uploaded": False},
+                    )
+            except ControlGraphValidationError as exc:
+                return ServiceResult.failure(error=str(exc))
+
         upload_result = await self.upload(graph)
         if not upload_result.ok:
             return upload_result
         if not enable:
             return upload_result
-
-        policy = self._cached_policy
-        if policy is not None and policy["blocking"]:
-            return ServiceResult.failure(
-                error="Control graph blocked by sensor policy",
-                data={"graph": self.cached_graph, "policy": policy},
-            )
 
         enable_result = await self.enable(True)
         if not enable_result.ok:

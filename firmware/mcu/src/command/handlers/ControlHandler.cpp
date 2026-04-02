@@ -262,8 +262,10 @@ void ControlHandler::handleSlotSetParamArray(JsonVariantConst payload, CommandCo
         return;
     }
 
-    float values[12];  // Max size for K matrix (2x6)
-    size_t len = mara::cmd::extractFloatArray(arr, values, sizeof(values) / sizeof(values[0]));
+    // Buffer sized from actual constants to prevent silent truncation if they change
+    static constexpr size_t MAX_ARRAY_SIZE = StateSpaceIO::MAX_INPUTS * StateSpaceIO::MAX_STATES;
+    float values[MAX_ARRAY_SIZE];
+    size_t len = mara::cmd::extractFloatArray(arr, values, MAX_ARRAY_SIZE);
 
     bool ok = controlModule_->kernel().setParamArray(slot, key, values, len);
 

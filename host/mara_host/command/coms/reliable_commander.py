@@ -508,6 +508,11 @@ class ReliableCommander:
 
         # Handle retries with exponential backoff
         for cmd in to_retry:
+            # Check if ACK was received between snapshot and now (prevents spurious retry)
+            async with self._pending_lock:
+                if cmd.seq not in self._pending:
+                    continue  # ACK already processed, skip retry
+
             cmd.retries += 1
             cmd.last_sent_ns = now_ns
             self.retries += 1

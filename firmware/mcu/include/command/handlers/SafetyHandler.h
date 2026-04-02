@@ -6,8 +6,9 @@
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
 
-// Forward declaration
+// Forward declarations
 class ModeManager;
+class MotionController;
 
 class SafetyHandler : public ICommandHandler {
 public:
@@ -57,6 +58,7 @@ public:
 
 private:
     ModeManager* mode_ = nullptr;
+    MotionController* motion_ = nullptr;
 
     // Implemented in SafetyHandler.cpp
     void handleHeartbeat(CommandContext& ctx);

@@ -3,6 +3,7 @@
 
 #include "command/handlers/SafetyHandler.h"
 #include "command/ModeManager.h"
+#include "motor/MotionController.h"
 #include "core/ServiceContext.h"
 #include "core/Debug.h"
 #include "core/ErrorCodes.h"
@@ -10,6 +11,7 @@
 
 void SafetyHandler::init(mara::ServiceContext& ctx) {
     mode_ = ctx.mode;
+    motion_ = ctx.motion;
 }
 
 void SafetyHandler::handleHeartbeat(CommandContext& ctx) {
@@ -96,9 +98,17 @@ void SafetyHandler::handleClearEstop(CommandContext& ctx) {
 
 void SafetyHandler::handleStop(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] STOP");
-    // Note: This doesn't actually stop motors - that's MotionHandler's job
-    // This is just a state acknowledgment
+
+    // Soft stop: zero velocities without changing robot state
+    // Prefer intent buffer (HANDLERS → INTENTS architecture), fallback to direct
+    if (ctx.intents) {
+        ctx.intents->setVelocityIntent(0.0f, 0.0f, ctx.now_ms());
+    } else if (motion_) {
+        motion_->stop();
+    }
+
     JsonDocument resp;
+    resp["state"] = maraModeToString(mode_->mode());
     ctx.sendAck("CMD_STOP", true, resp);
 }
 

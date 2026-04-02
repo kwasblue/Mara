@@ -13,6 +13,7 @@
 #include <functional>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/semphr.h>
 
 class MqttTransport : public ITransport {
 public:
@@ -30,6 +31,8 @@ public:
         const char* username = nullptr,
         const char* password = nullptr
     );
+
+    ~MqttTransport();
 
     /// Set HAL task scheduler (optional, for portable code)
     void setHal(hal::ITaskScheduler* scheduler) { halScheduler_ = scheduler; }
@@ -60,6 +63,7 @@ private:
 
     WiFiClient wifi_;
     PubSubClient mqtt_;
+    SemaphoreHandle_t mqttMutex_ = nullptr;  // Protects mqtt_ access across threads
 
     std::string broker_;
     uint16_t port_;

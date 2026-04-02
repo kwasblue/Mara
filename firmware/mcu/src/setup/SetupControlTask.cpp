@@ -92,15 +92,29 @@ static void controlTaskFunc(void* param) {
         uint32_t start_us = sysClock.micros();
         uint32_t now_ms = sysClock.millis();
 
-        // Track period jitter (time since last iteration)
+        // Track period jitter (time since last iteration) and compute actual dt
+        float dt_s;
         if (g_stats.iterations > 0) {
             uint32_t period_us = start_us - last_iteration_us;
             g_rtStats.recordPeriod(period_us);
+
+            // Use measured dt, clamped to sane range to prevent integration blow-up
+            // Min: 0.5x nominal period, Max: 2x nominal period
+            uint32_t nominal_period_us = 1000000 / g_taskConfig.rate_hz;
+            uint32_t min_period_us = nominal_period_us / 2;
+            uint32_t max_period_us = nominal_period_us * 2;
+
+            if (period_us < min_period_us) {
+                period_us = min_period_us;
+            } else if (period_us > max_period_us) {
+                period_us = max_period_us;
+            }
+            dt_s = static_cast<float>(period_us) / 1000000.0f;
+        } else {
+            // First iteration - use nominal dt
+            dt_s = 1.0f / g_taskConfig.rate_hz;
         }
         last_iteration_us = start_us;
-
-        // Compute dt based on configured rate
-        float dt_s = 1.0f / g_taskConfig.rate_hz;
 
         // =====================================================================
         // REAL-TIME CRITICAL ZONE
@@ -217,9 +231,11 @@ static void controlTaskFunc(void* param) {
                 }
             }
 
-            // Signal intents (consume all queued)
+            // Signal intents (consume all queued, with safety cap)
+            // Cap prevents infinite loop if ring buffer is corrupted
+            constexpr size_t MAX_SIGNAL_DRAIN = mara::IntentBuffer::MAX_SIGNAL_INTENTS;
             mara::SignalIntent sig;
-            while (ctx->intents->consumeSignalIntent(sig)) {
+            for (size_t i = 0; i < MAX_SIGNAL_DRAIN && ctx->intents->consumeSignalIntent(sig); ++i) {
                 if (ctx->control) {
                     ctx->control->signals().set(sig.id, sig.value, sig.timestamp_ms);
                 }

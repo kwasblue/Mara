@@ -34,6 +34,16 @@ MqttTransport::MqttTransport(
     topicTelemetry_ = "mara/" + robotId_ + "/telemetry";
     topicState_     = "mara/" + robotId_ + "/state";
     topicDiscovery_ = "mara/fleet/discover";
+
+    // Create mutex for thread-safe mqtt_ access
+    mqttMutex_ = xSemaphoreCreateMutex();
+}
+
+MqttTransport::~MqttTransport() {
+    if (mqttMutex_) {
+        vSemaphoreDelete(mqttMutex_);
+        mqttMutex_ = nullptr;
+    }
 }
 
 void MqttTransport::begin() {
@@ -50,13 +60,22 @@ void MqttTransport::begin() {
 }
 
 void MqttTransport::loop() {
-    if (mqtt_.connected()) {
-        consecutiveFailures_ = 0;
-        mqtt_.loop();
+    // Don't access mqtt_ while connect task is running
+    if (connectInProgress_) {
         return;
     }
 
-    if (connectInProgress_) {
+    // Take mutex to safely access mqtt_
+    if (mqttMutex_ && xSemaphoreTake(mqttMutex_, pdMS_TO_TICKS(10)) == pdTRUE) {
+        if (mqtt_.connected()) {
+            consecutiveFailures_ = 0;
+            mqtt_.loop();
+            xSemaphoreGive(mqttMutex_);
+            return;
+        }
+        xSemaphoreGive(mqttMutex_);
+    } else {
+        // Couldn't acquire mutex, skip this iteration
         return;
     }
 
@@ -148,42 +167,57 @@ void MqttTransport::connectTaskBody() {
 
     const uint32_t startMs = mara::getSystemClock().millis();
 
+    // Take mutex for all mqtt_ operations
     bool connected = false;
-    if (username_.empty()) {
-        connected = mqtt_.connect(robotId_.c_str());
+    bool gotMutex = mqttMutex_ && xSemaphoreTake(mqttMutex_, pdMS_TO_TICKS(5000)) == pdTRUE;
+
+    if (gotMutex) {
+        if (username_.empty()) {
+            connected = mqtt_.connect(robotId_.c_str());
+        } else {
+            connected = mqtt_.connect(robotId_.c_str(), username_.c_str(), password_.c_str());
+        }
+
+        const uint32_t elapsedMs = mara::getSystemClock().millis() - startMs;
+
+        if (connected) {
+            Serial.printf("[MQTT] Connected in %lu ms\n", static_cast<unsigned long>(elapsedMs));
+
+            bool ok1 = mqtt_.subscribe(topicCmd_.c_str());
+            bool ok2 = mqtt_.subscribe(topicDiscovery_.c_str());
+
+            Serial.printf("[MQTT] Sub cmd=%d (%s)\n", ok1, topicCmd_.c_str());
+            Serial.printf("[MQTT] Sub discover=%d (%s)\n", ok2, topicDiscovery_.c_str());
+
+            consecutiveFailures_ = 0;
+            nextReconnectAttemptMs_ = mara::getSystemClock().millis() + RECONNECT_INTERVAL_MS;
+        } else {
+            consecutiveFailures_++;
+            if (retriesExhausted()) {
+                nextReconnectAttemptMs_ = UINT32_MAX;
+                Serial.printf("[MQTT] Failed after %lu ms, rc=%d, giving up after %u attempts\n",
+                    static_cast<unsigned long>(elapsedMs),
+                    mqtt_.state(),
+                    static_cast<unsigned>(MAX_RETRIES));
+            } else {
+                nextReconnectAttemptMs_ = mara::getSystemClock().millis() + nextReconnectDelayMs();
+                Serial.printf("[MQTT] Failed after %lu ms, rc=%d, next retry in %lu ms\n",
+                    static_cast<unsigned long>(elapsedMs),
+                    mqtt_.state(),
+                    static_cast<unsigned long>(nextReconnectAttemptMs_ - mara::getSystemClock().millis()));
+            }
+        }
+
+        xSemaphoreGive(mqttMutex_);
     } else {
-        connected = mqtt_.connect(robotId_.c_str(), username_.c_str(), password_.c_str());
+        Serial.println("[MQTT] Failed to acquire mutex for connect");
+        consecutiveFailures_++;
+        nextReconnectAttemptMs_ = mara::getSystemClock().millis() + nextReconnectDelayMs();
     }
 
-    const uint32_t elapsedMs = mara::getSystemClock().millis() - startMs;
-
+    // Publish discovery response after releasing mutex (it will re-acquire)
     if (connected) {
-        Serial.printf("[MQTT] Connected in %lu ms\n", static_cast<unsigned long>(elapsedMs));
-
-        bool ok1 = mqtt_.subscribe(topicCmd_.c_str());
-        bool ok2 = mqtt_.subscribe(topicDiscovery_.c_str());
-
-        Serial.printf("[MQTT] Sub cmd=%d (%s)\n", ok1, topicCmd_.c_str());
-        Serial.printf("[MQTT] Sub discover=%d (%s)\n", ok2, topicDiscovery_.c_str());
-
-        consecutiveFailures_ = 0;
-        nextReconnectAttemptMs_ = mara::getSystemClock().millis() + RECONNECT_INTERVAL_MS;
         publishDiscoveryResponse();
-    } else {
-        consecutiveFailures_++;
-        if (retriesExhausted()) {
-            nextReconnectAttemptMs_ = UINT32_MAX;
-            Serial.printf("[MQTT] Failed after %lu ms, rc=%d, giving up after %u attempts\n",
-                static_cast<unsigned long>(elapsedMs),
-                mqtt_.state(),
-                static_cast<unsigned>(MAX_RETRIES));
-        } else {
-            nextReconnectAttemptMs_ = mara::getSystemClock().millis() + nextReconnectDelayMs();
-            Serial.printf("[MQTT] Failed after %lu ms, rc=%d, next retry in %lu ms\n",
-                static_cast<unsigned long>(elapsedMs),
-                mqtt_.state(),
-                static_cast<unsigned long>(nextReconnectAttemptMs_ - mara::getSystemClock().millis()));
-        }
     }
 
     connectInProgress_ = false;
@@ -259,8 +293,14 @@ void MqttTransport::onMessage(char* topic, uint8_t* payload, unsigned int length
 }
 
 bool MqttTransport::sendBytes(const uint8_t* data, size_t len) {
-    if (!mqtt_.connected()) return false;
-    return mqtt_.publish(topicAck_.c_str(), data, len);
+    bool result = false;
+    if (mqttMutex_ && xSemaphoreTake(mqttMutex_, pdMS_TO_TICKS(100)) == pdTRUE) {
+        if (mqtt_.connected()) {
+            result = mqtt_.publish(topicAck_.c_str(), data, len);
+        }
+        xSemaphoreGive(mqttMutex_);
+    }
+    return result;
 }
 
 void MqttTransport::publishDiscoveryResponse() {
@@ -291,9 +331,21 @@ void MqttTransport::publishDiscoveryResponse() {
     // Lowercase matches your Python NodeState Enum values
     doc["state"] = "online";
 
-    char out[256];
+    // Use larger buffer to prevent silent truncation
+    char out[512];
     size_t n = serializeJson(doc, out, sizeof(out));
-    mqtt_.publish("mara/fleet/discover_response", out, n);
+
+    // Check for truncation (serializeJson returns bytes that would have been written)
+    if (n >= sizeof(out)) {
+        Serial.printf("[MQTT] WARNING: Discovery JSON truncated (%zu >= %zu)\n", n, sizeof(out));
+        n = sizeof(out) - 1;  // Ensure null termination
+    }
+
+    // Thread-safe publish
+    if (mqttMutex_ && xSemaphoreTake(mqttMutex_, pdMS_TO_TICKS(100)) == pdTRUE) {
+        mqtt_.publish("mara/fleet/discover_response", out, n);
+        xSemaphoreGive(mqttMutex_);
+    }
 }
 
 #endif // HAS_MQTT_TRANSPORT && HAS_WIFI

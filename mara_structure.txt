@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-04-02 10:20:28
-Total Files: 1039
-Total Lines of Code: 118,173
+Generated: 2026-04-02 17:42:43
+Total Files: 1044
+Total Lines of Code: 121,277
 ================================================================================
 
 
@@ -82,7 +82,36 @@ HOST (Python)
 
   host/mara_host/__main__.py (4 lines)
 
-  host/mara_host/api/__init__.py (80 lines)
+  host/mara_host/api/__init__.py (82 lines)
+
+  host/mara_host/api/_generated_api.py (239 lines)
+    [Class] Robot
+      |-- __init__(self, port, baudrate)
+      |-- client(self)
+      |-- is_connected(self)
+      |-- batch(self)
+      |-- bench(self)
+      |-- control(self)
+      |-- dc_motor(self)
+      |-- encoder(self)
+      |-- gpio(self)
+      |-- imu(self)
+      |-- led(self)
+      |-- logging(self)
+      |-- mcu(self)
+      |-- observer(self)
+      |-- perf(self)
+      |-- pwm(self)
+      |-- safety(self)
+      |-- servo(self)
+      |-- set(self)
+      |-- stepper(self)
+      |-- system(self)
+      |-- telemetry(self)
+      |-- ultrasonic(self)
+      |-- wifi(self)
+      |-- get_service(self, category)
+      `-- list_services(self)
 
   host/mara_host/api/dc_motor.py (48 lines)
     [Class] DCMotor
@@ -1271,7 +1300,7 @@ HOST (Python)
     [Fn] format_pin_status(gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
     [Fn] confirm(message, default)
 
-  host/mara_host/cli/context.py (364 lines)
+  host/mara_host/cli/context.py (378 lines)
     [Class] CLIContextConfig
     [Class] CLIContext
       |-- __init__(self, port, baudrate, host, tcp_port, ble_name, verbose, robot_config, robot_config_path)
@@ -1299,7 +1328,9 @@ HOST (Python)
       |-- pid_service(self)
       |-- motion_service(self)
       |-- signal_service(self)
-      `-- camera_control_service(self)
+      |-- camera_control_service(self)
+      |-- get_generated_service(self, category)
+      `-- list_generated_service_categories(self)
     [Fn] run_with_context(func)
     [Fn] wrapper(args)
     [Fn] run_with_context_no_connect(func)
@@ -1390,7 +1421,7 @@ HOST (Python)
       |-- _init_binary_encoder(self)
       `-- set_prefer_binary(self, prefer)
 
-  host/mara_host/command/client.py (502 lines)
+  host/mara_host/command/client.py (507 lines)
     [Class] HasSendBytes
       |-- set_frame_handler(self, handler)
       |-- start(self)
@@ -1450,7 +1481,7 @@ HOST (Python)
       |-- get_event_history(self, count)
       `-- reset(self)
 
-  host/mara_host/command/coms/reliable_commander.py (367 lines)
+  host/mara_host/command/coms/reliable_commander.py (370 lines)
     [Class] CommandStatus
     [Class] RetryConfig
       `-- calculate_backoff(self, retry_n)
@@ -2048,12 +2079,13 @@ HOST (Python)
 
   host/mara_host/core/__init__.py (31 lines)
 
-  host/mara_host/core/_generated_config.py (205 lines)
+  host/mara_host/core/_generated_config.py (216 lines)
     [Fn] has_feature(name)
     [Fn] get_enabled_features()
     [Fn] get_profile(name)
     [Fn] get_profile_names()
     [Fn] validate_dependencies(features)
+    [Fn] get_limit(name)
 
   host/mara_host/core/base_module.py (45 lines)
     [Class] BaseModule
@@ -2065,7 +2097,7 @@ HOST (Python)
       |-- topics(self)
       `-- __repr__(self)
 
-  host/mara_host/core/build_profiles.py (141 lines)
+  host/mara_host/core/build_profiles.py (166 lines)
     [Fn] _load_config()
     [Fn] get_config()
     [Fn] get_transport_settings()
@@ -2087,6 +2119,8 @@ HOST (Python)
     [Fn] parse_features(features_str, no_features_str)
     [Fn] features_to_build_flags(features)
     [Fn] reload_config()
+    [Fn] get_limits()
+    [Fn] get_limit(name)
 
   host/mara_host/core/event_bus.py (74 lines)
     [Class] EventBus
@@ -3752,18 +3786,20 @@ HOST (Python)
 
   host/mara_host/mcp/__main__.py (3 lines)
 
-  host/mara_host/mcp/_generated_http.py (1380 lines)
+  host/mara_host/mcp/_generated_http.py (2660 lines)
     [Fn] _serialize_result_data(data)
     [Fn] create_generated_routes(runtime)
     [Fn] get_openai_function_schema()
 
-  host/mara_host/mcp/_generated_tools.py (2041 lines)
+  host/mara_host/mcp/_generated_tools.py (2574 lines)
     [Fn] get_tool_definitions()
+
+  host/mara_host/mcp/host_tools.py (194 lines)
 
   host/mara_host/mcp/http_server.py (104 lines)
     [Fn] create_http_app(runtime)
 
-  host/mara_host/mcp/runtime.py (589 lines)
+  host/mara_host/mcp/runtime.py (606 lines)
     [Fn] _redact_sensitive(params)
     [Class] EventType
     [Class] Event
@@ -3810,6 +3846,7 @@ HOST (Python)
       |-- controller_service(self)
       |-- client(self)
       |-- telemetry(self)
+      |-- get_generated_service(self, category)
       |-- robot_loaded(self)
       |-- robot_service(self)
       |-- robot_context(self)
@@ -3830,7 +3867,7 @@ HOST (Python)
     [Fn] _check_auth(arguments)
     [Fn] create_server(port, host, ble_name, tcp_port)
 
-  host/mara_host/mcp/tool_schema.py (1155 lines)
+  host/mara_host/mcp/tool_schema.py (705 lines)
     [Class] ToolParam
       `-- to_json_schema(self)
     [Class] ToolDef
@@ -4261,9 +4298,37 @@ HOST (Python)
     [Class] EncoderHostModule
       `-- __init__(self, bus, client, defaults)
 
-  host/mara_host/services/__init__.py (80 lines)
+  host/mara_host/services/__init__.py (63 lines)
+    [Fn] _discover_services()
     [Fn] __getattr__(name)
     [Fn] __dir__()
+
+  host/mara_host/services/_generated_services.py (623 lines)
+    [Class] GeneratedServiceBase
+      `-- __init__(self, client)
+    [Class] GeneratedBatchService
+    [Class] GeneratedBenchService
+    [Class] GeneratedCtrlService
+    [Class] GeneratedDcService
+    [Class] GeneratedEncoderService
+    [Class] GeneratedGpioService
+    [Class] GeneratedImuService
+    [Class] GeneratedLedService
+    [Class] GeneratedLoggingService
+    [Class] GeneratedMcuService
+    [Class] GeneratedObserverService
+    [Class] GeneratedPerfService
+    [Class] GeneratedPwmService
+    [Class] GeneratedSafetyService
+    [Class] GeneratedServoService
+    [Class] GeneratedSetService
+    [Class] GeneratedStepperService
+    [Class] GeneratedSystemService
+    [Class] GeneratedTelemetryService
+    [Class] GeneratedUltrasonicService
+    [Class] GeneratedWifiService
+    [Fn] get_generated_service(client, category)
+    [Fn] list_categories()
 
   host/mara_host/services/camera/__init__.py (16 lines)
 
@@ -4314,7 +4379,7 @@ HOST (Python)
       |-- get_schema_path(self)
       `-- get_available_generators()
 
-  host/mara_host/services/control/__init__.py (128 lines)
+  host/mara_host/services/control/__init__.py (126 lines)
 
   host/mara_host/services/control/composite_service.py (138 lines)
     [Class] CompositeService
@@ -4324,7 +4389,7 @@ HOST (Python)
       |-- _validate_arg(self, name, spec, value)
       `-- _validate_actions(self, actions)
 
-  host/mara_host/services/control/control_graph_service.py (254 lines)
+  host/mara_host/services/control/control_graph_service.py (260 lines)
     [Class] ControlGraphService
       |-- __init__(self, client, sensor_policy_provider, persistence_store)
       |-- _subscribe(self, topic, handler)
@@ -4606,7 +4671,7 @@ HOST (Python)
 
   host/mara_host/services/recording/__init__.py (14 lines)
 
-  host/mara_host/services/recording/recording_service.py (204 lines)
+  host/mara_host/services/recording/recording_service.py (209 lines)
     [Class] RecordedEvent
     [Class] SessionInfo
     [Class] RecordingConfig
@@ -4614,7 +4679,7 @@ HOST (Python)
       |-- __init__(self, config)
       |-- client(self)
       `-- session_path(self)
-    [Fn] count_event(data)
+    [Fn] counting_publish(topic, data)
     [Class] ReplayService
       |-- __init__(self, session_name, log_dir)
       |-- get_session_info(self)
@@ -4919,7 +4984,7 @@ HOST (Python)
 
   host/mara_host/telemetry/__init__.py (38 lines)
 
-  host/mara_host/telemetry/binary_parser.py (224 lines)
+  host/mara_host/telemetry/binary_parser.py (228 lines)
     [Fn] _make_empty(ts_ms, raw_len, meta)
     [Fn] parse_telemetry_bin(payload)
 
@@ -4992,6 +5057,13 @@ HOST (Python)
   host/mara_host/tools/build_world.py (26 lines)
     [Fn] main()
 
+  host/mara_host/tools/gen_api.py (95 lines)
+    [Fn] category_to_property_name(category)
+    [Fn] category_to_class_name(category)
+    [Fn] group_commands_by_category()
+    [Fn] generate_api()
+    [Fn] main()
+
   host/mara_host/tools/gen_binary_commands.py (547 lines)
     [Fn] to_pascal_case(name)
     [Fn] to_snake_case(name)
@@ -5002,8 +5074,9 @@ HOST (Python)
     [Fn] generate_py_json_to_binary()
     [Fn] main()
 
-  host/mara_host/tools/gen_build_config.py (211 lines)
+  host/mara_host/tools/gen_build_config.py (269 lines)
     [Fn] generate_cpp_header(profile_name)
+    [Fn] generate_limits_header()
     [Fn] generate_python_module(profile_name)
     [Fn] main(profile)
 
@@ -5070,16 +5143,27 @@ HOST (Python)
     [Fn] main()
     [Fn] generate_python_api_init()
 
-  host/mara_host/tools/gen_mcp_servers.py (328 lines)
-    [Fn] cmd_to_tool_name(cmd_name)
+  host/mara_host/tools/gen_mcp_servers.py (256 lines)
+    [Fn] discover_command_objects()
     [Fn] is_host_to_mcu(cmd_def)
-    [Fn] field_to_json_schema(field_def)
+    [Fn] field_to_json_schema(field_def, overrides)
     [Fn] get_auto_generated_tools()
     [Fn] generate_header(description)
-    [Fn] param_to_json_schema(param)
     [Fn] tool_to_mcp_schema(tool)
     [Fn] generate_mcp_tools()
     [Fn] generate_http_handlers()
+    [Fn] main()
+
+  host/mara_host/tools/gen_services.py (70 lines)
+    [Fn] field_to_python_type(field)
+    [Fn] field_to_default(field)
+    [Fn] cmd_to_method_name(cmd_name, cmd_def)
+    [Fn] category_to_class_name(category)
+    [Fn] generate_header()
+    [Fn] generate_service_class(category, commands)
+    [Fn] group_commands_by_category()
+    [Fn] generate_registry(categories)
+    [Fn] generate_all()
     [Fn] main()
 
   host/mara_host/tools/gen_telemetry.py (126 lines)
@@ -5223,34 +5307,38 @@ HOST (Python)
 
   host/mara_host/tools/schema/commands/_control.py (171 lines)
 
-  host/mara_host/tools/schema/commands/_dc_motor.py (57 lines)
+  host/mara_host/tools/schema/commands/_dc_motor.py (66 lines)
 
-  host/mara_host/tools/schema/commands/_gpio.py (48 lines)
+  host/mara_host/tools/schema/commands/_gpio.py (69 lines)
 
   host/mara_host/tools/schema/commands/_motion.py (23 lines)
 
   host/mara_host/tools/schema/commands/_observer.py (65 lines)
 
-  host/mara_host/tools/schema/commands/_rates.py (34 lines)
+  host/mara_host/tools/schema/commands/_rates.py (42 lines)
 
-  host/mara_host/tools/schema/commands/_safety.py (91 lines)
+  host/mara_host/tools/schema/commands/_safety.py (125 lines)
 
-  host/mara_host/tools/schema/commands/_sensors.py (101 lines)
+  host/mara_host/tools/schema/commands/_sensors.py (123 lines)
 
-  host/mara_host/tools/schema/commands/_servo.py (54 lines)
+  host/mara_host/tools/schema/commands/_servo.py (64 lines)
 
-  host/mara_host/tools/schema/commands/_stepper.py (62 lines)
+  host/mara_host/tools/schema/commands/_stepper.py (74 lines)
 
-  host/mara_host/tools/schema/commands/_telemetry.py (42 lines)
+  host/mara_host/tools/schema/commands/_telemetry.py (52 lines)
 
-  host/mara_host/tools/schema/commands/_wifi.py (49 lines)
+  host/mara_host/tools/schema/commands/_wifi.py (53 lines)
 
-  host/mara_host/tools/schema/commands/core.py (93 lines)
+  host/mara_host/tools/schema/commands/core.py (127 lines)
     [Class] _UnsetType
     [Fn] _serialize_schema_like(spec)
     [Class] FieldDef
       `-- to_dict(self)
     [Class] CommandDef
+      |-- get_category(self, cmd_name)
+      |-- get_method_name(self, cmd_name)
+      |-- get_tool_name(self, cmd_name)
+      |-- get_service_name(self, cmd_name)
       `-- to_dict(self)
     [Fn] export_command_dicts(commands)
 
@@ -6039,7 +6127,7 @@ HOST (Python)
       |-- stop(self)
       `-- _inject_body(self, body)
 
-  host/tests/fakes/fake_mara_server.py (235 lines)
+  host/tests/fakes/fake_mara_server.py (244 lines)
     [Class] FakeMaraTcpServer
       |-- __init__(self, host, port)
       |-- start_in_thread(self)
@@ -6364,7 +6452,7 @@ HOST (Python)
     [Fn] _on_lost(_evt)
     [Fn] _pending_size()
 
-  host/tests/test_hil_mini_soak.py (322 lines)
+  host/tests/test_hil_mini_soak.py (365 lines)
     [Fn] pytest_addoption(parser)
     [Fn] _find_serial_port()
     [Fn] _get_mcu_port(request)
@@ -6805,7 +6893,7 @@ HOST (Python)
 
   host/tests/test_streaming.py (86 lines)
 
-  host/tests/test_systemic_fixes.py (501 lines)
+  host/tests/test_systemic_fixes.py (502 lines)
     [Class] TestAsyncSafety
     [Class] TestResourceLimits
       `-- test_subscription_leak_warning(self, caplog)
@@ -7131,7 +7219,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/command/CommandDecoders.h (136 lines)
 
-  firmware/mcu/include/command/CommandRegistry.h (47 lines)
+  firmware/mcu/include/command/CommandRegistry.h (49 lines)
     [Class] ModeManager
     [Class] MotionController
     [Class] ControlModule
@@ -7147,6 +7235,7 @@ FIRMWARE/MCU (C++)
     [Fn] setIntentBuffer(mara::IntentBuffer* ib)
     [Fn] setHandlerRegistry(HandlerRegistry* hr)
     [Fn] setPersistence(persistence::McuPersistence* persistence)
+    [Fn] initAll(mara::ServiceContext& ctx)
     [Fn] onJsonCommand(const std::string& jsonStr)
     [Fn] onBinaryCommand(const std::vector<uint8_t>& binData)
     [Fn] context()
@@ -7175,9 +7264,10 @@ FIRMWARE/MCU (C++)
     [Fn] rebuildIndex()
     [Fn] insertIndexEntry(const char* cmd, IStringHandler* handler)
 
-  firmware/mcu/include/command/ICommandHandler.h (11 lines)
+  firmware/mcu/include/command/ICommandHandler.h (13 lines)
     [Struct] CommandContext
     [Class] ICommandHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
 
   firmware/mcu/include/command/IStringHandler.h (34 lines)
@@ -7207,8 +7297,8 @@ FIRMWARE/MCU (C++)
     [Fn] onHostHeartbeat(uint32_t now_ms)
     [Fn] onMotionCommand(uint32_t now_ms, float vx = 0.0f, float omega = 0.0f)
     [Fn] arm()
-    [Fn] activate()
-    [Fn] deactivate()
+    [Fn] activate(uint32_t now_ms)
+    [Fn] deactivate(uint32_t now_ms)
     [Fn] disarm()
     [Fn] estop()
     [Fn] clearEstop()
@@ -7261,10 +7351,9 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/command/decoders/ObserverDecoders.h (15 lines)
     [Struct] ObserverConfigResult
 
-  firmware/mcu/include/command/handlers/AllHandlers.h (15 lines)
-
   firmware/mcu/include/command/handlers/BenchmarkHandler.h (47 lines)
     [Class] BenchmarkHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
@@ -7276,8 +7365,10 @@ FIRMWARE/MCU (C++)
     [Fn] handleRunBootTests(CommandContext& ctx)
     [Fn] handlePerfReset(CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/ControlHandler.h (82 lines)
+  firmware/mcu/include/command/handlers/ControlHandler.h (83 lines)
+    [Class] ControlModule
     [Class] ControlHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] setControlModule(ControlModule* cm)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
@@ -7302,8 +7393,10 @@ FIRMWARE/MCU (C++)
     [Fn] handleMcuDiagnosticsQuery(CommandContext& ctx)
     [Fn] handleMcuDiagnosticsReset(CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/DcMotorHandler.h (38 lines)
+  firmware/mcu/include/command/handlers/DcMotorHandler.h (39 lines)
+    [Class] DcMotorManager
     [Class] DcMotorHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
@@ -7314,7 +7407,10 @@ FIRMWARE/MCU (C++)
     [Fn] handleSetVelGains(JsonVariantConst payload, CommandContext& ctx)
 
   firmware/mcu/include/command/handlers/GpioHandler.h (47 lines)
+    [Class] GpioManager
+    [Class] PwmManager
     [Class] GpioHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
@@ -7333,15 +7429,19 @@ FIRMWARE/MCU (C++)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
     [Fn] handleGetIdentity(CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/MotionHandler.h (27 lines)
+  firmware/mcu/include/command/handlers/MotionHandler.h (28 lines)
+    [Class] MotionController
     [Class] MotionHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
     [Fn] executeSetVelocity(const mara::cmd::SetVelocityCmd& cmd, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/ObserverHandler.h (42 lines)
+  firmware/mcu/include/command/handlers/ObserverHandler.h (43 lines)
+    [Class] ControlModule
     [Class] ObserverHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] setControlModule(ControlModule* cm)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
@@ -7353,8 +7453,11 @@ FIRMWARE/MCU (C++)
     [Fn] handleSetParamArray(JsonVariantConst payload, CommandContext& ctx)
     [Fn] handleStatus(JsonVariantConst payload, CommandContext& ctx)
 
-  firmware/mcu/include/command/handlers/SafetyHandler.h (59 lines)
+  firmware/mcu/include/command/handlers/SafetyHandler.h (62 lines)
+    [Class] ModeManager
+    [Class] MotionController
     [Class] SafetyHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
@@ -7372,7 +7475,11 @@ FIRMWARE/MCU (C++)
     [Fn] handleGetSafetyTimeouts(CommandContext& ctx)
 
   firmware/mcu/include/command/handlers/SensorHandler.h (52 lines)
+    [Class] UltrasonicManager
+    [Class] EncoderManager
+    [Class] ImuManager
     [Class] SensorHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
@@ -7386,7 +7493,10 @@ FIRMWARE/MCU (C++)
     [Fn] handleEncoderReset(JsonVariantConst payload, CommandContext& ctx)
 
   firmware/mcu/include/command/handlers/ServoHandler.h (38 lines)
+    [Class] ServoManager
+    [Class] MotionController
     [Class] ServoHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
@@ -7396,7 +7506,10 @@ FIRMWARE/MCU (C++)
     [Fn] handleBatchApply(JsonVariantConst payload, CommandContext& ctx)
 
   firmware/mcu/include/command/handlers/StepperHandler.h (35 lines)
+    [Class] StepperManager
+    [Class] MotionController
     [Class] StepperHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
@@ -7405,8 +7518,10 @@ FIRMWARE/MCU (C++)
     [Fn] handleStop(JsonVariantConst payload, CommandContext& ctx)
 
   firmware/mcu/include/command/handlers/TelemetryHandler.h (56 lines)
+    [Class] TelemetryModule
     [Fn] clampHz(uint16_t& hz, uint16_t min_hz, uint16_t max_hz)
     [Class] TelemetryHandler
+    [Fn] init(mara::ServiceContext& ctx)
     [Fn] name()
     [Fn] canHandle(CmdType cmd)
     [Fn] handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx)
@@ -7443,7 +7558,9 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/config/FeatureFlags.h (230 lines)
     [Fn] buildCapabilityMask()
 
-  firmware/mcu/include/config/GeneratedBuildConfig.h (31 lines)
+  firmware/mcu/include/config/GeneratedBuildConfig.h (38 lines)
+
+  firmware/mcu/include/config/GeneratedLimits.h (8 lines)
 
   firmware/mcu/include/config/GpioChannelDefs.h (20 lines)
     [Struct] GpioChannelDef
@@ -7468,7 +7585,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/config/WifiSecretsTemplate.h (3 lines)
 
-  firmware/mcu/include/control/ControlGraphRuntime.h (949 lines)
+  firmware/mcu/include/control/ControlGraphRuntime.h (957 lines)
     [Struct] ControlGraphSlotSummary
     [Class] ControlGraphRuntime
     [Struct] TransformRuntime
@@ -7498,11 +7615,11 @@ FIRMWARE/MCU (C++)
     [Fn] computeRollDeg_(const ImuManager::Sample& s)
     [Fn] parseSink_(JsonObjectConst sink, SinkRuntime& out, const char*& error)
     [Fn] parseSlot_(JsonObjectConst source, JsonArrayConst transforms, JsonVariantConst sinkVariant, SlotRuntime& out, const char*& error)
-    [Fn] readSource_(SlotRuntime& slot, ImuManager* imu, EncoderManager* encoder, SignalBus* signals, uint32_t now_ms, float& value)
+    [Fn] readSource_(SlotRuntime& slot, const ImuManager::Sample& cached_imu, bool imu_valid, EncoderManager* encoder, SignalBus* signals, uint32_t now_ms, float& value)
     [Fn] applyTransforms_(SlotRuntime& slot, float value, uint32_t now_ms, SignalBus* signals, bool& should_emit)
     [Fn] writeSink_(SlotRuntime& slot, GpioManager* gpio, ServoManager* servo, SignalBus* signals, float value)
 
-  firmware/mcu/include/control/ControlKernel.h (182 lines)
+  firmware/mcu/include/control/ControlKernel.h (183 lines)
     [Class] IController
     [Class] ControlWatchdog
     [Fn] setTimeout(uint32_t timeout_ms)
@@ -7579,7 +7696,7 @@ FIRMWARE/MCU (C++)
     [Fn] provideObserversBin(uint8_t* buf, size_t max_len, const ObserverManager& mgr)
     [Fn] provideSlotsBin(uint8_t* buf, size_t max_len, const ControlKernel& kernel)
 
-  firmware/mcu/include/control/Observer.h (148 lines)
+  firmware/mcu/include/control/Observer.h (149 lines)
     [Class] SignalBus
     [Struct] ObserverConfig
     [Class] LuenbergerObserver
@@ -7646,7 +7763,7 @@ FIRMWARE/MCU (C++)
     [Fn] resetAll()
     [Fn] disableAll()
 
-  firmware/mcu/include/control/SignalBus.h (177 lines)
+  firmware/mcu/include/control/SignalBus.h (179 lines)
     [Class] SignalBus
     [Struct] SignalDef
     [Fn] define(uint16_t id, const char* name, Kind kind, float initial = 0.0f)
@@ -7822,7 +7939,7 @@ FIRMWARE/MCU (C++)
     [Class] ITransport
     [Fn] setFrameHandler(FrameHandler handler)
 
-  firmware/mcu/include/core/IntentBuffer.h (125 lines)
+  firmware/mcu/include/core/IntentBuffer.h (127 lines)
     [Struct] VelocityIntent
     [Struct] ServoIntent
     [Struct] GpioWriteAction
@@ -7951,7 +8068,19 @@ FIRMWARE/MCU (C++)
     [Class] McuPersistence
     [Struct] ServiceContext
 
-  firmware/mcu/include/core/ServiceStorage.h (127 lines)
+  firmware/mcu/include/core/ServiceStorage.h (141 lines)
+    [Class] SafetyHandler
+    [Class] MotionHandler
+    [Class] GpioHandler
+    [Class] ServoHandler
+    [Class] StepperHandler
+    [Class] DcMotorHandler
+    [Class] SensorHandler
+    [Class] TelemetryHandler
+    [Class] ControlHandler
+    [Class] ObserverHandler
+    [Class] IdentityHandler
+    [Class] BenchmarkHandler
     [Struct] ServiceStorage
 
   firmware/mcu/include/hal/Hal.h (42 lines)
@@ -8224,7 +8353,7 @@ FIRMWARE/MCU (C++)
     [Fn] put_u16(std::vector<uint8_t>& b, uint16_t v)
     [Fn] put_u32(std::vector<uint8_t>& b, uint32_t v)
 
-  firmware/mcu/include/motor/ActuatorConfig.h (81 lines)
+  firmware/mcu/include/motor/ActuatorConfig.h (83 lines)
     [Fn] autoConfigureDcMotors(DcMotorManagerT& dcMotor)
     [Fn] autoConfigureServos(ServoManagerT& servo)
     [Fn] autoConfigureSteppers(StepperManagerT& stepper)
@@ -8243,7 +8372,7 @@ FIRMWARE/MCU (C++)
     [Struct] Motor
     [Class] DcMotorActuator
 
-  firmware/mcu/include/motor/DcMotorManager.h (120 lines)
+  firmware/mcu/include/motor/DcMotorManager.h (145 lines)
     [Class] DcMotorManager
     [Struct] Motor
     [Struct] MotorDebugInfo
@@ -8265,6 +8394,12 @@ FIRMWARE/MCU (C++)
     [Fn] setVelocityTarget(uint8_t id, float omegaRadPerSec)
     [Fn] setVelocityGains(uint8_t id, float kp, float ki, float kd)
     [Fn] updateVelocityPid(uint8_t id, float measuredOmegaRadS, float dt)
+    [Fn] configureEncoder(uint8_t motorId, uint8_t encoderChannel, float ticksPerRev)
+    [Fn] hasEncoderConfig(uint8_t id)
+    [Fn] getLastEncoderTicks(uint8_t id)
+    [Fn] setLastEncoderTicks(uint8_t id, int32_t ticks)
+    [Fn] getTicksPerRev(uint8_t id)
+    [Fn] getEncoderChannel(uint8_t id)
     [Class] GpioManager
     [Class] PwmManager
     [Class] DcMotorManager
@@ -8282,6 +8417,12 @@ FIRMWARE/MCU (C++)
     [Fn] setVelocityTarget(uint8_t, float)
     [Fn] setVelocityGains(uint8_t, float, float, float)
     [Fn] updateVelocityPid(uint8_t, float, float)
+    [Fn] configureEncoder(uint8_t, uint8_t, float)
+    [Fn] hasEncoderConfig(uint8_t)
+    [Fn] getLastEncoderTicks(uint8_t)
+    [Fn] setLastEncoderTicks(uint8_t, int32_t)
+    [Fn] getTicksPerRev(uint8_t)
+    [Fn] getEncoderChannel(uint8_t)
 
   firmware/mcu/include/motor/IActuator.h (25 lines)
     [Struct] ServiceContext
@@ -8667,7 +8808,7 @@ FIRMWARE/MCU (C++)
     [Fn] test_heap_alloc_small()
     [Fn] test_heap_alloc_medium()
 
-  firmware/mcu/src/command/CommandRegistry.cpp (154 lines)
+  firmware/mcu/src/command/CommandRegistry.cpp (164 lines)
 
   firmware/mcu/src/command/HandlerRegistry.cpp (165 lines)
 
@@ -8685,24 +8826,24 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/command/decoders/ObserverDecoders.cpp (31 lines)
 
-  firmware/mcu/src/command/handlers/BenchmarkHandler.cpp (142 lines)
+  firmware/mcu/src/command/handlers/BenchmarkHandler.cpp (147 lines)
 
-  firmware/mcu/src/command/handlers/ControlHandler.cpp (341 lines)
+  firmware/mcu/src/command/handlers/ControlHandler.cpp (347 lines)
 
-  firmware/mcu/src/command/handlers/DcMotorHandler.cpp (83 lines)
+  firmware/mcu/src/command/handlers/DcMotorHandler.cpp (88 lines)
 
-  firmware/mcu/src/command/handlers/GpioHandler.cpp (101 lines)
+  firmware/mcu/src/command/handlers/GpioHandler.cpp (108 lines)
 
-  firmware/mcu/src/command/handlers/MotionHandler.cpp (44 lines)
+  firmware/mcu/src/command/handlers/MotionHandler.cpp (49 lines)
 
-  firmware/mcu/src/command/handlers/ObserverHandler.cpp (120 lines)
+  firmware/mcu/src/command/handlers/ObserverHandler.cpp (125 lines)
 
-  firmware/mcu/src/command/handlers/SafetyHandler.cpp (138 lines)
+  firmware/mcu/src/command/handlers/SafetyHandler.cpp (151 lines)
 
-  firmware/mcu/src/command/handlers/SensorHandler.cpp (191 lines)
+  firmware/mcu/src/command/handlers/SensorHandler.cpp (200 lines)
     [Fn] classifyI2cDevice(uint8_t address, uint8_t whoAmI, bool whoOk, bool imuOnline, uint8_t imuAddr)
 
-  firmware/mcu/src/command/handlers/ServoHandler.cpp (348 lines)
+  firmware/mcu/src/command/handlers/ServoHandler.cpp (355 lines)
     [Fn] isFiniteNumber(float value)
     [Fn] hasMotorSetFor(const mara::CompositeIntent& batch, uint8_t motorId)
     [Fn] hasMotorStopFor(const mara::CompositeIntent& batch, uint8_t motorId)
@@ -8717,9 +8858,9 @@ FIRMWARE/MCU (C++)
     [Fn] handleBatchStepperMove(JsonObjectConst args, mara::CompositeIntent& batch, CommandContext& ctx, const char* cmd, int index)
     [Fn] handleBatchStepperStop(JsonObjectConst args, mara::CompositeIntent& batch, CommandContext& ctx, const char* cmd, int index)
 
-  firmware/mcu/src/command/handlers/StepperHandler.cpp (43 lines)
+  firmware/mcu/src/command/handlers/StepperHandler.cpp (50 lines)
 
-  firmware/mcu/src/command/handlers/TelemetryHandler.cpp (127 lines)
+  firmware/mcu/src/command/handlers/TelemetryHandler.cpp (132 lines)
 
   firmware/mcu/src/config/DeviceManifest.cpp (79 lines)
     [Fn] buildManifest(const ServiceContext& ctx)
@@ -8729,9 +8870,9 @@ FIRMWARE/MCU (C++)
     [Fn] getMaraConfig()
     [Fn] resetMaraConfig()
 
-  firmware/mcu/src/control/ControlKernel.cpp (407 lines)
+  firmware/mcu/src/control/ControlKernel.cpp (408 lines)
 
-  firmware/mcu/src/control/Observer.cpp (267 lines)
+  firmware/mcu/src/control/Observer.cpp (268 lines)
 
   firmware/mcu/src/control/SignalBus.cpp (183 lines)
     [Fn] lock(lock_)
@@ -8751,7 +8892,7 @@ FIRMWARE/MCU (C++)
     [Fn] getDebugLogger()
     [Fn] setDebugLogger(hal::ILogger* logger)
 
-  firmware/mcu/src/core/IntentBuffer.cpp (133 lines)
+  firmware/mcu/src/core/IntentBuffer.cpp (134 lines)
 
   firmware/mcu/src/core/LoopRates.cpp (8 lines)
     [Fn] getLoopRates()
@@ -8765,9 +8906,9 @@ FIRMWARE/MCU (C++)
   firmware/mcu/src/core/ModuleManager.cpp (84 lines)
     [Fn] domainToString(LoopDomain d)
 
-  firmware/mcu/src/core/Runtime.cpp (169 lines)
+  firmware/mcu/src/core/Runtime.cpp (172 lines)
 
-  firmware/mcu/src/core/ServiceStorage.cpp (203 lines)
+  firmware/mcu/src/core/ServiceStorage.cpp (222 lines)
 
   firmware/mcu/src/hal/drivers/Vl53l0x.cpp (370 lines)
 
@@ -8806,13 +8947,13 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/hal/esp32/Esp32WifiManager.cpp (155 lines)
 
-  firmware/mcu/src/loop/LoopControl.cpp (26 lines)
+  firmware/mcu/src/loop/LoopControl.cpp (31 lines)
     [Fn] runControlLoop(ServiceContext& ctx, uint32_t now_ms, float dt)
 
   firmware/mcu/src/loop/LoopSafety.cpp (9 lines)
     [Fn] runSafetyLoop(ServiceContext& ctx, uint32_t now_ms)
 
-  firmware/mcu/src/main.cpp (165 lines)
+  firmware/mcu/src/main.cpp (166 lines)
     [Fn] updateLoopSchedulers()
     [Fn] setup()
     [Fn] loop()
@@ -8828,7 +8969,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/motor/ActuatorRegistry.cpp (78 lines)
 
-  firmware/mcu/src/motor/DcMotorManager.cpp (188 lines)
+  firmware/mcu/src/motor/DcMotorManager.cpp (205 lines)
     [Fn] setSpeed(id, 0.0f)
     [Fn] setSpeed(id, cmd)
 
@@ -8851,7 +8992,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/sensor/SensorRegistry.cpp (83 lines)
 
-  firmware/mcu/src/setup/SetupControlTask.cpp (328 lines)
+  firmware/mcu/src/setup/SetupControlTask.cpp (339 lines)
     [Fn] controlTaskFunc(void* param)
     [Fn] setControlTaskHal(hal::ITaskScheduler* scheduler)
     [Fn] startControlTask(ServiceContext& ctx, const ControlTaskConfig& config)
@@ -9037,7 +9178,7 @@ FIRMWARE/MCU (C++)
     [Fn] getLoopRates()
     [Fn] maraModeToString(MaraMode mode)
 
-  firmware/mcu/test/test_command_handler_ack/test_command_handler_ack.cpp (231 lines)
+  firmware/mcu/test/test_command_handler_ack/test_command_handler_ack.cpp (266 lines)
     [Struct] MotionSpy
     [Fn] setVelocity(float vx, float omega)
     [Fn] captureTx(const Event& evt)
@@ -9231,8 +9372,8 @@ FIRMWARE/MCU (C++)
     [Fn] onHostHeartbeat(uint32_t now_ms)
     [Fn] onMotionCommand(uint32_t now_ms)
     [Fn] arm()
-    [Fn] activate()
-    [Fn] deactivate()
+    [Fn] activate(uint32_t /* now_ms */)
+    [Fn] deactivate(uint32_t /* now_ms */)
     [Fn] disarm()
     [Fn] estop()
     [Fn] clearEstop()
@@ -9559,22 +9700,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     716
+  Python Files:     721
   C++ Files:        323
-  Total Files:      1039
+  Total Files:      1044
 
 DEFINITIONS
-  Classes:          1314
+  Classes:          1365
   Structs:          182
-  Functions:        2466
-  Methods:          3466
+  Functions:        2512
+  Methods:          3500
 
 LINES OF CODE
-  Python:           90,879
-  C++:              27,294
-  Total Code:       118,173
-  Blank Lines:      32,174
-  Comment Lines:    31,308
-  Total Lines:      181,655
+  Python:           93,739
+  C++:              27,538
+  Total Code:       121,277
+  Blank Lines:      32,931
+  Comment Lines:    33,068
+  Total Lines:      187,276
 
 ================================================================================

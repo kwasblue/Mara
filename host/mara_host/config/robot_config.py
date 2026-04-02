@@ -74,7 +74,15 @@ class ValidationReport:
 
 @dataclass
 class TransportConfig:
-    """Transport layer configuration."""
+    """
+    Transport layer configuration.
+
+    Key naming conventions:
+    - port: Serial device path (e.g., /dev/ttyUSB0, COM3) - only for serial transport
+    - tcp_port: TCP port number (e.g., 3333) - only for tcp transport
+    - host: TCP hostname or IP address - only for tcp transport
+    - ble_name: Bluetooth device name - only for ble transport
+    """
     type: str = "serial"
     # Serial
     port: Optional[str] = None
@@ -88,13 +96,36 @@ class TransportConfig:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TransportConfig":
         transport_type = data.get("type", "serial")
+
+        # Determine serial port (only valid for serial transport)
+        serial_port = data.get("port") if transport_type == "serial" else None
+
+        # Determine TCP port (always use tcp_port key, never port key for TCP)
+        tcp_port_value = data.get("tcp_port", 3333)
+
+        # Warn if port looks like a serial device but type is tcp
+        if transport_type == "tcp" and data.get("port"):
+            port_value = data.get("port")
+            if isinstance(port_value, str) and (port_value.startswith("/dev/") or port_value.startswith("COM")):
+                import warnings
+                warnings.warn(
+                    f"transport.port='{port_value}' looks like a serial device but type='tcp'. "
+                    f"Use tcp_port for TCP port number. Ignoring port value.",
+                    UserWarning
+                )
+
+        # BLE name: prefer ble_name, fallback to port only for ble type
+        ble_name_value = data.get("ble_name")
+        if not ble_name_value and transport_type == "ble":
+            ble_name_value = data.get("port")
+
         return cls(
             type=transport_type,
-            port=data.get("port"),
+            port=serial_port,
             baudrate=data.get("baudrate", DEFAULT_BAUDRATE),
             host=data.get("host"),
-            tcp_port=data.get("port", 3333) if transport_type == "tcp" else data.get("tcp_port", 3333),
-            ble_name=data.get("ble_name") or (data.get("port") if transport_type == "ble" else None),
+            tcp_port=tcp_port_value,
+            ble_name=ble_name_value,
         )
 
 

@@ -400,7 +400,7 @@ async def _handle_firmware_test(runtime, args: dict) -> str:
     if result.ok:
         test_result = result.data.get("result") if result.data else None
         if test_result and test_result.output:
-            return f"All tests passed\n{test_result.output}"
+            return f"All tests passed\\n{test_result.output}"
         return "All tests passed"
     return f"FAIL: {result.error}"
 

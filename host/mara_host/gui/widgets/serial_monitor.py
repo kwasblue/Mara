@@ -10,6 +10,8 @@ import serial.tools.list_ports
 from datetime import datetime
 from typing import Optional
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE
+
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -37,9 +39,9 @@ class SerialReaderThread(QThread):
         self._serial: Optional[serial.Serial] = None
         self._running = False
         self._port = ""
-        self._baudrate = 115200
+        self._baudrate = DEFAULT_BAUD_RATE
 
-    def configure(self, port: str, baudrate: int = 115200) -> None:
+    def configure(self, port: str, baudrate: int = DEFAULT_BAUD_RATE) -> None:
         """Configure serial port settings."""
         self._port = port
         self._baudrate = baudrate
@@ -142,8 +144,8 @@ class SerialMonitorWidget(QWidget):
         toolbar.addWidget(baud_label)
 
         self.baud_combo = QComboBox()
-        self.baud_combo.addItems(["9600", "19200", "38400", "57600", "115200", "230400", "460800", "921600"])
-        self.baud_combo.setCurrentText("115200")
+        self.baud_combo.addItems(["921600", "460800", "230400", "115200", "57600", "38400", "19200", "9600"])
+        self.baud_combo.setCurrentText(str(DEFAULT_BAUD_RATE))
         self.baud_combo.setMaximumWidth(100)
         toolbar.addWidget(self.baud_combo)
 
@@ -420,7 +422,7 @@ class SerialMonitorWidget(QWidget):
             self._history_index = len(self._command_history)
             self.input_field.clear()
 
-    def connect_to_port(self, port: str, baudrate: int = 115200) -> None:
+    def connect_to_port(self, port: str, baudrate: int = DEFAULT_BAUD_RATE) -> None:
         """Programmatically connect to a serial port."""
         if self._connected:
             self._disconnect()

@@ -46,7 +46,7 @@ class ConnectionConfig:
 
     # Client options
     connection_timeout_s: float = 6.0
-    handshake_timeout_s: float = 4.0
+    handshake_timeout_s: float = 2.0
     heartbeat_interval_s: float = 0.2
     require_version_match: bool = True
 

@@ -15,6 +15,7 @@ from typing import Optional, Callable
 
 from mara_host.gui.core.signals import GuiSignals
 from mara_host.gui.core.state import AppState, ConnectionState, TransportConfig, DeviceCapabilities
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE
 
 
 class RobotController:
@@ -163,7 +164,7 @@ class RobotController:
 
     # ==================== Connection ====================
 
-    def connect_serial(self, port: str, baudrate: int = 115200) -> None:
+    def connect_serial(self, port: str, baudrate: int = DEFAULT_BAUD_RATE) -> None:
         """Connect via serial transport."""
         self.signals.log_info(f"Connecting to serial port {port} at {baudrate} baud...")
         config = TransportConfig(

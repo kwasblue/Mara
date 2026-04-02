@@ -8,6 +8,8 @@ Uses JSON Schema Draft 2020-12.
 
 from typing import Any, Dict, List
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE
+
 # Transport configuration schema
 TRANSPORT_SCHEMA: Dict[str, Any] = {
     "type": "object",
@@ -26,7 +28,7 @@ TRANSPORT_SCHEMA: Dict[str, Any] = {
             "type": "integer",
             "minimum": 9600,
             "maximum": 4000000,
-            "default": 115200,
+            "default": DEFAULT_BAUD_RATE,
             "description": "Serial baud rate",
         },
         "host": {

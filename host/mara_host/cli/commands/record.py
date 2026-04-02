@@ -11,7 +11,7 @@ from mara_host.cli.console import (
     print_info,
     print_warning,
 )
-from mara_host.cli.cli_config import get_serial_port as _get_port
+from mara_host.cli.cli_config import get_serial_port as _get_port, get_baudrate as _get_baudrate
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -137,7 +137,7 @@ def _run_recording(
             inner_transport = AsyncTcpTransport(host=tcp_host, port=3333)
         else:
             from mara_host.transport.serial_transport import SerialTransport
-            inner_transport = SerialTransport(port, baudrate=115200)
+            inner_transport = SerialTransport(port, baudrate=_get_baudrate())
 
         transport = RecordingTransport(inner_transport, bundle)
         client = MaraClient(transport)

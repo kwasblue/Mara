@@ -31,27 +31,29 @@ from mara_host.mcp._generated_tools import get_tool_definitions, dispatch_tool
 # When set, clients must provide the token to execute tools
 AUTH_TOKEN = os.environ.get("MARA_MCP_TOKEN")
 
-# Track authenticated sessions (for stdio MCP, auth happens once at start)
-_authenticated_sessions: set[str] = set()
 
-
-def _check_auth(arguments: dict[str, Any]) -> tuple[bool, str | None]:
+def _check_auth(arguments: dict[str, Any] | None) -> tuple[bool, str | None, dict[str, Any]]:
     """
     Check if the request is authenticated.
 
     Returns:
-        (is_authenticated, error_message)
+        (is_authenticated, error_message, cleaned_arguments)
+
+    Note: Returns a copy of arguments with _auth_token removed,
+    avoiding mutation of caller-owned input and handling None.
     """
+    args = dict(arguments or {})
+
     if not AUTH_TOKEN:
         # No token configured, allow all requests
-        return True, None
+        return True, None, args
 
     # Check for token in arguments (initial handshake)
-    provided_token = arguments.pop("_auth_token", None)
+    provided_token = args.pop("_auth_token", None)
     if provided_token == AUTH_TOKEN:
-        return True, None
+        return True, None, args
 
-    return False, "Authentication required. Set _auth_token in arguments or disable auth by unsetting MARA_MCP_TOKEN."
+    return False, "Authentication required. Set _auth_token in arguments or disable auth by unsetting MARA_MCP_TOKEN.", args
 
 
 def create_server(
@@ -70,10 +72,10 @@ def create_server(
         return get_tool_definitions()
 
     @server.call_tool()
-    async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    async def call_tool(name: str, arguments: dict[str, Any] | None) -> list[TextContent]:
         """Execute a tool and return result."""
         # Check authentication if token is configured
-        is_auth, auth_error = _check_auth(arguments)
+        is_auth, auth_error, arguments = _check_auth(arguments)
         if not is_auth:
             return [TextContent(type="text", text=f"Error: {auth_error}")]
 
@@ -127,6 +129,10 @@ Examples:
     if not port and not host and not ble_name:
         from mara_host.cli.cli_config import get_serial_port
         port = get_serial_port()
+
+    # Debug output to stderr (doesn't interfere with MCP stdio)
+    import sys
+    print(f"[MCP Server] port={port}, host={host}, ble={ble_name}", file=sys.stderr)
 
     if args.http:
         # HTTP mode

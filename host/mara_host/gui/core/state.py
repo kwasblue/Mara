@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, List
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE
+
 
 class ConnectionState(str, Enum):
     """Connection state enum."""
@@ -108,7 +110,7 @@ class TransportConfig:
     transport_type: str = "serial"  # serial, tcp, can
     # Serial
     port: str = ""
-    baudrate: int = 115200
+    baudrate: int = DEFAULT_BAUD_RATE
     # TCP
     host: str = "192.168.4.1"
     tcp_port: int = 3333

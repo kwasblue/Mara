@@ -9,6 +9,8 @@ from typing import Any, Optional
 
 import yaml
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE
+
 
 # Config file locations (in order of precedence)
 CONFIG_LOCATIONS = [
@@ -96,7 +98,7 @@ def get_serial_port() -> str:
 
 def get_baudrate() -> int:
     """Get default baud rate."""
-    return int(get("serial.baudrate", 115200))
+    return int(get("serial.baudrate", DEFAULT_BAUD_RATE))
 
 
 def get_tcp_host() -> str:

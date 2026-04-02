@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from mara_host.gui.core import GuiSignals, RobotController, GuiSettings
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE
 
 
 class ConfigPanel(QWidget):
@@ -93,8 +94,8 @@ class ConfigPanel(QWidget):
         serial_layout.addRow("Default Port:", self.default_port)
 
         self.baudrate = QComboBox()
-        self.baudrate.addItems(["9600", "19200", "38400", "57600", "115200", "230400", "460800"])
-        self.baudrate.setCurrentText("115200")
+        self.baudrate.addItems(["921600", "460800", "230400", "115200", "57600", "38400", "19200", "9600"])
+        self.baudrate.setCurrentText(str(DEFAULT_BAUD_RATE))
         serial_layout.addRow("Baud Rate:", self.baudrate)
 
         layout.addWidget(serial_group)

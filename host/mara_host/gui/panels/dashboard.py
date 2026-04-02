@@ -140,7 +140,7 @@ class DashboardPanel(QWidget):
         layout.addWidget(self.baud_label)
 
         self.baud_combo = QComboBox()
-        self.baud_combo.addItems(["115200", "921600", "57600", "38400", "19200", "9600"])
+        self.baud_combo.addItems(["921600", "115200", "460800", "230400", "57600", "38400", "19200", "9600"])
         self.baud_combo.setMinimumWidth(90)
         layout.addWidget(self.baud_combo)
 

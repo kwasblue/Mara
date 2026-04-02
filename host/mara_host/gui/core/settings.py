@@ -9,6 +9,8 @@ storing and retrieving application preferences.
 from typing import Optional, Any, List
 from PySide6.QtCore import QSettings
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE
+
 
 class GuiSettings:
     """
@@ -67,7 +69,7 @@ class GuiSettings:
 
     def get_baudrate(self) -> int:
         """Get last used baudrate."""
-        return self._settings.value("connection/baudrate", 115200, type=int)
+        return self._settings.value("connection/baudrate", DEFAULT_BAUD_RATE, type=int)
 
     def set_baudrate(self, baudrate: int) -> None:
         """Set last used baudrate."""

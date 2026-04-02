@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Callable, Iterator
 
+from mara_host.core._generated_config import DEFAULT_BAUD_RATE
+
 
 @dataclass
 class RecordedEvent:
@@ -45,7 +47,7 @@ class RecordingConfig:
 
     # Transport config
     serial_port: str = "/dev/ttyUSB0"
-    baudrate: int = 115200
+    baudrate: int = DEFAULT_BAUD_RATE
     tcp_host: Optional[str] = None
     tcp_port: int = 3333
 

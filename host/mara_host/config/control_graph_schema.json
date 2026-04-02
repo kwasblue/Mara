@@ -50,7 +50,7 @@
                   "type": "object",
                   "properties": {
                     "value": {
-                      "type": "float",
+                      "type": "number",
                       "description": "Constant scalar value to publish.",
                       "default": 0.0
                     }
@@ -75,19 +75,19 @@
                   "type": "object",
                   "properties": {
                     "encoder_id": {
-                      "type": "int",
+                      "type": "integer",
                       "description": "Encoder channel ID (0-7).",
                       "minimum": 0,
                       "maximum": 7
                     },
                     "ticks_per_rad": {
-                      "type": "float",
+                      "type": "number",
                       "description": "Encoder ticks per radian. Used to convert tick rate to rad/s.",
                       "default": 1.0,
                       "minimum": 0.001
                     },
                     "fallback": {
-                      "type": "float",
+                      "type": "number",
                       "description": "Value to use if encoder is not available or not initialized.",
                       "default": 0.0
                     }
@@ -115,7 +115,7 @@
                   "type": "object",
                   "properties": {
                     "axis": {
-                      "type": "enum",
+                      "type": "string",
                       "description": "Derived tilt axis to publish.",
                       "enum": [
                         "pitch",
@@ -146,13 +146,13 @@
                   "type": "object",
                   "properties": {
                     "signal_id": {
-                      "type": "int",
+                      "type": "integer",
                       "description": "Signal ID to read from (must be pre-defined in signal bus).",
                       "minimum": 0,
                       "maximum": 255
                     },
                     "fallback": {
-                      "type": "float",
+                      "type": "number",
                       "description": "Value to use if signal is not defined or not yet written.",
                       "default": 0.0
                     }
@@ -168,16 +168,7 @@
               ],
               "additionalProperties": false
             }
-          ],
-          "discriminator": {
-            "propertyName": "type",
-            "mapping": {
-              "constant": "#/definitions/source/constant",
-              "encoder_velocity": "#/definitions/source/encoder_velocity",
-              "imu_axis": "#/definitions/source/imu_axis",
-              "signal_read": "#/definitions/source/signal_read"
-            }
-          }
+          ]
         },
         "transforms": {
           "type": "array",
@@ -215,12 +206,12 @@
                     "type": "object",
                     "properties": {
                       "min": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Lower bound.",
                         "default": -1.0
                       },
                       "max": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Upper bound.",
                         "default": 1.0
                       }
@@ -245,7 +236,7 @@
                     "type": "object",
                     "properties": {
                       "threshold": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Magnitude below which the output is forced to zero.",
                         "default": 0.0,
                         "minimum": 0.0
@@ -271,7 +262,7 @@
                     "type": "object",
                     "properties": {
                       "threshold": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Minimum absolute change required before a new value is emitted.",
                         "default": 0.0,
                         "minimum": 0.0
@@ -297,7 +288,7 @@
                     "type": "object",
                     "properties": {
                       "gain": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Multiplier applied to the derivative output.",
                         "default": 1.0
                       }
@@ -322,13 +313,13 @@
                     "type": "object",
                     "properties": {
                       "feedback_signal": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "Signal ID containing feedback/measurement value.",
                         "minimum": 0,
                         "maximum": 255
                       },
                       "fallback": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Feedback value to use if signal is not defined.",
                         "default": 0.0
                       }
@@ -356,12 +347,12 @@
                     "type": "object",
                     "properties": {
                       "on_threshold": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Threshold to turn on (input must exceed this to go high).",
                         "default": 0.5
                       },
                       "off_threshold": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Threshold to turn off (input must drop below this to go low).",
                         "default": 0.3
                       }
@@ -386,17 +377,17 @@
                     "type": "object",
                     "properties": {
                       "gain": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Multiplier applied to input before integrating.",
                         "default": 1.0
                       },
                       "min": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Anti-windup lower bound for accumulated value.",
                         "default": -1000.0
                       },
                       "max": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Anti-windup upper bound for accumulated value.",
                         "default": 1000.0
                       }
@@ -421,7 +412,7 @@
                     "type": "object",
                     "properties": {
                       "alpha": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Smoothing factor; higher tracks the input more aggressively.",
                         "default": 0.5,
                         "minimum": 0.0,
@@ -448,22 +439,22 @@
                     "type": "object",
                     "properties": {
                       "in_min": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Input range minimum.",
                         "default": 0.0
                       },
                       "in_max": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Input range maximum.",
                         "default": 1.0
                       },
                       "out_min": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Output range minimum.",
                         "default": 0.0
                       },
                       "out_max": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Output range maximum.",
                         "default": 1.0
                       }
@@ -526,7 +517,7 @@
                     "type": "object",
                     "properties": {
                       "value": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Constant value added to the input.",
                         "default": 0.0
                       }
@@ -551,19 +542,18 @@
                     "type": "object",
                     "properties": {
                       "frequency": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Oscillation frequency in Hz.",
                         "default": 1.0,
-                        "minimum": 0.001,
-                        "unit": "Hz"
+                        "minimum": 0.001
                       },
                       "amplitude": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Peak amplitude of the sine wave.",
                         "default": 1.0
                       },
                       "offset": {
-                        "type": "float",
+                        "type": "number",
                         "description": "DC offset added to the sine wave.",
                         "default": 0.0
                       }
@@ -588,7 +578,7 @@
                     "type": "object",
                     "properties": {
                       "gain": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Proportional gain factor (Kp).",
                         "default": 1.0
                       }
@@ -613,21 +603,19 @@
                     "type": "object",
                     "properties": {
                       "interval_ms": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Time between pulse starts in milliseconds.",
                         "default": 1000.0,
-                        "minimum": 1.0,
-                        "unit": "ms"
+                        "minimum": 1.0
                       },
                       "duration_ms": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Pulse duration in milliseconds.",
                         "default": 100.0,
-                        "minimum": 1.0,
-                        "unit": "ms"
+                        "minimum": 1.0
                       },
                       "value": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Output value during pulse (0 otherwise).",
                         "default": 1.0
                       }
@@ -656,7 +644,7 @@
                         "description": "Name of the tap to recall from (must match a tap defined earlier in the slot)."
                       },
                       "fallback": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Value to use if tap not found.",
                         "default": 0.0
                       }
@@ -684,7 +672,7 @@
                     "type": "object",
                     "properties": {
                       "factor": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Scalar multiplier applied to the input.",
                         "default": 1.0
                       }
@@ -709,18 +697,18 @@
                     "type": "object",
                     "properties": {
                       "signal_id": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "Signal ID to read and add (must be pre-defined in signal bus).",
                         "minimum": 0,
                         "maximum": 255
                       },
                       "fallback": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Value to add if signal is not defined or not yet written.",
                         "default": 0.0
                       },
                       "scale": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Scale factor applied to signal value before adding.",
                         "default": 1.0
                       }
@@ -748,13 +736,13 @@
                     "type": "object",
                     "properties": {
                       "signal_id": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "Signal ID to read from (must be pre-defined in signal bus).",
                         "minimum": 0,
                         "maximum": 255
                       },
                       "fallback": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Value to use if signal is not defined or not yet written.",
                         "default": 0.0
                       }
@@ -782,13 +770,13 @@
                     "type": "object",
                     "properties": {
                       "signal_id": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "Signal ID to read and subtract (must be pre-defined in signal bus).",
                         "minimum": 0,
                         "maximum": 255
                       },
                       "fallback": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Value to subtract if signal is not defined or not yet written.",
                         "default": 0.0
                       }
@@ -816,11 +804,10 @@
                     "type": "object",
                     "properties": {
                       "rate": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Maximum absolute output change per second.",
                         "default": 0.0,
-                        "minimum": 0.0,
-                        "unit": "units/s"
+                        "minimum": 0.0
                       }
                     },
                     "additionalProperties": false
@@ -843,7 +830,10 @@
                     "type": "object",
                     "properties": {
                       "inputs": {
-                        "type": "string_list",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
                         "description": "List of tap names to sum together (max 4)."
                       }
                     },
@@ -897,17 +887,17 @@
                     "type": "object",
                     "properties": {
                       "cutoff": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Threshold cutoff value.",
                         "default": 0.5
                       },
                       "output_low": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Output value when input is below cutoff.",
                         "default": 0.0
                       },
                       "output_high": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Output value when input is at or above cutoff.",
                         "default": 1.0
                       }
@@ -932,7 +922,7 @@
                     "type": "object",
                     "properties": {
                       "threshold": {
-                        "type": "float",
+                        "type": "number",
                         "description": "Threshold for detecting rising edge.",
                         "default": 0.5
                       }
@@ -945,38 +935,7 @@
                 ],
                 "additionalProperties": false
               }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "abs": "#/definitions/transform/abs",
-                "clamp": "#/definitions/transform/clamp",
-                "deadband": "#/definitions/transform/deadband",
-                "delta_gate": "#/definitions/transform/delta_gate",
-                "derivative": "#/definitions/transform/derivative",
-                "error": "#/definitions/transform/error",
-                "hysteresis": "#/definitions/transform/hysteresis",
-                "integrator": "#/definitions/transform/integrator",
-                "lowpass": "#/definitions/transform/lowpass",
-                "map": "#/definitions/transform/map",
-                "median": "#/definitions/transform/median",
-                "negate": "#/definitions/transform/negate",
-                "offset": "#/definitions/transform/offset",
-                "oscillator": "#/definitions/transform/oscillator",
-                "proportional": "#/definitions/transform/proportional",
-                "pulse": "#/definitions/transform/pulse",
-                "recall": "#/definitions/transform/recall",
-                "scale": "#/definitions/transform/scale",
-                "signal_add": "#/definitions/transform/signal_add",
-                "signal_recall": "#/definitions/transform/signal_recall",
-                "signal_subtract": "#/definitions/transform/signal_subtract",
-                "slew_rate": "#/definitions/transform/slew_rate",
-                "sum": "#/definitions/transform/sum",
-                "tap": "#/definitions/transform/tap",
-                "threshold": "#/definitions/transform/threshold",
-                "toggle": "#/definitions/transform/toggle"
-              }
-            }
+            ]
           },
           "default": []
         },
@@ -995,7 +954,7 @@
                   "type": "object",
                   "properties": {
                     "channel": {
-                      "type": "int",
+                      "type": "integer",
                       "description": "Logical GPIO channel.",
                       "minimum": 0
                     }
@@ -1023,7 +982,7 @@
                   "type": "object",
                   "properties": {
                     "motor_id": {
-                      "type": "int",
+                      "type": "integer",
                       "description": "Logical motor identifier.",
                       "minimum": 0
                     }
@@ -1051,7 +1010,7 @@
                   "type": "object",
                   "properties": {
                     "channel": {
-                      "type": "int",
+                      "type": "integer",
                       "description": "Logical PWM channel identifier.",
                       "minimum": 0
                     }
@@ -1079,7 +1038,7 @@
                   "type": "object",
                   "properties": {
                     "servo_id": {
-                      "type": "int",
+                      "type": "integer",
                       "description": "Logical servo identifier.",
                       "minimum": 0
                     }
@@ -1107,7 +1066,7 @@
                   "type": "object",
                   "properties": {
                     "signal_id": {
-                      "type": "int",
+                      "type": "integer",
                       "description": "Signal ID to write to (must be pre-defined in signal bus).",
                       "minimum": 0,
                       "maximum": 255
@@ -1124,17 +1083,7 @@
               ],
               "additionalProperties": false
             }
-          ],
-          "discriminator": {
-            "propertyName": "type",
-            "mapping": {
-              "gpio_write": "#/definitions/sink/gpio_write",
-              "motor_speed": "#/definitions/sink/motor_speed",
-              "pwm_duty": "#/definitions/sink/pwm_duty",
-              "servo_angle": "#/definitions/sink/servo_angle",
-              "signal_write": "#/definitions/sink/signal_write"
-            }
-          }
+          ]
         },
         "sinks": {
           "type": "array",
@@ -1153,7 +1102,7 @@
                     "type": "object",
                     "properties": {
                       "channel": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "Logical GPIO channel.",
                         "minimum": 0
                       }
@@ -1181,7 +1130,7 @@
                     "type": "object",
                     "properties": {
                       "motor_id": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "Logical motor identifier.",
                         "minimum": 0
                       }
@@ -1209,7 +1158,7 @@
                     "type": "object",
                     "properties": {
                       "channel": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "Logical PWM channel identifier.",
                         "minimum": 0
                       }
@@ -1237,7 +1186,7 @@
                     "type": "object",
                     "properties": {
                       "servo_id": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "Logical servo identifier.",
                         "minimum": 0
                       }
@@ -1265,7 +1214,7 @@
                     "type": "object",
                     "properties": {
                       "signal_id": {
-                        "type": "int",
+                        "type": "integer",
                         "description": "Signal ID to write to (must be pre-defined in signal bus).",
                         "minimum": 0,
                         "maximum": 255
@@ -1282,17 +1231,7 @@
                 ],
                 "additionalProperties": false
               }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "gpio_write": "#/definitions/sink/gpio_write",
-                "motor_speed": "#/definitions/sink/motor_speed",
-                "pwm_duty": "#/definitions/sink/pwm_duty",
-                "servo_angle": "#/definitions/sink/servo_angle",
-                "signal_write": "#/definitions/sink/signal_write"
-              }
-            }
+            ]
           },
           "minItems": 1,
           "maxItems": 4

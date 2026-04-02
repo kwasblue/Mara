@@ -215,7 +215,7 @@ void Runtime::runMainLoop(uint32_t now_ms) {
         timing.overruns++;
     }
 
-    delay(1);
+    yield();  // Non-blocking yield instead of blocking delay
 }
 
 } // namespace mara

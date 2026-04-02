@@ -274,6 +274,6 @@ void loop() {
         timing.overruns++;
     }
 
-    // Minimal delay to prevent watchdog issues
-    delay(1);
+    // Yield to FreeRTOS scheduler without blocking
+    yield();
 }

@@ -384,8 +384,19 @@ class BaseMaraClient(BinaryCommandsMixin):
         self.logs.events.write("connection.lost")
 
     def _on_reconnect(self) -> None:
+        # Reset handshake state - MCU may have reset
+        self._version_verified = False
+        self._cached_identity = None
+
+        # Clear stale in-flight commands (they won't get ACKs from reset MCU)
+        self.commander.clear_pending_sync()
+
         self.bus.publish("connection.restored", {})
         self.logs.events.write("connection.restored")
+
+        # Schedule async re-handshake if required
+        if self._require_version_match and self._running:
+            asyncio.create_task(self._perform_handshake())
 
     # ---------- Heartbeat ----------
 

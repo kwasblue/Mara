@@ -46,9 +46,12 @@ void ModeManager::update(uint32_t now_ms) {
         if (dt > cfg_.host_timeout_ms) {
             mara::CriticalSection lock(lock_);
             triggerStop();
-            if (mode_ == MaraMode::ACTIVE) mode_ = MaraMode::ARMED;
-            else if (mode_ == MaraMode::ARMED) mode_ = MaraMode::ARMED;
-            else mode_ = MaraMode::IDLE;
+            // Downgrade only ACTIVE->ARMED on host timeout
+            // Leave ARMED as-is, don't touch DISCONNECTED or other states
+            if (mode_ == MaraMode::ACTIVE) {
+                mode_ = MaraMode::ARMED;
+            }
+            // ARMED stays ARMED, IDLE stays IDLE, DISCONNECTED stays DISCONNECTED
             hostTimedOut_ = true;
             stats_.host_timeout_count++;
             stats_.last_host_timeout_ms = now_ms;

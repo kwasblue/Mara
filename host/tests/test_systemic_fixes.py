@@ -231,11 +231,13 @@ class TestErrorRecovery:
         thread.start()
         thread.join(timeout=3.0)
 
-        # The reader loop should have exited due to consecutive errors,
-        # not because we set _stop. Check that errors actually accumulated.
-        assert transport.error_count > 0, "Expected errors to be counted"
-        # The thread should have terminated (either by error limit or timeout)
-        assert not thread.is_alive(), "Reader thread should have exited"
+        # The reader loop should have exited due to consecutive errors hitting the limit.
+        # Verify the thread actually exited (not just timeout expired)
+        assert not thread.is_alive(), "Reader thread should have exited due to error limit"
+        # Verify _stop was set by the error limit logic (starts False, only error limit sets it)
+        assert transport._stop is True, "Transport should have set _stop via error limit"
+        # Verify enough errors accumulated to trigger the limit (default is 5)
+        assert transport.error_count >= 5, f"Expected at least 5 errors, got {transport.error_count}"
 
 
 # =============================================================================

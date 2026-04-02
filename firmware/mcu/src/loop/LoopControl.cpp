@@ -6,23 +6,33 @@
 
 namespace mara {
 
-// Encoder / PID config for DC motor 0
-constexpr float ENCODER0_TICKS_PER_REV = 1632.67f;
-
-// Static state for velocity calculation
-static int32_t s_lastTicks = 0;
-
 void runControlLoop(ServiceContext& ctx, uint32_t now_ms, float dt) {
-    // DC motor 0 velocity PID (encoder -> omega -> PID -> PWM)
-    if (ctx.encoder && ctx.dcMotor) {
-        int32_t ticks = ctx.encoder->getCount(0);
-        int32_t deltaTicks = ticks - s_lastTicks;
-        s_lastTicks = ticks;
+    (void)now_ms;  // Unused for now
 
-        if (dt > 0.0f) {
-            float revs = deltaTicks / ENCODER0_TICKS_PER_REV;
+    // Update velocity PID for all motors with encoder configuration
+    if (ctx.encoder && ctx.dcMotor && dt > 0.0f) {
+        for (uint8_t id = 0; id < DcMotorManager::MAX_MOTORS; ++id) {
+            // Skip motors without encoder config or PID disabled
+            if (!ctx.dcMotor->hasEncoderConfig(id) || !ctx.dcMotor->isVelocityPidEnabled(id)) {
+                continue;
+            }
+
+            // Get encoder channel and ticks per rev for this motor
+            uint8_t encCh = ctx.dcMotor->getEncoderChannel(id);
+            float ticksPerRev = ctx.dcMotor->getTicksPerRev(id);
+
+            // Read current encoder count
+            int32_t ticks = ctx.encoder->getCount(encCh);
+            int32_t lastTicks = ctx.dcMotor->getLastEncoderTicks(id);
+            int32_t deltaTicks = ticks - lastTicks;
+            ctx.dcMotor->setLastEncoderTicks(id, ticks);
+
+            // Convert to angular velocity
+            float revs = static_cast<float>(deltaTicks) / ticksPerRev;
             float omega_rad_s = revs * 2.0f * 3.14159265f / dt;
-            ctx.dcMotor->updateVelocityPid(0, omega_rad_s, dt);
+
+            // Update PID controller
+            ctx.dcMotor->updateVelocityPid(id, omega_rad_s, dt);
         }
     }
 

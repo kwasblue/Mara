@@ -228,4 +228,24 @@ bool DcMotorManager::updateVelocityPid(uint8_t id, float measuredOmegaRadS, floa
     return setSpeed(id, cmd);
 }
 
+bool DcMotorManager::configureEncoder(uint8_t motorId, uint8_t encoderChannel, float ticksPerRev) {
+    if (motorId >= MAX_MOTORS || !motors_[motorId].attached) {
+        DBG_PRINTF("[DcMotorManager] configureEncoder ignored, id=%u not attached\n", motorId);
+        return false;
+    }
+    if (ticksPerRev <= 0.0f) {
+        DBG_PRINTF("[DcMotorManager] configureEncoder ignored, invalid ticksPerRev=%.2f\n", ticksPerRev);
+        return false;
+    }
+
+    Motor& m = motors_[motorId];
+    m.encoderChannel = encoderChannel;
+    m.ticksPerRev = ticksPerRev;
+    m.lastEncoderTicks = 0;
+
+    DBG_PRINTF("[DcMotorManager] id=%u encoder configured: ch=%u ticksPerRev=%.2f\n",
+               motorId, encoderChannel, ticksPerRev);
+    return true;
+}
+
 #endif // HAS_DC_MOTOR

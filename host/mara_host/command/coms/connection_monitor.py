@@ -108,8 +108,10 @@ class ConnectionMonitor:
         self._monitor_task: Optional[asyncio.Task] = None
 
         # Lock to protect _state and _last_message_time which may be accessed
-        # from callbacks (potentially different thread) and the monitor task
-        self._state_lock = threading.Lock()
+        # from callbacks (potentially different thread) and the monitor task.
+        # Using RLock (reentrant) because callbacks fired during state transitions
+        # may need to read state/connected properties, which also acquire this lock.
+        self._state_lock = threading.RLock()
 
         # Statistics
         self._stats = ConnectionStats()

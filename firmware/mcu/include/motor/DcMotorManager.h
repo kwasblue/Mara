@@ -38,6 +38,11 @@ public:
         bool  pidEnabled      = false;
         float targetOmegaRadS = 0.0f;
         PID   pid;
+
+        // Encoder state for velocity calculation (per-motor, not shared)
+        int32_t lastEncoderTicks = 0;
+        float   ticksPerRev      = 0.0f;  // 0 = not configured
+        uint8_t encoderChannel   = 0;     // Which encoder channel this motor uses
     };
 
     struct MotorDebugInfo {
@@ -120,6 +125,28 @@ public:
     // Update PID with measured velocity (call at fixed rate)
     bool updateVelocityPid(uint8_t id, float measuredOmegaRadS, float dt);
 
+    // Configure encoder for velocity feedback
+    bool configureEncoder(uint8_t motorId, uint8_t encoderChannel, float ticksPerRev);
+
+    // Get encoder configuration
+    bool hasEncoderConfig(uint8_t id) const {
+        return (id < MAX_MOTORS) && motors_[id].attached && motors_[id].ticksPerRev > 0.0f;
+    }
+
+    // Get/set encoder tick state (for velocity calculation in control loop)
+    int32_t getLastEncoderTicks(uint8_t id) const {
+        return (id < MAX_MOTORS) ? motors_[id].lastEncoderTicks : 0;
+    }
+    void setLastEncoderTicks(uint8_t id, int32_t ticks) {
+        if (id < MAX_MOTORS) motors_[id].lastEncoderTicks = ticks;
+    }
+    float getTicksPerRev(uint8_t id) const {
+        return (id < MAX_MOTORS) ? motors_[id].ticksPerRev : 0.0f;
+    }
+    uint8_t getEncoderChannel(uint8_t id) const {
+        return (id < MAX_MOTORS) ? motors_[id].encoderChannel : 0;
+    }
+
 private:
     GpioManager& gpio_;
     PwmManager&  pwm_;
@@ -167,6 +194,12 @@ public:
     bool setVelocityTarget(uint8_t, float) { return false; }
     bool setVelocityGains(uint8_t, float, float, float) { return false; }
     bool updateVelocityPid(uint8_t, float, float) { return false; }
+    bool configureEncoder(uint8_t, uint8_t, float) { return false; }
+    bool hasEncoderConfig(uint8_t) const { return false; }
+    int32_t getLastEncoderTicks(uint8_t) const { return 0; }
+    void setLastEncoderTicks(uint8_t, int32_t) {}
+    float getTicksPerRev(uint8_t) const { return 0.0f; }
+    uint8_t getEncoderChannel(uint8_t) const { return 0; }
 };
 
 #endif // HAS_DC_MOTOR

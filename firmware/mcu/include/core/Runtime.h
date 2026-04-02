@@ -33,8 +33,7 @@ struct RuntimeConfig {
     // Device identity
     const char* device_name = "ESP32-bot";
 
-    // Main loop (safety checks, host comms)
-    uint16_t safety_hz = 100;  // Target rate for overrun detection
+    // Note: safety_hz is configured via MaraConfig.rates.safety_hz (single source of truth)
 
     // Control task (FreeRTOS)
     bool use_freertos_control = true;
@@ -42,11 +41,6 @@ struct RuntimeConfig {
     uint16_t control_stack_size = 4096;
     uint8_t control_priority = 5;
     uint8_t control_core = 1;
-
-    // Derived: period in microseconds for overrun detection
-    uint32_t safety_period_us() const {
-        return safety_hz > 0 ? 1000000 / safety_hz : 10000;
-    }
 };
 
 /// Top-level runtime orchestrator

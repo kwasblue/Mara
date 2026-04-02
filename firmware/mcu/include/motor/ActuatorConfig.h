@@ -11,6 +11,10 @@
 
 namespace mara {
 
+/// Default encoder ticks per revolution
+/// TODO: Make this configurable per-motor via MaraConfig
+constexpr float DEFAULT_ENCODER_TICKS_PER_REV = 1632.67f;
+
 /// Auto-configure DC motors from Pins:: constants
 /// Call this in SetupMotors instead of manual attach() calls
 ///
@@ -31,6 +35,8 @@ int autoConfigureDcMotors(DcMotorManagerT& dcMotor) {
             0,      // LEDC channel 0
             15000,  // PWM frequency
             12)) {  // Resolution bits
+        // Configure encoder for velocity feedback (motor 0 uses encoder 0)
+        dcMotor.configureEncoder(0, 0, DEFAULT_ENCODER_TICKS_PER_REV);
         count++;
     }
 

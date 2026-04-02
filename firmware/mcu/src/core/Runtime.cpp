@@ -6,6 +6,7 @@
 #include "loop/LoopFunctions.h"
 #include "sensor/SensorRegistry.h"
 #include "core/Clock.h"
+#include "config/MaraConfig.h"
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 
@@ -105,12 +106,14 @@ bool Runtime::runSetupModules() {
                 criticalFailure_ = true;
 
                 if (ctx_.dcMotor) ctx_.dcMotor->stopAll();
-                return false;
+
+                // Don't return - let remaining modules run for diagnostics
+                // The criticalFailure_ flag will prevent further phases from running
             }
         }
     }
 
-    return true;
+    return !criticalFailure_;
 }
 
 bool Runtime::startControlTask() {
@@ -212,7 +215,11 @@ void Runtime::runMainLoop(uint32_t now_ms) {
     timing.updatePeaks();
 
     // Track overruns (loop took longer than configured period)
-    if (timing.total_us > config_.safety_period_us()) {
+    // Use MaraConfig as single source of truth for safety_hz
+    const uint32_t safety_period_us = config::getMaraConfig().rates.safety_hz > 0
+        ? 1000000 / config::getMaraConfig().rates.safety_hz
+        : 10000;  // Default to 100Hz if not configured
+    if (timing.total_us > safety_period_us) {
         timing.overruns++;
     }
 

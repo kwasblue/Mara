@@ -68,8 +68,8 @@ bool ModeManager::validateVelocity(float vx, float omega, float& outVx, float& o
 }
 
 void ModeManager::arm() { mode_ = MaraMode::ARMED; }
-void ModeManager::activate() { mode_ = MaraMode::ACTIVE; }
-void ModeManager::deactivate() { mode_ = MaraMode::ARMED; }
+void ModeManager::activate(uint32_t /* now_ms */) { mode_ = MaraMode::ACTIVE; }
+void ModeManager::deactivate(uint32_t /* now_ms */) { mode_ = MaraMode::ARMED; }
 void ModeManager::disarm() { mode_ = MaraMode::IDLE; }
 void ModeManager::estop() { mode_ = MaraMode::ESTOPPED; }
 bool ModeManager::clearEstop() { mode_ = MaraMode::IDLE; return true; }

@@ -101,7 +101,7 @@ void ServiceStorage::initCan(uint8_t nodeId, uint32_t baudRate) {
         mode.estop();
     });
     can->setStopCallback([this](uint8_t /* nodeId */) {
-        mode.deactivate();
+        mode.deactivate(clock.millis());
     });
 
     transport.addTransport(can);

@@ -69,13 +69,13 @@ public:
         }
     }
     
-    void activate() {
+    void activate(uint32_t /* now_ms */) {
         if (mode_ == MaraMode::ARMED) {
             mode_ = MaraMode::ACTIVE;
         }
     }
-    
-    void deactivate() {
+
+    void deactivate(uint32_t /* now_ms */) {
         if (mode_ == MaraMode::ACTIVE) {
             triggerStop();
             mode_ = MaraMode::ARMED;
@@ -207,7 +207,7 @@ void test_no_timeout_before_first_heartbeat() {
 void test_motion_timeout_triggers_stop() {
     g_mode->onHostHeartbeat(0);
     g_mode->arm();
-    g_mode->activate();
+    g_mode->activate(millis());
     g_mode->onMotionCommand(100);
     
     g_mode->onHostHeartbeat(200);
@@ -221,7 +221,7 @@ void test_motion_timeout_triggers_stop() {
 void test_motion_commands_prevent_timeout() {
     g_mode->onHostHeartbeat(0);
     g_mode->arm();
-    g_mode->activate();
+    g_mode->activate(millis());
     
     g_mode->onMotionCommand(100);
     g_mode->onHostHeartbeat(200);
@@ -261,21 +261,21 @@ void test_arm_from_disconnected_fails() {
 void test_activate_from_armed() {
     g_mode->onHostHeartbeat(0);
     g_mode->arm();
-    g_mode->activate();
+    g_mode->activate(millis());
     TEST_ASSERT_EQUAL(MaraMode::ACTIVE, g_mode->mode());
 }
 
 void test_activate_from_idle_fails() {
     g_mode->onHostHeartbeat(0);
-    g_mode->activate();
+    g_mode->activate(millis());
     TEST_ASSERT_EQUAL(MaraMode::IDLE, g_mode->mode());
 }
 
 void test_deactivate_triggers_stop() {
     g_mode->onHostHeartbeat(0);
     g_mode->arm();
-    g_mode->activate();
-    g_mode->deactivate();
+    g_mode->activate(millis());
+    g_mode->deactivate(millis());
     
     TEST_ASSERT_TRUE(g_stopCalled);
     TEST_ASSERT_EQUAL(MaraMode::ARMED, g_mode->mode());
@@ -284,7 +284,7 @@ void test_deactivate_triggers_stop() {
 void test_disarm_from_active_triggers_stop() {
     g_mode->onHostHeartbeat(0);
     g_mode->arm();
-    g_mode->activate();
+    g_mode->activate(millis());
     g_mode->disarm();
     
     TEST_ASSERT_TRUE(g_stopCalled);
@@ -298,7 +298,7 @@ void test_disarm_from_active_triggers_stop() {
 void test_estop_from_active() {
     g_mode->onHostHeartbeat(0);
     g_mode->arm();
-    g_mode->activate();
+    g_mode->activate(millis());
     g_mode->estop();
     
     TEST_ASSERT_TRUE(g_stopCalled);
@@ -328,7 +328,7 @@ void test_can_move_states() {
     g_mode->arm();
     TEST_ASSERT_TRUE(g_mode->canMove());
     
-    g_mode->activate();
+    g_mode->activate(millis());
     TEST_ASSERT_TRUE(g_mode->canMove());
     
     g_mode->estop();

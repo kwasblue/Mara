@@ -64,8 +64,8 @@ public:
     
     // Transitions
     void arm();
-    void activate();
-    void deactivate();
+    void activate(uint32_t now_ms);
+    void deactivate(uint32_t now_ms);
     void disarm();
     void estop();
     bool clearEstop();

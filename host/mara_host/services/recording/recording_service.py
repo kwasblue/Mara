@@ -122,17 +122,21 @@ class RecordingService:
         # Create client
         self._client = MaraClient(transport)
 
-        # Wrap event bus for recording
-        self._client.bus = RecordingEventBus(self._client.bus, self._bundle)
+        # Wrap event bus for recording with event counting
+        recording_bus = RecordingEventBus(self._client.bus, self._bundle)
+
+        # Patch publish to count events (wildcard subscribe doesn't work with exact-match EventBus)
+        original_publish = recording_bus.publish
+        def counting_publish(topic: str, data):
+            self._event_count += 1
+            return original_publish(topic, data)
+        recording_bus.publish = counting_publish
+
+        self._client.bus = recording_bus
 
         # Track events
         self._event_count = 0
         self._start_time = time.time()
-
-        def count_event(data):
-            self._event_count += 1
-
-        self._client.bus.subscribe("*", count_event)
 
         # Start client
         await self._client.start()
@@ -145,7 +149,13 @@ class RecordingService:
 
         Returns:
             SessionInfo about the recorded session
+
+        Raises:
+            RuntimeError: If stop() is called before start()
         """
+        if self._session_path is None:
+            raise RuntimeError("Cannot stop recording: start() was never called")
+
         end_time = time.time()
         duration = end_time - self._start_time if self._start_time else 0
 
@@ -304,7 +314,8 @@ class ReplayService:
         Replay events with timing.
 
         Args:
-            speed: Playback speed multiplier (1.0 = realtime)
+            speed: Playback speed multiplier (1.0 = realtime, 2.0 = 2x speed).
+                   Use speed <= 0 to replay as fast as possible without delays.
             callback: Optional callback for each event
             filter_topics: Only replay events with these topics
 
@@ -319,7 +330,7 @@ class ReplayService:
             if filter_topics and event.topic not in filter_topics:
                 continue
 
-            # Apply timing
+            # Apply timing (speed <= 0 means no delay / as fast as possible)
             if last_ts is not None and speed > 0:
                 delay = (event.timestamp - last_ts) / speed
                 if delay > 0:

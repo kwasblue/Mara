@@ -53,7 +53,7 @@ void SafetyHandler::handleDisarm(CommandContext& ctx) {
 
 void SafetyHandler::handleActivate(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] ACTIVATE");
-    mode_->activate();
+    mode_->activate(ctx.now_ms());
 
     JsonDocument resp;
     resp["state"] = maraModeToString(mode_->mode());
@@ -67,7 +67,7 @@ void SafetyHandler::handleActivate(CommandContext& ctx) {
 
 void SafetyHandler::handleDeactivate(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] DEACTIVATE");
-    mode_->deactivate();
+    mode_->deactivate(ctx.now_ms());
 
     JsonDocument resp;
     resp["state"] = maraModeToString(mode_->mode());
@@ -128,7 +128,7 @@ void SafetyHandler::handleSetMode(JsonVariantConst payload, CommandContext& ctx)
         mode_->arm();
     } else if (strcmp(modeStr, "ACTIVE") == 0) {
         mode_->arm();
-        mode_->activate();
+        mode_->activate(ctx.now_ms());
     } else {
         ok = false;
         errorCode = ErrorCode::INVALID_PARAMETER;

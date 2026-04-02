@@ -145,8 +145,8 @@ bool ModeManager::canTransition(MaraMode from, MaraMode to) {
 }
 
 void ModeManager::arm() { mara::CriticalSection lock(lock_); stopLatched_ = false; if (mode_ == MaraMode::IDLE) mode_ = MaraMode::ARMED; }
-void ModeManager::activate() { mara::CriticalSection lock(lock_); stopLatched_ = false; if (mode_ == MaraMode::ARMED) { lastMotionCmd_ = now_ms(); mode_ = MaraMode::ACTIVE; } }
-void ModeManager::deactivate() { mara::CriticalSection lock(lock_); if (mode_ == MaraMode::ACTIVE) { triggerStop(); mode_ = MaraMode::ARMED; lastMotionCmd_ = now_ms(); } }
+void ModeManager::activate(uint32_t now_ms) { mara::CriticalSection lock(lock_); stopLatched_ = false; if (mode_ == MaraMode::ARMED) { lastMotionCmd_ = now_ms; mode_ = MaraMode::ACTIVE; } }
+void ModeManager::deactivate(uint32_t now_ms) { mara::CriticalSection lock(lock_); if (mode_ == MaraMode::ACTIVE) { triggerStop(); mode_ = MaraMode::ARMED; lastMotionCmd_ = now_ms; } }
 void ModeManager::disarm() { mara::CriticalSection lock(lock_); if (mode_ == MaraMode::ARMED || mode_ == MaraMode::ACTIVE) { triggerStop(); mode_ = MaraMode::IDLE; } }
 void ModeManager::estop() { mara::CriticalSection lock(lock_); triggerStop(); triggerEmergencyStop(); mode_ = MaraMode::ESTOPPED; stats_.last_fault = 3; if (persistentStateCallback_) persistentStateCallback_(); }
 

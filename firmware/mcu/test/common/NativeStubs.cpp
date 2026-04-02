@@ -68,13 +68,13 @@ void ModeManager::disarm() {
     }
 }
 
-void ModeManager::activate() {
+void ModeManager::activate(uint32_t /* now_ms */) {
     if (mode_ == MaraMode::ARMED) {
         mode_ = MaraMode::ACTIVE;
     }
 }
 
-void ModeManager::deactivate() {
+void ModeManager::deactivate(uint32_t /* now_ms */) {
     if (mode_ == MaraMode::ACTIVE) {
         mode_ = MaraMode::ARMED;
     }

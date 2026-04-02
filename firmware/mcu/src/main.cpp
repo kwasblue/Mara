@@ -269,8 +269,9 @@ void loop() {
     // Track peaks and overruns
     timing.updatePeaks();
 
-    // Check for overrun (loop took longer than 10ms = 100Hz baseline)
-    if (timing.total_us > 10000) {
+    // Check for overrun (loop took longer than configured safety period)
+    const uint32_t safety_period_us = 1000000 / config::getMaraConfig().rates.safety_hz;
+    if (timing.total_us > safety_period_us) {
         timing.overruns++;
     }
 

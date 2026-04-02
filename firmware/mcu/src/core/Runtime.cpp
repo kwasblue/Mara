@@ -211,7 +211,8 @@ void Runtime::runMainLoop(uint32_t now_ms) {
     timing.total_us = getSystemClock().micros() - loop_start_us;
     timing.updatePeaks();
 
-    if (timing.total_us > 10000) {
+    // Track overruns (loop took longer than configured period)
+    if (timing.total_us > config_.safety_period_us()) {
         timing.overruns++;
     }
 

@@ -278,7 +278,7 @@ async def test_mcu_diagnostics_service_falls_back_to_telemetry_when_ack_payload_
 
 def test_connection_config_defaults_to_more_tolerant_handshake_budget():
     config = ConnectionConfig(transport_type=TransportType.SERIAL)
-    assert config.handshake_timeout_s == 4.0
+    assert config.handshake_timeout_s == 2.0
 
 
 @pytest.mark.asyncio

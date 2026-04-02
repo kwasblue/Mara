@@ -350,6 +350,50 @@ TOOLS: list[ToolDef] = [
         ),
         response_format="Velocity set: vx={vx:.2f} m/s, omega={omega:.2f} rad/s",
     ),
+    ToolDef(
+        name="motion_forward",
+        description="Move robot forward at specified speed.",
+        category="motion",
+        service="motion_service",
+        method="forward",
+        params=(
+            ToolParam("speed", "number", "Speed (0.0 to 1.0)", required=False, default=0.5),
+        ),
+        response_format="Moving forward at {speed:.0%}",
+    ),
+    ToolDef(
+        name="motion_backward",
+        description="Move robot backward at specified speed.",
+        category="motion",
+        service="motion_service",
+        method="backward",
+        params=(
+            ToolParam("speed", "number", "Speed (0.0 to 1.0)", required=False, default=0.5),
+        ),
+        response_format="Moving backward at {speed:.0%}",
+    ),
+    ToolDef(
+        name="motion_rotate_left",
+        description="Rotate robot counter-clockwise (left) at specified speed.",
+        category="motion",
+        service="motion_service",
+        method="rotate_left",
+        params=(
+            ToolParam("speed", "number", "Rotation speed (0.0 to 1.0)", required=False, default=0.5),
+        ),
+        response_format="Rotating left at {speed:.0%}",
+    ),
+    ToolDef(
+        name="motion_rotate_right",
+        description="Rotate robot clockwise (right) at specified speed.",
+        category="motion",
+        service="motion_service",
+        method="rotate_right",
+        params=(
+            ToolParam("speed", "number", "Rotation speed (0.0 to 1.0)", required=False, default=0.5),
+        ),
+        response_format="Rotating right at {speed:.0%}",
+    ),
 
     # ─────────────────────────────────────────────────────────────────────────
     # Signal Bus Tools
@@ -486,6 +530,37 @@ TOOLS: list[ToolDef] = [
         ),
         response_format="Servo {servo_id} detached",
     ),
+    ToolDef(
+        name="servo_sweep",
+        description="Sweep a servo through a range of angles.",
+        category="servo",
+        service="servo_service",
+        method="sweep",
+        params=(
+            ToolParam("servo_id", "integer", "Servo ID (0-7)"),
+            ToolParam("start", "number", "Start angle in degrees", required=False, default=0),
+            ToolParam("end", "number", "End angle in degrees", required=False, default=180),
+            ToolParam("step", "number", "Step size in degrees", required=False, default=10),
+            ToolParam("delay_s", "number", "Delay between steps in seconds", required=False, default=0.1, service_name="delay_s"),
+        ),
+        response_format="Servo {servo_id} sweep complete",
+    ),
+    ToolDef(
+        name="servo_detach_all",
+        description="Detach all servos from their pins.",
+        category="servo",
+        service="servo_service",
+        method="detach_all",
+        response_format="All servos detached",
+    ),
+    ToolDef(
+        name="servo_list",
+        description="List all attached servos.",
+        category="servo",
+        service="servo_service",
+        method="get_attached_servos",
+        requires_arm=False,
+    ),
 
     # ─────────────────────────────────────────────────────────────────────────
     # Motor Tools
@@ -512,6 +587,52 @@ TOOLS: list[ToolDef] = [
             ToolParam("motor_id", "integer", "Motor ID (0-3)"),
         ),
         response_format="Motor {motor_id} stopped",
+    ),
+    ToolDef(
+        name="motor_brake",
+        description="Apply active brake to a DC motor (shorts windings).",
+        category="motor",
+        service="motor_service",
+        method="brake",
+        params=(
+            ToolParam("motor_id", "integer", "Motor ID (0-3)"),
+        ),
+        response_format="Motor {motor_id} braking",
+    ),
+    ToolDef(
+        name="motor_stop_all",
+        description="Stop all DC motors.",
+        category="motor",
+        service="motor_service",
+        method="stop_all",
+        response_format="All motors stopped",
+    ),
+    ToolDef(
+        name="motor_set_differential",
+        description="Set differential drive motor speeds for coordinated motion.",
+        category="motor",
+        service="motor_service",
+        method="set_differential_drive",
+        params=(
+            ToolParam("left_speed", "number", "Left motor speed (-1.0 to 1.0)", service_name="left_speed"),
+            ToolParam("right_speed", "number", "Right motor speed (-1.0 to 1.0)", service_name="right_speed"),
+            ToolParam("left_motor", "integer", "Left motor ID", required=False, default=0),
+            ToolParam("right_motor", "integer", "Right motor ID", required=False, default=1),
+        ),
+        response_format="Differential drive: L={left_speed:.0%}, R={right_speed:.0%}",
+    ),
+    ToolDef(
+        name="motor_set_percent",
+        description="Set DC motor speed as a percentage (0-100).",
+        category="motor",
+        service="motor_service",
+        method="set_speed_percent",
+        params=(
+            ToolParam("motor_id", "integer", "Motor ID (0-3)"),
+            ToolParam("percent", "number", "Speed percentage (0-100)"),
+            ToolParam("clamp", "boolean", "Clamp to valid range", required=False, default=True),
+        ),
+        response_format="Motor {motor_id} -> {percent}%",
     ),
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -549,6 +670,14 @@ TOOLS: list[ToolDef] = [
         params=(
             ToolParam("channel", "integer", "GPIO channel ID"),
         ),
+        requires_arm=False,
+    ),
+    ToolDef(
+        name="gpio_list_channels",
+        description="List all configured GPIO channels.",
+        category="gpio",
+        service="gpio_service",
+        method="get_all_channels",
         requires_arm=False,
     ),
 
@@ -1054,6 +1183,41 @@ TOOLS: list[ToolDef] = [
     ),
 
     # =========================================================================
+    # Recording Tools
+    # =========================================================================
+    ToolDef(
+        name="record_start",
+        description="Start recording robot telemetry to a session file.",
+        category="recording",
+        requires_arm=False,
+        custom_handler=True,
+        params=(
+            ToolParam("session_name", "string", "Name for the recording session", required=False, default=None),
+        ),
+    ),
+    ToolDef(
+        name="record_stop",
+        description="Stop the current recording session and save to disk.",
+        category="recording",
+        requires_arm=False,
+        custom_handler=True,
+    ),
+    ToolDef(
+        name="record_list",
+        description="List available recording sessions.",
+        category="recording",
+        requires_arm=False,
+        custom_handler=True,
+    ),
+    ToolDef(
+        name="record_status",
+        description="Get current recording status.",
+        category="recording",
+        requires_arm=False,
+        custom_handler=True,
+    ),
+
+    # =========================================================================
     # Testing Tools
     # =========================================================================
     ToolDef(
@@ -1091,6 +1255,19 @@ TOOLS: list[ToolDef] = [
         category="testing",
         custom_handler=True,
         requires_arm=False,
+    ),
+    ToolDef(
+        name="host_test",
+        description="Run Python host tests via pytest. Does not require robot connection.",
+        category="testing",
+        custom_handler=True,
+        requires_arm=False,
+        params=(
+            ToolParam("filter", "string", "Pytest filter expression (e.g., 'test_client' or 'tests/test_protocol.py')", required=False, default=None),
+            ToolParam("markers", "string", "Pytest markers filter (e.g., 'not slow')", required=False, default=None),
+            ToolParam("verbose", "boolean", "Enable verbose pytest output", required=False, default=False),
+            ToolParam("timeout", "integer", "Test timeout in seconds (default 300)", required=False, default=300),
+        ),
     ),
 ]
 

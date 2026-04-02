@@ -471,6 +471,103 @@ async def _handle_robot_test_all(runtime, args: dict) -> str:
     results.append(f"Latency: {lat_result}")
 
     return "\\n".join(results)
+
+
+async def _handle_host_test(runtime, args: dict) -> str:
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    filter_expr = args.get("filter")
+    markers = args.get("markers")
+    verbose = args.get("verbose", False)
+    timeout = args.get("timeout", 300)
+
+    host_dir = Path(__file__).parent.parent
+
+    cmd = [sys.executable, "-m", "pytest"]
+    if filter_expr:
+        cmd.append(filter_expr)
+    if markers:
+        cmd.extend(["-m", markers])
+    if verbose:
+        cmd.append("-v")
+
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=host_dir,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        output = result.stdout + result.stderr
+        if result.returncode == 0:
+            return f"All tests passed\\n{output}"
+        return f"FAIL: Tests failed (exit code {result.returncode})\\n{output}"
+    except subprocess.TimeoutExpired:
+        return f"FAIL: Test timeout after {timeout}s"
+    except Exception as e:
+        return f"FAIL: {e}"
+
+
+# Recording handlers
+async def _handle_record_start(runtime, args: dict) -> str:
+    from datetime import datetime
+    from pathlib import Path
+    from mara_host.services.recording.recording_service import RecordingService, RecordingConfig
+
+    if not runtime.is_connected:
+        return "Not connected. Use mara_connect first."
+
+    # Check if already recording
+    if hasattr(runtime, '_recording_service') and runtime._recording_service is not None:
+        return "Already recording. Stop the current recording first."
+
+    session_name = args.get("session_name") or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    config = RecordingConfig(
+        session_name=session_name,
+        log_dir=Path("logs"),
+    )
+
+    recording_service = RecordingService(config)
+    session_path = await recording_service.start()
+
+    # Store on runtime for later access
+    runtime._recording_service = recording_service
+
+    return f"Recording started: {session_name} -> {session_path}"
+
+
+async def _handle_record_stop(runtime, args: dict) -> str:
+    if not hasattr(runtime, '_recording_service') or runtime._recording_service is None:
+        return "No recording in progress."
+
+    session_info = await runtime._recording_service.stop()
+    runtime._recording_service = None
+
+    return f"Recording stopped: {session_info.name} ({session_info.event_count} events, {session_info.duration_s:.1f}s)"
+
+
+async def _handle_record_list(runtime, args: dict) -> str:
+    from pathlib import Path
+    from mara_host.services.recording.recording_service import ReplayService
+
+    sessions = ReplayService.list_sessions(Path("logs"))
+
+    if not sessions:
+        return "No recording sessions found."
+
+    return f"Recording sessions ({len(sessions)}): " + ", ".join(sessions)
+
+
+async def _handle_record_status(runtime, args: dict) -> str:
+    if not hasattr(runtime, '_recording_service') or runtime._recording_service is None:
+        return "Not recording."
+
+    service = runtime._recording_service
+    return f"Recording: {service.config.session_name} -> {service.session_path}"
 ''')
 
     return "".join(lines)

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mara": {
+      "command": "/Users/kwasiaddo/projects/Host/host/.venv/bin/python",
+      "args": ["-m", "mara_host.mcp"],
+      "cwd": "/Users/kwasiaddo/projects/Host/host"
+    }
+  }
+}

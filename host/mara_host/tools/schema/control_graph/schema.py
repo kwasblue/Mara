@@ -91,8 +91,29 @@ class ControlGraphConfig:
         )
 
 
+# Mapping from internal param types to valid JSON Schema types
+_JSON_SCHEMA_TYPE_MAP = {
+    "int": "integer",
+    "float": "number",
+    "string": "string",
+    "bool": "boolean",
+    "enum": "string",  # enum type uses "string" with an enum array
+    "string_list": "array",  # array of strings
+}
+
+
 def _param_schema(param: ParamDef) -> dict[str, Any]:
-    schema: dict[str, Any] = {"type": param.type}
+    json_type = _JSON_SCHEMA_TYPE_MAP.get(param.type, param.type)
+
+    # Handle string_list as array of strings
+    if param.type == "string_list":
+        schema: dict[str, Any] = {
+            "type": "array",
+            "items": {"type": "string"},
+        }
+    else:
+        schema = {"type": json_type}
+
     if param.description:
         schema["description"] = param.description
     if param.default is not None:
@@ -103,13 +124,10 @@ def _param_schema(param: ParamDef) -> dict[str, Any]:
         schema["maximum"] = param.maximum
     if param.enum is not None:
         schema["enum"] = list(param.enum)
-    if param.unit is not None:
-        schema["unit"] = param.unit
     return schema
 
 
 def _kind_schema(defs: dict[str, GraphTypeDef], title: str) -> dict[str, Any]:
-    discriminator = sorted(defs)
     one_of: list[dict[str, Any]] = []
 
     for kind, spec in sorted(defs.items()):
@@ -139,10 +157,6 @@ def _kind_schema(defs: dict[str, GraphTypeDef], title: str) -> dict[str, Any]:
     return {
         "title": title,
         "oneOf": one_of,
-        "discriminator": {
-            "propertyName": "type",
-            "mapping": {kind: f"#/definitions/{title}/{kind}" for kind in discriminator},
-        },
     }
 
 

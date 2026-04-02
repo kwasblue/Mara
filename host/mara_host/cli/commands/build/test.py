@@ -40,11 +40,11 @@ def cmd_test(args: argparse.Namespace) -> int:
         verbose=verbose,
     )
 
-    if result.success:
+    if result.ok:
         print_success("All tests passed")
         return 0
     else:
-        print_error(result.message)
+        print_error(result.error or "Tests failed")
         # Get return code from result data if available
         test_result = result.data.get("result") if result.data else None
         return test_result.return_code if test_result else 1

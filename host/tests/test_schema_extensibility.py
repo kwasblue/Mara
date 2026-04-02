@@ -455,9 +455,19 @@ class TestGeneratorIntegration:
     def test_mara_generate_all_succeeds(self):
         """mara generate all completes without errors."""
         import subprocess
+        import sys
+        from pathlib import Path
+
+        # Find mara CLI relative to the Python interpreter
+        python_path = Path(sys.executable)
+        mara_path = python_path.parent / "mara"
+
+        if not mara_path.exists():
+            import pytest
+            pytest.skip("mara CLI not installed in current environment")
 
         result = subprocess.run(
-            ["mara", "generate", "all"],
+            [str(mara_path), "generate", "all"],
             capture_output=True,
             text=True,
             timeout=60,

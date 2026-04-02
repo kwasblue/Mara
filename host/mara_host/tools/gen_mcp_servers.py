@@ -397,9 +397,12 @@ async def _handle_firmware_test(runtime, args: dict) -> str:
         verbose=verbose,
     )
 
-    if result.success:
-        return f"All tests passed: {result.message}"
-    return f"FAIL: {result.message}"
+    if result.ok:
+        test_result = result.data.get("result") if result.data else None
+        if test_result and test_result.output:
+            return f"All tests passed\n{test_result.output}"
+        return "All tests passed"
+    return f"FAIL: {result.error}"
 
 
 async def _handle_robot_test_connection(runtime, args: dict) -> str:

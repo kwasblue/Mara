@@ -56,8 +56,8 @@ class TestCommandsDomainFiles:
     def test_commands_has_expected_count(self):
         """COMMANDS should have expected number of commands."""
         from mara_host.tools.schema import COMMANDS
-        # Total should be 103 commands across all domains (including WiFi and MCU diagnostics commands)
-        assert len(COMMANDS) == 108, f"Expected 108 commands, got {len(COMMANDS)}"
+        # Total should be 115 commands across all domains (including WiFi, Benchmark commands)
+        assert len(COMMANDS) == 115, f"Expected 115 commands, got {len(COMMANDS)}"
 
     def test_individual_domain_exports(self):
         """Individual domain exports should be available."""
@@ -76,6 +76,7 @@ class TestCommandsDomainFiles:
             TELEMETRY_COMMANDS,
             CAMERA_COMMANDS,
             WIFI_COMMANDS,
+            BENCHMARK_COMMANDS,
         )
         # Verify expected counts per domain
         assert len(SAFETY_COMMANDS) == 12, f"SAFETY: expected 12, got {len(SAFETY_COMMANDS)}"
@@ -92,6 +93,7 @@ class TestCommandsDomainFiles:
         assert len(TELEMETRY_COMMANDS) == 5, f"TELEMETRY: expected 5, got {len(TELEMETRY_COMMANDS)}"
         assert len(CAMERA_COMMANDS) == 20, f"CAMERA: expected 20, got {len(CAMERA_COMMANDS)}"
         assert len(WIFI_COMMANDS) == 4, f"WIFI: expected 4, got {len(WIFI_COMMANDS)}"
+        assert len(BENCHMARK_COMMANDS) == 7, f"BENCHMARK: expected 7, got {len(BENCHMARK_COMMANDS)}"
 
     def test_merged_commands_equals_sum_of_domains(self):
         """Merged COMMANDS should equal sum of all domain dicts."""
@@ -110,6 +112,7 @@ class TestCommandsDomainFiles:
             TELEMETRY_COMMANDS,
             CAMERA_COMMANDS,
             WIFI_COMMANDS,
+            BENCHMARK_COMMANDS,
         )
 
         total = (
@@ -125,7 +128,8 @@ class TestCommandsDomainFiles:
             len(OBSERVER_COMMANDS) +
             len(TELEMETRY_COMMANDS) +
             len(CAMERA_COMMANDS) +
-            len(WIFI_COMMANDS)
+            len(WIFI_COMMANDS) +
+            len(BENCHMARK_COMMANDS)
         )
         assert len(COMMANDS) == total, (
             f"Merged COMMANDS ({len(COMMANDS)}) != sum of domains ({total})"
@@ -147,6 +151,7 @@ class TestCommandsDomainFiles:
             TELEMETRY_COMMANDS,
             CAMERA_COMMANDS,
             WIFI_COMMANDS,
+            BENCHMARK_COMMANDS,
         )
 
         all_domains = [
@@ -163,6 +168,7 @@ class TestCommandsDomainFiles:
             ("TELEMETRY", TELEMETRY_COMMANDS),
             ("CAMERA", CAMERA_COMMANDS),
             ("WIFI", WIFI_COMMANDS),
+            ("BENCHMARK", BENCHMARK_COMMANDS),
         ]
 
         seen = {}

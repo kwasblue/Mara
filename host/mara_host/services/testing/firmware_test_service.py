@@ -122,7 +122,6 @@ class FirmwareTestService:
 
             if outcome.success:
                 return ServiceResult.success(
-                    message="All tests passed",
                     data={"result": result},
                 )
             else:

@@ -239,6 +239,7 @@ class CLIContext:
         self._signal_service = None
         self._camera_control_service = None
         self._policy_robot = None
+        self._generated_services = None
 
     async def __aenter__(self) -> "CLIContext":
         await self.connect()
@@ -458,6 +459,41 @@ class CLIContext:
             from mara_host.services.camera.camera_control_service import CameraControlService
             self._camera_control_service = CameraControlService(self.client)
         return self._camera_control_service
+
+    # Generated services cache
+    _generated_services: dict = None
+
+    def get_generated_service(self, category: str):
+        """
+        Get a generated service by category.
+
+        Generated services provide thin wrappers around firmware commands.
+        Use these when there's no manual service with richer functionality,
+        or for command categories not covered by manual services.
+
+        Args:
+            category: Service category (e.g., "servo", "dc", "stepper", "bench")
+
+        Returns:
+            Generated service instance, or None if category not found
+        """
+        if self._client is None:
+            return None
+
+        # Lazy init cache
+        if self._generated_services is None:
+            self._generated_services = {}
+
+        if category not in self._generated_services:
+            from mara_host.services._generated_services import get_generated_service
+            self._generated_services[category] = get_generated_service(self.client, category)
+
+        return self._generated_services.get(category)
+
+    def list_generated_service_categories(self) -> list[str]:
+        """List all available generated service categories."""
+        from mara_host.services._generated_services import list_categories
+        return list_categories()
 
 
 def run_with_context(func: Callable[..., T]) -> Callable[..., int]:

@@ -75,8 +75,6 @@ from mara_host.services.control.wifi_service import (
 )
 from mara_host.services.control.controller_service import (
     ControllerService,
-    Signal as ControllerSignal,  # Deprecated, use SignalService.Signal
-    SignalKind as ControllerSignalKind,  # Deprecated, use SignalService.SignalKind
     ControllerSlot,
     ControllerType,
     ObserverSlot,

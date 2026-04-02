@@ -11,6 +11,8 @@ RATE_COMMAND_OBJECTS: dict[str, CommandDef] = {
         kind="cmd",
         direction="host->mcu",
         description="Get current loop rates (ctrl, safety, telem) in Hz.",
+        category="system",
+        requires_arm=False,  # Read-only query
     ),
     "CMD_CTRL_SET_RATE": CommandDef(
         kind="cmd",
@@ -19,6 +21,8 @@ RATE_COMMAND_OBJECTS: dict[str, CommandDef] = {
         payload={
             "hz": FieldDef(type="int", required=True, minimum=5, maximum=200, description="Control loop frequency in Hz."),
         },
+        category="system",
+        requires_arm=False,  # Only works in IDLE anyway
     ),
     "CMD_SAFETY_SET_RATE": CommandDef(
         kind="cmd",
@@ -27,6 +31,8 @@ RATE_COMMAND_OBJECTS: dict[str, CommandDef] = {
         payload={
             "hz": FieldDef(type="int", required=True, minimum=20, maximum=500, description="Safety loop frequency in Hz."),
         },
+        category="system",
+        requires_arm=False,  # Only works in IDLE anyway
     ),
     "CMD_TELEM_SET_RATE": CommandDef(
         kind="cmd",
@@ -35,6 +41,8 @@ RATE_COMMAND_OBJECTS: dict[str, CommandDef] = {
         payload={
             "hz": FieldDef(type="int", required=True, minimum=1, maximum=50, description="Telemetry loop frequency in Hz."),
         },
+        category="system",
+        requires_arm=False,  # Only works in IDLE anyway
     ),
 }
 

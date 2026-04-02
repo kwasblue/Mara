@@ -23,6 +23,7 @@ WIFI_COMMAND_OBJECTS: dict[str, CommandDef] = {
                 },
             ),
         },
+        requires_arm=False,  # Network configuration
     ),
     "CMD_WIFI_JOIN": CommandDef(
         kind="cmd",
@@ -33,12 +34,14 @@ WIFI_COMMAND_OBJECTS: dict[str, CommandDef] = {
             "password": FieldDef(type="string", description="Network password (omit for open networks)"),
         },
         timeout_s=15.0,
+        requires_arm=False,  # Network configuration
     ),
     "CMD_WIFI_DISCONNECT": CommandDef(
         kind="cmd",
         direction="host->mcu",
         description="Disconnect from current WiFi network.",
         timeout_s=2.0,
+        requires_arm=False,  # Network configuration
     ),
     "CMD_WIFI_STATUS": CommandDef(
         kind="cmd",
@@ -50,6 +53,7 @@ WIFI_COMMAND_OBJECTS: dict[str, CommandDef] = {
             "rssi": FieldDef(type="int", description="Signal strength in dBm"),
             "ip": FieldDef(type="string", description="Assigned IP address"),
         },
+        requires_arm=False,  # Read-only query
     ),
 }
 

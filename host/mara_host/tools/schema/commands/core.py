@@ -92,6 +92,54 @@ class CommandDef:
     timeout_s: float | None = None
     response: SchemaFieldMap | None = None
     extras: Mapping[str, Any] = field(default_factory=dict)
+    # Code generation fields
+    category: str | None = None  # Service category (e.g., "motor", "servo"). Auto-derived from CMD_ prefix if None.
+    requires_arm: bool = True  # Whether tool requires armed state
+    method_name: str | None = None  # Override for generated service method name
+    # MCP Tool generation fields
+    tool_name: str | None = None  # Override tool name (default: category_method)
+    tool_description: str | None = None  # Override tool description (default: command description)
+    response_format: str | None = None  # Response format template (e.g., "Servo {servo_id} -> {angle}deg")
+    service_name: str | None = None  # Override service name (default: {category}_service)
+    skip_tool: bool = False  # Don't generate a tool for this command
+    param_overrides: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)  # Per-param overrides
+
+    def get_category(self, cmd_name: str) -> str:
+        """Get category, deriving from command name if not explicit."""
+        if self.category:
+            return self.category
+        # Derive from CMD_CATEGORY_ACTION pattern
+        # e.g., CMD_DC_SET_SPEED -> "dc", CMD_SERVO_ATTACH -> "servo"
+        parts = cmd_name.removeprefix("CMD_").lower().split("_")
+        if len(parts) >= 2:
+            return parts[0]
+        return "misc"
+
+    def get_method_name(self, cmd_name: str) -> str:
+        """Get method name, deriving from command name if not explicit."""
+        if self.method_name:
+            return self.method_name
+        # Derive from CMD_CATEGORY_ACTION pattern
+        # e.g., CMD_DC_SET_SPEED -> "set_speed", CMD_SERVO_ATTACH -> "attach"
+        parts = cmd_name.removeprefix("CMD_").lower().split("_")
+        if len(parts) >= 2:
+            return "_".join(parts[1:])
+        return parts[0]
+
+    def get_tool_name(self, cmd_name: str) -> str:
+        """Get tool name, deriving from category + method if not explicit."""
+        if self.tool_name:
+            return self.tool_name
+        category = self.get_category(cmd_name)
+        method = self.get_method_name(cmd_name)
+        return f"{category}_{method}"
+
+    def get_service_name(self, cmd_name: str) -> str:
+        """Get service name, deriving from category if not explicit."""
+        if self.service_name:
+            return self.service_name
+        category = self.get_category(cmd_name)
+        return f"{category}_service"
 
     def to_dict(self) -> dict[str, Any]:
         data = {

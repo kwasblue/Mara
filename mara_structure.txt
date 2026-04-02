@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-04-01 19:18:36
+Generated: 2026-04-02 10:20:28
 Total Files: 1039
-Total Lines of Code: 117,460
+Total Lines of Code: 118,173
 ================================================================================
 
 
@@ -877,7 +877,7 @@ HOST (Python)
 
   host/mara_host/cli/__init__.py (2 lines)
 
-  host/mara_host/cli/cli_config.py (81 lines)
+  host/mara_host/cli/cli_config.py (82 lines)
     [Fn] find_config_file()
     [Fn] load_config()
     [Fn] get(key, default)
@@ -1843,7 +1843,7 @@ HOST (Python)
       |-- create_robot(self)
       `-- __repr__(self)
 
-  host/mara_host/config/robot_config_schema.py (372 lines)
+  host/mara_host/config/robot_config_schema.py (373 lines)
     [Fn] validate_config_with_context(data)
     [Class] ConfigValidationError
       |-- __init__(self, message, errors)
@@ -2283,7 +2283,7 @@ HOST (Python)
 
   host/mara_host/gui/core/__init__.py (15 lines)
 
-  host/mara_host/gui/core/controller.py (447 lines)
+  host/mara_host/gui/core/controller.py (448 lines)
     [Class] RobotController
       |-- __init__(self, signals, dev_mode)
       |-- state(self)
@@ -2335,7 +2335,7 @@ HOST (Python)
     [Fn] is_dev_mode()
     [Fn] set_dev_mode(enabled)
 
-  host/mara_host/gui/core/settings.py (80 lines)
+  host/mara_host/gui/core/settings.py (81 lines)
     [Class] GuiSettings
       |-- __init__(self)
       |-- get_last_port(self)
@@ -2383,7 +2383,7 @@ HOST (Python)
       |-- log_warning(self, message)
       `-- log_error(self, message)
 
-  host/mara_host/gui/core/state.py (122 lines)
+  host/mara_host/gui/core/state.py (123 lines)
     [Class] ConnectionState
     [Class] DeviceCapabilities
       |-- has_dc_motor(self)
@@ -2589,7 +2589,7 @@ HOST (Python)
       `-- _on_connection_changed(self, connected, info)
     [Fn] on_response(ok, result)
 
-  host/mara_host/gui/panels/config.py (159 lines)
+  host/mara_host/gui/panels/config.py (160 lines)
     [Class] ConfigPanel
       |-- __init__(self, signals, controller, settings)
       |-- _setup_ui(self)
@@ -3615,7 +3615,7 @@ HOST (Python)
       |-- x(self)
       `-- y(self)
 
-  host/mara_host/gui/widgets/serial_monitor.py (388 lines)
+  host/mara_host/gui/widgets/serial_monitor.py (389 lines)
     [Class] SerialReaderThread
       |-- __init__(self, parent)
       |-- configure(self, port, baudrate)
@@ -3752,12 +3752,12 @@ HOST (Python)
 
   host/mara_host/mcp/__main__.py (3 lines)
 
-  host/mara_host/mcp/_generated_http.py (1199 lines)
+  host/mara_host/mcp/_generated_http.py (1380 lines)
     [Fn] _serialize_result_data(data)
     [Fn] create_generated_routes(runtime)
     [Fn] get_openai_function_schema()
 
-  host/mara_host/mcp/_generated_tools.py (1780 lines)
+  host/mara_host/mcp/_generated_tools.py (2041 lines)
     [Fn] get_tool_definitions()
 
   host/mara_host/mcp/http_server.py (104 lines)
@@ -3830,7 +3830,7 @@ HOST (Python)
     [Fn] _check_auth(arguments)
     [Fn] create_server(port, host, ble_name, tcp_port)
 
-  host/mara_host/mcp/tool_schema.py (982 lines)
+  host/mara_host/mcp/tool_schema.py (1155 lines)
     [Class] ToolParam
       `-- to_json_schema(self)
     [Class] ToolDef
@@ -4606,7 +4606,7 @@ HOST (Python)
 
   host/mara_host/services/recording/__init__.py (14 lines)
 
-  host/mara_host/services/recording/recording_service.py (203 lines)
+  host/mara_host/services/recording/recording_service.py (204 lines)
     [Class] RecordedEvent
     [Class] SessionInfo
     [Class] RecordingConfig
@@ -4659,7 +4659,7 @@ HOST (Python)
 
   host/mara_host/services/testing/__init__.py (12 lines)
 
-  host/mara_host/services/testing/firmware_test_service.py (89 lines)
+  host/mara_host/services/testing/firmware_test_service.py (88 lines)
     [Class] FirmwareTestResult
     [Class] FirmwareTestService
       |-- __init__(self, backend_name)
@@ -5070,7 +5070,7 @@ HOST (Python)
     [Fn] main()
     [Fn] generate_python_api_init()
 
-  host/mara_host/tools/gen_mcp_servers.py (258 lines)
+  host/mara_host/tools/gen_mcp_servers.py (328 lines)
     [Fn] cmd_to_tool_name(cmd_name)
     [Fn] is_host_to_mcu(cmd_def)
     [Fn] field_to_json_schema(field_def)
@@ -5330,7 +5330,7 @@ HOST (Python)
   host/mara_host/tools/schema/control_graph/discovery.py (22 lines)
     [Fn] discover_defs(package_file, package_name, export_name)
 
-  host/mara_host/tools/schema/control_graph/schema.py (305 lines)
+  host/mara_host/tools/schema/control_graph/schema.py (313 lines)
     [Class] ControlGraphValidationError
     [Class] GraphNodeConfig
       `-- to_dict(self)
@@ -6689,7 +6689,7 @@ HOST (Python)
     [Fn] test_runtime_repeated_connect_disconnect_cycles_over_http()
     [Fn] test_runtime_recovers_after_fake_server_restart()
 
-  host/tests/test_schema.py (214 lines)
+  host/tests/test_schema.py (220 lines)
     [Class] TestSchemaPackageStructure
       |-- test_schema_package_exists(self)
       |-- test_commands_importable(self)
@@ -6715,7 +6715,7 @@ HOST (Python)
       |-- test_schema_exports_match_init_all(self)
       `-- test_commands_package_exports_match_init_all(self)
 
-  host/tests/test_schema_extensibility.py (327 lines)
+  host/tests/test_schema_extensibility.py (334 lines)
     [Fn] get_schema_ids()
     [Class] TestSchemaDiscovery
       |-- test_schema_imports_successfully(self, schema)
@@ -9570,11 +9570,11 @@ DEFINITIONS
   Methods:          3466
 
 LINES OF CODE
-  Python:           90,166
+  Python:           90,879
   C++:              27,294
-  Total Code:       117,460
-  Blank Lines:      32,076
-  Comment Lines:    31,280
-  Total Lines:      180,816
+  Total Code:       118,173
+  Blank Lines:      32,174
+  Comment Lines:    31,308
+  Total Lines:      181,655
 
 ================================================================================

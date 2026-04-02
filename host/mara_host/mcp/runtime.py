@@ -575,6 +575,35 @@ class MaraRuntime:
             return self._ctx._telemetry
         raise RuntimeError("Not connected")
 
+    # Generated service cache
+    _generated_services: dict = None
+
+    def get_generated_service(self, category: str):
+        """
+        Get a generated service by category.
+
+        Generated services provide thin wrappers around firmware commands.
+        Use these when there's no manual service with richer functionality.
+
+        Args:
+            category: Service category (e.g., "servo", "dc", "stepper")
+
+        Returns:
+            Generated service instance, or None if category not found
+        """
+        if not self._ctx:
+            return None
+
+        # Lazy init cache
+        if self._generated_services is None:
+            self._generated_services = {}
+
+        if category not in self._generated_services:
+            from mara_host.services._generated_services import get_generated_service
+            self._generated_services[category] = get_generated_service(self.client, category)
+
+        return self._generated_services.get(category)
+
     # ═══════════════════════════════════════════════════════════
     # Robot Abstraction Layer
     # ═══════════════════════════════════════════════════════════

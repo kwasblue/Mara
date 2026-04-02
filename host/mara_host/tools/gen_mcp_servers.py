@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Generate MCP and HTTP server files from tool schema AND command schema.
+Generate MCP and HTTP server files from command schema.
 
 This generator reads:
-- `mara_host/mcp/tool_schema.py` - Hand-crafted tool definitions with service mappings
+- `mara_host/mcp/tool_schema.py` - Host-only tool definitions (custom handlers)
 - `mara_host/tools/schema/commands/` - Firmware command definitions (auto-discovered)
 
 And produces:
 - mara_host/mcp/_generated_tools.py - Tool list and dispatch for MCP
 - mara_host/mcp/_generated_http.py - Handlers and routes for HTTP
 
-Commands in the schema that don't have explicit tool definitions are auto-generated
-as generic "send command" tools, ensuring complete firmware coverage.
+All firmware commands are auto-generated as tools using metadata from CommandDef.
+Host-only tools (connection, recording, testing) come from tool_schema.py.
 
 Usage:
     python -m mara_host.tools.gen_mcp_servers
@@ -39,13 +39,55 @@ spec = importlib.util.spec_from_file_location(
 tool_schema_module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = tool_schema_module
 spec.loader.exec_module(tool_schema_module)
-TOOLS = tool_schema_module.TOOLS
+HOST_TOOLS = tool_schema_module.HOST_TOOLS
 ToolDef = tool_schema_module.ToolDef
 ToolParam = tool_schema_module.ToolParam
 
-# Import command schema for auto-generation
-from mara_host.tools.schema.commands import COMMANDS, COMMAND_OBJECTS
-from mara_host.tools.schema.commands.core import CommandDef, FieldDef, UNSET
+# Load command schema directly to avoid mara_host.__init__ dependencies
+# First load the core module with proper module name registration
+core_module_name = "mara_host.tools.schema.commands.core"
+core_spec = importlib.util.spec_from_file_location(
+    core_module_name,
+    HOST_DIR / "tools" / "schema" / "commands" / "core.py"
+)
+core_module = importlib.util.module_from_spec(core_spec)
+sys.modules[core_module_name] = core_module  # Register before exec
+core_spec.loader.exec_module(core_module)
+CommandDef = core_module.CommandDef
+FieldDef = core_module.FieldDef
+UNSET = core_module.UNSET
+export_command_dicts = core_module.export_command_dicts
+
+# Discover command modules directly
+def discover_command_objects() -> dict[str, CommandDef]:
+    """Discover all CommandDef objects from command schema files."""
+    commands_dir = HOST_DIR / "tools" / "schema" / "commands"
+    all_objects = {}
+
+    for module_file in sorted(commands_dir.glob("_*.py")):
+        if module_file.name.startswith("__"):
+            continue
+
+        # Load the module with proper name registration
+        module_name = f"mara_host.tools.schema.commands.{module_file.stem}"
+        spec = importlib.util.spec_from_file_location(module_name, module_file)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module  # Register before exec
+        spec.loader.exec_module(module)
+
+        # Find *_COMMAND_OBJECTS dictionaries
+        for attr_name in dir(module):
+            if attr_name.endswith("_COMMAND_OBJECTS"):
+                value = getattr(module, attr_name)
+                if isinstance(value, dict):
+                    for k, v in value.items():
+                        if isinstance(v, CommandDef):
+                            all_objects[k] = v
+
+    return all_objects
+
+COMMAND_OBJECTS = discover_command_objects()
+COMMANDS = export_command_dicts(COMMAND_OBJECTS)
 
 
 # =============================================================================
@@ -76,11 +118,6 @@ SCHEMA_TYPE_MAP = {
 }
 
 
-def cmd_to_tool_name(cmd_name: str) -> str:
-    """Convert CMD_FOO_BAR to foo_bar."""
-    return cmd_name.removeprefix("CMD_").lower()
-
-
 def is_host_to_mcu(cmd_def: CommandDef | dict) -> bool:
     """Check if command is host->mcu."""
     if isinstance(cmd_def, CommandDef):
@@ -88,8 +125,10 @@ def is_host_to_mcu(cmd_def: CommandDef | dict) -> bool:
     return cmd_def.get("direction", "host->mcu") in ("host->mcu", "both")
 
 
-def field_to_json_schema(field_def: FieldDef | dict) -> dict[str, Any]:
+def field_to_json_schema(field_def: FieldDef | dict, overrides: dict | None = None) -> dict[str, Any]:
     """Convert a FieldDef to JSON Schema."""
+    overrides = overrides or {}
+
     if isinstance(field_def, FieldDef):
         schema: dict[str, Any] = {"type": SCHEMA_TYPE_MAP.get(field_def.type, field_def.type)}
         if field_def.description:
@@ -102,7 +141,8 @@ def field_to_json_schema(field_def: FieldDef | dict) -> dict[str, Any]:
             schema["minimum"] = field_def.minimum
         if field_def.maximum is not None:
             schema["maximum"] = field_def.maximum
-        return schema
+        if field_def.items is not None:
+            schema["items"] = field_def.items if isinstance(field_def.items, dict) else field_def.items.to_dict()
     else:
         schema = {"type": SCHEMA_TYPE_MAP.get(field_def.get("type", "string"), "string")}
         if "description" in field_def:
@@ -111,60 +151,85 @@ def field_to_json_schema(field_def: FieldDef | dict) -> dict[str, Any]:
             schema["default"] = field_def["default"]
         if "enum" in field_def:
             schema["enum"] = field_def["enum"]
-        return schema
+
+    # Apply overrides
+    if "description" in overrides:
+        schema["description"] = overrides["description"]
+
+    return schema
 
 
-def get_auto_generated_tools() -> list[tuple[str, str, dict, str]]:
+def get_auto_generated_tools() -> list[dict]:
     """
     Get tools auto-generated from command schema.
 
-    Returns list of (tool_name, cmd_name, input_schema, description) for commands
-    not already defined in tool_schema.py.
+    Returns list of tool info dicts with all metadata needed for generation.
     """
-    # Get tool names already defined in tool_schema.py
-    existing_tools = {f"mara_{t.name}" for t in TOOLS}
-
     auto_tools = []
 
-    for cmd_name in sorted(COMMANDS.keys()):
+    for cmd_name in sorted(COMMAND_OBJECTS.keys()):
         if cmd_name in SKIP_COMMANDS:
             continue
 
-        tool_name = f"mara_{cmd_to_tool_name(cmd_name)}"
+        cmd_def = COMMAND_OBJECTS[cmd_name]
 
-        # Skip if already defined manually
-        if tool_name in existing_tools:
+        # Skip if not host->mcu
+        if not is_host_to_mcu(cmd_def):
             continue
 
-        cmd_def = COMMAND_OBJECTS.get(cmd_name) or COMMANDS.get(cmd_name)
-        if not cmd_def or not is_host_to_mcu(cmd_def):
+        # Skip if explicitly marked
+        if cmd_def.skip_tool:
             continue
 
-        # Get description
-        if isinstance(cmd_def, CommandDef):
-            description = cmd_def.description
-            payload = dict(cmd_def.payload)
-        else:
-            description = cmd_def.get("description", cmd_name)
-            payload = cmd_def.get("payload", {})
+        # Get tool metadata from CommandDef
+        tool_name = cmd_def.get_tool_name(cmd_name)
+        description = cmd_def.tool_description or cmd_def.description
+        category = cmd_def.get_category(cmd_name)
+        service_name = cmd_def.get_service_name(cmd_name)
+        method_name = cmd_def.get_method_name(cmd_name)
+        requires_arm = cmd_def.requires_arm
+        response_format = cmd_def.response_format
+        param_overrides = dict(cmd_def.param_overrides) if cmd_def.param_overrides else {}
 
-        # Build input schema
+        # Build input schema from payload
+        payload = dict(cmd_def.payload)
         properties = {}
         required = []
+        param_mapping = {}  # Maps tool param name -> command param name
 
         for field_name, field_def in payload.items():
-            properties[field_name] = field_to_json_schema(field_def)
+            # Check for parameter name override
+            field_overrides = param_overrides.get(field_name, {})
+            tool_param_name = field_overrides.get("tool_name", field_name)
+
+            if tool_param_name != field_name:
+                param_mapping[tool_param_name] = field_name
+
+            properties[tool_param_name] = field_to_json_schema(field_def, field_overrides)
+
             if isinstance(field_def, FieldDef):
-                if field_def.required:
-                    required.append(field_name)
+                if field_def.required and field_def.default is UNSET:
+                    required.append(tool_param_name)
             elif field_def.get("required"):
-                required.append(field_name)
+                required.append(tool_param_name)
 
         input_schema = {"type": "object", "properties": properties}
         if required:
             input_schema["required"] = required
 
-        auto_tools.append((tool_name, cmd_name, input_schema, description))
+        auto_tools.append({
+            "tool_name": tool_name,
+            "mcp_name": f"mara_{tool_name}",
+            "cmd_name": cmd_name,
+            "description": description,
+            "category": category,
+            "service_name": service_name,
+            "method_name": method_name,
+            "requires_arm": requires_arm,
+            "response_format": response_format,
+            "input_schema": input_schema,
+            "param_mapping": param_mapping,
+        })
 
     return auto_tools
 
@@ -185,11 +250,6 @@ def generate_header(description: str) -> str:
 from __future__ import annotations
 
 '''
-
-
-def param_to_json_schema(param: ToolParam) -> dict:
-    """Convert ToolParam to JSON Schema property."""
-    return param.to_json_schema()
 
 
 def tool_to_mcp_schema(tool: ToolDef) -> dict:
@@ -216,8 +276,8 @@ def get_tool_definitions() -> list[Tool]:
     return [
 """)
 
-    # Generate Tool definitions
-    for tool in TOOLS:
+    # Generate Tool definitions for host tools
+    for tool in HOST_TOOLS:
         schema = tool_to_mcp_schema(tool)
         lines.append(f'''        Tool(
             name="mara_{tool.name}",
@@ -228,13 +288,12 @@ def get_tool_definitions() -> list[Tool]:
 
     # Add auto-generated tools from command schema
     auto_tools = get_auto_generated_tools()
-    for tool_name, cmd_name, schema, description in auto_tools:
-        # Escape description for string literal
-        desc_escaped = description.replace('"', '\\"').replace('\n', ' ')
+    for tool_info in auto_tools:
+        desc_escaped = tool_info["description"].replace('"', '\\"').replace('\n', ' ')
         lines.append(f'''        Tool(
-            name="{tool_name}",
+            name="{tool_info['mcp_name']}",
             description="{desc_escaped}",
-            inputSchema={schema!r},
+            inputSchema={tool_info['input_schema']!r},
         ),
 ''')
 
@@ -247,18 +306,16 @@ async def dispatch_tool(runtime, name: str, args: dict[str, Any]) -> str:
 
 """)
 
-    # Generate dispatch cases
-    for tool in TOOLS:
+    # Generate dispatch cases for host tools
+    for tool in HOST_TOOLS:
         mcp_name = f"mara_{tool.name}"
 
         if tool.custom_handler:
-            # Custom handlers are defined in server.py
             lines.append(f'''    if name == "{mcp_name}":
         return await _handle_{tool.name}(runtime, args)
 
 ''')
         elif tool.client_method:
-            # Direct client method call
             response = tool.response_format or tool.name.replace("_", " ").title()
             lines.append(f'''    if name == "{mcp_name}":
         await runtime.ensure_connected()
@@ -268,10 +325,7 @@ async def dispatch_tool(runtime, name: str, args: dict[str, Any]) -> str:
 
 ''')
         elif tool.service and tool.method:
-            # Service method call
             ensure = "ensure_armed" if tool.requires_arm else "ensure_connected"
-
-            # Build args list for service call
             service_args = []
             for param in tool.params:
                 arg_name = param.service_name or param.name
@@ -280,12 +334,9 @@ async def dispatch_tool(runtime, name: str, args: dict[str, Any]) -> str:
                 else:
                     default_repr = repr(param.default)
                     service_args.append(f'{arg_name}=args.get("{param.name}", {default_repr})')
-
             args_str = ", ".join(service_args)
 
-            # Build response format
             if tool.response_format:
-                # Use .format(**args) to interpolate parameter values
                 response_ok = f'"{tool.response_format}".format(**args)'
             else:
                 response_ok = f'str(result.data) if result.data else "{tool.name} OK"'
@@ -305,269 +356,86 @@ async def dispatch_tool(runtime, name: str, args: dict[str, Any]) -> str:
 
 ''')
 
-    # Add dispatch for auto-generated tools (generic command send)
-    for tool_name, cmd_name, schema, description in auto_tools:
-        # Extract required params for the call
-        props = schema.get("properties", {})
-        required = schema.get("required", [])
+    # Add dispatch for auto-generated tools (via generated services)
+    for tool_info in auto_tools:
+        mcp_name = tool_info["mcp_name"]
+        cmd_name = tool_info["cmd_name"]
+        category = tool_info["category"]
+        method_name = tool_info["method_name"]
+        requires_arm = tool_info["requires_arm"]
+        response_format = tool_info["response_format"]
+        param_mapping = tool_info["param_mapping"]
 
-        lines.append(f'''    if name == "{tool_name}":
-        await runtime.ensure_connected()
+        # Build args string for service call
+        props = tool_info["input_schema"].get("properties", {})
+        required = tool_info["input_schema"].get("required", [])
+        service_args = []
+
+        for tool_param_name in props.keys():
+            # Map tool param back to command param name
+            cmd_param_name = param_mapping.get(tool_param_name, tool_param_name)
+            if tool_param_name in required:
+                service_args.append(f'{cmd_param_name}=args["{tool_param_name}"]')
+            else:
+                service_args.append(f'{cmd_param_name}=args.get("{tool_param_name}")')
+        args_str = ", ".join(service_args)
+
+        ensure = "ensure_armed" if requires_arm else "ensure_connected"
+
+        # Build response handling
+        if response_format:
+            response_ok = f'"{response_format}".format(**args)'
+        else:
+            response_ok = f'f"{cmd_name} OK" + (f": {{result.data}}" if result.data else "")'
+
+        lines.append(f'''    if name == "{mcp_name}":
+        await runtime.{ensure}()
         sent_at = datetime.now()
-        # Auto-generated: send command directly
-        ok, error, data = await runtime.client.send_with_data("{cmd_name}", args)
-        runtime.record_command("{cmd_name}", args, ok, error, sent_at=sent_at)
-        if ok:
-            return f"{cmd_name} OK" + (f": {{data}}" if data else "")
-        return f"FAIL: {{error}}"
+        # Auto-generated: via generated {category} service
+        service = runtime.get_generated_service("{category}")
+        if service:
+            result = await service.{method_name}({args_str})
+            runtime.record_command("{cmd_name}", args, result.ok, result.error, sent_at=sent_at)
+            if result.ok:
+                return {response_ok}
+            return f"FAIL: {{result.error}}"
+        else:
+            # Fallback to direct client call
+            ok, error, data = await runtime.client.send_with_data("{cmd_name}", args)
+            runtime.record_command("{cmd_name}", args, ok, error, sent_at=sent_at)
+            if ok:
+                return f"{cmd_name} OK" + (f": {{data}}" if data else "")
+            return f"FAIL: {{error}}"
 
 ''')
 
     lines.append('''    return f"Unknown tool: {name}"
 
 
-# Custom handlers for special tools
-async def _handle_connect(runtime, args: dict) -> str:
-    result = await runtime.connect()
-    return f"Connected: {result}"
-
-
-async def _handle_disconnect(runtime, args: dict) -> str:
-    result = await runtime.disconnect()
-    return f"Disconnected: {result}"
-
-
-async def _handle_get_state(runtime, args: dict) -> str:
-    if not runtime.is_connected:
-        return "Not connected. Use mara_connect first."
-    return str(runtime.get_snapshot())
-
-
-async def _handle_get_freshness(runtime, args: dict) -> str:
-    if not runtime.is_connected:
-        return "Not connected. Use mara_connect first."
-    return str(runtime.get_freshness_report())
-
-
-async def _handle_get_events(runtime, args: dict) -> str:
-    if not runtime.is_connected:
-        return "Not connected. Use mara_connect first."
-    events = runtime.state.get_recent_events(20)
-    return str([e.to_dict() for e in events])
-
-
-async def _handle_get_command_stats(runtime, args: dict) -> str:
-    if not runtime.is_connected:
-        return "Not connected. Use mara_connect first."
-    return str(runtime.state.get_command_stats())
-
-
-# Robot abstraction layer handlers
-async def _handle_robot_describe(runtime, args: dict) -> str:
-    if not runtime.robot_loaded:
-        return "Robot not loaded. Call load_robot(config_path) first."
-    return runtime.robot_service.describe()
-
-
-async def _handle_robot_state(runtime, args: dict) -> str:
-    if not runtime.robot_loaded:
-        return "Robot not loaded. Call load_robot(config_path) first."
-    return runtime.robot_context.get_state_summary()
-
-
-async def _handle_robot_pose(runtime, args: dict) -> str:
-    if not runtime.robot_loaded:
-        return "Robot not loaded. Call load_robot(config_path) first."
-    return runtime.robot_context.format_pose()
-
-
-# Testing handlers
-async def _handle_firmware_test(runtime, args: dict) -> str:
-    from mara_host.services import FirmwareTestService
-
-    envs_str = args.get("environments", "native")
-    environments = [e.strip() for e in envs_str.split(",")]
-    filter_pattern = args.get("filter")
-    verbose = args.get("verbose", False)
-
-    service = FirmwareTestService()
-    result = service.run_tests(
-        environments=environments,
-        filter_pattern=filter_pattern,
-        verbose=verbose,
-    )
-
-    if result.ok:
-        test_result = result.data.get("result") if result.data else None
-        if test_result and test_result.output:
-            return f"All tests passed\\n{test_result.output}"
-        return "All tests passed"
-    return f"FAIL: {result.error}"
-
-
-async def _handle_robot_test_connection(runtime, args: dict) -> str:
-    if not runtime.is_connected:
-        return "Not connected. Use mara_connect first."
-
-    import asyncio
-    from datetime import datetime
-
-    start = datetime.now()
-    try:
-        ok, error = await asyncio.wait_for(
-            runtime.client.send_reliable("CMD_HEARTBEAT", {}),
-            timeout=1.0
-        )
-        duration = (datetime.now() - start).total_seconds() * 1000
-
-        if ok:
-            return f"Connection OK: ping {duration:.1f}ms"
-        return f"FAIL: {error}"
-    except asyncio.TimeoutError:
-        return "FAIL: Timeout after 1000ms"
-
-
-async def _handle_robot_test_latency(runtime, args: dict) -> str:
-    if not runtime.is_connected:
-        return "Not connected. Use mara_connect first."
-
-    import asyncio
-    from datetime import datetime
-
-    samples = args.get("samples", 10)
-    latencies = []
-
-    for _ in range(samples):
-        start = datetime.now()
-        try:
-            await runtime.client.send_reliable("CMD_HEARTBEAT", {})
-            latency = (datetime.now() - start).total_seconds() * 1000
-            latencies.append(latency)
-        except Exception:
-            pass
-
-    if not latencies:
-        return "FAIL: No successful pings"
-
-    avg = sum(latencies) / len(latencies)
-    min_lat = min(latencies)
-    max_lat = max(latencies)
-
-    return f"Latency: avg={avg:.1f}ms, min={min_lat:.1f}ms, max={max_lat:.1f}ms ({len(latencies)}/{samples} samples)"
-
-
-async def _handle_robot_test_all(runtime, args: dict) -> str:
-    if not runtime.is_connected:
-        return "Not connected. Use mara_connect first."
-
-    results = []
-
-    # Test connection
-    conn_result = await _handle_robot_test_connection(runtime, {})
-    results.append(f"Connection: {conn_result}")
-
-    # Test latency
-    lat_result = await _handle_robot_test_latency(runtime, {"samples": 5})
-    results.append(f"Latency: {lat_result}")
-
-    return "\\n".join(results)
-
-
-async def _handle_host_test(runtime, args: dict) -> str:
-    import subprocess
-    import sys
-    from pathlib import Path
-
-    filter_expr = args.get("filter")
-    markers = args.get("markers")
-    verbose = args.get("verbose", False)
-    timeout = args.get("timeout", 300)
-
-    host_dir = Path(__file__).parent.parent
-
-    cmd = [sys.executable, "-m", "pytest"]
-    if filter_expr:
-        cmd.append(filter_expr)
-    if markers:
-        cmd.extend(["-m", markers])
-    if verbose:
-        cmd.append("-v")
-
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=host_dir,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
-        output = result.stdout + result.stderr
-        if result.returncode == 0:
-            return f"All tests passed\\n{output}"
-        return f"FAIL: Tests failed (exit code {result.returncode})\\n{output}"
-    except subprocess.TimeoutExpired:
-        return f"FAIL: Test timeout after {timeout}s"
-    except Exception as e:
-        return f"FAIL: {e}"
-
-
-# Recording handlers
-async def _handle_record_start(runtime, args: dict) -> str:
-    from datetime import datetime
-    from pathlib import Path
-    from mara_host.services.recording.recording_service import RecordingService, RecordingConfig
-
-    if not runtime.is_connected:
-        return "Not connected. Use mara_connect first."
-
-    # Check if already recording
-    if hasattr(runtime, '_recording_service') and runtime._recording_service is not None:
-        return "Already recording. Stop the current recording first."
-
-    session_name = args.get("session_name") or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-    config = RecordingConfig(
-        session_name=session_name,
-        log_dir=Path("logs"),
-    )
-
-    recording_service = RecordingService(config)
-    session_path = await recording_service.start()
-
-    # Store on runtime for later access
-    runtime._recording_service = recording_service
-
-    return f"Recording started: {session_name} -> {session_path}"
-
-
-async def _handle_record_stop(runtime, args: dict) -> str:
-    if not hasattr(runtime, '_recording_service') or runtime._recording_service is None:
-        return "No recording in progress."
-
-    session_info = await runtime._recording_service.stop()
-    runtime._recording_service = None
-
-    return f"Recording stopped: {session_info.name} ({session_info.event_count} events, {session_info.duration_s:.1f}s)"
-
-
-async def _handle_record_list(runtime, args: dict) -> str:
-    from pathlib import Path
-    from mara_host.services.recording.recording_service import ReplayService
-
-    sessions = ReplayService.list_sessions(Path("logs"))
-
-    if not sessions:
-        return "No recording sessions found."
-
-    return f"Recording sessions ({len(sessions)}): " + ", ".join(sessions)
-
-
-async def _handle_record_status(runtime, args: dict) -> str:
-    if not hasattr(runtime, '_recording_service') or runtime._recording_service is None:
-        return "Not recording."
-
-    service = runtime._recording_service
-    return f"Recording: {service.config.session_name} -> {service.session_path}"
+# =============================================================================
+# Host Tool Handlers (imported from host_tools.py)
+# =============================================================================
+# Import handlers from the centralized host_tools module
+from mara_host.mcp.host_tools import (
+    handle_connect as _handle_connect,
+    handle_disconnect as _handle_disconnect,
+    handle_get_state as _handle_get_state,
+    handle_get_freshness as _handle_get_freshness,
+    handle_get_events as _handle_get_events,
+    handle_get_command_stats as _handle_get_command_stats,
+    handle_robot_describe as _handle_robot_describe,
+    handle_robot_state as _handle_robot_state,
+    handle_robot_pose as _handle_robot_pose,
+    handle_firmware_test as _handle_firmware_test,
+    handle_host_test as _handle_host_test,
+    handle_robot_test_connection as _handle_robot_test_connection,
+    handle_robot_test_latency as _handle_robot_test_latency,
+    handle_robot_test_all as _handle_robot_test_all,
+    handle_record_start as _handle_record_start,
+    handle_record_stop as _handle_record_stop,
+    handle_record_list as _handle_record_list,
+    handle_record_status as _handle_record_status,
+)
 ''')
 
     return "".join(lines)
@@ -603,13 +471,12 @@ def create_generated_routes(runtime) -> list[Route]:
 
 """)
 
-    # Generate handler functions
-    for tool in TOOLS:
+    # Generate handler functions for host tools that aren't custom handlers
+    for tool in HOST_TOOLS:
         if tool.custom_handler:
-            continue  # Skip custom handlers - defined elsewhere
+            continue
 
         http_path = f"/{tool.category}/{tool.name.split('_', 1)[-1] if '_' in tool.name else tool.name}"
-        # Simplify path: /servo/servo_attach -> /servo/attach
         if tool.name.startswith(tool.category + "_"):
             action = tool.name[len(tool.category) + 1:]
             http_path = f"/{tool.category}/{action}"
@@ -623,11 +490,8 @@ def create_generated_routes(runtime) -> list[Route]:
         await runtime.{ensure}()
 ''')
 
-        # Parse body if has params
         if tool.params:
             lines.append("        body = await request.json()\n")
-
-            # Extract params
             for param in tool.params:
                 if param.required:
                     lines.append(f'        {param.name} = body.get("{param.name}")\n')
@@ -638,7 +502,6 @@ def create_generated_routes(runtime) -> list[Route]:
                     default_repr = repr(param.default)
                     lines.append(f'        {param.name} = body.get("{param.name}", {default_repr})\n')
 
-        # Call service or client
         if tool.client_method:
             lines.append(f'''        ok, err = await runtime.client.{tool.client_method}()
         runtime.record_command("{tool.name}", {{}}, ok, err)
@@ -646,14 +509,11 @@ def create_generated_routes(runtime) -> list[Route]:
 
 ''')
         elif tool.service and tool.method:
-            # Build service call args
             service_args = []
             for param in tool.params:
                 arg_name = param.service_name or param.name
                 service_args.append(f'{arg_name}={param.name}')
             args_str = ", ".join(service_args)
-
-            # Use body dict only if there are params
             record_args = "body" if tool.params else "{}"
 
             sync_line = ""
@@ -667,21 +527,80 @@ def create_generated_routes(runtime) -> list[Route]:
 
 ''')
 
+    # Generate handler functions for auto-generated tools
+    auto_tools = get_auto_generated_tools()
+    for tool_info in auto_tools:
+        tool_name = tool_info["tool_name"]
+        category = tool_info["category"]
+        method_name = tool_info["method_name"]
+        requires_arm = tool_info["requires_arm"]
+        cmd_name = tool_info["cmd_name"]
+        param_mapping = tool_info["param_mapping"]
+
+        http_path = f"/{category}/{method_name}"
+        ensure = "ensure_armed" if requires_arm else "ensure_connected"
+
+        props = tool_info["input_schema"].get("properties", {})
+        required = tool_info["input_schema"].get("required", [])
+
+        lines.append(f'''    async def handle_{tool_name}(request: Request) -> JSONResponse:
+        \"\"\"POST {http_path}\"\"\"
+        await runtime.{ensure}()
+''')
+
+        if props:
+            lines.append("        body = await request.json()\n")
+            for tool_param_name, prop_schema in props.items():
+                if tool_param_name in required:
+                    lines.append(f'        {tool_param_name} = body.get("{tool_param_name}")\n')
+                    lines.append(f'''        if {tool_param_name} is None:
+            return JSONResponse({{"ok": False, "error": "{tool_param_name} required"}}, status_code=400)
+''')
+                else:
+                    default_val = prop_schema.get("default")
+                    default_repr = repr(default_val)
+                    lines.append(f'        {tool_param_name} = body.get("{tool_param_name}", {default_repr})\n')
+
+        # Build service call args (map tool params back to command params)
+        service_args = []
+        for tool_param_name in props.keys():
+            cmd_param_name = param_mapping.get(tool_param_name, tool_param_name)
+            service_args.append(f'{cmd_param_name}={tool_param_name}')
+        args_str = ", ".join(service_args)
+        record_args = "body" if props else "{}"
+
+        lines.append(f'''        sent_at = datetime.now()
+        service = runtime.get_generated_service("{category}")
+        if service:
+            result = await service.{method_name}({args_str})
+            runtime.record_command("{cmd_name}", {record_args}, result.ok, result.error, sent_at=sent_at)
+            return JSONResponse({{"ok": result.ok, "error": result.error, "data": _serialize_result_data(getattr(result, 'data', None))}})
+        else:
+            ok, error, data = await runtime.client.send_with_data("{cmd_name}", {record_args})
+            runtime.record_command("{cmd_name}", {record_args}, ok, error, sent_at=sent_at)
+            return JSONResponse({{"ok": ok, "error": error, "data": data}})
+
+''')
+
     # Generate routes list
     lines.append("    # Build routes list\n    routes = [\n")
 
-    for tool in TOOLS:
+    for tool in HOST_TOOLS:
         if tool.custom_handler:
             continue
-
-        # Compute HTTP path
         if tool.name.startswith(tool.category + "_"):
             action = tool.name[len(tool.category) + 1:]
             http_path = f"/{tool.category}/{action}"
         else:
             http_path = f"/{tool.category}/{tool.name}"
-
         lines.append(f'        Route("{http_path}", handle_{tool.name}, methods=["POST"]),\n')
+
+    for tool_info in auto_tools:
+        tool_name = tool_info["tool_name"]
+        category = tool_info["category"]
+        method_name = tool_info["method_name"]
+        http_path = f"/{category}/{method_name}"
+        lines.append(f'        Route("{http_path}", handle_{tool_name}, methods=["POST"]),\n')
 
     lines.append("    ]\n")
     lines.append("    return routes\n")
@@ -694,15 +613,23 @@ def get_openai_function_schema() -> list[dict]:
     return [
 """)
 
-    for tool in TOOLS:
+    for tool in HOST_TOOLS:
         if tool.custom_handler:
             continue
-
         schema = tool_to_mcp_schema(tool)
         lines.append(f'''        {{
             "name": "mara_{tool.name}",
             "description": "{tool.description}",
             "parameters": {schema!r},
+        }},
+''')
+
+    for tool_info in auto_tools:
+        desc_escaped = tool_info["description"].replace('"', '\\"').replace('\n', ' ')
+        lines.append(f'''        {{
+            "name": "{tool_info['mcp_name']}",
+            "description": "{desc_escaped}",
+            "parameters": {tool_info['input_schema']!r},
         }},
 ''')
 
@@ -718,9 +645,9 @@ def get_openai_function_schema() -> list[dict]:
 def main():
     print("Generating MCP server tools...")
 
-    # Count auto-generated tools
+    # Count tools
     auto_tools = get_auto_generated_tools()
-    total_tools = len(TOOLS) + len(auto_tools)
+    total_tools = len(HOST_TOOLS) + len(auto_tools)
 
     # Generate MCP tools
     mcp_content = generate_mcp_tools()
@@ -732,7 +659,7 @@ def main():
     HTTP_OUTPUT.write_text(http_content)
     print(f"  -> {HTTP_OUTPUT}")
 
-    print(f"Generated {total_tools} tools ({len(TOOLS)} manual + {len(auto_tools)} auto-generated from schema)")
+    print(f"Generated {total_tools} tools ({len(HOST_TOOLS)} host-only + {len(auto_tools)} from command schema)")
 
 
 if __name__ == "__main__":

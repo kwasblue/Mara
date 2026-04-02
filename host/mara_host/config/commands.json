@@ -990,17 +990,17 @@
     "CMD_DC_SET_SPEED": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Set DC motor speed and direction for a given motor ID.",
+      "description": "Set DC motor speed.",
       "payload": {
         "motor_id": {
           "type": "int",
           "required": true,
-          "description": "Logical DC motor ID (0..3)."
+          "description": "Motor ID (0-3)"
         },
         "speed": {
           "type": "float",
           "required": true,
-          "description": "Normalized speed in [-1.0, 1.0]; sign = direction.",
+          "description": "Speed (-1.0 to 1.0)",
           "min": -1.0,
           "max": 1.0
         }
@@ -1009,12 +1009,12 @@
     "CMD_DC_STOP": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Stop a DC motor (set speed to zero).",
+      "description": "Stop a DC motor.",
       "payload": {
         "motor_id": {
           "type": "int",
           "required": true,
-          "description": "Logical DC motor ID (0..3)."
+          "description": "Motor ID (0-3)"
         }
       }
     },
@@ -1026,29 +1026,29 @@
         "motor_id": {
           "type": "int",
           "required": true,
-          "description": "Logical DC motor ID (0..3)."
+          "description": "Motor ID (0-3)"
         },
         "enable": {
           "type": "bool",
           "required": true,
-          "description": "True to enable velocity PID, False to disable."
+          "description": "True to enable velocity PID, False to disable"
         }
       }
     },
     "CMD_DC_SET_VEL_TARGET": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Set desired angular velocity target for a DC motor's PID controller.",
+      "description": "Set velocity target for a DC motor's PID controller.",
       "payload": {
         "motor_id": {
           "type": "int",
           "required": true,
-          "description": "Logical DC motor ID (0..3)."
+          "description": "Motor ID (0-3)"
         },
         "omega": {
           "type": "float",
           "required": true,
-          "description": "Target angular velocity in rad/s (sign indicates direction)."
+          "description": "Target angular velocity in rad/s"
         }
       }
     },
@@ -1060,22 +1060,22 @@
         "motor_id": {
           "type": "int",
           "required": true,
-          "description": "Logical DC motor ID (0..3)."
+          "description": "Motor ID (0-3)"
         },
         "kp": {
           "type": "float",
           "required": true,
-          "description": "Proportional gain for velocity PID."
+          "description": "Proportional gain"
         },
         "ki": {
           "type": "float",
           "required": true,
-          "description": "Integral gain for velocity PID."
+          "description": "Integral gain"
         },
         "kd": {
           "type": "float",
           "required": true,
-          "description": "Derivative gain for velocity PID."
+          "description": "Derivative gain"
         }
       }
     },
@@ -1094,55 +1094,62 @@
     "CMD_GPIO_WRITE": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Write a digital value to a logical GPIO channel.",
+      "description": "Set GPIO pin high or low.",
       "payload": {
         "channel": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "GPIO channel ID"
         },
         "value": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "0=low, 1=high"
         }
       }
     },
     "CMD_GPIO_READ": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Read a digital value from a logical GPIO channel.",
+      "description": "Read GPIO pin state.",
       "payload": {
         "channel": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "GPIO channel ID"
         }
       }
     },
     "CMD_GPIO_TOGGLE": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Toggle a logical GPIO channel.",
+      "description": "Toggle GPIO pin state.",
       "payload": {
         "channel": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "GPIO channel ID"
         }
       }
     },
     "CMD_GPIO_REGISTER_CHANNEL": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Register or re-map a logical GPIO channel to a physical pin.",
+      "description": "Register a GPIO channel mapping a logical ID to a physical pin.",
       "payload": {
         "channel": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Logical channel ID"
         },
         "pin": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Physical GPIO pin number"
         },
         "mode": {
           "type": "string",
+          "description": "Pin mode",
           "default": "output",
           "enum": [
             "output",
@@ -1155,18 +1162,21 @@
     "CMD_PWM_SET": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Set PWM duty cycle for a logical channel.",
+      "description": "Set PWM duty cycle on a channel.",
       "payload": {
         "channel": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "PWM channel"
         },
         "duty": {
           "type": "float",
-          "required": true
+          "required": true,
+          "description": "Duty cycle (0.0-1.0)"
         },
         "freq_hz": {
-          "type": "float"
+          "type": "float",
+          "description": "Frequency in Hz (optional)"
         }
       }
     },
@@ -1426,7 +1436,7 @@
     "CMD_GET_IDENTITY": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Get device identity and capabilities (firmware version, build config, features).",
+      "description": "Get firmware version, board type, and feature flags.",
       "payload": {},
       "timeout_s": 2.0
     },
@@ -1439,54 +1449,54 @@
     "CMD_ARM": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Transition from IDLE to ARMED. Motors enabled but not accepting motion.",
+      "description": "Arm the robot for operation. Required before moving actuators.",
       "payload": {},
       "timeout_s": 0.5
     },
     "CMD_DISARM": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Transition from ARMED to IDLE. Motors disabled.",
+      "description": "Disarm the robot. Stops all motion.",
       "payload": {},
       "timeout_s": 0.5
     },
     "CMD_ACTIVATE": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Transition from ARMED to ACTIVE. Motion commands now accepted.",
+      "description": "Activate the robot (ARMED -> ACTIVE). Motion commands are only accepted in ACTIVE state.",
       "payload": {},
       "timeout_s": 0.5
     },
     "CMD_DEACTIVATE": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Transition from ACTIVE to ARMED. Stops motion, still armed.",
+      "description": "Deactivate the robot (ACTIVE -> ARMED). Stops accepting motion commands.",
       "payload": {},
       "timeout_s": 0.5
     },
     "CMD_ESTOP": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Emergency stop, immediately disable motion.",
+      "description": "Emergency stop - immediately halt all motion and enter ESTOP state. Requires clear_estop before resuming.",
       "payload": {}
     },
     "CMD_CLEAR_ESTOP": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Clear ESTOP and return to IDLE mode.",
+      "description": "Clear emergency stop condition (ESTOP -> IDLE). Required after estop before normal operation.",
       "payload": {},
       "timeout_s": 0.5
     },
     "CMD_STOP": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Stop all motion (soft stop).",
+      "description": "Soft stop - zero velocities without changing robot state.",
       "payload": {}
     },
     "CMD_GET_STATE": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Query current MCU state (mode, armed, active, estop).",
+      "description": "Query current robot state from MCU. Returns mode (IDLE/ARMED/ACTIVE/ESTOP), armed status, active status, and estop status.",
       "payload": {},
       "response": {
         "mode": {
@@ -1510,7 +1520,7 @@
     "CMD_GET_SAFETY_TIMEOUTS": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Query current safety timeout settings.",
+      "description": "Get safety timeout values.",
       "payload": {},
       "response": {
         "host_timeout_ms": {
@@ -1559,22 +1569,22 @@
     "CMD_IMU_READ": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Request a one-shot IMU snapshot and return it directly in the ACK payload.",
+      "description": "Read IMU sensor data (accelerometer and gyroscope).",
       "payload": {}
     },
     "CMD_IMU_CALIBRATE": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Calibrate the IMU by collecting samples to compute bias offsets.",
+      "description": "Auto-calibrate IMU bias by collecting samples.",
       "payload": {
         "samples": {
           "type": "int",
-          "description": "Number of samples to collect.",
+          "description": "Number of samples to collect",
           "default": 100
         },
         "delay_ms": {
           "type": "int",
-          "description": "Delay between samples in milliseconds.",
+          "description": "Delay between samples in ms",
           "default": 10
         }
       }
@@ -1582,55 +1592,55 @@
     "CMD_IMU_SET_BIAS": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Set IMU bias offsets directly.",
+      "description": "Set IMU bias offsets manually.",
       "payload": {
         "accel_bias": {
           "type": "array",
           "required": true,
-          "description": "Accelerometer bias [ax, ay, az]."
+          "description": "Accelerometer bias [ax, ay, az]"
         },
         "gyro_bias": {
           "type": "array",
           "required": true,
-          "description": "Gyroscope bias [gx, gy, gz]."
+          "description": "Gyroscope bias [gx, gy, gz]"
         }
       }
     },
     "CMD_IMU_ZERO": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Zero the IMU orientation (reset yaw/heading).",
+      "description": "Reset IMU orientation (zero yaw/heading).",
       "payload": {}
     },
     "CMD_I2C_SCAN": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Scan the primary MCU I2C bus and report responding 7-bit addresses.",
+      "description": "Scan the MCU primary I2C bus and report responding addresses.",
       "payload": {}
     },
     "CMD_ULTRASONIC_ATTACH": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Attach/configure an ultrasonic sensor for the given logical sensor_id.",
+      "description": "Attach an ultrasonic distance sensor to GPIO pins.",
       "payload": {
         "sensor_id": {
           "type": "int",
           "required": true,
-          "default": 0
+          "description": "Sensor ID (0-3)"
         },
         "trig_pin": {
           "type": "int",
           "required": true,
-          "description": "Trigger pin number."
+          "description": "Trigger GPIO pin"
         },
         "echo_pin": {
           "type": "int",
           "required": true,
-          "description": "Echo pin number."
+          "description": "Echo GPIO pin"
         },
         "max_distance_cm": {
           "type": "float",
-          "description": "Maximum detection distance in cm.",
+          "description": "Maximum measurable distance in cm",
           "default": 400.0
         }
       }
@@ -1638,55 +1648,55 @@
     "CMD_ULTRASONIC_READ": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Trigger a single ultrasonic distance measurement.",
+      "description": "Read distance from ultrasonic sensor in centimeters.",
       "payload": {
         "sensor_id": {
           "type": "int",
           "required": true,
-          "default": 0
+          "description": "Sensor ID (0-3)"
         }
       }
     },
     "CMD_ULTRASONIC_DETACH": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Detach an ultrasonic sensor and clear its cached state.",
+      "description": "Detach an ultrasonic sensor.",
       "payload": {
         "sensor_id": {
           "type": "int",
           "required": true,
-          "default": 0
+          "description": "Sensor ID (0-3)"
         }
       }
     },
     "CMD_ENCODER_ATTACH": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Attach/configure a quadrature encoder with runtime pins.",
+      "description": "Attach a quadrature encoder to GPIO pins.",
       "payload": {
         "encoder_id": {
           "type": "int",
           "required": true,
-          "default": 0
+          "description": "Encoder ID"
         },
         "pin_a": {
           "type": "int",
           "required": true,
-          "description": "Phase A / CLK pin."
+          "description": "Phase A / CLK pin"
         },
         "pin_b": {
           "type": "int",
           "required": true,
-          "description": "Phase B / DT pin."
+          "description": "Phase B / DT pin"
         },
         "ppr": {
           "type": "int",
-          "description": "Pulses per revolution.",
+          "description": "Pulses per revolution",
           "default": 11
         },
         "gear_ratio": {
           "type": "float",
-          "description": "Gear ratio for geared motors.",
+          "description": "Gear ratio for geared motors",
           "default": 1.0
         }
       }
@@ -1694,117 +1704,126 @@
     "CMD_ENCODER_READ": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Request current tick count for a given encoder.",
+      "description": "Read encoder value.",
       "payload": {
         "encoder_id": {
           "type": "int",
           "required": true,
-          "default": 0
+          "description": "Encoder ID"
         }
       }
     },
     "CMD_ENCODER_RESET": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Reset the tick count for a given encoder back to zero.",
+      "description": "Reset encoder count to zero.",
       "payload": {
         "encoder_id": {
           "type": "int",
           "required": true,
-          "default": 0
+          "description": "Encoder ID"
         }
       }
     },
     "CMD_ENCODER_DETACH": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Detach an encoder and free its resources.",
+      "description": "Detach an encoder.",
       "payload": {
         "encoder_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Encoder ID"
         }
       }
     },
     "CMD_SERVO_ATTACH": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Attach a servo ID to a physical pin.",
+      "description": "Attach a servo to a GPIO pin.",
       "payload": {
         "servo_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Servo ID (0-7)"
         },
         "channel": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "GPIO pin number"
         },
         "min_us": {
           "type": "int",
-          "default": 1000
+          "description": "Min pulse width in microseconds",
+          "default": 500
         },
         "max_us": {
           "type": "int",
-          "default": 2000
+          "description": "Max pulse width in microseconds",
+          "default": 2500
         }
       }
     },
     "CMD_SERVO_DETACH": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Detach a servo ID.",
+      "description": "Detach a servo from its pin.",
       "payload": {
         "servo_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Servo ID (0-7)"
         }
       }
     },
     "CMD_SERVO_SET_ANGLE": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Set servo angle in degrees.",
+      "description": "Move a servo to the specified angle.",
       "payload": {
         "servo_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Servo ID (0-7)"
         },
         "angle_deg": {
           "type": "float",
-          "required": true
+          "required": true,
+          "description": "Angle in degrees (0-180)"
         },
         "duration_ms": {
           "type": "int",
-          "description": "Interpolation duration in milliseconds (0 = immediate).",
-          "default": 0
+          "description": "Movement duration in ms (0=instant)",
+          "default": 300
         }
       }
     },
     "CMD_SERVO_SET_PULSE": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Set servo pulse width in microseconds.",
+      "description": "Set servo pulse width directly in microseconds.",
       "payload": {
         "servo_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Servo ID (0-7)"
         },
         "pulse_us": {
           "type": "int",
           "required": true,
-          "description": "Pulse width in microseconds."
+          "description": "Pulse width in microseconds"
         }
       }
     },
     "CMD_BATCH_APPLY": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Apply a staged batch of batchable commands at one control boundary with deterministic MCU family ordering.",
+      "description": "Apply a generic staged batch/composite envelope using actions=[{cmd,args}, ...]. Batchable commands: CMD_GPIO_WRITE, CMD_SERVO_SET_ANGLE, CMD_PWM_SET, CMD_DC_SET_SPEED, CMD_DC_STOP, CMD_STEPPER_MOVE_REL, CMD_STEPPER_STOP. MCU apply order is fixed by command family on one control tick.",
       "payload": {
         "actions": {
           "type": "array",
           "required": true,
-          "description": "Array of action objects shaped like {cmd, args}. Batchable commands: CMD_GPIO_WRITE, CMD_SERVO_SET_ANGLE, CMD_PWM_SET, CMD_DC_SET_SPEED, CMD_DC_STOP, CMD_STEPPER_MOVE_REL, CMD_STEPPER_STOP.",
+          "description": "Array of batch action objects shaped like {cmd, args}.",
           "items": {
             "type": "object"
           }
@@ -1814,14 +1833,16 @@
     "CMD_STEPPER_ENABLE": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Enable or disable a stepper driver (via enable pin).",
+      "description": "Enable or disable a stepper driver (energize coils).",
       "payload": {
         "stepper_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Stepper ID"
         },
         "enable": {
           "type": "bool",
+          "description": "True to enable, False to disable",
           "default": true
         }
       }
@@ -1829,19 +1850,21 @@
     "CMD_STEPPER_MOVE_REL": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Move a stepper a relative number of steps.",
+      "description": "Move stepper motor by relative steps.",
       "payload": {
         "stepper_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Stepper ID"
         },
         "steps": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Steps to move (negative=reverse)"
         },
         "speed_rps": {
           "type": "float",
-          "description": "Speed in revolutions per second.",
+          "description": "Speed in revolutions per second",
           "default": 1.0
         }
       }
@@ -1849,19 +1872,21 @@
     "CMD_STEPPER_MOVE_DEG": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Move a stepper a relative number of degrees.",
+      "description": "Move stepper motor by degrees.",
       "payload": {
         "stepper_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Stepper ID"
         },
         "degrees": {
           "type": "float",
-          "required": true
+          "required": true,
+          "description": "Degrees to move"
         },
         "speed_rps": {
           "type": "float",
-          "description": "Speed in revolutions per second.",
+          "description": "Speed in revolutions per second",
           "default": 1.0
         }
       }
@@ -1869,19 +1894,21 @@
     "CMD_STEPPER_MOVE_REV": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Move a stepper a relative number of revolutions.",
+      "description": "Move stepper motor by revolutions.",
       "payload": {
         "stepper_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Stepper ID"
         },
         "revolutions": {
           "type": "float",
-          "required": true
+          "required": true,
+          "description": "Revolutions to move"
         },
         "speed_rps": {
           "type": "float",
-          "description": "Speed in revolutions per second.",
+          "description": "Speed in revolutions per second",
           "default": 1.0
         }
       }
@@ -1889,11 +1916,12 @@
     "CMD_STEPPER_STOP": {
       "kind": "cmd",
       "direction": "host->mcu",
-      "description": "Immediately stop a stepper motor.",
+      "description": "Stop a stepper motor.",
       "payload": {
         "stepper_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Stepper ID"
         }
       }
     },
@@ -1904,7 +1932,8 @@
       "payload": {
         "stepper_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Stepper ID"
         }
       }
     },
@@ -1915,7 +1944,8 @@
       "payload": {
         "stepper_id": {
           "type": "int",
-          "required": true
+          "required": true,
+          "description": "Stepper ID"
         }
       }
     },

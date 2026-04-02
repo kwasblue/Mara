@@ -77,6 +77,11 @@ Utilities:
 """
 
 # =============================================================================
+# Robot - Unified entry point with all services (auto-generated)
+# =============================================================================
+from ._generated_api import Robot
+
+# =============================================================================
 # Primary API - Rich hand-written classes (recommended for most users)
 # =============================================================================
 from .stepper import Stepper
@@ -113,6 +118,10 @@ from .generated.ir import IrSensor as IrSensorRaw, IrReading as IrRawReading
 from .generated.temp import Temperature as TemperatureRaw, TemperatureReading as TemperatureRawReading
 
 __all__ = [
+    # ==========================================================================
+    # Robot - Unified entry point
+    # ==========================================================================
+    "Robot",
     # ==========================================================================
     # Primary API - Rich hand-written classes
     # ==========================================================================

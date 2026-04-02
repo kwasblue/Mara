@@ -14,6 +14,8 @@ TELEMETRY_COMMAND_OBJECTS: dict[str, CommandDef] = {
         payload={
             "interval_ms": FieldDef(type="int", required=True, default=100),
         },
+        category="telemetry",
+        requires_arm=False,  # Configuration
     ),
     "CMD_SET_LOG_LEVEL": CommandDef(
         kind="cmd",
@@ -22,6 +24,8 @@ TELEMETRY_COMMAND_OBJECTS: dict[str, CommandDef] = {
         payload={
             "level": FieldDef(type="string", required=True, default="info", enum=("debug", "info", "warn", "error", "off")),
         },
+        category="logging",
+        requires_arm=False,  # Configuration
     ),
     "CMD_SET_SUBSYSTEM_LOG_LEVEL": CommandDef(
         kind="cmd",
@@ -31,18 +35,24 @@ TELEMETRY_COMMAND_OBJECTS: dict[str, CommandDef] = {
             "subsystem": FieldDef(type="string", required=True, description="Subsystem name (e.g., 'servo', 'stepper', 'motor', 'gpio', 'system')"),
             "level": FieldDef(type="string", required=True, default="info", enum=("debug", "info", "warn", "error", "off"), description="Log level. 'off' reverts to global level."),
         },
+        category="logging",
+        requires_arm=False,  # Configuration
     ),
     "CMD_GET_LOG_LEVELS": CommandDef(
         kind="cmd",
         direction="host->mcu",
         description="Get current MCU log levels (global and per-subsystem).",
         payload={},
+        category="logging",
+        requires_arm=False,  # Read-only query
     ),
     "CMD_CLEAR_SUBSYSTEM_LOG_LEVELS": CommandDef(
         kind="cmd",
         direction="host->mcu",
         description="Clear all per-subsystem log levels, reverting to global level.",
         payload={},
+        category="logging",
+        requires_arm=False,  # Configuration
     ),
 }
 

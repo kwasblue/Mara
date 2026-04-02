@@ -10,74 +10,106 @@ SAFETY_COMMAND_OBJECTS: dict[str, CommandDef] = {
     "CMD_GET_IDENTITY": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Get device identity and capabilities (firmware version, build config, features).",
+        description="Get firmware version, board type, and feature flags.",
         timeout_s=2.0,
+        category="system",
+        requires_arm=False,
+        tool_name="get_identity",
     ),
     "CMD_HEARTBEAT": CommandDef(
         kind="cmd",
         direction="host->mcu",
         description="Host heartbeat to maintain connection. Resets host timeout watchdog.",
+        category="system",
+        requires_arm=False,
+        skip_tool=True,  # Internal keep-alive, not exposed as tool
     ),
     "CMD_ARM": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Transition from IDLE to ARMED. Motors enabled but not accepting motion.",
+        description="Arm the robot for operation. Required before moving actuators.",
         timeout_s=0.5,
+        category="state",
+        requires_arm=False,
+        skip_tool=True,  # Tool defined in tool_schema.py to use state_service
     ),
     "CMD_DISARM": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Transition from ARMED to IDLE. Motors disabled.",
+        description="Disarm the robot. Stops all motion.",
         timeout_s=0.5,
+        category="state",
+        requires_arm=False,
+        skip_tool=True,  # Tool defined in tool_schema.py to use state_service
     ),
     "CMD_ACTIVATE": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Transition from ARMED to ACTIVE. Motion commands now accepted.",
+        description="Activate the robot (ARMED -> ACTIVE). Motion commands are only accepted in ACTIVE state.",
         timeout_s=0.5,
+        category="state",
+        requires_arm=False,
+        skip_tool=True,  # Tool defined in tool_schema.py to use state_service
     ),
     "CMD_DEACTIVATE": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Transition from ACTIVE to ARMED. Stops motion, still armed.",
+        description="Deactivate the robot (ACTIVE -> ARMED). Stops accepting motion commands.",
         timeout_s=0.5,
+        category="state",
+        requires_arm=False,
+        skip_tool=True,  # Tool defined in tool_schema.py to use state_service
     ),
     "CMD_ESTOP": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Emergency stop, immediately disable motion.",
+        description="Emergency stop - immediately halt all motion and enter ESTOP state. Requires clear_estop before resuming.",
+        category="state",
+        requires_arm=False,
+        skip_tool=True,  # Tool defined in tool_schema.py to use state_service
     ),
     "CMD_CLEAR_ESTOP": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Clear ESTOP and return to IDLE mode.",
+        description="Clear emergency stop condition (ESTOP -> IDLE). Required after estop before normal operation.",
         timeout_s=0.5,
+        category="state",
+        requires_arm=False,
+        skip_tool=True,  # Tool defined in tool_schema.py to use state_service
     ),
     "CMD_STOP": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Stop all motion (soft stop).",
+        description="Soft stop - zero velocities without changing robot state.",
+        category="state",
+        requires_arm=False,
+        skip_tool=True,  # Tool defined in tool_schema.py to use state_service
     ),
     "CMD_GET_STATE": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Query current MCU state (mode, armed, active, estop).",
+        description="Query current robot state from MCU. Returns mode (IDLE/ARMED/ACTIVE/ESTOP), armed status, active status, and estop status.",
         response={
             "mode": FieldDef(type="string", description="Current mode: IDLE, ARMED, ACTIVE, ESTOP"),
             "armed": FieldDef(type="bool", description="True if motors enabled"),
             "active": FieldDef(type="bool", description="True if motion commands accepted"),
             "estop": FieldDef(type="bool", description="True if emergency stop active"),
         },
+        category="state",
+        requires_arm=False,
+        skip_tool=True,  # Tool defined in tool_schema.py to use state_service
     ),
     "CMD_GET_SAFETY_TIMEOUTS": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Query current safety timeout settings.",
+        description="Get safety timeout values.",
         response={
             "host_timeout_ms": FieldDef(type="int", description="Host heartbeat timeout (0=disabled)"),
             "motion_timeout_ms": FieldDef(type="int", description="Motion command timeout (0=disabled)"),
             "enabled": FieldDef(type="bool", description="True if any timeout is active"),
         },
+        category="safety",
+        requires_arm=False,
     ),
     "CMD_SET_SAFETY_TIMEOUTS": CommandDef(
         kind="cmd",
@@ -92,6 +124,8 @@ SAFETY_COMMAND_OBJECTS: dict[str, CommandDef] = {
             "motion_timeout_ms": FieldDef(type="int", description="Actual motion timeout set"),
             "enabled": FieldDef(type="bool", description="True if any timeout is active"),
         },
+        category="safety",
+        requires_arm=False,
     ),
 }
 

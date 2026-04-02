@@ -1,7 +1,13 @@
-"""Tests for the control design module."""
+"""Tests for the control design module.
 
-import numpy as np
+Requires research dependencies: pip install mara-host[research]
+"""
+
 import pytest
+
+# Skip entire module if numpy not installed (research optional dependency)
+# Must be before any imports from mara_host.control since that module imports numpy
+np = pytest.importorskip("numpy", reason="numpy not installed (install with: pip install mara-host[research])")
 
 from mara_host.control import (
     StateSpaceModel,

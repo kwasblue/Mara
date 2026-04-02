@@ -15,6 +15,9 @@
 #include "transport/WifiTransport.h"
 
 // WiFi defaults if WifiSecrets.h not configured
+// WARNING: These are placeholder credentials. For production:
+// 1. Create WifiSecrets.h with real credentials, OR
+// 2. Define these in platformio.ini build_flags
 #ifndef WIFI_STA_SSID
 #define WIFI_STA_SSID "YourHomeSSID"
 #endif
@@ -23,11 +26,22 @@
 #define WIFI_STA_PASSWORD "YourHomePassword"
 #endif
 
+// AP (Access Point) credentials - robot's own network for fallback access
+// SECURITY: Override these in WifiSecrets.h or build_flags for production!
+// Anyone knowing these defaults can connect to your robot's AP.
+#ifndef WIFI_AP_SSID
+#define WIFI_AP_SSID "RobotAP"
+#endif
+
+#ifndef WIFI_AP_PASSWORD
+#define WIFI_AP_PASSWORD "robotpass"
+#endif
+
 namespace {
 
-// AP = robot's own network
-const char* AP_SSID = "RobotAP";
-const char* AP_PASS = "robotpass";
+// AP = robot's own network (use config defines)
+const char* AP_SSID = WIFI_AP_SSID;
+const char* AP_PASS = WIFI_AP_PASSWORD;
 
 // WiFi reconnection state
 volatile bool g_wifiConnected = false;
@@ -90,11 +104,21 @@ public:
 
         WiFi.begin(WIFI_STA_SSID, WIFI_STA_PASSWORD);
 
+        // BLOCKING WAIT: This blocks setup for up to 15 seconds.
+        // The ESP32 hardware watchdog (if enabled) has a default timeout of ~8 seconds.
+        // We use delay(500) which yields to the scheduler and feeds the task watchdog.
+        // If using a custom watchdog with shorter timeout, either:
+        // 1. Disable watchdog during setup (not recommended), or
+        // 2. Reduce this timeout, or
+        // 3. Use non-blocking WiFi init with event callbacks (onWiFiEvent handles this)
+        //
+        // Since WiFi.setAutoReconnect(true) is set, if initial connect fails,
+        // background reconnection will continue after setup completes.
         uint32_t start = mara::getSystemClock().millis();
-        const uint32_t timeoutMs = 15000;  // Increased timeout
+        const uint32_t timeoutMs = 15000;
 
         while (WiFi.status() != WL_CONNECTED && mara::getSystemClock().millis() - start < timeoutMs) {
-            delay(500);
+            delay(500);  // Yields to FreeRTOS scheduler, feeds task watchdog
             Serial.print(".");
         }
         Serial.println();

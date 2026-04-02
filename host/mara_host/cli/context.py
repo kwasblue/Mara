@@ -194,6 +194,13 @@ class CLIContext:
 
         # Auto-arm for CLI commands (use state_service for convergence)
         result = await self.state_service.arm()
+        if not result.ok:
+            # Warn but don't fail - some commands work without arming
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Auto-arm failed: {result.error}. "
+                "Actuator commands will fail until robot is armed."
+            )
         await asyncio.sleep(0.1)  # Allow state to settle before actuator commands
 
     async def disconnect(self) -> None:
@@ -214,12 +221,18 @@ class CLIContext:
             self._mcu_diagnostics_service.close()
             self._mcu_diagnostics_service = None
 
+        # Close ControlGraphService to unsubscribe from EventBus
+        if self._control_graph_service is not None:
+            self._control_graph_service.close()
+            self._control_graph_service = None
+
         if self._connection:
             await self._connection.disconnect()
             self._connection = None
             self._client = None
 
         # Clear cached services
+        # Note: _control_graph_service and _mcu_diagnostics_service are closed above
         self._state_service = None
         self._motor_service = None
         self._servo_service = None
@@ -231,10 +244,10 @@ class CLIContext:
         self._ultrasonic_service = None
         self._pwm_service = None
         self._wifi_service = None
-        self._control_graph_service = None
+        # _control_graph_service already closed above
         self._controller_service = None
         self._pid_service = None
-        self._mcu_diagnostics_service = None
+        # _mcu_diagnostics_service already closed above
         self._motion_service = None
         self._signal_service = None
         self._camera_control_service = None

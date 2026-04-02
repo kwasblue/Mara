@@ -38,6 +38,11 @@ public:
         if (ctx.persistence) {
             ctx.persistence->begin(maraCfg, mara::getSystemClock().millis());
             ctx.persistence->updateFromMode(*ctx.mode, mara::getSystemClock().millis());
+
+            // LIFETIME NOTE: This lambda captures raw pointers by value.
+            // This is safe because both mode and persistence are owned by ServiceStorage,
+            // which has static lifetime (lives for the entire program duration).
+            // The callback is never invoked after these objects are destroyed.
             ctx.mode->onPersistentStateChanged([mode = ctx.mode, persist = ctx.persistence]() {
                 persist->updateFromMode(*mode, mara::getSystemClock().millis());
             });

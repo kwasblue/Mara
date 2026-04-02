@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-04-02 17:42:43
+Generated: 2026-04-02 17:46:39
 Total Files: 1044
-Total Lines of Code: 121,277
+Total Lines of Code: 121,331
 ================================================================================
 
 
@@ -1838,7 +1838,7 @@ HOST (Python)
 
   host/mara_host/config/pin_config.py (16 lines)
 
-  host/mara_host/config/robot_config.py (362 lines)
+  host/mara_host/config/robot_config.py (376 lines)
     [Fn] _parse_bool(value, default)
     [Class] ValidationReport
       `-- ok(self)
@@ -8699,7 +8699,7 @@ FIRMWARE/MCU (C++)
     [Struct] ProtoReassembly
     [Class] CanTransport
 
-  firmware/mcu/include/transport/MqttTransport.h (78 lines)
+  firmware/mcu/include/transport/MqttTransport.h (81 lines)
     [Class] MqttTransport
     [Fn] setHal(hal::ITaskScheduler* scheduler)
     [Fn] begin()
@@ -8992,7 +8992,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/sensor/SensorRegistry.cpp (83 lines)
 
-  firmware/mcu/src/setup/SetupControlTask.cpp (339 lines)
+  firmware/mcu/src/setup/SetupControlTask.cpp (340 lines)
     [Fn] controlTaskFunc(void* param)
     [Fn] setControlTaskHal(hal::ITaskScheduler* scheduler)
     [Fn] startControlTask(ServiceContext& ctx, const ControlTaskConfig& config)
@@ -9043,7 +9043,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/transport/CanTransport.cpp (230 lines)
 
-  firmware/mcu/src/transport/MqttTransport.cpp (237 lines)
+  firmware/mcu/src/transport/MqttTransport.cpp (273 lines)
     [Fn] t(topic)
 
   firmware/mcu/src/transport/TransportRegistry.cpp (70 lines)
@@ -9711,11 +9711,11 @@ DEFINITIONS
   Methods:          3500
 
 LINES OF CODE
-  Python:           93,739
-  C++:              27,538
-  Total Code:       121,277
-  Blank Lines:      32,931
-  Comment Lines:    33,068
-  Total Lines:      187,276
+  Python:           93,753
+  C++:              27,578
+  Total Code:       121,331
+  Blank Lines:      32,945
+  Comment Lines:    33,089
+  Total Lines:      187,365
 
 ================================================================================

@@ -171,9 +171,24 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         # Update cache under lock for thread safety
         async with self._cache_lock:
             self._cached_graph_model = normalized_model
+
+        # Persist to store - catch validation errors to avoid state divergence
+        # where MCU has graph but host can't restore it
+        persistence_error = None
         if self._persistence_store is not None:
-            self._persistence_store.save_graph(normalized_model)
+            try:
+                self._persistence_store.save_graph(normalized_model)
+            except Exception as e:
+                # Log error but don't fail - MCU already has the graph
+                persistence_error = str(e)
+                import logging
+                logging.getLogger(__name__).warning(
+                    f"Failed to persist control graph (MCU has it): {e}"
+                )
+
         payload = dict(result.data or {})
+        if persistence_error:
+            payload["persistence_warning"] = persistence_error
         payload.setdefault("graph", normalized)
         if policy is not None:
             payload["policy"] = policy

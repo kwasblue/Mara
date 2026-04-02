@@ -10,7 +10,19 @@ from .models import ImuTelemetry, UltrasonicTelemetry
 
 
 class TelemetryFileLogger:
+    """
+    File logger for telemetry data.
+
+    Lifecycle:
+    - __init__: Store references, do NOT start logging
+    - start(): Open files, subscribe to events, begin logging
+    - stop(): Unsubscribe from events, close files
+
+    Events arriving before start() or after stop() are ignored.
+    """
+
     def __init__(self, bus: EventBus, log_dir: Path) -> None:
+        self._bus = bus
         self._log_dir = log_dir
 
         self._imu_fp = None
@@ -19,11 +31,13 @@ class TelemetryFileLogger:
         self._imu_writer: Optional[csv.writer] = None
         self._ultra_writer: Optional[csv.writer] = None
 
-        # Topics published by TelemetryHostModule
-        bus.subscribe("telemetry.imu", self._on_imu)
-        bus.subscribe("telemetry.ultrasonic", self._on_ultra)
+        # Track subscriptions for cleanup
+        self._subscribed = False
 
     def start(self) -> None:
+        """Start logging - open files and subscribe to events."""
+        # Subscribe to events AFTER opening files to avoid race
+        # where events arrive before we're ready to write
         self._log_dir.mkdir(parents=True, exist_ok=True)
 
         imu_path = self._log_dir / "imu.csv"
@@ -69,8 +83,23 @@ class TelemetryFileLogger:
             ]
         )
 
+        # Subscribe to events AFTER files are ready
+        if not self._subscribed:
+            self._bus.subscribe("telemetry.imu", self._on_imu)
+            self._bus.subscribe("telemetry.ultrasonic", self._on_ultra)
+            self._subscribed = True
+
     def stop(self) -> None:
-        """Close file handles safely, suppressing errors during cleanup."""
+        """Unsubscribe from events and close file handles safely."""
+        # Unsubscribe first to prevent new events during cleanup
+        if self._subscribed:
+            try:
+                self._bus.unsubscribe("telemetry.imu", self._on_imu)
+                self._bus.unsubscribe("telemetry.ultrasonic", self._on_ultra)
+            except Exception:
+                pass  # Best-effort cleanup
+            self._subscribed = False
+
         # Close all file handles, suppressing errors to ensure all get closed
         for fp_name in ('_imu_fp', '_ultra_fp'):
             fp = getattr(self, fp_name, None)

@@ -6,10 +6,12 @@
 #include "config/Version.h"         // auto-generated Version::*
 #include "config/DeviceManifest.h"  // unified capabilities
 
-IdentityModule* IdentityModule::s_instance = nullptr;
+std::atomic<IdentityModule*> IdentityModule::s_instance{nullptr};
 
 void IdentityModule::setup() {
-    s_instance = this;
+    // Use memory_order_release to ensure all prior initialization is visible
+    // to other threads that read s_instance with memory_order_acquire
+    s_instance.store(this, std::memory_order_release);
     bus_.subscribe(&IdentityModule::onEventStatic);
     DBG_PRINTLN("[IdentityModule] setup complete");
 }
@@ -19,8 +21,10 @@ void IdentityModule::loop(uint32_t /*now_ms*/) {
 }
 
 void IdentityModule::onEventStatic(const Event& evt) {
-    if (s_instance) {
-        s_instance->handleEvent(evt);
+    // Use memory_order_acquire to synchronize with setup()'s release
+    IdentityModule* inst = s_instance.load(std::memory_order_acquire);
+    if (inst) {
+        inst->handleEvent(evt);
     }
 }
 

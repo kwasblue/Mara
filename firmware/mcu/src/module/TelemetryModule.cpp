@@ -6,6 +6,15 @@
 
 static constexpr uint8_t TELEMETRY_BIN_VERSION = 1;
 
+// Binary telemetry header layout:
+// [version:u8][seq:u16][ts_ms:u32][section_count:u8]
+// Total header size = 1 + 2 + 4 + 1 = 8 bytes
+static constexpr size_t HEADER_VERSION_OFFSET = 0;
+static constexpr size_t HEADER_SEQ_OFFSET = 1;
+static constexpr size_t HEADER_TS_OFFSET = 3;
+static constexpr size_t HEADER_COUNT_OFFSET = 7;
+static constexpr size_t HEADER_SIZE = 8;
+
 TelemetryModule::TelemetryModule(EventBus& bus)
     : bus_(bus) {
     txBuf_.reserve(256);
@@ -122,7 +131,9 @@ void TelemetryModule::sendTelemetry(uint32_t now_ms) {
             txBuf_.insert(txBuf_.end(), sectionBuf_.begin(), sectionBuf_.end());
             ++emittedSections;
         }
-        txBuf_[7] = emittedSections;
+        // Patch actual section count in header (safer than assuming index)
+        static_assert(HEADER_COUNT_OFFSET == 7, "Header layout changed - update offset");
+        txBuf_[HEADER_COUNT_OFFSET] = emittedSections;
 
         Event evt;
         evt.type = EventType::BIN_MESSAGE_TX;

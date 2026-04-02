@@ -42,23 +42,38 @@ void ControlModule::setup() {
         });
 
         // Register binary telemetry providers for high-rate streaming
+        // Buffer sizes calculated from max entries:
+        // - Signals: 2 (count) + MAX_SIGNALS * 10 (id:2 + value:4 + ts:4)
+        // - Observers: 1 (count) + MAX_SLOTS * (3 + MAX_STATES * 4)
+        // - Slots: 1 (count) + MAX_SLOTS * 7
+
         telemetry_->registerBinProvider(ControlTelemetry::SECTION_SIGNALS,
             [this](std::vector<uint8_t>& out) {
-                out.resize(256);
+                // Calculate buffer size dynamically from actual signal count
+                // Format: count(2) + signals * (id:2 + value:4 + ts:4)
+                size_t sig_count = signals_.all().size();
+                size_t buf_size = 2 + sig_count * 10;
+                out.resize(buf_size);
                 size_t len = ControlTelemetry::provideSignalsBin(out.data(), out.size(), signals_);
                 out.resize(len);
             });
 
         telemetry_->registerBinProvider(ControlTelemetry::SECTION_OBSERVERS,
             [this](std::vector<uint8_t>& out) {
-                out.resize(256);
+                // Calculate from configured observers
+                // Format: count(1) + observers * (slot:1 + enabled:1 + num_states:1 + states * 4)
+                constexpr size_t MAX_OBSERVER_STATES = 6;
+                constexpr size_t BUF_SIZE = 1 + ObserverManager::MAX_SLOTS * (3 + MAX_OBSERVER_STATES * 4);
+                out.resize(BUF_SIZE);
                 size_t len = ControlTelemetry::provideObserversBin(out.data(), out.size(), observers_);
                 out.resize(len);
             });
 
         telemetry_->registerBinProvider(ControlTelemetry::SECTION_SLOTS,
             [this](std::vector<uint8_t>& out) {
-                out.resize(128);
+                // Format: count(1) + slots * (slot:1 + enabled:1 + ok:1 + run_count:4)
+                constexpr size_t BUF_SIZE = 1 + ControlKernel::MAX_SLOTS * 7;
+                out.resize(BUF_SIZE);
                 size_t len = ControlTelemetry::provideSlotsBin(out.data(), out.size(), kernel_);
                 out.resize(len);
             });

@@ -11,11 +11,15 @@
 #include "command/CommandContext.h"
 #include "command/TypedCommands.h"
 #include "command/CommandDecoders.h"
-#include "motor/MotionController.h"
+
+// Forward declaration
+class MotionController;
 
 class MotionHandler : public ICommandHandler {
 public:
-    MotionHandler(MotionController& motion) : motion_(motion) {}
+    MotionHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     const char* name() const override { return "MotionHandler"; }
 
@@ -41,5 +45,5 @@ public:
     void executeSetVelocity(const mara::cmd::SetVelocityCmd& cmd, CommandContext& ctx);
 
 private:
-    MotionController& motion_;
+    MotionController* motion_ = nullptr;
 };

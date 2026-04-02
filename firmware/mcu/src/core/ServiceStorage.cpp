@@ -11,6 +11,22 @@
 #include "transport/MqttTransport.h"
 #include "transport/CanTransport.h"
 
+// Handler includes (for instantiation)
+#include "command/handlers/SafetyHandler.h"
+#include "command/handlers/MotionHandler.h"
+#include "command/handlers/GpioHandler.h"
+#include "command/handlers/ServoHandler.h"
+#include "command/handlers/StepperHandler.h"
+#include "command/handlers/DcMotorHandler.h"
+#include "command/handlers/SensorHandler.h"
+#include "command/handlers/TelemetryHandler.h"
+#include "command/handlers/ControlHandler.h"
+#include "command/handlers/ObserverHandler.h"
+#include "command/handlers/IdentityHandler.h"
+#ifdef FEATURE_BENCHMARK
+#include "command/handlers/BenchmarkHandler.h"
+#endif
+
 namespace mara {
 
 ServiceStorage::~ServiceStorage() {
@@ -105,20 +121,20 @@ void ServiceStorage::initCommands() {
     commands->setPersistence(&persistence);
     commands->setHandlerRegistry(&HandlerRegistry::instance());  // Explicit wiring
 
-    // Create handlers
-    safetyHandler    = new SafetyHandler(mode);
-    motionHandler    = new MotionHandler(motion);
-    gpioHandler      = new GpioHandler(gpio, pwm);
-    servoHandler     = new ServoHandler(servo, motion);
-    stepperHandler   = new StepperHandler(stepper, motion);
-    dcMotorHandler   = new DcMotorHandler(dcMotor);
-    sensorHandler    = new SensorHandler(ultrasonic, encoder, imu);
-    telemetryHandler = new TelemetryHandler(telemetry);
+    // Create handlers with default constructors (dependencies injected via init())
+    safetyHandler    = new SafetyHandler();
+    motionHandler    = new MotionHandler();
+    gpioHandler      = new GpioHandler();
+    servoHandler     = new ServoHandler();
+    stepperHandler   = new StepperHandler();
+    dcMotorHandler   = new DcMotorHandler();
+    sensorHandler    = new SensorHandler();
+    telemetryHandler = new TelemetryHandler();
     controlHandler   = new ControlHandler();
     observerHandler  = new ObserverHandler();
     identityHandler  = new IdentityHandler();
 
-    // Register legacy handlers
+    // Register handlers with CommandRegistry
     commands->registerHandler(safetyHandler);
     commands->registerHandler(motionHandler);
     commands->registerHandler(gpioHandler);
@@ -134,7 +150,7 @@ void ServiceStorage::initCommands() {
 #ifdef FEATURE_BENCHMARK
     // Create benchmark module and handler
     benchmarkModule  = new benchmark::BenchmarkModule(bus);
-    benchmarkHandler = new BenchmarkHandler(*benchmarkModule);
+    benchmarkHandler = new BenchmarkHandler();
     commands->registerHandler(benchmarkHandler);
 
     // Register telemetry provider
@@ -146,6 +162,13 @@ void ServiceStorage::initCommands() {
 
     // Finalize self-registered string handlers
     HandlerRegistry::instance().finalize();
+}
+
+void ServiceStorage::initHandlers(ServiceContext& ctx) {
+    // Initialize all command handlers with dependencies
+    if (commands) {
+        commands->initAll(ctx);
+    }
 }
 
 void ServiceStorage::initControl() {

@@ -2,15 +2,21 @@
 // Implementation of TelemetryHandler methods
 
 #include "command/handlers/TelemetryHandler.h"
+#include "module/TelemetryModule.h"
+#include "core/ServiceContext.h"
 #include "module/LoggingModule.h"
 #include "core/LoopRates.h"
 #include "core/Debug.h"
+
+void TelemetryHandler::init(mara::ServiceContext& ctx) {
+    telemetry_ = ctx.telemetry;
+}
 
 void TelemetryHandler::handleSetInterval(JsonVariantConst payload, CommandContext& ctx) {
     uint32_t interval = payload["interval_ms"] | 0;
 
     DBG_PRINTF("[TELEM] SET_INTERVAL interval=%lu\n", (unsigned long)interval);
-    telemetry_.setInterval(interval);
+    telemetry_->setInterval(interval);
 
     JsonDocument resp;
     resp["interval_ms"] = interval;

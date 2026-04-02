@@ -2,18 +2,26 @@
 // Implementation of GpioHandler methods
 
 #include "command/handlers/GpioHandler.h"
+#include "hw/GpioManager.h"
+#include "hw/PwmManager.h"
+#include "core/ServiceContext.h"
 #include "config/PinConfig.h"
 #include "core/Debug.h"
 #include <Arduino.h>
 #include <cstring>
 
+void GpioHandler::init(mara::ServiceContext& ctx) {
+    gpio_ = ctx.gpio;
+    pwm_ = ctx.pwm;
+}
+
 void GpioHandler::handleGpioWrite(JsonVariantConst payload, CommandContext& ctx) {
     int ch = payload["channel"] | -1;
     int val = payload["value"] | 0;
 
-    bool ok = gpio_.hasChannel(ch);
+    bool ok = gpio_->hasChannel(ch);
     if (ok) {
-        gpio_.write(ch, val);
+        gpio_->write(ch, val);
     }
 
     DBG_PRINTF("[GPIO] WRITE ch=%d val=%d ok=%d\n", ch, val, (int)ok);
@@ -30,8 +38,8 @@ void GpioHandler::handleGpioWrite(JsonVariantConst payload, CommandContext& ctx)
 void GpioHandler::handleGpioRead(JsonVariantConst payload, CommandContext& ctx) {
     int ch = payload["channel"] | -1;
 
-    bool ok = gpio_.hasChannel(ch);
-    int val = ok ? gpio_.read(ch) : -1;
+    bool ok = gpio_->hasChannel(ch);
+    int val = ok ? gpio_->read(ch) : -1;
 
     DBG_PRINTF("[GPIO] READ ch=%d val=%d ok=%d\n", ch, val, (int)ok);
 
@@ -47,9 +55,9 @@ void GpioHandler::handleGpioRead(JsonVariantConst payload, CommandContext& ctx) 
 void GpioHandler::handleGpioToggle(JsonVariantConst payload, CommandContext& ctx) {
     int ch = payload["channel"] | -1;
 
-    bool ok = gpio_.hasChannel(ch);
+    bool ok = gpio_->hasChannel(ch);
     if (ok) {
-        gpio_.toggle(ch);
+        gpio_->toggle(ch);
     }
 
     DBG_PRINTF("[GPIO] TOGGLE ch=%d ok=%d\n", ch, (int)ok);
@@ -76,7 +84,7 @@ void GpioHandler::handleGpioRegister(JsonVariantConst payload, CommandContext& c
 
     bool ok = (ch >= 0 && pin >= 0);
     if (ok) {
-        gpio_.registerChannel(ch, pin, mode);
+        gpio_->registerChannel(ch, pin, mode);
     }
 
     DBG_PRINTF("[GPIO] REGISTER ch=%d pin=%d mode=%s ok=%d\n",
@@ -99,7 +107,7 @@ void GpioHandler::handlePwmSet(JsonVariantConst payload, CommandContext& ctx) {
 
     DBG_PRINTF("[GPIO] PWM_SET ch=%d duty=%.3f freq=%.1f\n", channel, duty, freq);
 
-    pwm_.set(channel, duty, freq);
+    pwm_->set(channel, duty, freq);
 
     JsonDocument resp;
     resp["channel"] = channel;

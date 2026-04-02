@@ -5,13 +5,16 @@
 
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
-#include "motor/StepperManager.h"
-#include "motor/MotionController.h"
+
+// Forward declarations
+class StepperManager;
+class MotionController;
 
 class StepperHandler : public ICommandHandler {
 public:
-    StepperHandler(StepperManager& stepper, MotionController& motion)
-        : stepper_(stepper), motion_(motion) {}
+    StepperHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     const char* name() const override { return "StepperHandler"; }
 
@@ -36,8 +39,8 @@ public:
     }
 
 private:
-    StepperManager& stepper_;
-    MotionController& motion_;
+    StepperManager* stepper_ = nullptr;
+    MotionController* motion_ = nullptr;
 
     // Implemented in StepperHandler.cpp
     void handleEnable(JsonVariantConst payload, CommandContext& ctx);

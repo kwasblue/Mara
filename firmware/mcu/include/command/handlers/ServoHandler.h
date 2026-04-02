@@ -5,13 +5,16 @@
 
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
-#include "motor/ServoManager.h"
-#include "motor/MotionController.h"
+
+// Forward declarations
+class ServoManager;
+class MotionController;
 
 class ServoHandler : public ICommandHandler {
 public:
-    ServoHandler(ServoManager& servo, MotionController& motion)
-        : servo_(servo), motion_(motion) {}
+    ServoHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     const char* name() const override { return "ServoHandler"; }
 
@@ -38,8 +41,8 @@ public:
     }
 
 private:
-    ServoManager& servo_;
-    MotionController& motion_;
+    ServoManager* servo_ = nullptr;
+    MotionController* motion_ = nullptr;
 
     // Implemented in ServoHandler.cpp
     void handleAttach(JsonVariantConst payload, CommandContext& ctx);

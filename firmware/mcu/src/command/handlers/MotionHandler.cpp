@@ -3,8 +3,14 @@
 
 #include "command/handlers/MotionHandler.h"
 #include "command/CommandDecoders.h"
+#include "motor/MotionController.h"
+#include "core/ServiceContext.h"
 #include "core/Debug.h"
 #include <cmath>
+
+void MotionHandler::init(mara::ServiceContext& ctx) {
+    motion_ = ctx.motion;
+}
 
 void MotionHandler::executeSetVelocity(const mara::cmd::SetVelocityCmd& cmd, CommandContext& ctx) {
     const uint32_t now_ms = ctx.now_ms();
@@ -24,7 +30,7 @@ void MotionHandler::executeSetVelocity(const mara::cmd::SetVelocityCmd& cmd, Com
         if (ctx.intents) {
             ctx.intents->setVelocityIntent(0.0f, 0.0f, now_ms);
         } else {
-            motion_.stop();  // Fallback for non-intent path
+            motion_->stop();  // Fallback for non-intent path
         }
 
         JsonDocument resp;
@@ -47,7 +53,7 @@ void MotionHandler::executeSetVelocity(const mara::cmd::SetVelocityCmd& cmd, Com
     if (ctx.intents) {
         ctx.intents->setVelocityIntent(safe_vx, safe_omega, now_ms);
     } else {
-        motion_.setVelocity(safe_vx, safe_omega);  // Fallback for non-intent path
+        motion_->setVelocity(safe_vx, safe_omega);  // Fallback for non-intent path
     }
 
     JsonDocument resp;

@@ -2,9 +2,9 @@
 """
 Services layer for mara_host.
 
-AUTO-DISCOVERY: Services are lazily imported from subpackages.
+AUTO-DISCOVERY: Services are automatically discovered from subpackages.
 To add a new service, create a package `services/myservice/` with
-exports in `__init__.py`.
+exports in `__init__.py`. No manual registration required!
 
 Example:
     # services/myservice/__init__.py
@@ -29,71 +29,61 @@ Packages:
 """
 
 import importlib
+from pathlib import Path
 from typing import Any
 
-# Known exports mapped to their source modules
-# This enables: from mara_host.services import StateService
-_EXPORTS = {
-    # Control
-    "StateService": "control",
-    "RobotState": "control",
-    "MotionService": "control",
-    "Velocity": "control",
-    "MotorService": "control",
-    "MotorConfig": "control",
-    "MotorState": "control",
-    "ServoService": "control",
-    "ServoConfig": "control",
-    "ServoState": "control",
-    "GpioService": "control",
-    "GpioChannel": "control",
-    "GpioMode": "control",
-    "WifiService": "control",
-    "ServiceResult": "control",
-    # Telemetry
-    "TelemetryService": "telemetry",
-    "TelemetrySnapshot": "telemetry",
-    "ImuData": "telemetry",
-    "EncoderData": "telemetry",
-    # Camera
-    "StreamService": "camera",
-    "CameraFrame": "camera",
-    "CameraControlService": "camera",
-    "CameraConfig": "camera",
-    "Resolution": "camera",
-    # Pins
-    "PinService": "pins",
-    "PinConflict": "pins",
-    "PinRecommendation": "pins",
-    "GroupRecommendation": "pins",
-    # Testing
-    "TestService": "testing",
-    "TestResult": "testing",
-    "TestStatus": "testing",
-    "FirmwareTestService": "testing",
-    "FirmwareTestResult": "testing",
-    # Transport
-    "ConnectionService": "transport",
-    "ConnectionConfig": "transport",
-    "ConnectionInfo": "transport",
-    "TransportType": "transport",
-    "RobotControlService": "transport",
-    # Build
-    "FirmwareBuildService": "build",
-    "BuildResult": "build",
-    "BuildStage": "build",
-    "FirmwareSize": "build",
-    # Codegen
-    "CodeGeneratorService": "codegen",
-    "GeneratorType": "codegen",
-    "GeneratorResult": "codegen",
-    # Recording
-    "RecordingService": "recording",
-    "ReplayService": "recording",
-    "RecordingConfig": "recording",
-    "SessionInfo": "recording",
-    # Persistence
-    "McuDiagnosticsService": "persistence",
+
+def _discover_services() -> dict[str, str]:
+    """Auto-discover services from subpackages.
+
+    Scans services/*/ subdirectories and looks for classes ending with
+    'Service', 'Config', or 'State' in their __all__ or public attributes.
+
+    Returns:
+        dict mapping export name to subpackage name
+    """
+    discovered: dict[str, str] = {}
+    services_dir = Path(__file__).parent
+
+    for subdir in sorted(services_dir.iterdir()):
+        if not subdir.is_dir() or subdir.name.startswith("_"):
+            continue
+        init_file = subdir / "__init__.py"
+        if not init_file.exists():
+            continue
+
+        # Import subpackage and find exportable classes
+        try:
+            module = importlib.import_module(f"mara_host.services.{subdir.name}")
+            # Prefer __all__ if defined, otherwise use dir()
+            names = getattr(module, "__all__", None)
+            if names is None:
+                names = [n for n in dir(module) if not n.startswith("_")]
+
+            for name in names:
+                # Auto-discover Service, Config, State, Result, and Response classes
+                if (
+                    name.endswith("Service")
+                    or name.endswith("Config")
+                    or name.endswith("State")
+                    or name.endswith("Result")
+                    or name.endswith("Response")
+                    or name.endswith("Status")
+                    or name.endswith("Info")
+                    or name.endswith("Data")
+                    or name.endswith("Type")
+                ):
+                    discovered[name] = subdir.name
+        except ImportError:
+            # Skip packages that fail to import
+            pass
+
+    return discovered
+
+
+# Manual exports for backward compatibility and special cases
+# These take precedence over auto-discovered exports
+_MANUAL_EXPORTS = {
     # Response types (direct import from types.py)
     "GpioReadResponse": "types",
     "GpioWriteResponse": "types",
@@ -109,6 +99,10 @@ _EXPORTS = {
     "ControlGraphSlotStatus": "types",
     "ControlGraphStatus": "types",
 }
+
+# Merge discovered with manual exports (manual takes precedence)
+_DISCOVERED = _discover_services()
+_EXPORTS = {**_DISCOVERED, **_MANUAL_EXPORTS}
 
 # Cache for imported modules
 _cache: dict[str, Any] = {}

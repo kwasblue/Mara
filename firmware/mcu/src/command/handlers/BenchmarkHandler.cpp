@@ -4,10 +4,16 @@
 #ifdef FEATURE_BENCHMARK
 
 #include "command/handlers/BenchmarkHandler.h"
+#include "benchmark/BenchmarkModule.h"
 #include "benchmark/BenchmarkRunner.h"
 #include "benchmark/BenchmarkTypes.h"
+#include "core/ServiceContext.h"
 #include "core/Debug.h"
 #include <Arduino.h>
+
+void BenchmarkHandler::init(mara::ServiceContext& ctx) {
+    module_ = static_cast<benchmark::BenchmarkModule*>(ctx.benchmark);
+}
 
 void BenchmarkHandler::handleStart(JsonVariantConst payload, CommandContext& ctx) {
     // Parse test_id (required)
@@ -50,7 +56,7 @@ void BenchmarkHandler::handleStart(JsonVariantConst payload, CommandContext& ctx
     }
 
     // Queue the benchmark
-    if (!module_.queueBenchmark(config)) {
+    if (!module_->queueBenchmark(config)) {
         ctx.sendError("CMD_BENCH_START", "queue_full");
         return;
     }
@@ -62,12 +68,12 @@ void BenchmarkHandler::handleStart(JsonVariantConst payload, CommandContext& ctx
     resp["test_id"] = testIdRaw;
     resp["iterations"] = config.iterations;
     resp["warmup"] = config.warmup;
-    resp["queue_depth"] = module_.getQueueDepth();
+    resp["queue_depth"] = module_->getQueueDepth();
     ctx.sendAck("CMD_BENCH_START", true, resp);
 }
 
 void BenchmarkHandler::handleStop(CommandContext& ctx) {
-    module_.cancelAll();
+    module_->cancelAll();
 
     DBG_PRINTLN("[BENCH_HANDLER] All benchmarks cancelled");
 
@@ -77,8 +83,8 @@ void BenchmarkHandler::handleStop(CommandContext& ctx) {
 }
 
 void BenchmarkHandler::handleStatus(CommandContext& ctx) {
-    benchmark::BenchState state = module_.getState();
-    benchmark::TestId activeTest = module_.getActiveTest();
+    benchmark::BenchState state = module_->getState();
+    benchmark::TestId activeTest = module_->getActiveTest();
 
     JsonDocument resp;
     resp["state"] = static_cast<uint8_t>(state);
@@ -93,8 +99,8 @@ void BenchmarkHandler::handleStatus(CommandContext& ctx) {
         }
     }();
     resp["active_test"] = static_cast<uint8_t>(activeTest);
-    resp["queue_depth"] = module_.getQueueDepth();
-    resp["result_count"] = module_.getResultCount();
+    resp["queue_depth"] = module_->getQueueDepth();
+    resp["result_count"] = module_->getResultCount();
     resp["registered_tests"] = benchmark::BenchmarkRunner::instance().registeredCount();
 
     ctx.sendAck("CMD_BENCH_STATUS", true, resp);
@@ -128,7 +134,7 @@ void BenchmarkHandler::handleGetResults(JsonVariantConst payload, CommandContext
     }
 
     const benchmark::BenchResult* results[benchmark::RESULT_HISTORY_SIZE];
-    size_t count = module_.getResults(results, maxResults);
+    size_t count = module_->getResults(results, maxResults);
 
     JsonDocument resp;
     JsonArray arr = resp["results"].to<JsonArray>();
@@ -161,12 +167,12 @@ void BenchmarkHandler::handleGetResults(JsonVariantConst payload, CommandContext
     }
 
     resp["count"] = count;
-    resp["available"] = module_.getResultCount();
+    resp["available"] = module_->getResultCount();
     ctx.sendAck("CMD_BENCH_GET_RESULTS", true, resp);
 }
 
 void BenchmarkHandler::handleRunBootTests(CommandContext& ctx) {
-    module_.runBootTests();
+    module_->runBootTests();
 
     DBG_PRINTLN("[BENCH_HANDLER] Boot tests scheduled");
 

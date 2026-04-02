@@ -5,11 +5,15 @@
 
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
-#include "module/ControlModule.h"
+
+// Forward declaration
+class ControlModule;
 
 class ControlHandler : public ICommandHandler {
 public:
-    ControlHandler() : controlModule_(nullptr) {}
+    ControlHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     void setControlModule(ControlModule* cm) { controlModule_ = cm; }
 

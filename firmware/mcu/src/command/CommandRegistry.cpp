@@ -6,6 +6,7 @@
 #include "motor/MotionController.h"
 #include "module/ControlModule.h"
 #include "control/SignalBus.h"
+#include "core/ServiceContext.h"
 #include <Arduino.h>
 
 CommandRegistry* CommandRegistry::s_instance = nullptr;
@@ -30,6 +31,16 @@ void CommandRegistry::registerHandler(ICommandHandler* handler) {
     if (handler) {
         handlers_.push_back(handler);
         DBG_PRINTF("[REG] Registered legacy handler: %s\n", handler->name());
+    }
+}
+
+void CommandRegistry::initAll(mara::ServiceContext& ctx) {
+    DBG_PRINTF("[REG] Initializing %d command handlers\n", (int)handlers_.size());
+    for (auto* handler : handlers_) {
+        if (handler) {
+            handler->init(ctx);
+            DBG_PRINTF("[REG] Initialized handler: %s\n", handler->name());
+        }
     }
 }
 

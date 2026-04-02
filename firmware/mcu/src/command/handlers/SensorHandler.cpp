@@ -2,8 +2,18 @@
 // Implementation of SensorHandler methods
 
 #include "command/handlers/SensorHandler.h"
+#include "sensor/UltrasonicManager.h"
+#include "sensor/EncoderManager.h"
+#include "sensor/ImuManager.h"
+#include "core/ServiceContext.h"
 #include "config/PinConfig.h"
 #include "core/Debug.h"
+
+void SensorHandler::init(mara::ServiceContext& ctx) {
+    ultrasonic_ = ctx.ultrasonic;
+    encoder_ = ctx.encoder;
+    imu_ = ctx.imu;
+}
 
 #if HAS_I2C
 namespace {
@@ -35,7 +45,7 @@ const char* classifyI2cDevice(uint8_t address, uint8_t whoAmI, bool whoOk, bool 
 
 void SensorHandler::handleImuRead(CommandContext& ctx) {
     JsonDocument resp;
-    const bool online = imu_.isOnline();
+    const bool online = imu_->isOnline();
     resp["online"] = online;
 
     if (!online) {
@@ -45,7 +55,7 @@ void SensorHandler::handleImuRead(CommandContext& ctx) {
     }
 
     ImuManager::Sample sample;
-    const bool ok = imu_.readSample(sample);
+    const bool ok = imu_->readSample(sample);
     resp["ax_g"] = ok ? sample.ax_g : 0.0f;
     resp["ay_g"] = ok ? sample.ay_g : 0.0f;
     resp["az_g"] = ok ? sample.az_g : 0.0f;
@@ -63,7 +73,7 @@ void SensorHandler::handleImuRead(CommandContext& ctx) {
 #if HAS_I2C
 void SensorHandler::handleI2cScan(CommandContext& ctx) {
     JsonDocument resp;
-    auto* bus = imu_.hal();
+    auto* bus = imu_->hal();
     if (!bus) {
         resp["error"] = "i2c_unavailable";
         ctx.sendAck("CMD_I2C_SCAN", false, resp);
@@ -72,8 +82,8 @@ void SensorHandler::handleI2cScan(CommandContext& ctx) {
 
     JsonArray found = resp["addresses"].to<JsonArray>();
     JsonArray devices = resp["devices"].to<JsonArray>();
-    bool imuOnline = imu_.isOnline();
-    uint8_t imuAddr = imu_.address();
+    bool imuOnline = imu_->isOnline();
+    uint8_t imuAddr = imu_->address();
 
     for (uint8_t address = 0x08; address <= 0x77; ++address) {
         if (!bus->devicePresent(address)) {
@@ -135,7 +145,7 @@ void SensorHandler::handleUltrasonicAttach(JsonVariantConst payload, CommandCont
     if (ok) {
         DBG_PRINTF("[SENSOR] ULTRASONIC_ATTACH id=%d trig=%d echo=%d\n",
                    sensorId, trigPin, echoPin);
-        ok = ultrasonic_.attach(sensorId, trigPin, echoPin);
+        ok = ultrasonic_->attach(sensorId, trigPin, echoPin);
     } else {
         DBG_PRINTF("[SENSOR] ULTRASONIC_ATTACH: unknown sensorId=%d\n", sensorId);
     }
@@ -153,8 +163,8 @@ void SensorHandler::handleUltrasonicAttach(JsonVariantConst payload, CommandCont
 void SensorHandler::handleUltrasonicRead(JsonVariantConst payload, CommandContext& ctx) {
     int sensorId = payload["sensor_id"] | 0;
 
-    const bool attached = ultrasonic_.isAttached(sensorId);
-    float distCm = ultrasonic_.readDistanceCm(sensorId);
+    const bool attached = ultrasonic_->isAttached(sensorId);
+    float distCm = ultrasonic_->readDistanceCm(sensorId);
     bool ok = attached && (distCm >= 0.0f);
 
     DBG_PRINTF("[SENSOR] ULTRASONIC_READ id=%d attached=%d dist=%.2f ok=%d\n",
@@ -172,7 +182,7 @@ void SensorHandler::handleUltrasonicRead(JsonVariantConst payload, CommandContex
 
 void SensorHandler::handleUltrasonicDetach(JsonVariantConst payload, CommandContext& ctx) {
     int sensorId = payload["sensor_id"] | 0;
-    const bool ok = ultrasonic_.detach(sensorId);
+    const bool ok = ultrasonic_->detach(sensorId);
 
     DBG_PRINTF("[SENSOR] ULTRASONIC_DETACH id=%d ok=%d\n", sensorId, (int)ok);
 
@@ -192,7 +202,7 @@ void SensorHandler::handleEncoderAttach(JsonVariantConst payload, CommandContext
     DBG_PRINTF("[SENSOR] ENCODER_ATTACH id=%d pinA=%d pinB=%d\n",
                encoderId, pinA, pinB);
 
-    encoder_.attach(
+    encoder_->attach(
         static_cast<uint8_t>(encoderId),
         static_cast<gpio_num_t>(pinA),
         static_cast<gpio_num_t>(pinB)
@@ -208,7 +218,7 @@ void SensorHandler::handleEncoderAttach(JsonVariantConst payload, CommandContext
 void SensorHandler::handleEncoderRead(JsonVariantConst payload, CommandContext& ctx) {
     int encoderId = payload["encoder_id"] | 0;
 
-    int32_t ticks = encoder_.getCount(static_cast<uint8_t>(encoderId));
+    int32_t ticks = encoder_->getCount(static_cast<uint8_t>(encoderId));
 
     DBG_PRINTF("[SENSOR] ENCODER_READ id=%d ticks=%ld\n", encoderId, (long)ticks);
 
@@ -222,7 +232,7 @@ void SensorHandler::handleEncoderReset(JsonVariantConst payload, CommandContext&
     int encoderId = payload["encoder_id"] | 0;
 
     DBG_PRINTF("[SENSOR] ENCODER_RESET id=%d\n", encoderId);
-    encoder_.reset(static_cast<uint8_t>(encoderId));
+    encoder_->reset(static_cast<uint8_t>(encoderId));
 
     JsonDocument resp;
     resp["encoder_id"] = encoderId;

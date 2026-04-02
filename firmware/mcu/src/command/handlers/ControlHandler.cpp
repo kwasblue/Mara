@@ -2,9 +2,15 @@
 // Implementation of ControlHandler methods
 
 #include "command/handlers/ControlHandler.h"
+#include "module/ControlModule.h"
+#include "core/ServiceContext.h"
 #include "command/decoders/ControlDecoders.h"
 #include "core/Debug.h"
 #include "persistence/McuPersistence.h"
+
+void ControlHandler::init(mara::ServiceContext& ctx) {
+    controlModule_ = ctx.control;
+}
 
 // -------------------------------------------------------------------------
 // Signal Commands

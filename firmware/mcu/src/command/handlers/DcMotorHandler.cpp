@@ -2,7 +2,13 @@
 // Implementation of DcMotorHandler methods
 
 #include "command/handlers/DcMotorHandler.h"
+#include "motor/DcMotorManager.h"
+#include "core/ServiceContext.h"
 #include "core/Debug.h"
+
+void DcMotorHandler::init(mara::ServiceContext& ctx) {
+    dc_ = ctx.dcMotor;
+}
 
 void DcMotorHandler::handleSetSpeed(JsonVariantConst payload, CommandContext& ctx) {
     if (!ctx.mode.canMove()) {
@@ -23,7 +29,7 @@ void DcMotorHandler::handleSetSpeed(JsonVariantConst payload, CommandContext& ct
     if (ctx.intents) {
         ctx.intents->setDcMotorIntent(static_cast<uint8_t>(motorId), speed, now_ms);
     } else {
-        ok = dc_.setSpeed(static_cast<uint8_t>(motorId), speed);  // Fallback
+        ok = dc_->setSpeed(static_cast<uint8_t>(motorId), speed);  // Fallback
     }
 
     JsonDocument resp;
@@ -39,7 +45,7 @@ void DcMotorHandler::handleStop(JsonVariantConst payload, CommandContext& ctx) {
     int motorId = payload["motor_id"] | 0;
 
     DBG_PRINTF("[DC] STOP motor=%d\n", motorId);
-    dc_.stop(static_cast<uint8_t>(motorId));
+    dc_->stop(static_cast<uint8_t>(motorId));
 
     JsonDocument resp;
     resp["motor_id"] = motorId;
@@ -51,7 +57,7 @@ void DcMotorHandler::handleVelPidEnable(JsonVariantConst payload, CommandContext
     bool enable = payload["enable"] | true;
 
     DBG_PRINTF("[DC] VEL_PID_ENABLE motor=%d enable=%d\n", motorId, (int)enable);
-    bool ok = dc_.enableVelocityPid(static_cast<uint8_t>(motorId), enable);
+    bool ok = dc_->enableVelocityPid(static_cast<uint8_t>(motorId), enable);
 
     JsonDocument resp;
     resp["motor_id"] = motorId;
@@ -74,7 +80,7 @@ void DcMotorHandler::handleSetVelTarget(JsonVariantConst payload, CommandContext
     DBG_PRINTF("[DC] SET_VEL_TARGET motor=%d omega=%.3f\n", motorId, omega);
 
     ctx.mode.onMotionCommand(ctx.now_ms());
-    bool ok = dc_.setVelocityTarget(static_cast<uint8_t>(motorId), omega);
+    bool ok = dc_->setVelocityTarget(static_cast<uint8_t>(motorId), omega);
 
     JsonDocument resp;
     resp["motor_id"] = motorId;
@@ -94,7 +100,7 @@ void DcMotorHandler::handleSetVelGains(JsonVariantConst payload, CommandContext&
     DBG_PRINTF("[DC] SET_VEL_GAINS motor=%d kp=%.4f ki=%.4f kd=%.4f\n",
                motorId, kp, ki, kd);
 
-    bool ok = dc_.setVelocityGains(static_cast<uint8_t>(motorId), kp, ki, kd);
+    bool ok = dc_->setVelocityGains(static_cast<uint8_t>(motorId), kp, ki, kd);
 
     JsonDocument resp;
     resp["motor_id"] = motorId;

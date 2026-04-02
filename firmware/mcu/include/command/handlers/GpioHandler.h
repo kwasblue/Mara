@@ -5,13 +5,16 @@
 
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
-#include "hw/GpioManager.h"
-#include "hw/PwmManager.h"
+
+// Forward declarations
+class GpioManager;
+class PwmManager;
 
 class GpioHandler : public ICommandHandler {
 public:
-    GpioHandler(GpioManager& gpio, PwmManager& pwm)
-        : gpio_(gpio), pwm_(pwm) {}
+    GpioHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     const char* name() const override { return "GpioHandler"; }
 
@@ -44,8 +47,8 @@ public:
     }
 
 private:
-    GpioManager& gpio_;
-    PwmManager& pwm_;
+    GpioManager* gpio_ = nullptr;
+    PwmManager* pwm_ = nullptr;
 
     // Implemented in GpioHandler.cpp
     void handleGpioWrite(JsonVariantConst payload, CommandContext& ctx);

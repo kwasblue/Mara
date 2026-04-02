@@ -2,9 +2,15 @@
 // Implementation of ObserverHandler methods
 
 #include "command/handlers/ObserverHandler.h"
+#include "module/ControlModule.h"
+#include "core/ServiceContext.h"
 #include "command/decoders/ObserverDecoders.h"
 #include "command/decoders/ControlDecoders.h"
 #include <cstring>
+
+void ObserverHandler::init(mara::ServiceContext& ctx) {
+    controlModule_ = ctx.control;
+}
 
 void ObserverHandler::handleConfig(JsonVariantConst payload, CommandContext& ctx) {
     static constexpr const char* ACK = "CMD_OBSERVER_CONFIG";

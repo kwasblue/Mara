@@ -5,11 +5,15 @@
 
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
-#include "command/ModeManager.h"
+
+// Forward declaration
+class ModeManager;
 
 class SafetyHandler : public ICommandHandler {
 public:
-    explicit SafetyHandler(ModeManager& mode) : mode_(mode) {}
+    SafetyHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     const char* name() const override { return "SafetyHandler"; }
 
@@ -52,7 +56,7 @@ public:
     }
 
 private:
-    ModeManager& mode_;
+    ModeManager* mode_ = nullptr;
 
     // Implemented in SafetyHandler.cpp
     void handleHeartbeat(CommandContext& ctx);

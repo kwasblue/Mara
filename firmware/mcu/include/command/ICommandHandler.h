@@ -6,16 +6,40 @@
 #include <ArduinoJson.h>
 #include "config/CommandDefs.h"
 
-// Forward declaration
+// Forward declarations
 struct CommandContext;
+namespace mara { struct ServiceContext; }
 
 /**
  * Interface for command handlers.
  * Each handler is responsible for a specific domain (motors, sensors, etc.)
+ *
+ * Self-Registration Pattern:
+ * Handlers can use default constructors and receive dependencies via init().
+ * This enables self-registration with REGISTER_CMD_HANDLER macro.
+ *
+ * Example:
+ *   class MyHandler : public ICommandHandler {
+ *   public:
+ *       MyHandler() = default;
+ *       void init(mara::ServiceContext& ctx) override {
+ *           myDep_ = ctx.myDep;
+ *       }
+ *       // ... rest of implementation
+ *   };
+ *   REGISTER_CMD_HANDLER(MyHandler);
  */
 class ICommandHandler {
 public:
     virtual ~ICommandHandler() = default;
+
+    /**
+     * Initialize handler with dependencies from ServiceContext.
+     * Called after all handlers are registered, before finalize().
+     * Override this to get dependencies instead of constructor injection.
+     * @param ctx Service context containing all available dependencies
+     */
+    virtual void init(mara::ServiceContext& ctx) { (void)ctx; }
 
     /**
      * Check if this handler can process the given command type.

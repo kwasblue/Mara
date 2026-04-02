@@ -5,7 +5,9 @@
 
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
-#include "module/TelemetryModule.h"
+
+// Forward declaration
+class TelemetryModule;
 
 // Helper to clamp Hz and return whether it was in range
 inline bool clampHz(uint16_t& hz, uint16_t min_hz, uint16_t max_hz) {
@@ -16,8 +18,9 @@ inline bool clampHz(uint16_t& hz, uint16_t min_hz, uint16_t max_hz) {
 
 class TelemetryHandler : public ICommandHandler {
 public:
-    explicit TelemetryHandler(TelemetryModule& telemetry)
-        : telemetry_(telemetry) {}
+    TelemetryHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     const char* name() const override { return "TelemetryHandler"; }
 
@@ -54,7 +57,7 @@ public:
     }
 
 private:
-    TelemetryModule& telemetry_;
+    TelemetryModule* telemetry_ = nullptr;
 
     // Implemented in TelemetryHandler.cpp
     void handleSetInterval(JsonVariantConst payload, CommandContext& ctx);

@@ -2,26 +2,32 @@
 // Implementation of SafetyHandler methods
 
 #include "command/handlers/SafetyHandler.h"
+#include "command/ModeManager.h"
+#include "core/ServiceContext.h"
 #include "core/Debug.h"
 #include "core/ErrorCodes.h"
 #include <cstring>
 
+void SafetyHandler::init(mara::ServiceContext& ctx) {
+    mode_ = ctx.mode;
+}
+
 void SafetyHandler::handleHeartbeat(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] HEARTBEAT");
-    mode_.onHostHeartbeat(ctx.now_ms());
+    mode_->onHostHeartbeat(ctx.now_ms());
 
     JsonDocument resp;
-    resp["state"] = maraModeToString(mode_.mode());
+    resp["state"] = maraModeToString(mode_->mode());
     ctx.sendAck("CMD_HEARTBEAT", true, resp);
 }
 
 void SafetyHandler::handleArm(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] ARM");
-    mode_.arm();
+    mode_->arm();
 
     JsonDocument resp;
-    resp["state"] = maraModeToString(mode_.mode());
-    bool ok = (mode_.mode() == MaraMode::ARMED);
+    resp["state"] = maraModeToString(mode_->mode());
+    bool ok = (mode_->mode() == MaraMode::ARMED);
     if (ok) {
         ctx.sendAck("CMD_ARM", true, resp);
     } else {
@@ -31,11 +37,11 @@ void SafetyHandler::handleArm(CommandContext& ctx) {
 
 void SafetyHandler::handleDisarm(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] DISARM");
-    mode_.disarm();
+    mode_->disarm();
 
     JsonDocument resp;
-    resp["state"] = maraModeToString(mode_.mode());
-    bool ok = (mode_.mode() == MaraMode::IDLE);
+    resp["state"] = maraModeToString(mode_->mode());
+    bool ok = (mode_->mode() == MaraMode::IDLE);
     if (ok) {
         ctx.sendAck("CMD_DISARM", true, resp);
     } else {
@@ -45,11 +51,11 @@ void SafetyHandler::handleDisarm(CommandContext& ctx) {
 
 void SafetyHandler::handleActivate(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] ACTIVATE");
-    mode_.activate();
+    mode_->activate();
 
     JsonDocument resp;
-    resp["state"] = maraModeToString(mode_.mode());
-    bool ok = (mode_.mode() == MaraMode::ACTIVE);
+    resp["state"] = maraModeToString(mode_->mode());
+    bool ok = (mode_->mode() == MaraMode::ACTIVE);
     if (ok) {
         ctx.sendAck("CMD_ACTIVATE", true, resp);
     } else {
@@ -59,28 +65,28 @@ void SafetyHandler::handleActivate(CommandContext& ctx) {
 
 void SafetyHandler::handleDeactivate(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] DEACTIVATE");
-    mode_.deactivate();
+    mode_->deactivate();
 
     JsonDocument resp;
-    resp["state"] = maraModeToString(mode_.mode());
+    resp["state"] = maraModeToString(mode_->mode());
     ctx.sendAck("CMD_DEACTIVATE", true, resp);
 }
 
 void SafetyHandler::handleEstop(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] ESTOP");
-    mode_.estop();
+    mode_->estop();
 
     JsonDocument resp;
-    resp["state"] = maraModeToString(mode_.mode());
+    resp["state"] = maraModeToString(mode_->mode());
     ctx.sendAck("CMD_ESTOP", true, resp);
 }
 
 void SafetyHandler::handleClearEstop(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] CLEAR_ESTOP");
-    bool cleared = mode_.clearEstop();
+    bool cleared = mode_->clearEstop();
 
     JsonDocument resp;
-    resp["state"] = maraModeToString(mode_.mode());
+    resp["state"] = maraModeToString(mode_->mode());
     if (cleared) {
         ctx.sendAck("CMD_CLEAR_ESTOP", true, resp);
     } else {
@@ -103,16 +109,16 @@ void SafetyHandler::handleSetMode(JsonVariantConst payload, CommandContext& ctx)
     bool ok = true;
     ErrorCode errorCode = ErrorCode::OK;
 
-    if (mode_.isEstopped()) {
+    if (mode_->isEstopped()) {
         ok = false;
         errorCode = ErrorCode::IN_ESTOP;
     } else if (strcmp(modeStr, "IDLE") == 0) {
-        mode_.disarm();
+        mode_->disarm();
     } else if (strcmp(modeStr, "ARMED") == 0) {
-        mode_.arm();
+        mode_->arm();
     } else if (strcmp(modeStr, "ACTIVE") == 0) {
-        mode_.arm();
-        mode_.activate();
+        mode_->arm();
+        mode_->activate();
     } else {
         ok = false;
         errorCode = ErrorCode::INVALID_PARAMETER;
@@ -120,7 +126,7 @@ void SafetyHandler::handleSetMode(JsonVariantConst payload, CommandContext& ctx)
 
     JsonDocument resp;
     resp["mode"] = modeStr;
-    resp["state"] = maraModeToString(mode_.mode());
+    resp["state"] = maraModeToString(mode_->mode());
     if (ok) {
         ctx.sendAck("CMD_SET_MODE", true, resp);
     } else {
@@ -131,10 +137,10 @@ void SafetyHandler::handleSetMode(JsonVariantConst payload, CommandContext& ctx)
 void SafetyHandler::handleGetState(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] GET_STATE");
 
-    MaraMode current = mode_.mode();
+    MaraMode current = mode_->mode();
     bool armed = (current == MaraMode::ARMED || current == MaraMode::ACTIVE);
     bool active = (current == MaraMode::ACTIVE);
-    bool estop = mode_.isEstopped();
+    bool estop = mode_->isEstopped();
 
     JsonDocument resp;
     resp["mode"] = maraModeToString(current);
@@ -151,12 +157,12 @@ void SafetyHandler::handleSetSafetyTimeouts(JsonVariantConst payload, CommandCon
     DBG_PRINTF("[SAFETY] SET_SAFETY_TIMEOUTS host=%lu motion=%lu\n",
                (unsigned long)host_ms, (unsigned long)motion_ms);
 
-    mode_.setTimeouts(host_ms, motion_ms);
+    mode_->setTimeouts(host_ms, motion_ms);
 
     JsonDocument resp;
-    resp["host_timeout_ms"] = mode_.getHostTimeout();
-    resp["motion_timeout_ms"] = mode_.getMotionTimeout();
-    resp["enabled"] = mode_.timeoutsEnabled();
+    resp["host_timeout_ms"] = mode_->getHostTimeout();
+    resp["motion_timeout_ms"] = mode_->getMotionTimeout();
+    resp["enabled"] = mode_->timeoutsEnabled();
     ctx.sendAck("CMD_SET_SAFETY_TIMEOUTS", true, resp);
 }
 
@@ -164,8 +170,8 @@ void SafetyHandler::handleGetSafetyTimeouts(CommandContext& ctx) {
     DBG_PRINTLN("[SAFETY] GET_SAFETY_TIMEOUTS");
 
     JsonDocument resp;
-    resp["host_timeout_ms"] = mode_.getHostTimeout();
-    resp["motion_timeout_ms"] = mode_.getMotionTimeout();
-    resp["enabled"] = mode_.timeoutsEnabled();
+    resp["host_timeout_ms"] = mode_->getHostTimeout();
+    resp["motion_timeout_ms"] = mode_->getMotionTimeout();
+    resp["enabled"] = mode_->timeoutsEnabled();
     ctx.sendAck("CMD_GET_SAFETY_TIMEOUTS", true, resp);
 }

@@ -2,11 +2,19 @@
 // Implementation of ServoHandler methods
 
 #include "command/handlers/ServoHandler.h"
+#include "motor/ServoManager.h"
+#include "motor/MotionController.h"
+#include "core/ServiceContext.h"
 #include "module/LoggingModule.h"
 #include "config/PinConfig.h"
 #include "core/Debug.h"
 #include <cmath>
 #include <cstring>
+
+void ServoHandler::init(mara::ServiceContext& ctx) {
+    servo_ = ctx.servo;
+    motion_ = ctx.motion;
+}
 
 void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
     int servoId = payload["servo_id"] | 0;
@@ -33,7 +41,7 @@ void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
     if (ok) {
         MARA_LOG_DEBUG("servo", "ATTACH id=%d pin=%d min=%d max=%d requested=%d",
                        servoId, pin, minUs, maxUs, requestedChannel);
-        servo_.attach(servoId, pin, minUs, maxUs);
+        servo_->attach(servoId, pin, minUs, maxUs);
     } else {
         MARA_LOG_WARN("servo", "ATTACH: unknown servoId=%d", servoId);
     }
@@ -55,7 +63,7 @@ void ServoHandler::handleDetach(JsonVariantConst payload, CommandContext& ctx) {
     int servoId = payload["servo_id"] | 0;
 
     MARA_LOG_DEBUG("servo", "DETACH id=%d", servoId);
-    servo_.detach(servoId);
+    servo_->detach(servoId);
 
     JsonDocument resp;
     resp["servo_id"] = servoId;
@@ -85,9 +93,9 @@ void ServoHandler::handleSetAngle(JsonVariantConst payload, CommandContext& ctx)
     } else {
         // Fallback for non-intent path
         if (durMs <= 0) {
-            servo_.setAngle(servoId, angle);
+            servo_->setAngle(servoId, angle);
         } else {
-            motion_.setServoTarget(servoId, angle, durMs);
+            motion_->setServoTarget(servoId, angle, durMs);
         }
     }
 

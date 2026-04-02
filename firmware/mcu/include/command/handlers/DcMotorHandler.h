@@ -5,11 +5,15 @@
 
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
-#include "motor/DcMotorManager.h"
+
+// Forward declaration
+class DcMotorManager;
 
 class DcMotorHandler : public ICommandHandler {
 public:
-    explicit DcMotorHandler(DcMotorManager& dc) : dc_(dc) {}
+    DcMotorHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     const char* name() const override { return "DcMotorHandler"; }
 
@@ -38,7 +42,7 @@ public:
     }
 
 private:
-    DcMotorManager& dc_;
+    DcMotorManager* dc_ = nullptr;
 
     // Implemented in DcMotorHandler.cpp
     void handleSetSpeed(JsonVariantConst payload, CommandContext& ctx);

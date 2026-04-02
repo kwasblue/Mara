@@ -7,7 +7,9 @@
 
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
-#include "benchmark/BenchmarkModule.h"
+
+// Forward declaration
+namespace benchmark { class BenchmarkModule; }
 
 /**
  * Handler for benchmark commands.
@@ -23,8 +25,9 @@
  */
 class BenchmarkHandler : public ICommandHandler {
 public:
-    explicit BenchmarkHandler(benchmark::BenchmarkModule& module)
-        : module_(module) {}
+    BenchmarkHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     const char* name() const override { return "BenchmarkHandler"; }
 
@@ -57,7 +60,7 @@ public:
     }
 
 private:
-    benchmark::BenchmarkModule& module_;
+    benchmark::BenchmarkModule* module_ = nullptr;
 
     // Implemented in BenchmarkHandler.cpp
     void handleStart(JsonVariantConst payload, CommandContext& ctx);

@@ -5,14 +5,17 @@
 
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
-#include "sensor/UltrasonicManager.h"
-#include "sensor/EncoderManager.h"
-#include "sensor/ImuManager.h"
+
+// Forward declarations
+class UltrasonicManager;
+class EncoderManager;
+class ImuManager;
 
 class SensorHandler : public ICommandHandler {
 public:
-    SensorHandler(UltrasonicManager& ultrasonic, EncoderManager& encoder, ImuManager& imu)
-        : ultrasonic_(ultrasonic), encoder_(encoder), imu_(imu) {}
+    SensorHandler() = default;
+
+    void init(mara::ServiceContext& ctx) override;
 
     const char* name() const override { return "SensorHandler"; }
 
@@ -47,9 +50,9 @@ public:
     }
 
 private:
-    UltrasonicManager& ultrasonic_;
-    EncoderManager& encoder_;
-    ImuManager& imu_;
+    UltrasonicManager* ultrasonic_ = nullptr;
+    EncoderManager* encoder_ = nullptr;
+    ImuManager* imu_ = nullptr;
 
     // Implemented in SensorHandler.cpp
     void handleImuRead(CommandContext& ctx);

@@ -18,7 +18,21 @@
 #include "command/MessageRouter.h"
 #include "command/CommandRegistry.h"
 #include "command/HandlerRegistry.h"
-#include "command/handlers/AllHandlers.h"
+// Forward declarations for handlers (no longer need AllHandlers.h)
+class SafetyHandler;
+class MotionHandler;
+class GpioHandler;
+class ServoHandler;
+class StepperHandler;
+class DcMotorHandler;
+class SensorHandler;
+class TelemetryHandler;
+class ControlHandler;
+class ObserverHandler;
+class IdentityHandler;
+#ifdef FEATURE_BENCHMARK
+class BenchmarkHandler;
+#endif
 #include "config/FeatureFlags.h"
 
 #include "hw/GpioManager.h"
@@ -272,6 +286,10 @@ struct ServiceStorage {
 
     /// Initialize command registry and handlers.
     void initCommands();
+
+    /// Initialize all command handlers with dependencies from ServiceContext.
+    /// Call after buildContext() to inject dependencies.
+    void initHandlers(ServiceContext& ctx);
 
     /// Initialize control module.
     void initControl();

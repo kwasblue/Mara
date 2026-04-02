@@ -2,14 +2,22 @@
 // Implementation of StepperHandler methods
 
 #include "command/handlers/StepperHandler.h"
+#include "motor/StepperManager.h"
+#include "motor/MotionController.h"
+#include "core/ServiceContext.h"
 #include "core/Debug.h"
+
+void StepperHandler::init(mara::ServiceContext& ctx) {
+    stepper_ = ctx.stepper;
+    motion_ = ctx.motion;
+}
 
 void StepperHandler::handleEnable(JsonVariantConst payload, CommandContext& ctx) {
     int motorId = payload["motor_id"] | 0;
     bool enable = payload["enable"] | true;
 
     DBG_PRINTF("[STEPPER] ENABLE motor=%d enable=%d\n", motorId, (int)enable);
-    stepper_.setEnabled(motorId, enable);
+    stepper_->setEnabled(motorId, enable);
 
     JsonDocument resp;
     resp["motor_id"] = motorId;
@@ -37,7 +45,7 @@ void StepperHandler::handleMoveRel(JsonVariantConst payload, CommandContext& ctx
     if (ctx.intents) {
         ctx.intents->setStepperIntent(motorId, steps, speed, now_ms);
     } else {
-        motion_.moveStepperRelative(motorId, steps, speed);  // Fallback
+        motion_->moveStepperRelative(motorId, steps, speed);  // Fallback
     }
 
     JsonDocument resp;
@@ -51,7 +59,7 @@ void StepperHandler::handleStop(JsonVariantConst payload, CommandContext& ctx) {
     int motorId = payload["motor_id"] | 0;
 
     DBG_PRINTF("[STEPPER] STOP motor=%d\n", motorId);
-    stepper_.stop(motorId);
+    stepper_->stop(motorId);
 
     JsonDocument resp;
     resp["motor_id"] = motorId;

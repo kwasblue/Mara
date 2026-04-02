@@ -22,6 +22,7 @@ class ModeManager;
 class MotionController;
 class ControlModule;
 class HandlerRegistry;
+namespace mara { struct ServiceContext; }
 namespace persistence {
 class McuPersistence;
 }
@@ -87,6 +88,13 @@ public:
      * Set MCU persistence surface for command handlers that query/reset diagnostics.
      */
     void setPersistence(persistence::McuPersistence* persistence) { ctx_.persistence = persistence; }
+
+    /**
+     * Initialize all registered handlers with dependencies.
+     * Call this after all handlers are registered and before finalize().
+     * @param ctx Service context containing all available dependencies
+     */
+    void initAll(mara::ServiceContext& ctx);
 
     /**
      * Process incoming JSON command.

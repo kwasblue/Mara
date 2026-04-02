@@ -55,7 +55,7 @@ def test_http_runtime_connect_state_and_disconnect_round_trip():
             body = state.json()
             assert body["connected"] is True
             assert body["firmware"] == "fake-fw"
-            assert body["robot_state"]["value"] == "ARMED"
+            assert body["robot_state"]["value"] == "IDLE"
 
             disconnect = client.post("/disconnect")
             assert disconnect.status_code == 200

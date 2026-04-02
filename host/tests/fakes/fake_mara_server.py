@@ -232,6 +232,15 @@ class FakeMaraTcpServer:
                     ack.setdefault("slots", slots)
                 elif cmd_type == "CMD_MCU_DIAGNOSTICS_QUERY":
                     ack.update(json.loads(json.dumps(self._mcu_persistence_snapshot)))
+                elif cmd_type == "CMD_GET_STATE":
+                    ack.setdefault("mode", "IDLE")
+                    ack.setdefault("armed", False)
+                    ack.setdefault("active", False)
+                    ack.setdefault("estop", False)
+                elif cmd_type == "CMD_ARM":
+                    ack.setdefault("state", "ARMED")
+                elif cmd_type == "CMD_DISARM":
+                    ack.setdefault("state", "IDLE")
                 elif cmd_type == "CMD_MCU_DIAGNOSTICS_RESET":
                     diagnostics = self._mcu_persistence_snapshot["diagnostics"]
                     diagnostics.update(

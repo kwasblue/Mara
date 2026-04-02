@@ -13,7 +13,20 @@
 #include "module/TelemetryModule.h"
 #include "motor/MotionController.h"
 #include "command/CommandRegistry.h"
-#include "command/handlers/AllHandlers.h"
+
+// Individual handler headers (AllHandlers.h was removed in favor of self-registration)
+#include "command/handlers/SafetyHandler.h"
+#include "command/handlers/MotionHandler.h"
+#include "command/handlers/GpioHandler.h"
+#include "command/handlers/ServoHandler.h"
+#include "command/handlers/StepperHandler.h"
+#include "command/handlers/DcMotorHandler.h"
+#include "command/handlers/SensorHandler.h"
+#include "command/handlers/TelemetryHandler.h"
+#include "command/handlers/ControlHandler.h"
+#include "command/handlers/ObserverHandler.h"
+#include "command/handlers/IdentityHandler.h"
+#include "core/ServiceContext.h"
 
 // Native env does not build src/ by default. Pull in the handler/registry
 // implementation slices this suite exercises.
@@ -109,17 +122,46 @@ void setUp() {
     // Create registry and handlers
     pRegistry = new CommandRegistry(*pBus, *pMode, *pMotion);
 
-    pSafetyHandler = new SafetyHandler(*pMode);
-    pMotionHandler = new MotionHandler(*pMotion);
-    pGpioHandler = new GpioHandler(*pGpio, *pPwm);
-    pServoHandler = new ServoHandler(*pServo, *pMotion);
-    pStepperHandler = new StepperHandler(*pStepper, *pMotion);
-    pDcMotorHandler = new DcMotorHandler(*pDc);
-    pSensorHandler = new SensorHandler(*pUltrasonic, *pEncoder, *pImu);
-    pTelemetryHandler = new TelemetryHandler(*pTelemetry);
+    // Create handlers with default constructors (refactored to use init())
+    pSafetyHandler = new SafetyHandler();
+    pMotionHandler = new MotionHandler();
+    pGpioHandler = new GpioHandler();
+    pServoHandler = new ServoHandler();
+    pStepperHandler = new StepperHandler();
+    pDcMotorHandler = new DcMotorHandler();
+    pSensorHandler = new SensorHandler();
+    pTelemetryHandler = new TelemetryHandler();
     pControlHandler = new ControlHandler();
     pObserverHandler = new ObserverHandler();
     pIdentityHandler = new IdentityHandler();
+
+    // Build ServiceContext for handler initialization
+    mara::ServiceContext ctx{};
+    ctx.bus = pBus;
+    ctx.mode = pMode;
+    ctx.gpio = pGpio;
+    ctx.pwm = pPwm;
+    ctx.servo = pServo;
+    ctx.stepper = pStepper;
+    ctx.dcMotor = pDc;
+    ctx.motion = pMotion;
+    ctx.ultrasonic = pUltrasonic;
+    ctx.encoder = pEncoder;
+    ctx.imu = pImu;
+    ctx.telemetry = pTelemetry;
+
+    // Initialize handlers with context
+    pSafetyHandler->init(ctx);
+    pMotionHandler->init(ctx);
+    pGpioHandler->init(ctx);
+    pServoHandler->init(ctx);
+    pStepperHandler->init(ctx);
+    pDcMotorHandler->init(ctx);
+    pSensorHandler->init(ctx);
+    pTelemetryHandler->init(ctx);
+    pControlHandler->init(ctx);
+    pObserverHandler->init(ctx);
+    pIdentityHandler->init(ctx);
 
     // Subscribe capture first
     pBus->subscribe(&captureTx);

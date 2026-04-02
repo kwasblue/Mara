@@ -214,7 +214,9 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                 count = _U16_FMT.unpack_from(body, 0)[0]
                 signals = []
                 pos = 2
-                for _ in range(count):
+                # Bound loop iterations by available data (prevents 65535-iteration range)
+                max_entries = (len(body) - pos) // _SIGNAL_FMT.size
+                for _ in range(min(count, max_entries)):
                     if pos + _SIGNAL_FMT.size > len(body):
                         break
                     sig_id, value, sig_ts = _SIGNAL_FMT.unpack_from(body, pos)
@@ -228,13 +230,17 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                 slot_count = body[0]
                 observers = []
                 pos = 1
-                for _ in range(slot_count):
+                # Bound by minimum entry size (header only, states are variable)
+                max_entries = (len(body) - pos) // _OBSERVER_HDR_FMT.size
+                for _ in range(min(slot_count, max_entries)):
                     if pos + _OBSERVER_HDR_FMT.size > len(body):
                         break
                     slot, enabled, num_states = _OBSERVER_HDR_FMT.unpack_from(body, pos)
                     pos += _OBSERVER_HDR_FMT.size
                     states = []
-                    for _ in range(num_states):
+                    # Bound inner loop by available data
+                    max_states = (len(body) - pos) // _FLOAT_FMT.size
+                    for _ in range(min(num_states, max_states)):
                         if pos + _FLOAT_FMT.size > len(body):
                             break
                         (x,) = _FLOAT_FMT.unpack_from(body, pos)
@@ -249,7 +255,9 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                 slot_count = body[0]
                 slots = []
                 pos = 1
-                for _ in range(slot_count):
+                # Bound loop iterations by available data
+                max_entries = (len(body) - pos) // _SLOT_FMT.size
+                for _ in range(min(slot_count, max_entries)):
                     if pos + _SLOT_FMT.size > len(body):
                         break
                     slot, enabled, ok, run_count = _SLOT_FMT.unpack_from(body, pos)

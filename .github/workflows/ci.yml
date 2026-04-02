@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+    branches: [main, openclaw/workbench]
+  pull_request:
+
+jobs:
+  test-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # Create venv expected by Makefile, then use make targets
+      - name: Create venv and install
+        run: |
+          python -m venv host/.venv
+          host/.venv/bin/pip install -e "host/[dev]"
+      - name: Run host tests
+        run: host/.venv/bin/pytest host/tests/ -m "not hil" -x --tb=short
+
+  test-firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PlatformIO
+        run: pip install platformio
+      - name: Run firmware tests
+        run: make test-mcu

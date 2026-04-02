@@ -176,7 +176,10 @@ bool LuenbergerObserver::setL(const float* L, size_t len) {
 
 bool LuenbergerObserver::setParam(const char* key, float value) {
     if (!key || strlen(key) < 3) return false;
-    
+
+    // Parse matrix key as "Xrc" where X is matrix (A/B/C/L), r is row, c is col.
+    // Note: This intentionally only supports single-digit indices (0-9) via strlen>=3 check.
+    // With MAX_STATES=8, MAX_INPUTS=4, MAX_OUTPUTS=4, this is sufficient for current use.
     char matrix = key[0];
     uint8_t row = key[1] - '0';
     uint8_t col = key[2] - '0';
@@ -270,8 +273,9 @@ void ObserverManager::step(uint32_t now_ms, float dt_s, SignalBus& signals) {
     for (size_t i = 0; i < MAX_OBSERVERS; i++) {
         auto& s = slots_[i];
         if (!s.configured || !s.enabled) continue;
-        
-        // Rate limiting
+
+        // Rate limiting (guard against divide-by-zero even though configure() ensures >= 1)
+        if (s.rate_hz == 0) continue;
         uint32_t period_ms = 1000 / s.rate_hz;
         if (now_ms - s.last_update_ms < period_ms) continue;
         

@@ -313,6 +313,10 @@ class MaraRuntime:
 
         self._ctx = None
         self._store = StateStore()
+        # Lock protects connect/disconnect lifecycle only.
+        # Telemetry callbacks (_on_imu, _on_encoder, _on_state_change) mutate
+        # _store without the lock - this is safe because they run on the same
+        # event loop and are never concurrent with connect/disconnect.
         self._lock = asyncio.Lock()
 
         # Robot abstraction layer (initialized via load_robot)
@@ -371,19 +375,28 @@ class MaraRuntime:
 
                 self._ctx = ctx
 
-                # Update state
+                # Update state - start with UNKNOWN until we query actual state
                 now = datetime.now()
                 self._store.connected = True
                 self._store.connected_at = now
-                self._store.robot_state = FreshValue("ARMED", now, stale_after_s=2.0)
+                self._store.robot_state = FreshValue("UNKNOWN", now, stale_after_s=2.0)
                 self._store.firmware_version = self._ctx.client.firmware_version or ""
                 self._store.protocol_version = self._ctx.client.protocol_version or 0
                 self._store.features = self._ctx.client.features or []
+
+                # Query actual robot state from MCU
+                try:
+                    state_result = await self._ctx.state_service.get_state()
+                    if state_result.ok and state_result.state:
+                        self._store.robot_state = FreshValue(state_result.state, datetime.now(), stale_after_s=2.0)
+                except Exception:
+                    pass  # Keep UNKNOWN if query fails
 
                 # Record event
                 self._store.add_event(EventType.CONNECTED, {
                     "firmware": self._store.firmware_version,
                     "features": self._store.features,
+                    "initial_state": self._store.robot_state.value,
                 })
 
                 return {

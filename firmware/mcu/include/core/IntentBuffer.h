@@ -272,6 +272,10 @@ private:
     SignalIntent signalRing_[MAX_SIGNAL_INTENTS];
     uint8_t signalHead_ = 0;  // Write position
     uint8_t signalTail_ = 0;  // Read position
+
+public:
+    /// Stats for monitoring overflow conditions (accessed atomically)
+    uint32_t signal_overflow_count = 0;  // Number of signals dropped due to full buffer
 };
 
 } // namespace mara

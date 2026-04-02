@@ -133,7 +133,9 @@ void IntentBuffer::queueSignalIntent(uint16_t id, float value, uint32_t now_ms) 
 
     uint8_t next = (signalHead_ + 1) % MAX_SIGNAL_INTENTS;
     if (next == signalTail_) {
+        // Ring buffer full - drop oldest entry and track overflow
         signalTail_ = (signalTail_ + 1) % MAX_SIGNAL_INTENTS;
+        signal_overflow_count++;
     }
 
     signalRing_[signalHead_].id = id;

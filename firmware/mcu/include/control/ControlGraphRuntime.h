@@ -201,18 +201,34 @@ public:
         any_enabled_ = enable;
         for (uint8_t i = 0; i < slot_count_; ++i) {
             slots_[i].enabled = enable;
+            // Reset encoder state on disable to prevent velocity spike on re-enable
+            // (avoids garbage spike from large dt_ms when graph was paused)
+            if (!enable) {
+                runtime_[i].encoder_last_time_ms = 0;
+                runtime_[i].encoder_last_count = 0;
+            }
         }
     }
 
     void step(uint32_t now_ms, const ModeManager* mode, GpioManager* gpio, ServoManager* servo, ImuManager* imu, EncoderManager* encoder = nullptr, SignalBus* signals = nullptr) {
         if (!present_ || !any_enabled_) return;
 
+        // Only run control graph when armed or active - IDLE means connected but
+        // robot is unarmed, so actuator outputs should not be driven
         bool mode_ok = true;
         if (mode) {
             const MaraMode current = mode->mode();
-            mode_ok = (current == MaraMode::IDLE || current == MaraMode::ARMED || current == MaraMode::ACTIVE);
+            mode_ok = (current == MaraMode::ARMED || current == MaraMode::ACTIVE);
         }
         if (!mode_ok) return;
+
+        // Cache IMU sample once per control cycle to avoid multiple I2C reads
+        // when multiple slots use IMU sources
+        ImuManager::Sample cached_imu_sample{};
+        bool imu_sample_valid = false;
+        if (imu) {
+            imu_sample_valid = imu->readSample(cached_imu_sample);
+        }
 
         for (uint8_t i = 0; i < slot_count_; ++i) {
             auto& summary = slots_[i];
@@ -226,7 +242,7 @@ public:
             }
 
             float value = 0.0f;
-            if (!readSource_(slot, imu, encoder, signals, now_ms, value)) {
+            if (!readSource_(slot, cached_imu_sample, imu_sample_valid, encoder, signals, now_ms, value)) {
                 copyString_(slot.error, sizeof(slot.error), "source_read_failed");
                 slot.last_run_ms = now_ms;
                 continue;
@@ -680,16 +696,15 @@ private:
         return true;
     }
 
-    bool readSource_(SlotRuntime& slot, ImuManager* imu, EncoderManager* encoder, SignalBus* signals, uint32_t now_ms, float& value) {
+    bool readSource_(SlotRuntime& slot, const ImuManager::Sample& cached_imu, bool imu_valid, EncoderManager* encoder, SignalBus* signals, uint32_t now_ms, float& value) {
         switch (slot.source) {
             case SourceKind::Constant:
                 value = slot.source_value;
                 return true;
             case SourceKind::ImuAxis: {
-                if (!imu) return false;
-                ImuManager::Sample sample;
-                if (!imu->readSample(sample)) return false;
-                value = (strcmp(slot.imu_axis, "roll") == 0) ? computeRollDeg_(sample) : computePitchDeg_(sample);
+                // Use cached IMU sample from top of step() to avoid multiple I2C reads
+                if (!imu_valid) return false;
+                value = (strcmp(slot.imu_axis, "roll") == 0) ? computeRollDeg_(cached_imu) : computePitchDeg_(cached_imu);
                 return true;
             }
             case SourceKind::SignalRead: {

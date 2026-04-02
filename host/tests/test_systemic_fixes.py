@@ -206,6 +206,7 @@ class TestErrorRecovery:
                 super().__init__()
                 self.read_count = 0
                 self.error_count = 0
+                self.stopped_by_errors = False
 
             def _open(self):
                 pass
@@ -225,15 +226,16 @@ class TestErrorRecovery:
         transport._is_open = True
         transport._stop = False
 
-        # Run reader loop in thread briefly
+        # Run reader loop in thread - it should exit on its own due to errors
         thread = threading.Thread(target=transport._reader_loop)
         thread.start()
-        time.sleep(1.5)  # Allow time for errors
-        transport._stop = True
-        thread.join(timeout=2.0)
+        thread.join(timeout=3.0)
 
-        # Should have stopped due to consecutive errors
-        assert transport._stop
+        # The reader loop should have exited due to consecutive errors,
+        # not because we set _stop. Check that errors actually accumulated.
+        assert transport.error_count > 0, "Expected errors to be counted"
+        # The thread should have terminated (either by error limit or timeout)
+        assert not thread.is_alive(), "Reader thread should have exited"
 
 
 # =============================================================================

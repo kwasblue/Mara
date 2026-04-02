@@ -114,7 +114,8 @@ void ControlKernel::step(uint32_t now_ms, float dt_s, SignalBus& signals, bool i
         if (s.cfg.require_armed && !is_armed) continue;
         if (s.cfg.require_active && !is_active) continue;
 
-        // Check rate limiting
+        // Check rate limiting (guard against divide-by-zero if rate_hz not set)
+        if (s.cfg.rate_hz == 0) continue;
         uint32_t period_ms = 1000 / s.cfg.rate_hz;
         if (now_ms - s.last_step_ms < period_ms) continue;
         s.last_step_ms = now_ms;
@@ -406,6 +407,8 @@ bool StateSpaceController::setParam(const char* key, float value) {
     }
     
     // Individual K gains: "k00", "k01", "k10", etc. (row, col)
+    // Note: This intentionally only supports single-digit indices (0-9) via strlen==3 check.
+    // With MAX_STATES=8 and MAX_INPUTS=4, this is sufficient for current use.
     if (key[0] == 'k' && strlen(key) == 3) {
         uint8_t row = key[1] - '0';
         uint8_t col = key[2] - '0';

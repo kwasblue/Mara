@@ -238,9 +238,9 @@ class MotionService:
             ServiceResult with success/failure
         """
         ok, error = await self.client.cmd_stop()
-        self._last_velocity = Velocity.zero()
 
         if ok:
+            self._last_velocity = Velocity.zero()
             return ServiceResult.success()
         else:
             return ServiceResult.failure(error=error or "Failed to stop")

@@ -434,7 +434,10 @@ class BaseMaraClient(BinaryCommandsMixin):
         # Update connection monitor early
         self.connection.on_message_received()
 
-        # Fast path: check first byte directly (avoid slice creation)
+        # Fast path: detect raw JSON by first byte (avoids slice creation).
+        # This assumes the protocol will never use msg_type 0x7B ('{') or 0x5B ('[').
+        # Current protocol msg_types are all <= 0x52, so this is safe.
+        # If future msg_types approach these values, this heuristic must be revisited.
         first_byte = body[0]
         if first_byte == 0x7B or first_byte == 0x5B:  # '{' or '['
             self._handle_json_payload(body)

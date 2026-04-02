@@ -34,8 +34,8 @@ bool SignalBus::define(uint16_t id, const char* name, Kind kind, float initial) 
         return true;
     }
 
-    // Check capacity (optional safety limit)
-    if (signals_.size() >= NAME_MAX_LEN) return false;
+    // Check capacity
+    if (signals_.size() >= MAX_SIGNALS) return false;
 
     // Create new signal
     SignalDef d;

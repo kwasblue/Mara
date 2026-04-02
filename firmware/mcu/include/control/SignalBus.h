@@ -44,6 +44,9 @@ public:
     // Fixed-size name buffer to avoid dangling pointer issues with JSON strings
     static constexpr size_t NAME_MAX_LEN = 64;
 
+    // Maximum number of signals that can be defined
+    static constexpr size_t MAX_SIGNALS = 128;
+
     struct SignalDef {
         uint16_t id = 0;
         char name[NAME_MAX_LEN + 1] = {0};  // Fixed buffer, null-terminated

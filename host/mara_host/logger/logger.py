@@ -85,8 +85,15 @@ class Logger:
         _logger.setLevel(level)
         _logger.propagate = propagate
 
-        # Avoid duplicate handlers if logger already exists (common in pytest)
-        if not _logger.handlers:
+        # Check if a RotatingFileHandler for this specific path already exists.
+        # This handles pytest scenarios where the same logger_name is reused
+        # but with different log_file paths - we must add the new handler.
+        has_handler_for_path = any(
+            isinstance(h, RotatingFileHandler) and h.baseFilename == full_log_path
+            for h in _logger.handlers
+        )
+
+        if not has_handler_for_path:
             fmt = logging.Formatter(
                 "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 datefmt=timestamp_format,
@@ -103,11 +110,14 @@ class Logger:
             _logger.addHandler(fh)
 
             if console:
-                ch = logging.StreamHandler()
-                ch.setLevel(level)
-                ch.setFormatter(fmt)
-                ch.addFilter(DedupFilter(cooldown_s=dedup_cooldown_s))
-                _logger.addHandler(ch)
+                # Only add console handler if no handlers exist at all
+                # (avoids duplicate console output in tests)
+                if not any(isinstance(h, logging.StreamHandler) for h in _logger.handlers):
+                    ch = logging.StreamHandler()
+                    ch.setLevel(level)
+                    ch.setFormatter(fmt)
+                    ch.addFilter(DedupFilter(cooldown_s=dedup_cooldown_s))
+                    _logger.addHandler(ch)
 
         self._logger = _logger
         self._logger.debug(f"Logger '{logger_name}' initialized → {full_log_path}")
@@ -150,6 +160,16 @@ class JsonlLogger:
                 self._f.close()
             except Exception:
                 pass
+
+    def __del__(self) -> None:
+        # Fallback cleanup if close() wasn't called explicitly.
+        # In long-running sessions without context managers, GC delay could
+        # leave files open and unflushed. This ensures cleanup eventually happens.
+        try:
+            if hasattr(self, "_f") and self._f and not self._f.closed:
+                self._f.close()
+        except Exception:
+            pass
 
     def __enter__(self) -> "JsonlLogger":
         return self

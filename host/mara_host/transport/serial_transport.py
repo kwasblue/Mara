@@ -69,7 +69,12 @@ class SerialTransport(StreamTransport):
         try:
             return self._ser.read(n)
         except serial.SerialException as e:
-            # Handle transient "device reports readiness" errors on macOS
+            # Handle transient "device reports readiness" errors on macOS.
+            # This is a known pyserial issue on macOS where USB serial devices
+            # report ready but return no data. The error message check is fragile
+            # and depends on pyserial's error string (tested with pyserial 3.5).
+            # If pyserial changes this message, errors will propagate to _reader_loop
+            # and count toward MAX_CONSECUTIVE_ERRORS, potentially causing disconnect.
             if "returned no data" in str(e):
                 time.sleep(0.05)
                 return b""

@@ -151,15 +151,13 @@ class ConnectionService:
     async def disconnect(self) -> None:
         """Disconnect from the MCU."""
         if self.client:
+            # client.stop() internally calls transport.stop() via StreamTransport.stop()
+            # so we don't need to call transport.stop() separately here
             await self.client.stop()
             self.client = None
 
-        if self.transport and hasattr(self.transport, 'stop'):
-            import inspect
-            stop_result = self.transport.stop()
-            if inspect.isawaitable(stop_result):
-                await stop_result
-            self.transport = None
+        # Clear transport reference (already stopped by client.stop())
+        self.transport = None
 
     def _create_transport(self):
         """Create the appropriate transport based on config."""
@@ -216,4 +214,7 @@ class ConnectionService:
     @property
     def is_connected(self) -> bool:
         """Check if connected to robot."""
+        # NOTE: Accessing _running directly since MaraClient doesn't expose a public
+        # is_running property. If MaraClient's internal state model changes, this
+        # should be updated to use the new public API.
         return self.client is not None and self.client._running

@@ -103,8 +103,11 @@ class ObserverSlot:
             n_states: Number of state variables
             n_inputs: Number of inputs
             n_outputs: Number of outputs
+
+        Raises:
+            RuntimeError: If configuration fails
         """
-        await self._robot.client.send_reliable(
+        ok, error = await self._robot.client.send_reliable(
             "CMD_OBSERVER_CONFIG",
             {
                 "slot": self._slot,
@@ -115,6 +118,8 @@ class ObserverSlot:
                 "n_outputs": n_outputs,
             }
         )
+        if not ok:
+            raise RuntimeError(error or "Observer configure failed")
 
         self._config.observer_type = ObserverType(observer_type)
         self._config.rate_hz = rate_hz
@@ -129,16 +134,21 @@ class ObserverSlot:
         Args:
             name: Matrix name ("A", "B", "C", "L", "K", "Q", "R")
             values: 2D list of matrix values (row-major)
+
+        Raises:
+            RuntimeError: If setting matrix fails
         """
         # Flatten matrix to 1D array
         flat = []
         for row in values:
             flat.extend(row)
 
-        await self._robot.client.send_reliable(
+        ok, error = await self._robot.client.send_reliable(
             "CMD_OBSERVER_SET_PARAM_ARRAY",
             {"slot": self._slot, "key": name, "values": flat}
         )
+        if not ok:
+            raise RuntimeError(error or f"Observer set_matrix({name}) failed")
 
     async def set_param(self, key: str, value: float) -> None:
         """
@@ -147,34 +157,60 @@ class ObserverSlot:
         Args:
             key: Parameter name
             value: Parameter value
+
+        Raises:
+            RuntimeError: If setting parameter fails
         """
-        await self._robot.client.send_reliable(
+        ok, error = await self._robot.client.send_reliable(
             "CMD_OBSERVER_SET_PARAM",
             {"slot": self._slot, "key": key, "value": value}
         )
+        if not ok:
+            raise RuntimeError(error or f"Observer set_param({key}) failed")
 
     async def enable(self) -> None:
-        """Enable the observer."""
-        await self._robot.client.send_reliable(
+        """
+        Enable the observer.
+
+        Raises:
+            RuntimeError: If enable fails
+        """
+        ok, error = await self._robot.client.send_reliable(
             "CMD_OBSERVER_ENABLE",
             {"slot": self._slot, "enable": True}
         )
+        if not ok:
+            raise RuntimeError(error or "Observer enable failed")
         self._config.enabled = True
 
     async def disable(self) -> None:
-        """Disable the observer."""
-        await self._robot.client.send_reliable(
+        """
+        Disable the observer.
+
+        Raises:
+            RuntimeError: If disable fails
+        """
+        ok, error = await self._robot.client.send_reliable(
             "CMD_OBSERVER_ENABLE",
             {"slot": self._slot, "enable": False}
         )
+        if not ok:
+            raise RuntimeError(error or "Observer disable failed")
         self._config.enabled = False
 
     async def reset(self) -> None:
-        """Reset the observer state."""
-        await self._robot.client.send_reliable(
+        """
+        Reset the observer state.
+
+        Raises:
+            RuntimeError: If reset fails
+        """
+        ok, error = await self._robot.client.send_reliable(
             "CMD_OBSERVER_RESET",
             {"slot": self._slot}
         )
+        if not ok:
+            raise RuntimeError(error or "Observer reset failed")
 
 
 class ObserverSlotManager:

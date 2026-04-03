@@ -136,7 +136,7 @@ class BenchmarkReport:
             filename = f"{self.benchmark}_{ts}.json"
 
         filepath = REPORTS_DIR / filename
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
 
         return filepath

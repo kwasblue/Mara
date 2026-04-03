@@ -215,7 +215,7 @@ class Recording:
         session = self._sessions[name]
         path = Path(filepath)
 
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             # Header
             header = {
                 "type": "session_header",
@@ -252,7 +252,7 @@ class Recording:
         events = []
         header = None
 
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 obj = json.loads(line)
                 if obj.get("type") == "session_header":

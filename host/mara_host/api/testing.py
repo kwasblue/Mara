@@ -176,14 +176,17 @@ class Testing:
                     continue
 
                 await asyncio.sleep(0.2)
-
-                # Stop
-                await self._robot.client.send_reliable(
-                    "CMD_DC_STOP",
-                    {"motor_id": motor_id}
-                )
             except Exception as e:
                 errors.append(f"Motor {motor_id}: {e}")
+            finally:
+                # Always stop motor, even on failure
+                try:
+                    await self._robot.client.send_reliable(
+                        "CMD_DC_STOP",
+                        {"motor_id": motor_id}
+                    )
+                except Exception:
+                    pass  # Best effort stop
 
         duration = (datetime.now() - start).total_seconds() * 1000
 

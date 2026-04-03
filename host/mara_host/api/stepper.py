@@ -84,19 +84,33 @@ class Stepper:
         return self._position / self.steps_per_rev
 
     async def enable(self) -> None:
-        """Enable the stepper motor driver."""
-        await self.client.cmd_stepper_enable(
+        """
+        Enable the stepper motor driver.
+
+        Raises:
+            RuntimeError: If enable fails
+        """
+        result = await self.client.cmd_stepper_enable(
             motor_id=self.motor_id,
             enable=True,
         )
+        if result is not None and hasattr(result, "ok") and not result.ok:
+            raise RuntimeError(getattr(result, "error", None) or "Stepper enable failed")
         self._enabled = True
 
     async def disable(self) -> None:
-        """Disable the stepper motor driver (releases holding torque)."""
-        await self.client.cmd_stepper_enable(
+        """
+        Disable the stepper motor driver (releases holding torque).
+
+        Raises:
+            RuntimeError: If disable fails
+        """
+        result = await self.client.cmd_stepper_enable(
             motor_id=self.motor_id,
             enable=False,
         )
+        if result is not None and hasattr(result, "ok") and not result.ok:
+            raise RuntimeError(getattr(result, "error", None) or "Stepper disable failed")
         self._enabled = False
 
     async def move(
@@ -118,11 +132,13 @@ class Stepper:
 
         speed_steps_s = abs(speed_rps) * self.steps_per_rev
 
-        await self.client.cmd_stepper_move_rel(
+        result = await self.client.cmd_stepper_move_rel(
             motor_id=self.motor_id,
             steps=int(steps),
             speed_steps_s=float(speed_steps_s),
         )
+        if result is not None and hasattr(result, "ok") and not result.ok:
+            raise RuntimeError(getattr(result, "error", None) or "Stepper move failed")
 
         self._position += steps
 
@@ -161,8 +177,15 @@ class Stepper:
         await self.move(steps, speed_rps, auto_enable)
 
     async def stop(self) -> None:
-        """Stop motor immediately."""
-        await self.client.cmd_stepper_stop(motor_id=self.motor_id)
+        """
+        Stop motor immediately.
+
+        Raises:
+            RuntimeError: If stop fails
+        """
+        result = await self.client.cmd_stepper_stop(motor_id=self.motor_id)
+        if result is not None and hasattr(result, "ok") and not result.ok:
+            raise RuntimeError(getattr(result, "error", None) or "Stepper stop failed")
 
     def reset_position(self, position: int = 0) -> None:
         """

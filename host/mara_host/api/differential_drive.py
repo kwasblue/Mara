@@ -205,10 +205,15 @@ class DifferentialDrive:
         Args:
             radius: Arc radius in meters (must be positive)
             angle_deg: Arc angle in degrees (positive = counter-clockwise)
-            speed: Linear speed in m/s
+            speed: Linear speed in m/s (magnitude; robot always moves forward)
 
         The robot drives along a circular arc of the given radius,
-        sweeping through the specified angle.
+        sweeping through the specified angle. The robot always travels
+        forward; use a negative angle to curve right instead of left.
+
+        Note:
+            To drive backward in an arc, use set_velocity() directly with
+            negative linear velocity.
         """
         if angle_deg == 0.0 or radius <= 0:
             return
@@ -245,11 +250,12 @@ class DifferentialDrive:
         duration: float,
     ) -> None:
         """Execute a motion for a fixed duration using velocity streaming."""
-        elapsed = 0.0
-        while elapsed < duration:
+        import time
+        start_time = time.monotonic()
+        end_time = start_time + duration
+        while time.monotonic() < end_time:
             await self.set_velocity(vx, omega)
             await asyncio.sleep(self._control_period)
-            elapsed += self._control_period
 
     def __repr__(self) -> str:
         status = "moving" if self._is_moving else "stopped"

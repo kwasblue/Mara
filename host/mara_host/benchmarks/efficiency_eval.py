@@ -464,7 +464,7 @@ print(f"{elapsed * 1000:.2f}")
 
         # Save to file
         output_path = Path(__file__).parent / "efficiency_results.json"
-        with open(output_path, "w") as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump([{
                 "name": r.name,
                 "per_call_us": r.per_call_us,

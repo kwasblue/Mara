@@ -39,6 +39,12 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "hil: hardware-in-the-loop tests (requires MCU connected)")
     config.addinivalue_line("markers", "slow: marks tests as slow")
     config.addinivalue_line("markers", "motion: tests that cause physical motion")
+    config.addinivalue_line("markers", "integration: integration tests (require actual tools installed)")
+    config.addinivalue_line("markers", "dc_motor: tests requiring DC motor hardware")
+    config.addinivalue_line("markers", "stepper: tests requiring stepper motor hardware")
+    config.addinivalue_line("markers", "servo: tests requiring servo hardware")
+    config.addinivalue_line("markers", "encoder: tests requiring encoder hardware")
+    config.addinivalue_line("markers", "imu: tests requiring IMU hardware")
 
 
 def pytest_collection_modifyitems(config, items):

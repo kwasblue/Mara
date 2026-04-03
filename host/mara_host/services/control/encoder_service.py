@@ -5,6 +5,7 @@ Encoder control service.
 Provides high-level control for rotary encoders with position and velocity tracking.
 """
 
+import math
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 
@@ -117,7 +118,7 @@ class EncoderService(ConfigurableService[EncoderConfig, EncoderState]):
         """Convert encoder counts to radians."""
         config = self.get_config(encoder_id)
         counts_per_rev = config.ppr * 4 * config.gear_ratio  # Quadrature encoding
-        return (counts / counts_per_rev) * 2 * 3.14159265359
+        return (counts / counts_per_rev) * 2 * math.pi
 
     def counts_to_degrees(self, encoder_id: int, counts: int) -> float:
         """Convert encoder counts to degrees."""

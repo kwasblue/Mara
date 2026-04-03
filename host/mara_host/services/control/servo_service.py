@@ -302,6 +302,7 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
         end: float = 180,
         step: float = 10,
         delay_s: float = 0.1,
+        cancel_event: Optional[asyncio.Event] = None,
     ) -> ServiceResult:
         """
         Sweep a servo through a range of angles.
@@ -312,6 +313,9 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
             end: Ending angle
             step: Angle increment per step
             delay_s: Delay between steps
+            cancel_event: Optional asyncio.Event for cooperative cancellation.
+                          If set during sweep, stops early and returns success
+                          with cancelled=True in data.
 
         Returns:
             ServiceResult
@@ -323,43 +327,78 @@ class ServoService(ConfigurableService[ServoConfig, ServoState]):
         direction = 1 if end > start else -1
         step = abs(step) * direction
         angle = start
+        steps_completed = 0
 
         while (direction > 0 and angle <= end) or (direction < 0 and angle >= end):
+            # Check for cancellation
+            if cancel_event is not None and cancel_event.is_set():
+                return ServiceResult.success(
+                    data={
+                        "servo_id": servo_id,
+                        "start": start,
+                        "end": end,
+                        "cancelled": True,
+                        "stopped_at": angle,
+                        "steps_completed": steps_completed,
+                    }
+                )
+
             result = await self.set_angle(servo_id, angle)
             if not result.ok:
                 return result
+            steps_completed += 1
             await asyncio.sleep(delay_s)
             angle += step
 
         return ServiceResult.success(
-            data={"servo_id": servo_id, "start": start, "end": end}
+            data={
+                "servo_id": servo_id,
+                "start": start,
+                "end": end,
+                "cancelled": False,
+                "steps_completed": steps_completed,
+            }
         )
 
     async def set_multiple(
         self,
         angles: dict[int, float],
         duration_ms: int = 0,
+        parallel: bool = True,
     ) -> ServiceResult:
         """
-        Set multiple servo angles simultaneously.
+        Set multiple servo angles.
 
         Args:
             angles: Dict of {servo_id: angle}
             duration_ms: Movement duration
+            parallel: If True (default), send commands in parallel using
+                      fire-and-forget mode for near-simultaneous movement.
+                      If False, send sequentially with ACK confirmation.
 
         Returns:
             ServiceResult
         """
-        errors = []
-        results = {}
+        if parallel:
+            # Fire-and-forget parallel execution for near-simultaneous movement
+            tasks = [
+                self.set_angle(servo_id, angle, duration_ms, request_ack=False)
+                for servo_id, angle in angles.items()
+            ]
+            await asyncio.gather(*tasks)
+            return ServiceResult.success(data={"angles": dict(angles)})
+        else:
+            # Sequential execution with ACK confirmation
+            errors = []
+            results = {}
 
-        for servo_id, angle in angles.items():
-            result = await self.set_angle(servo_id, angle, duration_ms)
-            if result.ok:
-                results[servo_id] = angle
-            else:
-                errors.append(f"Servo {servo_id}: {result.error}")
+            for servo_id, angle in angles.items():
+                result = await self.set_angle(servo_id, angle, duration_ms)
+                if result.ok:
+                    results[servo_id] = angle
+                else:
+                    errors.append(f"Servo {servo_id}: {result.error}")
 
-        if errors:
-            return ServiceResult.failure(error="; ".join(errors))
-        return ServiceResult.success(data={"angles": results})
+            if errors:
+                return ServiceResult.failure(error="; ".join(errors))
+            return ServiceResult.success(data={"angles": results})

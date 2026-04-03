@@ -242,8 +242,13 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
 
         right_result = await self.set_speed(right_motor, right_speed)
         if not right_result.ok:
-            # Try to stop left motor on failure
-            await self.stop(left_motor)
+            # Try to stop left motor on failure - log if stop also fails
+            stop_result = await self.stop(left_motor)
+            if not stop_result.ok:
+                # Chain the errors so caller knows left motor may still be running
+                return ServiceResult.failure(
+                    error=f"{right_result.error}; additionally, failed to stop left motor: {stop_result.error}"
+                )
             return right_result
 
         return ServiceResult.success(
@@ -278,18 +283,12 @@ class MotorService(ConfigurableService[MotorConfig, MotorState]):
         left_omega = (vx - (omega * track_width / 2)) / wheel_radius
         right_omega = (vx + (omega * track_width / 2)) / wheel_radius
 
-        # Find max for normalization
+        # Find max for normalization - normalize such that the larger wheel
+        # speed maps to max_speed while preserving the ratio between them
         max_omega = max(abs(left_omega), abs(right_omega), 1e-6)
 
-        # Normalize to [-1, 1] then scale to max_speed
-        # Assuming max wheel omega corresponds to max_speed=1.0
-        # This is a simplified model
-        left_speed = (left_omega / max_omega) * max_speed if max_omega > 1e-6 else 0
-        right_speed = (right_omega / max_omega) * max_speed if max_omega > 1e-6 else 0
-
-        # Preserve magnitude relationship
-        scale = min(1.0, max_speed / max(abs(left_speed), abs(right_speed), 1e-6))
-        left_speed *= scale
-        right_speed *= scale
+        # Normalize to [-max_speed, max_speed] preserving ratio
+        left_speed = (left_omega / max_omega) * max_speed
+        right_speed = (right_omega / max_omega) * max_speed
 
         return left_speed, right_speed

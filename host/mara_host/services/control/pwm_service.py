@@ -156,11 +156,8 @@ class PwmService(ConfigurableService[PwmConfig, PwmState]):
         Returns:
             ServiceResult
         """
-        result = await self.set(channel, 0.0)
-        if result.ok:
-            state = self.get_state(channel)
-            state.enabled = False
-        return result
+        # set() with duty=0.0 already sets state.enabled = False
+        return await self.set(channel, 0.0)
 
     async def stop_all(self) -> ServiceResult:
         """

@@ -9,15 +9,30 @@ from mara_host.tools.schema import COMMANDS
 
 
 class CompositeService:
-    """Generic composite/batch actuator service using {cmd, args} actions."""
+    """Generic composite/batch actuator service using {cmd, args} actions.
+
+    Note: The COMMANDS schema (from mara_host.tools.schema) is the source of truth
+    for what fields each batch action accepts. Unknown fields are rejected to prevent
+    typos and ensure payload consistency. If firmware adds new fields, update the
+    COMMANDS schema first.
+
+    Design note: CMD_STEPPER_MOVE_DEG and CMD_STEPPER_MOVE_REV are intentionally
+    excluded from batching. Only relative step moves (CMD_STEPPER_MOVE_REL) are
+    batchable since degree/revolution moves require motor-specific configuration
+    (steps_per_rev, microsteps) that may vary per motor.
+    """
 
     BATCHABLE_COMMANDS: dict[str, dict[str, Any]] = {
         "CMD_GPIO_WRITE": {
-            "conflict_group": None,
+            "conflict_group": "gpio",
+            "id_field": "channel",
+            "conflict_error": "conflicting_gpio_action",
             "max_actions_error": "too_many_gpio_actions",
         },
         "CMD_SERVO_SET_ANGLE": {
-            "conflict_group": None,
+            "conflict_group": "servo",
+            "id_field": "servo_id",
+            "conflict_error": "conflicting_servo_action",
             "max_actions_error": "too_many_servo_actions",
         },
         "CMD_PWM_SET": {
@@ -50,9 +65,11 @@ class CompositeService:
         },
     }
 
+    # TYPE_MAP defines Python types for JSON schema types.
+    # Note: "float" accepts (int, float) since JSON doesn't distinguish them.
     TYPE_MAP = {
         "int": int,
-        "float": (int, float),
+        "float": (int, float),  # JSON numbers can be int or float
         "string": str,
         "bool": bool,
         "array": list,
@@ -100,7 +117,12 @@ class CompositeService:
             return [], "actions_required"
 
         normalized: list[dict] = []
-        seen_conflicts: dict[str, set[int]] = {"dc_motor": set(), "stepper": set()}
+        seen_conflicts: dict[str, set[int]] = {
+            "dc_motor": set(),
+            "stepper": set(),
+            "gpio": set(),
+            "servo": set(),
+        }
 
         for index, action in enumerate(actions):
             if not isinstance(action, dict):

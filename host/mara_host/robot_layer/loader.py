@@ -135,6 +135,16 @@ def _parse_joint(name: str, config: dict) -> Joint:
     if actuator_id is None:
         raise ValueError("Missing required field: 'actuator_id'")
 
+    # Validate max_velocity if provided
+    max_velocity = config.get("max_velocity")
+    if max_velocity is not None:
+        try:
+            max_velocity = float(max_velocity)
+            if max_velocity <= 0:
+                raise ValueError(f"max_velocity must be positive, got {max_velocity}")
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid max_velocity: {e}")
+
     return Joint(
         name=name,
         type=joint_type,
@@ -144,7 +154,7 @@ def _parse_joint(name: str, config: dict) -> Joint:
         min_angle=float(config.get("min_angle", 0)),
         max_angle=float(config.get("max_angle", 180)),
         home=float(config.get("home", 90)),
-        max_velocity=config.get("max_velocity"),
+        max_velocity=max_velocity,
         zero_position=config.get("zero_position", ""),
         max_position=config.get("max_position", ""),
         parent=config.get("parent"),

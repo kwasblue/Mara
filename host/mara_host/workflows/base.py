@@ -150,10 +150,19 @@ class BaseWorkflow:
         """
         Request workflow cancellation.
 
-        The workflow will stop at the next safe point.
+        Sets the cancellation flag; the workflow will stop at the next
+        _check_cancelled() call and transition state to CANCELLED.
+
+        NOTE: This is a signal, not an immediate state change. The state
+        remains RUNNING until run() observes the flag and completes.
+        Use is_cancelled to check if cancellation was requested, and
+        is_running to check if the workflow coroutine is still executing.
         """
         self._cancelled = True
-        self._state = WorkflowState.CANCELLED
+        # Don't set _state = CANCELLED here - let run() handle state transition
+        # when it observes _cancelled. Setting state immediately while run()
+        # is still executing creates inconsistency where is_running returns
+        # False but the coroutine is still alive.
 
     def reset(self) -> None:
         """Reset workflow state for reuse."""

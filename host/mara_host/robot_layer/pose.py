@@ -7,9 +7,10 @@ Tracks joint positions by name with freshness indicators.
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Optional, Literal
+from typing import Deque, Optional, Literal
 
 from .model import RobotModel
 
@@ -48,9 +49,9 @@ class PoseTracker:
         self._telemetry: dict[str, float] = {}
         self._telemetry_at: dict[str, datetime] = {}
 
-        # History for debugging/replay
-        self._history: list[PoseSnapshot] = []
+        # History for debugging/replay - use deque for O(1) append-and-trim
         self._max_history = 100
+        self._history: Deque[PoseSnapshot] = deque(maxlen=self._max_history)
 
     def record_command(self, joint: str, angle: float) -> None:
         """Record a commanded position."""
@@ -91,7 +92,13 @@ class PoseTracker:
         return pose
 
     def get_age(self, joint: str) -> Optional[timedelta]:
-        """Get age of joint data (commanded or telemetry)."""
+        """Get age of joint data (commanded or telemetry).
+
+        NOTE: Uses timezone-naive datetime.now() for consistency with
+        record_command() and update_telemetry(). All timestamps in this
+        class are naive. Do not mix with timezone-aware datetimes from
+        external sources.
+        """
         now = datetime.now()
 
         # Prefer telemetry age if available
@@ -152,20 +159,20 @@ class PoseTracker:
         return (angle - j.min_angle) / range_size * 100
 
     def _add_snapshot(self, source: str) -> None:
-        """Add current state to history."""
+        """Add current state to history.
+
+        Uses deque with maxlen for O(1) append-and-trim instead of O(n) list slicing.
+        """
         self._history.append(PoseSnapshot(
             angles=dict(self._commanded),
             timestamp=datetime.now(),
             source=source,
         ))
-
-        # Trim history
-        if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+        # No manual trimming needed - deque maxlen handles it automatically
 
     def get_history(self, limit: int = 10) -> list[PoseSnapshot]:
         """Get recent pose history."""
-        return self._history[-limit:]
+        return list(self._history)[-limit:]
 
     def clear(self) -> None:
         """Clear all tracked positions."""

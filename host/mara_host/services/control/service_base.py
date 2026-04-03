@@ -229,13 +229,45 @@ class ConfigurableService(Generic[ConfigT, StateT], ABC):
         ack_future: asyncio.Future[Any] = loop.create_future()
         topic = f"cmd.{command}"
 
+        # Track whether we've started sending - reject stale ACKs from before send
+        # This closes the race window where a previous command's ACK arrives between
+        # subscribe and send, which would incorrectly resolve the future.
+        send_started = False
+        expected_seq: Optional[int] = None
+
         def _handler(data: Any) -> None:
-            if not ack_future.done():
-                ack_future.set_result(data)
+            nonlocal expected_seq
+            if ack_future.done():
+                return
+
+            # Reject ACKs that arrived before we started sending
+            if not send_started:
+                return
+
+            # If we have the expected seq (set after send_reliable returns),
+            # verify it matches. This prevents stale ACKs from resolving our future.
+            if expected_seq is not None:
+                ack_seq = data.get("seq") if isinstance(data, dict) else None
+                if ack_seq is not None and ack_seq != expected_seq:
+                    return  # Wrong sequence - stale ACK
+
+            ack_future.set_result(data)
 
         self.client.bus.subscribe(topic, _handler)
         try:
+            # Get current seq before sending (will be incremented during send)
+            # The actual seq used will be current + 1
+            # Note: _seq may not exist on fake/mock clients, so handle gracefully
+            pre_send_seq = getattr(self.client, "_seq", None)
+            send_started = True
+
             ok, error = await self.client.send_reliable(command, payload)
+
+            # After send, we know the seq that was used
+            # The reliable commander matched this seq, so our ACK should have it
+            if pre_send_seq is not None:
+                expected_seq = (pre_send_seq + 1) & 0xFFFF
+
             if not ok:
                 final_error = error or error_message or f"Command {command} failed"
                 _log.warning("Service command %s failed: %s", command, final_error)

@@ -1,13 +1,15 @@
 #pragma once
 
 #include "../IPwm.h"
+#include <cstdint>
 
 namespace hal {
 
-/// ESP32 PWM implementation using LEDC peripheral
+/// ESP32 PWM implementation using the LEDC peripheral.
+/// Implementation uses ESP-IDF driver internally but header remains framework-agnostic.
 class Esp32Pwm : public IPwm {
 public:
-    static constexpr uint8_t MAX_CHANNELS = 16;  // ESP32 has 16 LEDC channels
+    static constexpr uint8_t MAX_CHANNELS = 8;
 
     bool attach(uint8_t channel, uint8_t pin, uint32_t frequency, uint8_t resolution = 12) override;
     void detach(uint8_t channel) override;
@@ -23,6 +25,8 @@ private:
         uint8_t pin = 255;
         uint8_t resolution = 0;
         uint32_t frequency = 0;
+        uint32_t currentDuty = 0;
+        uint8_t timerIndex = 0;  // Framework-agnostic timer index
         bool attached = false;
     };
     ChannelConfig channels_[MAX_CHANNELS] = {};

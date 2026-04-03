@@ -24,6 +24,10 @@ bool Esp32Watchdog::removeCurrentTask() {
 }
 
 void Esp32Watchdog::reset() {
+    // Guard against calling reset when watchdog was never initialized
+    // (e.g., begin() failed or was never called). Calling esp_task_wdt_reset()
+    // on an uninitialized task generates log noise and does nothing.
+    if (!enabled_) return;
     esp_task_wdt_reset();
 }
 

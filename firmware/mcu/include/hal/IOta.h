@@ -20,7 +20,8 @@ enum class OtaError : uint8_t {
     BEGIN_FAILED = 2,
     CONNECT_FAILED = 3,
     RECEIVE_FAILED = 4,
-    END_FAILED = 5
+    END_FAILED = 5,
+    UNKNOWN = 255  // Unrecognized error code from platform
 };
 
 /// OTA progress callback signature

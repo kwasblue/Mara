@@ -90,9 +90,12 @@ class TestReliableCommander:
     
     @pytest.fixture
     def mock_send(self):
-        """Mock that matches actual send_func signature: (cmd_type, payload, callback) -> seq"""
+        """Mock that matches actual send_func signature: (cmd_type, payload, seq_override) -> seq"""
         seq = [0]
-        async def send_func(cmd_type, payload, callback=None):
+        async def send_func(cmd_type, payload, seq_override=None):
+            # If seq_override is provided (for retries), use it; otherwise increment
+            if seq_override is not None:
+                return seq_override
             seq[0] += 1
             return seq[0]
         return send_func
@@ -193,16 +196,26 @@ class TestReliableCommander:
     async def test_timeout_then_fail(self, mock_send):
         commander = ReliableCommander(send_func=mock_send, timeout_s=0.03, max_retries=1)
         await commander.start_update_loop(interval_s=0.01)
-        
+
         task = asyncio.create_task(commander.send("TEST", {}, wait_for_ack=True))
-        
+
         # Wait for timeout + retries to exhaust
         await asyncio.sleep(0.2)
-        
+
         ok, err = await task
         assert ok is False
         assert err == "TIMEOUT"
-        
+
+        # Verify retry behavior:
+        # - commands_sent counts initial sends only
+        # - retries counts retry attempts separately
+        # - Total wire sends = commands_sent + retries = 2
+        assert commander.commands_sent == 1, f"Expected 1 initial send, got {commander.commands_sent}"
+        assert commander.retries == 1, f"Expected 1 retry, got {commander.retries}"
+        assert commander.timeouts == 1, f"Expected 1 timeout, got {commander.timeouts}"
+        # Verify total wire activity
+        assert commander.commands_sent + commander.retries == 2, "Expected 2 total wire sends"
+
         await commander.stop_update_loop()
 
 

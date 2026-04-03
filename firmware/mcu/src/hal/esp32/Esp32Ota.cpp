@@ -16,6 +16,7 @@ OtaStartCallback Esp32Ota::startCallback_ = nullptr;
 OtaEndCallback Esp32Ota::endCallback_ = nullptr;
 OtaErrorCallback Esp32Ota::errorCallback_ = nullptr;
 bool Esp32Ota::isUpdating_ = false;
+bool Esp32Ota::initialized_ = false;
 
 Esp32Ota::Esp32Ota() {
     // Default configuration will be set via setters
@@ -52,6 +53,12 @@ void Esp32Ota::onError(OtaErrorCallback callback) {
 }
 
 void Esp32Ota::begin() {
+    // Guard against duplicate initialization (ArduinoOTA accumulates callbacks)
+    if (initialized_) {
+        return;
+    }
+    initialized_ = true;
+
     // Wire up callbacks to ArduinoOTA
     ArduinoOTA.onStart([]() {
         isUpdating_ = true;
@@ -86,7 +93,7 @@ void Esp32Ota::begin() {
                 case OTA_CONNECT_ERROR: otaErr = OtaError::CONNECT_FAILED; break;
                 case OTA_RECEIVE_ERROR: otaErr = OtaError::RECEIVE_FAILED; break;
                 case OTA_END_ERROR:     otaErr = OtaError::END_FAILED; break;
-                default:                otaErr = OtaError::NONE; break;
+                default:                otaErr = OtaError::UNKNOWN; break;
             }
             errorCallback_(otaErr);
         }

@@ -32,6 +32,7 @@ private:
     static OtaEndCallback endCallback_;
     static OtaErrorCallback errorCallback_;
     static bool isUpdating_;
+    static bool initialized_;  // Guard against duplicate begin() calls
 };
 
 } // namespace hal

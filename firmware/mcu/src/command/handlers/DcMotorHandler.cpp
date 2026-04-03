@@ -80,6 +80,14 @@ void DcMotorHandler::handleSetVelTarget(JsonVariantConst payload, CommandContext
     DBG_PRINTF("[DC] SET_VEL_TARGET motor=%d omega=%.3f\n", motorId, omega);
 
     ctx.mode.onMotionCommand(ctx.now_ms());
+
+    // NOTE: Cross-core access pattern
+    // This handler runs on Core 0 (command task), while the PID loop in
+    // LoopControl reads targetOmegaRadS on Core 1 (control task).
+    // setVelocityTarget writes a single float which is atomic on ESP32/Xtensa
+    // (32-bit aligned float store is a single instruction). This is safe in
+    // practice but not guaranteed by C++ standard. If stricter guarantees are
+    // needed, consider std::atomic<float> for targetOmegaRadS.
     bool ok = dc_->setVelocityTarget(static_cast<uint8_t>(motorId), omega);
 
     JsonDocument resp;

@@ -6,6 +6,10 @@
 
 namespace mara {
 
+// Maximum expected angular velocity for sanity clamping (rad/s)
+// ~300 rad/s ≈ 2865 RPM - beyond this, assume encoder noise/misconfiguration
+static constexpr float MAX_OMEGA_RAD_S = 300.0f;
+
 void runControlLoop(ServiceContext& ctx, uint32_t now_ms, float dt) {
     (void)now_ms;  // Unused for now
 
@@ -21,6 +25,12 @@ void runControlLoop(ServiceContext& ctx, uint32_t now_ms, float dt) {
             uint8_t encCh = ctx.dcMotor->getEncoderChannel(id);
             float ticksPerRev = ctx.dcMotor->getTicksPerRev(id);
 
+            // Guard against misconfiguration: ticksPerRev == 0 would cause divide-by-zero
+            // hasEncoderConfig already checks ticksPerRev > 0, but be defensive
+            if (ticksPerRev <= 0.0f) {
+                continue;
+            }
+
             // Read current encoder count
             int32_t ticks = ctx.encoder->getCount(encCh);
             int32_t lastTicks = ctx.dcMotor->getLastEncoderTicks(id);
@@ -30,6 +40,11 @@ void runControlLoop(ServiceContext& ctx, uint32_t now_ms, float dt) {
             // Convert to angular velocity
             float revs = static_cast<float>(deltaTicks) / ticksPerRev;
             float omega_rad_s = revs * 2.0f * 3.14159265f / dt;
+
+            // Clamp velocity to reject encoder noise spikes and timing jitter
+            // Raw tick deltas can produce unrealistic velocities on noisy encoders
+            if (omega_rad_s > MAX_OMEGA_RAD_S) omega_rad_s = MAX_OMEGA_RAD_S;
+            if (omega_rad_s < -MAX_OMEGA_RAD_S) omega_rad_s = -MAX_OMEGA_RAD_S;
 
             // Update PID controller
             ctx.dcMotor->updateVelocityPid(id, omega_rad_s, dt);

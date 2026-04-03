@@ -43,7 +43,13 @@ class GraphSlotConfig:
     sink: GraphNodeConfig | None = None
     sinks: tuple[GraphNodeConfig, ...] = field(default_factory=tuple)
 
+    def __post_init__(self) -> None:
+        """Validate invariants at construction time."""
+        if self.sink is None and not self.sinks:
+            raise ControlGraphValidationError(f"slot {self.id!r} must have at least one sink")
+
     def to_dict(self) -> dict[str, Any]:
+        # Invariant: either sink or sinks is populated (validated in __post_init__)
         data: dict[str, Any] = {
             "id": self.id,
             "enabled": self.enabled,
@@ -53,10 +59,8 @@ class GraphSlotConfig:
         }
         if self.sink is not None:
             data["sink"] = self.sink.to_dict()
-        elif self.sinks:
-            data["sinks"] = [node.to_dict() for node in self.sinks]
         else:
-            raise ControlGraphValidationError(f"slot {self.id!r} must have at least one sink")
+            data["sinks"] = [node.to_dict() for node in self.sinks]
         return data
 
     def with_enabled(self, enabled: bool) -> "GraphSlotConfig":

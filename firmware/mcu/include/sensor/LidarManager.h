@@ -52,10 +52,15 @@ public:
     }
 
 private:
+    static constexpr uint8_t MAX_CONSECUTIVE_TIMEOUTS = 3;
+    static constexpr uint16_t RUNTIME_TIMEOUT_MS = 100;  // Short for real-time operation
+    static constexpr uint16_t INIT_TIMEOUT_MS = 500;     // Longer for initialization
+
     hal::II2c* hal_ = nullptr;
     hal::Vl53l0x lidar_;
     bool online_ = false;
     uint8_t addr_ = DEFAULT_ADDR;
+    uint8_t consecutiveTimeouts_ = 0;  // Track consecutive timeouts to detect stuck sensor
 };
 
 #else // !HAS_LIDAR

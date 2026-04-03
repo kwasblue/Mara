@@ -25,6 +25,10 @@ void Esp32CriticalSection::exitCritical(SpinlockHandle& lock) {
     portEXIT_CRITICAL(getMux(lock));
 }
 
+// NOTE: ISR variants are currently unused in the codebase. All ISR handlers
+// (e.g., EncoderManager::handleA/B) use single-word volatile writes which are
+// atomic on ESP32. These methods are provided for future use if an ISR needs
+// to access shared state larger than a single aligned word.
 void Esp32CriticalSection::enterCriticalISR(SpinlockHandle& lock) {
     portENTER_CRITICAL_ISR(getMux(lock));
 }

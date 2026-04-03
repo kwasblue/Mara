@@ -243,10 +243,10 @@ class ReliableCommander:
             )
             return False, "TOO_MANY_PENDING"
 
-        payload = payload or {}
-        payload["wantAck"] = wait_for_ack
+        # Copy payload to avoid mutating caller's dict
+        wire_payload = {**(payload or {}), "wantAck": wait_for_ack}
         sent_ns = time.monotonic_ns()
-        seq = await self.send_func(cmd_type, payload, None)
+        seq = await self.send_func(cmd_type, wire_payload, None)
 
         self.commands_sent += 1
 
@@ -275,7 +275,7 @@ class ReliableCommander:
             self._pending[seq] = PendingCommand(
                 seq=seq,
                 cmd_type=cmd_type,
-                payload=payload,
+                payload=wire_payload,
                 first_sent_ns=sent_ns,
                 last_sent_ns=sent_ns,
                 future=future,
@@ -325,11 +325,9 @@ class ReliableCommander:
             return None
 
         # JSON path: has sequence number
-        if payload is None:
-            payload = {"wantAck": False}
-        elif "wantAck" not in payload:
-            payload["wantAck"] = False
-        seq = await self.send_func(cmd_type, payload, None)
+        # Copy payload to avoid mutating caller's dict
+        wire_payload = {**(payload or {}), "wantAck": False}
+        seq = await self.send_func(cmd_type, wire_payload, None)
         self.commands_sent += 1
         self._emit(
             "cmd.sent",

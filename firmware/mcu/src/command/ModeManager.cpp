@@ -56,7 +56,7 @@ void ModeManager::update(uint32_t now_ms) {
             stats_.host_timeout_count++;
             stats_.last_host_timeout_ms = now_ms;
             if (dt > stats_.max_host_gap_ms) stats_.max_host_gap_ms = dt;
-            stats_.last_fault = 1;
+            stats_.last_fault = FaultCode::HOST_TIMEOUT;
             lastHostHeartbeat_ = now_ms;
             if (persistentStateCallback_) persistentStateCallback_();
         }
@@ -73,7 +73,7 @@ void ModeManager::update(uint32_t now_ms) {
             stats_.motion_timeout_count++;
             stats_.last_motion_timeout_ms = now_ms;
             if (dtm > stats_.max_motion_gap_ms) stats_.max_motion_gap_ms = dtm;
-            stats_.last_fault = 2;
+            stats_.last_fault = FaultCode::MOTION_TIMEOUT;
             lastMotionCmd_ = now_ms;
             if (persistentStateCallback_) persistentStateCallback_();
         }
@@ -148,7 +148,7 @@ void ModeManager::arm() { mara::CriticalSection lock(lock_); stopLatched_ = fals
 void ModeManager::activate(uint32_t now_ms) { mara::CriticalSection lock(lock_); stopLatched_ = false; if (mode_ == MaraMode::ARMED) { lastMotionCmd_ = now_ms; mode_ = MaraMode::ACTIVE; } }
 void ModeManager::deactivate(uint32_t now_ms) { mara::CriticalSection lock(lock_); if (mode_ == MaraMode::ACTIVE) { triggerStop(); mode_ = MaraMode::ARMED; lastMotionCmd_ = now_ms; } }
 void ModeManager::disarm() { mara::CriticalSection lock(lock_); if (mode_ == MaraMode::ARMED || mode_ == MaraMode::ACTIVE) { triggerStop(); mode_ = MaraMode::IDLE; } }
-void ModeManager::estop() { mara::CriticalSection lock(lock_); triggerStop(); triggerEmergencyStop(); mode_ = MaraMode::ESTOPPED; stats_.last_fault = 3; if (persistentStateCallback_) persistentStateCallback_(); }
+void ModeManager::estop() { mara::CriticalSection lock(lock_); triggerStop(); triggerEmergencyStop(); mode_ = MaraMode::ESTOPPED; stats_.last_fault = FaultCode::ESTOP; if (persistentStateCallback_) persistentStateCallback_(); }
 
 bool ModeManager::clearEstop() {
     mara::CriticalSection lock(lock_);

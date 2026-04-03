@@ -57,7 +57,12 @@ void ControlHandler::handleSignalSet(JsonVariantConst payload, CommandContext& c
     if (ctx.intents) {
         ctx.intents->queueSignalIntent(id, value, now_ms);
     } else {
-        ok = controlModule_->signals().set(id, value, now_ms);  // Fallback
+        // Fallback: Direct write bypasses intent buffer's FIFO ordering.
+        // This path indicates misconfigured context - signal writes will be
+        // out-of-phase with the control loop (applied immediately from handler
+        // task rather than at control tick time).
+        DBG_PRINTF("[CTRL] WARNING: Signal %u set via fallback (no intent buffer)\n", id);
+        ok = controlModule_->signals().set(id, value, now_ms);
     }
 
     JsonDocument resp;

@@ -58,7 +58,7 @@ void McuPersistence::updateFromMode(const ModeManager& mode, uint32_t now_ms) {
     if (diagnostics_.last_fault != wd.last_fault) {
         diagnostics_.last_fault = wd.last_fault;
         diagnostics_.last_fault_ms = now_ms;
-        if (wd.last_fault == 3) {
+        if (wd.last_fault == FaultCode::ESTOP) {
             diagnostics_.estop_count += 1;
             diagnostics_.last_estop_ms = now_ms;
         }

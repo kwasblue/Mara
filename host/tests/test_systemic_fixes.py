@@ -721,7 +721,12 @@ class TestHandshakeLock:
 
     @pytest.mark.asyncio
     async def test_client_has_handshake_lock(self):
-        """Verify client has handshake lock for race prevention."""
+        """Verify client has handshake lock for race prevention.
+
+        Note: Uses threading.Lock (not asyncio.Lock) because the lock is used
+        in sync callbacks from the transport layer, not just async methods.
+        """
+        import threading
         from mara_host.command.client import BaseMaraClient
         from unittest.mock import MagicMock
 
@@ -734,7 +739,7 @@ class TestHandshakeLock:
         )
 
         assert hasattr(client, '_handshake_lock')
-        assert isinstance(client._handshake_lock, asyncio.Lock)
+        assert isinstance(client._handshake_lock, type(threading.Lock()))
 
 
 class TestTcpTransportExceptions:

@@ -17,6 +17,15 @@ enum class MaraMode : uint8_t {
     ESTOPPED
 };
 
+// Fault codes stored in ModeWatchdogStats::last_fault
+// Used by McuPersistence to track fault history
+namespace FaultCode {
+    constexpr uint8_t NONE           = 0;
+    constexpr uint8_t HOST_TIMEOUT   = 1;
+    constexpr uint8_t MOTION_TIMEOUT = 2;
+    constexpr uint8_t ESTOP          = 3;
+}
+
 const char* maraModeToString(MaraMode m);
 
 struct SafetyConfig {

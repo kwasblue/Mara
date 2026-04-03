@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT
 // =============================================================================
 // Generated from: config/mara_build.yaml
-// Generated at:   2026-04-03T01:05:28.874464
+// Generated at:   2026-04-03T01:22:04.661607
 // Active profile: full
 //
 // To regenerate, run:

@@ -21,7 +21,7 @@ class EventBus:
 
     Works fine when called from async code; just make sure sync handlers are fast.
 
-    Optimization: Tracks async handlers separately to avoid iscoroutine() check
+    Optimization: Tracks per-topic async handler presence to avoid O(k) scan
     on hot path when all handlers are synchronous (common case for telemetry).
     """
 
@@ -29,6 +29,8 @@ class EventBus:
         self._subs: Dict[str, List[Handler]] = defaultdict(list)
         # Track async handlers separately to enable fast-path for sync-only topics
         self._async_handlers: Set[Handler] = set()
+        # Per-topic flag: True if topic has any async handlers (O(1) check on publish)
+        self._topic_has_async: Dict[str, bool] = {}
 
     # Threshold for subscription leak warning
     _SUBSCRIPTION_WARN_THRESHOLD = 10
@@ -39,6 +41,8 @@ class EventBus:
         # Track async handlers at subscription time (avoids check on every publish)
         if inspect.iscoroutinefunction(handler):
             self._async_handlers.add(handler)
+            # Mark topic as having async handlers (O(1) lookup on publish)
+            self._topic_has_async[topic] = True
         # Warn on suspicious subscription counts (possible leak)
         count = len(self._subs[topic])
         if count > self._SUBSCRIPTION_WARN_THRESHOLD:
@@ -61,6 +65,14 @@ class EventBus:
                     )
                     if not still_subscribed:
                         self._async_handlers.discard(handler)
+                # Update per-topic async flag (recompute since handler was removed)
+                if topic in self._topic_has_async:
+                    remaining_handlers = self._subs[topic]
+                    has_async = any(h in self._async_handlers for h in remaining_handlers)
+                    if has_async:
+                        self._topic_has_async[topic] = True
+                    else:
+                        self._topic_has_async.pop(topic, None)
             except ValueError:
                 pass  # Handler not found, ignore
 
@@ -71,7 +83,7 @@ class EventBus:
         For best performance, ensure handlers are fast.
         Async handlers will NOT be awaited - use publish_async() for those.
 
-        Optimized: Only checks for coroutine result if handler is known to be async.
+        Optimized: Uses O(1) per-topic async flag instead of scanning handlers.
         """
         handlers = self._subs.get(topic)
         if not handlers:
@@ -81,9 +93,9 @@ class EventBus:
         # (handlers may unsubscribe themselves or others during callback)
         handlers_snapshot = list(handlers)
 
-        # Fast path: check if any async handlers exist for this topic
+        # Fast path: O(1) check if topic has any async handlers
         async_handlers = self._async_handlers
-        has_async = any(h in async_handlers for h in handlers_snapshot)
+        has_async = self._topic_has_async.get(topic, False)
 
         if not has_async:
             # Ultra-fast path: all handlers are sync, no coroutine checks needed

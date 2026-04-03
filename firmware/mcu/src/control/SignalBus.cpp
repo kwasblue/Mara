@@ -19,6 +19,8 @@ int SignalBus::indexOf_(uint16_t id) const {
 }
 
 bool SignalBus::define(uint16_t id, const char* name, Kind kind, float initial) {
+    mara::CriticalSection lock(lock_);
+
     // Check if already exists using O(1) lookup
     auto it = idToIndex_.find(id);
     if (it != idToIndex_.end()) {
@@ -59,6 +61,7 @@ bool SignalBus::define(uint16_t id, const char* name, Kind kind, float initial) 
 }
 
 bool SignalBus::exists(uint16_t id) const {
+    mara::CriticalSection lock(lock_);
     return indexOf_(id) >= 0;
 }
 
@@ -138,6 +141,8 @@ bool SignalBus::getTimestamp(uint16_t id, uint32_t& out) const {
 }
 
 bool SignalBus::remove(uint16_t id) {
+    mara::CriticalSection lock(lock_);
+
     auto it = idToIndex_.find(id);
     if (it == idToIndex_.end()) return false;
 
@@ -150,6 +155,7 @@ bool SignalBus::remove(uint16_t id) {
     signals_.erase(signals_.begin() + idx);
 
     // Update indices for all signals after the removed one
+    // O(n) but remove() is rare and signal count is bounded by MAX_SIGNALS
     for (auto& pair : idToIndex_) {
         if (pair.second > idx) {
             pair.second--;
@@ -159,8 +165,11 @@ bool SignalBus::remove(uint16_t id) {
 }
 
 const SignalBus::SignalDef* SignalBus::find(uint16_t id) const {
+    mara::CriticalSection lock(lock_);
     int idx = indexOf_(id);
     if (idx < 0) return nullptr;
+    // WARNING: Returned pointer is only valid while lock is held.
+    // Caller should copy needed fields immediately after this call.
     return &signals_[static_cast<size_t>(idx)];
 }
 
@@ -170,7 +179,11 @@ const SignalBus::SignalDef* SignalBus::find(uint16_t id) const {
 
 bool SignalBus::createAlias(uint16_t id, const char* alias) {
     if (!alias || alias[0] == '\0') return false;
-    if (!exists(id)) return false;
+
+    mara::CriticalSection lock(lock_);
+
+    // Check signal exists (inline to avoid recursive lock)
+    if (indexOf_(id) < 0) return false;
 
     // Check if alias already exists
     for (const auto& a : aliases_) {
@@ -188,6 +201,8 @@ bool SignalBus::createAlias(uint16_t id, const char* alias) {
 bool SignalBus::removeAlias(const char* alias) {
     if (!alias) return false;
 
+    mara::CriticalSection lock(lock_);
+
     for (auto it = aliases_.begin(); it != aliases_.end(); ++it) {
         if (strcmp(it->name, alias) == 0) {
             aliases_.erase(it);
@@ -199,6 +214,8 @@ bool SignalBus::removeAlias(const char* alias) {
 
 uint16_t SignalBus::resolveId(const char* name) const {
     if (!name || name[0] == '\0') return 0;
+
+    mara::CriticalSection lock(lock_);
 
     // First, check signal names directly
     for (const auto& s : signals_) {

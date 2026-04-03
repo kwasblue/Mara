@@ -132,7 +132,7 @@ private:
     struct ProtoReassembly {
         uint8_t msgId = 0;
         uint8_t expectedFrames = 0;
-        uint8_t receivedMask = 0;
+        uint16_t receivedMask = 0;  // Must be >= PROTO_MAX_FRAMES bits (16)
         uint8_t data[can::PROTO_MAX_MSG_SIZE];
         size_t totalLen = 0;
         uint32_t lastFrameTime = 0;
@@ -147,7 +147,7 @@ private:
 
         bool isComplete() const {
             if (expectedFrames == 0) return false;
-            uint16_t mask = (1 << expectedFrames) - 1;
+            uint16_t mask = (1U << expectedFrames) - 1;
             return (receivedMask & mask) == mask;
         }
     };

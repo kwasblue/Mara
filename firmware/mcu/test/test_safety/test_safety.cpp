@@ -33,18 +33,22 @@ public:
     void configure(const SafetyConfig& cfg) { cfg_ = cfg; }
     
     void update(uint32_t now_ms) {
-        // Host timeout
+        // Host timeout - matches real ModeManager behavior:
+        // Only downgrades ACTIVE→ARMED, leaves other states untouched
         if (hostEverSeen_ && isConnected() && !isEstopped()) {
             if (now_ms - lastHostHeartbeat_ > cfg_.host_timeout_ms) {
                 triggerStop();
-                mode_ = MaraMode::DISCONNECTED;
+                if (mode_ == MaraMode::ACTIVE) {
+                    mode_ = MaraMode::ARMED;
+                }
             }
         }
-        
-        // Motion timeout (only in ACTIVE)
+
+        // Motion timeout (only in ACTIVE) - downgrades to ARMED
         if (mode_ == MaraMode::ACTIVE && lastMotionCmd_ > 0) {
             if (now_ms - lastMotionCmd_ > cfg_.motion_timeout_ms) {
                 triggerStop();
+                mode_ = MaraMode::ARMED;
             }
         }
     }
@@ -175,12 +179,27 @@ void tearDown() {
 
 void test_host_timeout_triggers_stop() {
     g_mode->onHostHeartbeat(0);
-    TEST_ASSERT_EQUAL(MaraMode::IDLE, g_mode->mode());
-    
+    g_mode->arm();
+    g_mode->activate(0);
+    TEST_ASSERT_EQUAL(MaraMode::ACTIVE, g_mode->mode());
+
     g_mode->update(600);
-    
+
     TEST_ASSERT_TRUE(g_stopCalled);
-    TEST_ASSERT_EQUAL(MaraMode::DISCONNECTED, g_mode->mode());
+    // Host timeout downgrades ACTIVE→ARMED (not DISCONNECTED)
+    TEST_ASSERT_EQUAL(MaraMode::ARMED, g_mode->mode());
+}
+
+void test_host_timeout_from_idle_no_mode_change() {
+    // Host timeout from IDLE should trigger stop but NOT change mode
+    g_mode->onHostHeartbeat(0);
+    TEST_ASSERT_EQUAL(MaraMode::IDLE, g_mode->mode());
+
+    g_mode->update(600);
+
+    TEST_ASSERT_TRUE(g_stopCalled);
+    // IDLE stays IDLE - only ACTIVE downgrades
+    TEST_ASSERT_EQUAL(MaraMode::IDLE, g_mode->mode());
 }
 
 void test_heartbeat_prevents_timeout() {
@@ -207,15 +226,16 @@ void test_no_timeout_before_first_heartbeat() {
 void test_motion_timeout_triggers_stop() {
     g_mode->onHostHeartbeat(0);
     g_mode->arm();
-    g_mode->activate(millis());
+    g_mode->activate(0);
     g_mode->onMotionCommand(100);
-    
+
     g_mode->onHostHeartbeat(200);
     g_mode->onHostHeartbeat(400);
     g_mode->update(700);
-    
+
     TEST_ASSERT_TRUE(g_stopCalled);
-    TEST_ASSERT_EQUAL(MaraMode::ACTIVE, g_mode->mode());
+    // Motion timeout downgrades ACTIVE→ARMED
+    TEST_ASSERT_EQUAL(MaraMode::ARMED, g_mode->mode());
 }
 
 void test_motion_commands_prevent_timeout() {
@@ -381,6 +401,7 @@ void test_valid_velocity_passes() {
 void run_tests() {
     // Host timeout
     RUN_TEST(test_host_timeout_triggers_stop);
+    RUN_TEST(test_host_timeout_from_idle_no_mode_change);
     RUN_TEST(test_heartbeat_prevents_timeout);
     RUN_TEST(test_no_timeout_before_first_heartbeat);
 

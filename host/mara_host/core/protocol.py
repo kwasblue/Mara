@@ -205,7 +205,9 @@ def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None
         else:
             # CRC mismatch: skip entire frame to avoid re-parsing garbage
             # (corrupt data may contain HEADER bytes that trigger false matches)
-            _log.debug("CRC mismatch at offset %d, skipping %d bytes", i, frame_total)
+            # Log at WARNING so corruption is visible on noisy serial lines
+            _log.warning("CRC mismatch at offset %d, skipping %d bytes (expected=0x%04X, got=0x%04X)",
+                         i, frame_total, expected_crc, recv_crc)
             i += frame_total
 
         n = len(buffer)

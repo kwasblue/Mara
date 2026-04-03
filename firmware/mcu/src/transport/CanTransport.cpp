@@ -291,12 +291,13 @@ void CanTransport::handleProtocolFrame(uint8_t srcNode, const uint8_t* data, siz
     rx.lastFrameTime = mara::getSystemClock().millis();
 
     // Update total length (last frame determines actual length)
+    // NOTE: We do NOT trim trailing zeros because valid payloads may end
+    // with zero bytes (e.g., binary fields with zero values). The receiver
+    // must handle potential padding. For JSON messages, parsers ignore
+    // trailing null bytes. For binary protocols, the message format should
+    // include an explicit length field.
     if (frameId == totalFrames - 1) {
         rx.totalLen = offset + can::PROTO_PAYLOAD_SIZE;
-        // Trim trailing zeros to find actual length
-        while (rx.totalLen > 0 && rx.data[rx.totalLen - 1] == 0) {
-            rx.totalLen--;
-        }
     }
 
     // Check if message is complete

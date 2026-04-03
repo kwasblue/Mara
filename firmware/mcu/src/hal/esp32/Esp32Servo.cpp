@@ -86,17 +86,19 @@ void Esp32Servo::write(uint8_t servoId, float angleDeg) {
     if (angleDeg < 0.0f) angleDeg = 0.0f;
     if (angleDeg > 180.0f) angleDeg = 180.0f;
 
+    // Calculate pulse width from angle with full float precision
+    // Using writeMicroseconds instead of write(int) to preserve sub-degree precision
+    float ratio = angleDeg / 180.0f;
+    uint16_t pulseUs = servos_[servoId].minUs +
+        static_cast<uint16_t>(ratio * (servos_[servoId].maxUs - servos_[servoId].minUs));
+
     Servo* servo = static_cast<Servo*>(servos_[servoId].impl);
     if (servo) {
-        servo->write(static_cast<int>(angleDeg));
+        servo->writeMicroseconds(pulseUs);
     }
 
     servos_[servoId].currentAngle = angleDeg;
-
-    // Calculate pulse width from angle
-    float ratio = angleDeg / 180.0f;
-    servos_[servoId].currentUs = servos_[servoId].minUs +
-        static_cast<uint16_t>(ratio * (servos_[servoId].maxUs - servos_[servoId].minUs));
+    servos_[servoId].currentUs = pulseUs;
 }
 
 void Esp32Servo::writeMicroseconds(uint8_t servoId, uint16_t pulseUs) {

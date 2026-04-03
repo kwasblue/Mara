@@ -60,8 +60,17 @@ I2cResult Esp32I2c::write(uint8_t address, const uint8_t* data, size_t length, b
 
 I2cResult Esp32I2c::read(uint8_t address, uint8_t* data, size_t length) {
     size_t received = wire_->requestFrom(address, length);
-    if (received != length) {
+    if (received == 0) {
+        // No bytes received - device didn't ACK address
         return I2cResult::NackAddr;
+    }
+    if (received != length) {
+        // Partial read - device ACKed but stopped early (NACK on data or timeout)
+        // Read what we got to clear the buffer
+        for (size_t i = 0; i < received; i++) {
+            data[i] = wire_->read();
+        }
+        return I2cResult::NackData;
     }
     for (size_t i = 0; i < length; i++) {
         data[i] = wire_->read();

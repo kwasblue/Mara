@@ -81,7 +81,7 @@ async def test_hil_churn_connect_disconnect(request):
     cycles = _get_churn_cycles(request)
 
     for i in range(cycles):
-        transport = SerialTransport(port=port, baudrate=115200)
+        transport = SerialTransport(port=port)
 
         client = BaseMaraClient(
             transport=transport,

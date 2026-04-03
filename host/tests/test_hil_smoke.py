@@ -65,7 +65,7 @@ async def test_hil_handshake_and_basic_commands(request):
     if not port:
         pytest.skip("No MCU port provided. Use --mcu-port=/dev/tty.usbserial-XXX or set MCU_PORT")
 
-    transport = SerialTransport(port=port, baudrate=115200)
+    transport = SerialTransport(port=port)
 
     # Real hardware needs looser timing than unit tests.
     client = BaseMaraClient(
@@ -138,7 +138,7 @@ async def test_hil_reboot_recovery(request):
     if not port:
         pytest.skip("No MCU port provided. Use --mcu-port=/dev/tty.usbserial-XXX or set MCU_PORT")
 
-    transport = SerialTransport(port=port, baudrate=115200)
+    transport = SerialTransport(port=port)
 
     client = BaseMaraClient(
         transport=transport,
@@ -173,7 +173,7 @@ async def test_hil_handshake_and_basic_commands(request):
     if not port:
         pytest.skip("No MCU port provided")
 
-    transport = SerialTransport(port=port, baudrate=115200)
+    transport = SerialTransport(port=port)
 
     client = BaseMaraClient(
         transport=transport,

@@ -216,7 +216,7 @@ async def test_hil_mini_soak_link_stability(request):
     snap_log_path = str(Path(log_dir) / "hil_fail_snapshot.jsonl")
     bus_log_path = str(Path(log_dir) / "hil_bus_dump.log")
 
-    transport = SerialTransport(port=port, baudrate=115200)
+    transport = SerialTransport(port=port)
 
     client = BaseMaraClient(
         transport=transport,
@@ -434,7 +434,7 @@ async def test_hil_reconnect_recovery(request):
         pytest.skip("No MCU port provided. Use --mcu-port=... or set MCU_PORT")
 
     # First connection
-    transport1 = SerialTransport(port=port, baudrate=115200)
+    transport1 = SerialTransport(port=port)
     client1 = BaseMaraClient(
         transport=transport1,
         require_version_match=True,
@@ -463,7 +463,7 @@ async def test_hil_reconnect_recovery(request):
     await asyncio.sleep(1.0)
 
     # Second connection — fresh client on same port
-    transport2 = SerialTransport(port=port, baudrate=115200)
+    transport2 = SerialTransport(port=port)
     client2 = BaseMaraClient(
         transport=transport2,
         require_version_match=True,

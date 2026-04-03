@@ -228,7 +228,7 @@ async def test_hil_long_soak_link_stability(request):
     snap_log_path = str(Path(log_dir) / f"{run_id}_fail_snapshot.jsonl")
     bus_log_path = str(Path(log_dir) / f"{run_id}_bus_dump.log")
 
-    transport = SerialTransport(port=port, baudrate=115200)
+    transport = SerialTransport(port=port)
 
     client = BaseMaraClient(
         transport=transport,

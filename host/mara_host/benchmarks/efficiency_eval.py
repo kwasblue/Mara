@@ -112,7 +112,7 @@ print(f"{elapsed * 1000:.2f}")
             import_ms = float(result.stdout.strip())
         except Exception as e:
             print(f"  [ERROR] Could not measure import time: {e}")
-            import_ms = -1
+            import_ms = None
 
         # Measure submodule imports
         submodules = [
@@ -122,14 +122,16 @@ print(f"{elapsed * 1000:.2f}")
             "mara_host.services.control.motion_service",
         ]
 
-        print(f"  mara_host.Robot: {import_ms:.2f}ms")
-
-        self.results.append(BenchmarkResult(
-            name="import_robot",
-            iterations=1,
-            total_time_ms=import_ms,
-            per_call_us=import_ms * 1000,
-        ))
+        if import_ms is not None:
+            print(f"  mara_host.Robot: {import_ms:.2f}ms")
+            self.results.append(BenchmarkResult(
+                name="import_robot",
+                iterations=1,
+                total_time_ms=import_ms,
+                per_call_us=import_ms * 1000,
+            ))
+        else:
+            print("  mara_host.Robot: [skipped - measurement failed]")
 
     def bench_json_vs_binary_encode(self) -> None:
         """Compare JSON vs binary encoding for velocity command."""
@@ -414,7 +416,7 @@ print(f"{elapsed * 1000:.2f}")
         import struct
 
         try:
-            transport = SerialTransport(port=self.port, baudrate=115200)
+            transport = SerialTransport(port=self.port)
             await transport.open()
 
             # Small frame

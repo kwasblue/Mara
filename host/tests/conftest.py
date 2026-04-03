@@ -109,23 +109,34 @@ def _find_serial_port() -> str:
 
 
 @pytest.fixture
-async def mcu(request, hil_timeout, tmp_path):
+async def mcu(request, hil_timeout, tmp_path, mara_host, mara_port):
     """
     Connected MaraClient for HIL tests.
-    Defaults to serial transport. Use --mcu-port to specify port.
+    Supports both serial and TCP transports:
+    - Serial: Use --mcu-port or auto-detect
+    - TCP: Use --mara-host and --mara-port (or set --mcu-port=tcp)
     Ensures safe state on setup and teardown.
     """
-    from mara_host.transport.serial_transport import SerialTransport
     from mara_host.command.client import MaraClient
 
     # Get port from CLI or auto-detect
     port = request.config.getoption("--mcu-port")
-    if not port:
-        port = _find_serial_port()
-    if not port:
-        pytest.skip("No serial port found. Use --mcu-port to specify.")
 
-    transport = SerialTransport(port, baudrate=115200)
+    # Check if TCP transport requested
+    use_tcp = port == "tcp" or os.getenv("MCU_TCP", "").lower() in ("1", "true", "yes")
+
+    if use_tcp or (not port and not _find_serial_port()):
+        # Use TCP transport
+        from mara_host.transport.tcp_transport import AsyncTcpTransport
+        transport = AsyncTcpTransport(host=mara_host, port=mara_port)
+    else:
+        # Use serial transport
+        from mara_host.transport.serial_transport import SerialTransport
+        if not port:
+            port = _find_serial_port()
+        if not port:
+            pytest.skip("No serial port found. Use --mcu-port or --mcu-port=tcp for TCP.")
+        transport = SerialTransport(port)  # Uses DEFAULT_BAUD_RATE from config
     client = MaraClient(
         transport,
         command_timeout_s=hil_timeout,
@@ -185,7 +196,7 @@ async def active_mcu(armed_mcu):
 # ============== HIL Assertion Helper ==============
 
 @pytest.fixture
-def hil(mcu):
+async def hil(mcu):
     """Helper for cleaner HIL assertions."""
     class HIL:
         def __init__(self, client):
@@ -255,24 +266,6 @@ async def clear_signals(hil):
     await hil.clear_signals()
     yield
     await hil.clear_signals()
-
-
-# ============== Event Loop ==============
-
-@pytest.fixture
-def event_loop():
-    """Fresh loop per test."""
-    loop = asyncio.new_event_loop()
-    try:
-        yield loop
-    finally:
-        pending = asyncio.all_tasks(loop)
-        for t in pending:
-            t.cancel()
-        if pending:
-            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
 
 
 # ============== Bus Dump Helper ==============

@@ -122,6 +122,8 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._running = False
         self._seq = 0
         self._heartbeat_task: Optional[asyncio.Task] = None
+        self._reconnect_handshake_task: Optional[asyncio.Task] = None
+        self._ever_disconnected = False  # Track if we've ever lost connection
 
         # Version handshake
         self._require_version_match = require_version_match
@@ -247,6 +249,13 @@ class BaseMaraClient(BinaryCommandsMixin):
                     await self._heartbeat_task
                 self._heartbeat_task = None
 
+        async def cancel_reconnect_handshake() -> None:
+            if self._reconnect_handshake_task:
+                self._reconnect_handshake_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._reconnect_handshake_task
+                self._reconnect_handshake_task = None
+
         async def clear_pending_async() -> None:
             await self.commander.clear_pending()
 
@@ -255,6 +264,7 @@ class BaseMaraClient(BinaryCommandsMixin):
 
         components = [
             ("heartbeat", cancel_heartbeat),
+            ("reconnect_handshake", cancel_reconnect_handshake),
             ("connection_monitor", self.connection.stop_monitoring),
             ("commander", self.commander.stop_update_loop),
             ("pending_commands", clear_pending_async),
@@ -382,11 +392,18 @@ class BaseMaraClient(BinaryCommandsMixin):
     # ---------- Connection callbacks ----------
 
     def _on_disconnect(self) -> None:
+        self._ever_disconnected = True
         self.commander.clear_pending_sync()
         self.bus.publish("connection.lost", {})
         self.logs.events.write("connection.lost")
 
     def _on_reconnect(self) -> None:
+        # Skip reconnect handshake on initial connection - already done in start()
+        if not self._ever_disconnected:
+            self.bus.publish("connection.restored", {})
+            self.logs.events.write("connection.restored")
+            return
+
         # Reset handshake state - MCU may have reset
         self._version_verified = False
         with self._handshake_lock:
@@ -402,7 +419,7 @@ class BaseMaraClient(BinaryCommandsMixin):
             self.bus.publish("connection.reconnecting", {})
             self.logs.events.write("connection.reconnecting")
 
-            task = asyncio.create_task(self._perform_handshake())
+            self._reconnect_handshake_task = asyncio.create_task(self._perform_handshake())
             # Attach error handler to prevent silent failures on version mismatch
             def _on_handshake_done(t: asyncio.Task) -> None:
                 try:
@@ -420,7 +437,7 @@ class BaseMaraClient(BinaryCommandsMixin):
                         "Connection may be in unverified state.", e
                     )
                     self.bus.publish("handshake.failed", {"error": str(e)})
-            task.add_done_callback(_on_handshake_done)
+            self._reconnect_handshake_task.add_done_callback(_on_handshake_done)
         else:
             # No handshake required - connection is immediately restored
             self.bus.publish("connection.restored", {})

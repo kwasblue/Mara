@@ -1,0 +1,64 @@
+[
+  {
+    "name": "import_robot",
+    "per_call_us": 73250.0,
+    "iterations": 1,
+    "extra": {}
+  },
+  {
+    "name": "json_encode_velocity",
+    "per_call_us": 2.326610346790403,
+    "iterations": 10000,
+    "extra": {
+      "bytes": 66
+    }
+  },
+  {
+    "name": "binary_encode_velocity",
+    "per_call_us": 0.12889045756310225,
+    "iterations": 10000,
+    "extra": {
+      "bytes": 9
+    }
+  },
+  {
+    "name": "event_bus_0_subs",
+    "per_call_us": 0.11592856608331203,
+    "iterations": 10000,
+    "extra": {}
+  },
+  {
+    "name": "event_bus_5_subs",
+    "per_call_us": 0.5746362498030066,
+    "iterations": 10000,
+    "extra": {}
+  },
+  {
+    "name": "protocol_encode_json",
+    "per_call_us": 6.598590698558837,
+    "iterations": 10000,
+    "extra": {
+      "frame_bytes": 72
+    }
+  },
+  {
+    "name": "protocol_encode_binary",
+    "per_call_us": 1.712834252975881,
+    "iterations": 10000,
+    "extra": {
+      "frame_bytes": 15
+    }
+  },
+  {
+    "name": "dict_copy",
+    "per_call_us": 0.12366382987238467,
+    "iterations": 100000,
+    "extra": {}
+  },
+  {
+    "name": "velocity_e2e_latency",
+    "per_call_us": 52.90036601945758,
+    "iterations": 500,
+    "extra": {}
+  }
+]

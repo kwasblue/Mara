@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import gc
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -40,7 +41,6 @@ class CommandTiming:
 
     cmd_type: str
     encode_time_us: float
-    send_time_us: float
     ack_wait_ms: float
     total_rtt_ms: float
     retry_count: int
@@ -116,10 +116,9 @@ class CommandRTTBenchmark:
 
         t_end = time.perf_counter_ns()
 
-        # Calculate timing
-        send_time_us = 0.0  # We can't easily separate send vs ack wait
+        # Calculate timing (send and ack wait are combined in total_rtt)
         total_rtt_ms = (t_end - t_send_start) / 1_000_000.0
-        ack_wait_ms = total_rtt_ms  # Approximation
+        ack_wait_ms = total_rtt_ms
 
         # Get retry count
         retry_count = 0
@@ -129,7 +128,6 @@ class CommandRTTBenchmark:
         return CommandTiming(
             cmd_type=cmd_type,
             encode_time_us=encode_time_us,
-            send_time_us=send_time_us,
             ack_wait_ms=ack_wait_ms,
             total_rtt_ms=total_rtt_ms,
             retry_count=max(0, retry_count),
@@ -174,20 +172,25 @@ class CommandRTTBenchmark:
         total_retries = 0
         errors = 0
 
-        for i in range(count):
-            timing = await self.measure_command(cmd_type, payload, timeout, binary)
-            timings.append(timing)
+        # Disable GC during measurement to avoid inflating p95/p99 with GC pauses
+        gc.disable()
+        try:
+            for i in range(count):
+                timing = await self.measure_command(cmd_type, payload, timeout, binary)
+                timings.append(timing)
 
-            if timing.success:
-                total_retries += timing.retry_count
-            else:
-                errors += 1
+                if timing.success:
+                    total_retries += timing.retry_count
+                else:
+                    errors += 1
 
-            if delay > 0:
-                await asyncio.sleep(delay)
+                if delay > 0:
+                    await asyncio.sleep(delay)
 
-            if (i + 1) % 50 == 0:
-                print(f"  Progress: {i + 1}/{count}")
+                if (i + 1) % 50 == 0:
+                    print(f"  Progress: {i + 1}/{count}")
+        finally:
+            gc.enable()
 
         # Extract successful timings
         success_rtts = [t.total_rtt_ms for t in timings if t.success]
@@ -245,11 +248,12 @@ async def run_benchmark(
     # Create appropriate transport
     if port:
         from mara_host.transport.serial_transport import SerialTransport
+        from mara_host.core._generated_config import DEFAULT_BAUD_RATE
 
-        transport = SerialTransport(port=port, baudrate=115200)
+        transport = SerialTransport(port=port)
         transport_type = "serial"
         port_or_host = port
-        baud_rate = 115200
+        baud_rate = DEFAULT_BAUD_RATE
     elif tcp_host:
         from mara_host.transport.tcp_transport import AsyncTcpTransport
 

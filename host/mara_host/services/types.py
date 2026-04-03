@@ -569,6 +569,7 @@ class SignalGetResponse:
 
     signal_id: int
     value: float
+    stale: bool = False  # True if value is from cache due to MCU timeout
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SignalGetResponse:
@@ -576,6 +577,7 @@ class SignalGetResponse:
         return cls(
             signal_id=data.get("signal_id", 0),
             value=data.get("value", 0.0),
+            stale=data.get("stale", False),
         )
 
 

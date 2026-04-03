@@ -6,9 +6,10 @@ Provides high-level operations for defining and manipulating
 signals in the MCU signal bus system.
 """
 
+import asyncio
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from mara_host.core.result import ServiceResult
 from mara_host.command.payloads import (
@@ -129,10 +130,18 @@ class SignalService:
         ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
+            # Parse kind with fallback for unknown/future firmware signal kinds
+            try:
+                signal_kind = SignalKind(kind)
+            except ValueError:
+                # Firmware accepted the kind but it's not in our enum.
+                # Default to CONTINUOUS to avoid host/firmware cache desync.
+                signal_kind = SignalKind.CONTINUOUS
+
             self._signals[signal_id] = Signal(
                 signal_id=signal_id,
                 name=name,
-                kind=SignalKind(kind),
+                kind=signal_kind,
                 value=initial_value,
             )
             return ServiceResult.success(
@@ -189,34 +198,64 @@ class SignalService:
                 error=error or f"Failed to set signal {signal_id}"
             )
 
-    async def get(self, signal_id: int) -> ServiceResult:
+    async def get(self, signal_id: int, ack_timeout_s: float = 0.2) -> ServiceResult:
         """
         Get a signal value from the MCU.
 
-        Note: This requests the current value from the MCU.
-        For cached values, use get_cached().
+        Note: This requests the current value from the MCU and parses
+        the response payload. For cached values, use get_cached().
 
         Args:
             signal_id: Signal ID
+            ack_timeout_s: Timeout waiting for MCU response payload
 
         Returns:
             ServiceResult with value in data
         """
         payload = CtrlSignalGetPayload(id=signal_id)
-        ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
-        if ok:
-            # Note: actual value would come from response payload
-            # For now, return cached value
-            cached = self._signals.get(signal_id)
-            value = cached.value if cached else 0.0
+        # Use ACK payload pattern to get actual MCU value
+        loop = asyncio.get_running_loop()
+        ack_future: asyncio.Future[Any] = loop.create_future()
+        topic = f"cmd.{payload._cmd}"
+
+        def _handler(data: Any) -> None:
+            if not ack_future.done():
+                ack_future.set_result(data)
+
+        self.client.bus.subscribe(topic, _handler)
+        try:
+            ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
+            if not ok:
+                return ServiceResult.failure(
+                    error=error or f"Failed to get signal {signal_id}"
+                )
+
+            try:
+                ack_payload = await asyncio.wait_for(ack_future, timeout=ack_timeout_s)
+            except asyncio.TimeoutError:
+                # Fall back to cached value on timeout, but mark it
+                cached = self._signals.get(signal_id)
+                value = cached.value if cached else 0.0
+                return ServiceResult.success(
+                    data=SignalGetResponse(signal_id=signal_id, value=value, stale=True)
+                )
+
+            # Parse actual value from MCU response
+            if isinstance(ack_payload, dict):
+                value = float(ack_payload.get("value", 0.0))
+            else:
+                value = 0.0
+
+            # Update cache with MCU value
+            if signal_id in self._signals:
+                self._signals[signal_id].value = value
+
             return ServiceResult.success(
                 data=SignalGetResponse(signal_id=signal_id, value=value)
             )
-        else:
-            return ServiceResult.failure(
-                error=error or f"Failed to get signal {signal_id}"
-            )
+        finally:
+            self.client.bus.unsubscribe(topic, _handler)
 
     async def list(self) -> ServiceResult:
         """

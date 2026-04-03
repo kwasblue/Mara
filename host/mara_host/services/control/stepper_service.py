@@ -121,8 +121,16 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
 
     @property
     def effective_steps_per_rev(self) -> int:
-        """Get effective steps per revolution including microstepping."""
-        return 200  # Default, should be calculated per motor
+        """
+        DEPRECATED: Use get_effective_steps_per_rev(stepper_id) instead.
+
+        This property cannot return a meaningful value because effective
+        steps per revolution depends on the specific motor's configuration.
+        """
+        raise NotImplementedError(
+            "effective_steps_per_rev property is deprecated. "
+            "Use get_effective_steps_per_rev(stepper_id) instead."
+        )
 
     def get_effective_steps_per_rev(self, stepper_id: int) -> int:
         """Get effective steps per revolution for a specific motor."""
@@ -197,7 +205,12 @@ class StepperService(ConfigurableService[StepperConfig, StepperState]):
 
         if ok:
             state = self.get_state(stepper_id)
-            state.target_position = state.position + steps
+            # Update both position (optimistic) and target_position
+            # This allows chained move_relative calls to accumulate correctly.
+            # Note: actual position may differ if move is interrupted - use
+            # get_position() to sync with MCU if precise tracking is needed.
+            state.position = state.position + steps
+            state.target_position = state.position
             state.moving = True
             return ServiceResult.success(
                 data=StepperMoveRelResponse(stepper_id=stepper_id, steps=steps, speed_rps=speed_rps)

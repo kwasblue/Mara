@@ -111,6 +111,12 @@ class ImuService:
         error_message: str,
         ack_timeout_s: float = 0.2,
     ) -> ServiceResult:
+        """
+        Send command and wait for ACK payload response.
+
+        Returns failure if ACK times out to prevent returning stale/zero data
+        as if it were a valid reading.
+        """
         loop = asyncio.get_running_loop()
         ack_future: asyncio.Future[Any] = loop.create_future()
         topic = f"cmd.{command}"
@@ -128,9 +134,13 @@ class ImuService:
             try:
                 ack_payload = await asyncio.wait_for(ack_future, timeout=ack_timeout_s)
             except asyncio.TimeoutError:
-                ack_payload = None
+                # Return failure instead of silently returning sent payload as "data".
+                # This prevents callers from parsing empty/stale data as valid readings.
+                return ServiceResult.failure(
+                    error=f"{error_message}: timed out waiting for response payload"
+                )
 
-            return ServiceResult.success(data=ack_payload or payload)
+            return ServiceResult.success(data=ack_payload)
         finally:
             self.client.bus.unsubscribe(topic, _handler)
 

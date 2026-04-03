@@ -136,7 +136,10 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._platform_name: Optional[str] = None
         self._handshake_future: Optional[asyncio.Future] = None
         # Lock to prevent race condition between handshake and cached identity
-        self._handshake_lock = asyncio.Lock()
+        # Using threading.Lock (not asyncio.Lock) because _handle_json_payload
+        # is a sync callback that can't await an async lock.
+        import threading
+        self._handshake_lock = threading.Lock()
 
         # Lazy logging (deferred initialization for startup speed)
         self._logs: Optional["MaraLogBundle"] = None
@@ -291,7 +294,7 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._handshake_future = loop.create_future()
         # If identity arrived before handshake started, complete immediately
         # Use lock to prevent race with _handle_json_payload setting _cached_identity
-        async with self._handshake_lock:
+        with self._handshake_lock:
             if self._cached_identity is not None:
                 if not self._handshake_future.done():
                     self._handshake_future.set_result(self._cached_identity)
@@ -386,7 +389,8 @@ class BaseMaraClient(BinaryCommandsMixin):
     def _on_reconnect(self) -> None:
         # Reset handshake state - MCU may have reset
         self._version_verified = False
-        self._cached_identity = None
+        with self._handshake_lock:
+            self._cached_identity = None
 
         # Clear stale in-flight commands (they won't get ACKs from reset MCU)
         self.commander.clear_pending_sync()
@@ -396,7 +400,22 @@ class BaseMaraClient(BinaryCommandsMixin):
 
         # Schedule async re-handshake if required
         if self._require_version_match and self._running:
-            asyncio.create_task(self._perform_handshake())
+            task = asyncio.create_task(self._perform_handshake())
+            # Attach error handler to prevent silent failures on version mismatch
+            def _on_handshake_error(t: asyncio.Task) -> None:
+                try:
+                    t.result()
+                except asyncio.CancelledError:
+                    pass  # Expected on shutdown
+                except Exception as e:
+                    # Log handshake failure - connection may be in unverified state
+                    import logging
+                    logging.getLogger(__name__).error(
+                        "Re-handshake after reconnect failed: %s. "
+                        "Connection may be in unverified state.", e
+                    )
+                    self.bus.publish("handshake.failed", {"error": str(e)})
+            task.add_done_callback(_on_handshake_error)
 
     # ---------- Heartbeat ----------
 
@@ -481,10 +500,13 @@ class BaseMaraClient(BinaryCommandsMixin):
         # --- Identity handshake ---
         if kind == "identity":
             self.bus.publish("identity", obj)
-            if self._handshake_future and not self._handshake_future.done():
-                self._handshake_future.set_result(obj)
-            else:
-                self._cached_identity = obj
+            # Use lock to prevent race with _perform_handshake reading _cached_identity
+            with self._handshake_lock:
+                if self._handshake_future and not self._handshake_future.done():
+                    self._handshake_future.set_result(obj)
+                else:
+                    # Cache identity for later handshake
+                    self._cached_identity = obj
             return
 
         type_str = obj.get("type", "")
@@ -678,17 +700,42 @@ class BaseMaraClient(BinaryCommandsMixin):
         loop = asyncio.get_running_loop()
         future: asyncio.Future[dict] = loop.create_future()
 
+        # Track send state to reject stale ACKs from prior commands
+        send_started = False
+        expected_seq: Optional[int] = None
+
         def on_response(msg: dict) -> None:
-            if not future.done():
-                future.set_result(msg)
+            nonlocal expected_seq
+            if future.done():
+                return
+
+            # Reject ACKs that arrived before we started sending
+            if not send_started:
+                return
+
+            # Verify sequence number matches if available
+            if expected_seq is not None:
+                ack_seq = msg.get("seq") if isinstance(msg, dict) else None
+                if ack_seq is not None and ack_seq != expected_seq:
+                    return  # Wrong sequence - stale ACK
+
+            future.set_result(msg)
 
         # Subscribe to response on the bus
         topic = f"cmd.{type_str}"
         self.bus.subscribe(topic, on_response)
 
         try:
+            # Get current seq before sending (will be incremented during send)
+            pre_send_seq = self._seq
+            send_started = True
+
             # Send the command
             ok, error = await self.send_reliable(type_str, payload)
+
+            # After send, we know the seq that was used
+            expected_seq = (pre_send_seq + 1) & 0xFFFF
+
             if not ok:
                 return ok, error, None
 

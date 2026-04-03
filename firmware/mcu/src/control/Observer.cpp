@@ -70,13 +70,16 @@ void LuenbergerObserver::update(const float* u, const float* y, float dt, float*
         error[i] = y[i] - y_pred[i];
     }
     
-    // Step 5: Correct x̂ = x̂⁻ + L·e
+    // Step 5: Correct x̂ = x̂⁻ + L·e·dt
+    // Note: For continuous-time observer, correction must be scaled by dt.
+    // The observer equation is: ẋ = Ax + Bu + L(y - Cx)
+    // After Euler integration: x(k+1) = x(k) + dt*[Ax + Bu + L(y - Cx)]
     for (uint8_t i = 0; i < n; i++) {
         float correction = 0.0f;
         for (uint8_t j = 0; j < p; j++) {
             correction += L_[i * MAX_OUTPUTS + j] * error[j];
         }
-        x_hat_[i] = x_pred[i] + correction;
+        x_hat_[i] = x_pred[i] + correction * dt;
     }
     
     // Copy to output

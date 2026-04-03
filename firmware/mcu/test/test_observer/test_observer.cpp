@@ -3,8 +3,8 @@
 #include "control/SignalBus.h"
 
 // Include implementations for native build
-#include "../../src/core/Observer.cpp"
-#include "../../src/core/SignalBus.cpp"
+#include "../../src/control/Observer.cpp"
+#include "../../src/control/SignalBus.cpp"
 
 static LuenbergerObserver obs;
 
@@ -120,6 +120,6 @@ int main(int argc, char** argv) {
     RUN_TEST(test_set_param_individual);
     RUN_TEST(test_dimensions);
     RUN_TEST(test_update_runs);
-    //RUN_TEST(test_observer_converges); this isnt working right now for some reason
+    RUN_TEST(test_observer_converges);
     return UNITY_END();
 }

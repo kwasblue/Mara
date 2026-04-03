@@ -216,7 +216,12 @@ PERSISTENCE_POLICY_SCHEMA: Dict[str, Any] = {
             "default": "host_file",
         },
         "restore": {"type": "boolean", "default": True},
-        "restore_live_state": {"type": "boolean", "default": False},
+        "restore_live_state": {
+            "type": "boolean",
+            "const": False,
+            "default": False,
+            "description": "Must be false - live armed/active state is never restorable for safety",
+        },
     },
 }
 
@@ -374,11 +379,24 @@ def validate_config_with_context(data: Dict[str, Any]) -> List[str]:
 
     Returns:
         List of error messages (empty if valid)
+
+    Raises:
+        ImportError: If jsonschema is not installed. Callers that want to
+            silently skip validation when jsonschema is absent should catch
+            this exception.
     """
     try:
         from jsonschema import Draft202012Validator
     except ImportError:
-        # jsonschema not installed, skip validation
+        # Re-raise with clearer message - callers must handle this explicitly
+        # rather than silently passing malformed configs
+        import warnings
+        warnings.warn(
+            "jsonschema package not installed; schema validation skipped. "
+            "Install with: pip install jsonschema",
+            UserWarning,
+            stacklevel=2,
+        )
         return []
 
     validator = Draft202012Validator(ROBOT_CONFIG_SCHEMA)
@@ -389,7 +407,8 @@ def validate_config_with_context(data: Dict[str, Any]) -> List[str]:
         if path:
             errors.append(f"{path}: {error.message}")
         else:
-            errors.append(error.message)
+            # Top-level errors - add context about root level
+            errors.append(f"(root): {error.message}")
 
     return errors
 

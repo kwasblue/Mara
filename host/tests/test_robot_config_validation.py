@@ -397,4 +397,5 @@ class TestConfigValidationError:
         rendered = str(exc_info.value)
         assert "Config validation failed for" in rendered
         assert "error" in rendered.lower()
-        assert "- 'name' is a required property" in rendered or "- name:" in rendered
+        # Check for name error - may have "(root):" prefix for top-level errors
+        assert "'name' is a required property" in rendered or "- name:" in rendered

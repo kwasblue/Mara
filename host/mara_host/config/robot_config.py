@@ -254,9 +254,23 @@ class SensorConfig:
 
     @classmethod
     def from_entry(cls, name: str, data: Any) -> "SensorConfig":
+        """
+        Create SensorConfig from YAML entry.
+
+        Pin extraction heuristic: Any integer field whose key ends with
+        "pin" or "_pin" (case-insensitive) is treated as a hardware pin
+        and added to the pins dict. For example:
+        - trigger_pin: 12  -> pins["trigger_pin"] = 12
+        - echo_pin: 13     -> pins["echo_pin"] = 13
+        - sensor_id: 0     -> NOT a pin (doesn't end in "pin")
+
+        This heuristic works for standard sensor configs but may incorrectly
+        capture fields like "version_pin" if they happen to be integers.
+        """
         if not isinstance(data, dict):
             data = {"value": data}
         kind = str(data.get("kind") or data.get("type") or name)
+        # Extract pins using name heuristic - see docstring for details
         pins = {
             str(k): v for k, v in data.items()
             if isinstance(v, int) and (str(k).lower().endswith("pin") or str(k).lower().endswith("_pin"))
@@ -373,14 +387,14 @@ class RobotConfig:
             ValueError: If numeric config values are invalid (e.g., negative wheel_radius)
         """
         path = Path(path)
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
 
         # Apply profile overrides if specified
         if profile:
             profile_path = path.parent / "profiles" / f"{profile}.yaml"
             if profile_path.exists():
-                with open(profile_path, "r") as f:
+                with open(profile_path, "r", encoding="utf-8") as f:
                     profile_data = yaml.safe_load(f) or {}
                 data = cls._merge_dicts(data, profile_data)
 

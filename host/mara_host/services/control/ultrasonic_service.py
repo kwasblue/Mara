@@ -203,37 +203,36 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
             if not ack_future.done():
                 ack_future.set_result(data)
 
-        payload = UltrasonicReadPayload(sensor_id=sensor_id)
+        cmd_payload = UltrasonicReadPayload(sensor_id=sensor_id)
         self.client.bus.subscribe(topic, _handler)
         try:
-            ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
-            ack_payload: dict[str, Any] | None
+            ok, error = await self.client.send_reliable(cmd_payload._cmd, cmd_payload.to_dict())
+
+            # Always wait for ACK payload - even if ok=False, the MCU may have
+            # returned useful information (e.g., error="read_failed" for no-echo)
+            ack_data: dict[str, Any] | None
             try:
-                ack_payload = await asyncio.wait_for(ack_future, timeout=0.1)
+                ack_data = await asyncio.wait_for(ack_future, timeout=0.1)
             except asyncio.TimeoutError:
-                ack_payload = None
+                ack_data = None
         finally:
             self.client.bus.unsubscribe(topic, _handler)
 
         state = self.get_state(sensor_id)
-        payload = dict(ack_payload or {"sensor_id": sensor_id})
-        distance_cm = payload.get("distance_cm")
-        ack_error = payload.get("error")
+        response = dict(ack_data or {"sensor_id": sensor_id})
+        distance_cm = response.get("distance_cm")
+        ack_error = response.get("error")
 
-        if ok:
-            state.attached = bool(payload.get("attached", state.attached or self.has_config(sensor_id)))
-            state.distance_cm = float(distance_cm) if distance_cm is not None else state.distance_cm
-            state.degraded = False
-            state.last_error = None
-            return ServiceResult.success(data=payload)
-
+        # Check for degraded hardware state first (no-echo timeout from MCU)
+        # The MCU returns ok=False with error="read_failed" when sensor is
+        # attached but no echo was measured - this is expected sensor behavior
         if ack_error == "read_failed":
-            state.attached = bool(payload.get("attached", state.attached or self.has_config(sensor_id)))
+            state.attached = bool(response.get("attached", state.attached or self.has_config(sensor_id)))
             state.distance_cm = None
             state.degraded = True
             state.last_error = ack_error
-            degraded_payload = {
-                **payload,
+            degraded_response = {
+                **response,
                 "sensor_id": sensor_id,
                 "distance_cm": None,
                 "degraded": True,
@@ -241,13 +240,22 @@ class UltrasonicService(ConfigurableService[UltrasonicConfig, UltrasonicState]):
                 "reason": "no_echo",
                 "message": f"Ultrasonic sensor {sensor_id} attached but no echo was measured; treating as degraded hardware state.",
             }
-            return ServiceResult.success(data=degraded_payload)
+            return ServiceResult.success(data=degraded_response)
 
-        state.last_error = error or ack_error
-        return ServiceResult.failure(
-            error=error or ack_error or f"Failed to read ultrasonic sensor {sensor_id}",
-            data=payload,
-        )
+        # Transport failure (no ACK or unrecognized error)
+        if not ok:
+            state.last_error = error or ack_error
+            return ServiceResult.failure(
+                error=error or ack_error or f"Failed to read ultrasonic sensor {sensor_id}",
+                data=response,
+            )
+
+        # Normal success path
+        state.attached = bool(response.get("attached", state.attached or self.has_config(sensor_id)))
+        state.distance_cm = float(distance_cm) if distance_cm is not None else state.distance_cm
+        state.degraded = False
+        state.last_error = None
+        return ServiceResult.success(data=response)
 
     async def detach_all(self) -> ServiceResult:
         """

@@ -64,6 +64,9 @@ bool Esp32Persistence::putBool(const char* key, bool value) {
 }
 
 size_t Esp32Persistence::getString(const char* key, char* buffer, size_t maxLen) {
+    // NOTE: If stored string is longer than maxLen, it will be silently truncated.
+    // The ESP32 Preferences API does not provide a way to query the stored length
+    // before reading. Callers should use sufficiently large buffers for expected data.
     return prefs_.getString(key, buffer, maxLen);
 }
 

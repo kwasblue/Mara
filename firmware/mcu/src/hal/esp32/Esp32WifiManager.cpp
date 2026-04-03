@@ -58,7 +58,9 @@ void Esp32WifiManager::setSleepEnabled(bool enabled) {
 }
 
 bool Esp32WifiManager::beginSta(const char* ssid, const char* password) {
-    if (password) {
+    // Check for non-empty password. Empty string "" is treated same as nullptr (open network)
+    // to provide consistent behavior. Only non-empty passwords trigger WPA authentication.
+    if (password && password[0] != '\0') {
         WiFi.begin(ssid, password);
     } else {
         WiFi.begin(ssid);
@@ -148,9 +150,13 @@ uint8_t Esp32WifiManager::getApStationCount() const {
 }
 
 void Esp32WifiManager::onEvent(WifiEventCallback callback) {
+    // NOTE: eventCallback_ is static, so only ONE callback can be active at a time.
+    // Calling onEvent() replaces any previously registered callback. This is a
+    // limitation of the ESP32 Arduino WiFi API which uses a single global handler.
+    // In practice this is fine since we only have one WifiManager instance.
     eventCallback_ = callback;
 
-    // Register ESP32 WiFi event handler
+    // Register ESP32 WiFi event handler (lambda captures nothing, uses static callback)
     WiFi.onEvent([](WiFiEvent_t event) {
         if (!eventCallback_) return;
 

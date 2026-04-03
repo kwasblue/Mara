@@ -222,7 +222,8 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                     sig_id, value, sig_ts = _SIGNAL_FMT.unpack_from(body, pos)
                     signals.append(SignalTelemetry(id=sig_id, name="", value=value, ts_ms=sig_ts))
                     pos += _SIGNAL_FMT.size
-                pkt.ctrl_signals = ControlSignalsTelemetry(signals=signals, count=count)
+                # Use len(signals) as actual count, not wire value (corrupt packet could claim count=60000)
+                pkt.ctrl_signals = ControlSignalsTelemetry(signals=signals, count=len(signals))
             continue
 
         if section_id == TELEM_CTRL_OBSERVERS:
@@ -246,7 +247,11 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                         (x,) = _FLOAT_FMT.unpack_from(body, pos)
                         states.append(x)
                         pos += _FLOAT_FMT.size
-                    observers.append(ObserverTelemetry(slot=slot, enabled=bool(enabled), update_count=0, states=states))
+                    # Track if states were truncated due to insufficient data
+                    truncated = len(states) < num_states
+                    if truncated:
+                        _log.warning("Observer slot %d states truncated: expected %d, got %d", slot, num_states, len(states))
+                    observers.append(ObserverTelemetry(slot=slot, enabled=bool(enabled), update_count=0, states=states, truncated=truncated))
                 pkt.ctrl_observers = ControlObserversTelemetry(observers=observers)
             continue
 

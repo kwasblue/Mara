@@ -135,6 +135,7 @@ class ObserverTelemetry:
     enabled: bool
     update_count: int
     states: list
+    truncated: bool = False  # True if states were truncated due to malformed packet
 
 
 @dataclass

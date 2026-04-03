@@ -54,7 +54,13 @@ class PillCarousel:
         - clear ESTOP
         - set mode ARMED/ACTIVE
         - enable stepper
+
+        NOTE: Uses client.cmd_arm() and cmd_activate() which properly handle
+        the mode state machine. The firmware requires ARMED -> ACTIVE with
+        host heartbeat established between transitions.
         """
+        import asyncio
+
         # telemetry (best-effort)
         try:
             await self.client.send_json_cmd(
@@ -64,9 +70,15 @@ class PillCarousel:
         except Exception:
             pass
 
+        # Clear any existing ESTOP state
         await self.client.send_json_cmd(CMD_CLEAR_ESTOP, {})
-        await self.client.send_json_cmd(CMD_SET_MODE, {"mode": "ARMED"})
-        await self.client.send_json_cmd(CMD_SET_MODE, {"mode": "ACTIVE"})
+
+        # Use proper client methods which handle mode state machine.
+        # Brief delay ensures heartbeat has been exchanged before mode transitions,
+        # as firmware's ModeManager requires hostEverSeen_ to be true.
+        await asyncio.sleep(0.2)  # Wait for heartbeat round-trip
+        await self.client.cmd_arm()
+        await self.client.cmd_activate()
 
         await self.enable_stepper(True)
 

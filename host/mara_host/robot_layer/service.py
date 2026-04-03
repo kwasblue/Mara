@@ -67,6 +67,7 @@ class TrajectoryExecution:
     _current_index: int = 0
     _total_waypoints: int = 0
     _error: Optional[str] = None
+    _task: Optional[asyncio.Task] = field(default=None, repr=False)
 
     @property
     def progress(self) -> float:
@@ -244,9 +245,15 @@ class RobotService:
             if not self._motor:
                 return ServiceResult.failure("No motor service configured")
             for joint_name, joint, angle in motor_moves:
-                # For DC motors, map angle to speed
-                # Could be customized per joint
-                speed = angle / 180.0  # Simple mapping: 0-180 -> 0-1
+                # For DC motors, map angle within joint's range to speed [-1, 1]
+                # Using joint's actual range instead of assuming 0-180
+                range_span = joint.max_angle - joint.min_angle
+                if range_span > 0:
+                    # Normalize: min_angle -> -1, max_angle -> 1
+                    speed = 2.0 * (angle - joint.min_angle) / range_span - 1.0
+                else:
+                    speed = 0.0
+                speed = max(-1.0, min(1.0, speed))  # Clamp to [-1, 1]
                 task = self._motor.set_speed(joint.actuator_id, speed)
                 tasks.append(task)
                 task_info.append((joint_name, angle, "motor"))
@@ -338,7 +345,7 @@ class RobotService:
         self,
         trajectory: Trajectory | list[dict[str, float]] | str,
         frequency_hz: float = 20.0,
-        interpolate: bool = True,
+        interpolate: bool = False,
         on_waypoint: Optional[Callable[[int, Waypoint], None]] = None,
     ) -> 'ServiceResult':
         """
@@ -347,11 +354,16 @@ class RobotService:
         Args:
             trajectory: Trajectory object, list of joint dicts, or JSON string
             frequency_hz: Execution frequency (waypoints per second)
-            interpolate: If True, interpolate between waypoints for smooth motion
+            interpolate: If True, interpolate between waypoints for smooth motion.
+                         NOTE: Currently not implemented - waypoints are executed
+                         directly regardless of this setting.
             on_waypoint: Optional callback called at each waypoint (index, waypoint)
 
         Returns:
-            ServiceResult with execution summary
+            ServiceResult with execution summary. On partial failure, returns
+            failure result with data containing {"executed": N, "total": M, "errors": [...]}.
+            Callers should check result.ok AND result.data["errors"] to understand
+            which waypoints succeeded vs failed.
 
         Example:
             # From list of dicts
@@ -442,13 +454,21 @@ class RobotService:
         self,
         trajectory: Trajectory | list[dict[str, float]] | str,
         frequency_hz: float = 20.0,
-        interpolate: bool = True,
+        interpolate: bool = False,
         on_waypoint: Optional[Callable[[int, Waypoint], None]] = None,
     ) -> TrajectoryExecution:
         """
         Start trajectory execution in the background.
 
         Returns a TrajectoryExecution handle for monitoring and cancellation.
+
+        Args:
+            trajectory: Trajectory object, list of joint dicts, or JSON string
+            frequency_hz: Execution frequency (waypoints per second)
+            interpolate: If True, interpolate between waypoints for smooth motion.
+                         NOTE: Currently not implemented - waypoints are executed
+                         directly regardless of this setting.
+            on_waypoint: Optional callback called at each waypoint (index, waypoint)
 
         Example:
             execution = robot.start_trajectory(waypoints)
@@ -512,25 +532,31 @@ class RobotService:
             finally:
                 execution._complete_event.set()
 
-        # Start background task
-        asyncio.create_task(run())
+        # Start background task and store reference to prevent GC collection.
+        # Per PEP 738, tasks are only weakly referenced by the event loop,
+        # so we must hold a strong reference to prevent silent cancellation.
+        execution._task = asyncio.create_task(run())
         return execution
 
     def _interpolate_to_waypoint(self, waypoint: Waypoint) -> list[dict]:
         """
         Create moves that interpolate from current pose to waypoint.
 
-        For now, this just returns direct moves. Could be enhanced to
-        generate intermediate points for smoother motion.
-        """
-        # Get current pose
-        current = self.pose.get_current()
+        NOTE: Interpolation is NOT currently implemented. This method returns
+        direct moves identical to non-interpolated execution. The interpolate
+        parameter in execute_trajectory/start_trajectory has no effect.
 
-        # For each joint in waypoint, create a move
+        TODO: Implement actual interpolation by generating intermediate
+        waypoints based on current pose and target, using linear or spline
+        interpolation.
+        """
+        # Get current pose (unused until interpolation is implemented)
+        _ = self.pose.get_current()
+
+        # For each joint in waypoint, create a direct move
+        # No interpolation - servo/motor handles smoothing internally
         moves = []
         for joint_name, target_angle in waypoint.joints.items():
-            # Could add intermediate interpolation here
-            # For now, just move directly (servo handles smoothing)
             moves.append({"joint": joint_name, "angle": target_angle})
 
         return moves

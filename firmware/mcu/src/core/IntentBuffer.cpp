@@ -102,7 +102,7 @@ bool IntentBuffer::consumeDcMotorIntent(uint8_t id, DcMotorIntent& out) {
 // =============================================================================
 
 void IntentBuffer::setStepperIntent(int id, int steps, float speed, uint32_t now_ms) {
-    if (id < 0 || id >= MAX_STEPPER_INTENTS) return;
+    if (id < 0 || id >= static_cast<int>(MAX_STEPPER_INTENTS)) return;
 
     CriticalSection lock(lock_);
     steppers_[id].motor_id = id;
@@ -113,7 +113,7 @@ void IntentBuffer::setStepperIntent(int id, int steps, float speed, uint32_t now
 }
 
 bool IntentBuffer::consumeStepperIntent(int id, StepperIntent& out) {
-    if (id < 0 || id >= MAX_STEPPER_INTENTS) return false;
+    if (id < 0 || id >= static_cast<int>(MAX_STEPPER_INTENTS)) return false;
 
     CriticalSection lock(lock_);
     if (!steppers_[id].pending) {

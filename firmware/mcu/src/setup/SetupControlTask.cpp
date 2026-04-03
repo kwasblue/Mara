@@ -25,6 +25,8 @@
 #include <freertos/task.h>
 #endif
 
+#include <atomic>
+
 namespace mara {
 
 // HAL task scheduler (preferred path)
@@ -37,10 +39,23 @@ static TaskHandle_t g_controlTaskHandle = nullptr;
 #endif
 static ServiceContext* g_taskCtx = nullptr;
 static ControlTaskConfig g_taskConfig;
-static volatile bool g_taskRunning = false;
+static std::atomic<bool> g_taskRunning{false};
 
-// Statistics (volatile for cross-task access)
-static volatile ControlTaskStats g_stats;
+// Statistics with atomic fields for cross-task access
+// Using std::atomic instead of volatile struct to ensure proper
+// load/store semantics on Xtensa (volatile struct doesn't guarantee
+// individual member atomicity on all compilers).
+struct AtomicControlTaskStats {
+    std::atomic<uint32_t> iterations{0};
+    std::atomic<uint32_t> max_exec_us{0};
+    std::atomic<uint32_t> overruns{0};
+    std::atomic<uint32_t> last_exec_us{0};
+    // These are only written from control task, read via getControlTaskStats()
+    std::atomic<uint32_t> min_period_us{0};
+    std::atomic<uint32_t> max_period_us{0};
+    std::atomic<uint32_t> jitter_violations{0};
+};
+static AtomicControlTaskStats g_stats;
 
 // Jitter tracking
 static RtTimingStats g_rtStats;
@@ -65,7 +80,7 @@ static void controlTaskFunc(void* param) {
     }
 #endif
 
-    g_taskRunning = true;
+    g_taskRunning.store(true, std::memory_order_release);
     g_rtStats.target_period_us = 1000000 / g_taskConfig.rate_hz;
 
     // Log startup - use HAL logger if available
@@ -94,7 +109,7 @@ static void controlTaskFunc(void* param) {
 
         // Track period jitter (time since last iteration) and compute actual dt
         float dt_s;
-        if (g_stats.iterations > 0) {
+        if (g_stats.iterations.load(std::memory_order_relaxed) > 0) {
             uint32_t period_us = start_us - last_iteration_us;
             g_rtStats.recordPeriod(period_us);
 
@@ -179,10 +194,11 @@ static void controlTaskFunc(void* param) {
                         ctx->stepper->stop(composite.stepper_stops[i].motor_id);
                     }
                 }
+                // WARNING: Stepper moves are BLOCKING - see comment at stepper intent section
                 for (uint8_t i = 0; i < composite.stepper_move_count; ++i) {
-                    if (ctx->motion) {
+                    if (ctx->stepper) {
                         const auto& step = composite.stepper_moves[i];
-                        ctx->motion->moveStepperRelative(step.motor_id, step.steps, step.speed_steps_s);
+                        ctx->stepper->moveRelative(step.motor_id, step.steps, step.speed_steps_s);
                     }
                 }
             }
@@ -222,11 +238,20 @@ static void controlTaskFunc(void* param) {
             }
 
             // Stepper intents (per-motor)
-            for (int i = 0; i < mara::IntentBuffer::MAX_STEPPER_INTENTS; ++i) {
+            // WARNING: moveRelative() is BLOCKING - it stalls the control loop
+            // for the duration of the stepper move (pulses generated in busy-loop).
+            // During this time:
+            //   - No encoder PID updates
+            //   - No velocity commands processed
+            //   - No telemetry updates
+            // TODO: Consider async stepper driver with interrupt-based stepping
+            for (int i = 0; i < static_cast<int>(mara::IntentBuffer::MAX_STEPPER_INTENTS); ++i) {
                 mara::StepperIntent step;
                 if (ctx->intents->consumeStepperIntent(i, step)) {
-                    if (ctx->motion) {
-                        ctx->motion->moveStepperRelative(step.motor_id, step.steps, step.speed_steps_s);
+                    // Call StepperManager directly (same as motion->moveStepperRelative)
+                    // to make the blocking behavior explicit
+                    if (ctx->stepper) {
+                        ctx->stepper->moveRelative(step.motor_id, step.steps, step.speed_steps_s);
                     }
                 }
             }
@@ -258,17 +283,22 @@ static void controlTaskFunc(void* param) {
 
         // Compute execution time
         uint32_t exec_us = sysClock.micros() - start_us;
-        g_stats.last_exec_us = exec_us;
-        g_stats.iterations++;
+        g_stats.last_exec_us.store(exec_us, std::memory_order_relaxed);
+        g_stats.iterations.fetch_add(1, std::memory_order_relaxed);
 
-        if (exec_us > g_stats.max_exec_us) {
-            g_stats.max_exec_us = exec_us;
+        // Update max_exec_us atomically (compare-exchange loop)
+        uint32_t current_max = g_stats.max_exec_us.load(std::memory_order_relaxed);
+        while (exec_us > current_max) {
+            if (g_stats.max_exec_us.compare_exchange_weak(
+                    current_max, exec_us, std::memory_order_relaxed)) {
+                break;
+            }
         }
 
         // Check for overrun (execution took longer than period)
         uint32_t period_us = 1000000 / g_taskConfig.rate_hz;
         if (exec_us > period_us) {
-            g_stats.overruns++;
+            g_stats.overruns.fetch_add(1, std::memory_order_relaxed);
         }
 
         // Wait until next period - use HAL scheduler for precise timing
@@ -314,14 +344,14 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
     g_taskCtx = &ctx;
     g_taskConfig = config;
 
-    // Reset stats (individual fields for volatile)
-    g_stats.iterations = 0;
-    g_stats.max_exec_us = 0;
-    g_stats.overruns = 0;
-    g_stats.last_exec_us = 0;
-    g_stats.min_period_us = 0;
-    g_stats.max_period_us = 0;
-    g_stats.jitter_violations = 0;
+    // Reset stats (atomic stores)
+    g_stats.iterations.store(0, std::memory_order_relaxed);
+    g_stats.max_exec_us.store(0, std::memory_order_relaxed);
+    g_stats.overruns.store(0, std::memory_order_relaxed);
+    g_stats.last_exec_us.store(0, std::memory_order_relaxed);
+    g_stats.min_period_us.store(0, std::memory_order_relaxed);
+    g_stats.max_period_us.store(0, std::memory_order_relaxed);
+    g_stats.jitter_violations.store(0, std::memory_order_relaxed);
     g_rtStats.reset();
 
     // Use HAL scheduler if available (preferred path)
@@ -378,7 +408,7 @@ void stopControlTask() {
     if (g_halScheduler && g_halTaskHandle.native != nullptr) {
         g_halScheduler->deleteTask(g_halTaskHandle);
         g_halTaskHandle.native = nullptr;
-        g_taskRunning = false;
+        g_taskRunning.store(false, std::memory_order_release);
         g_taskCtx = nullptr;
 #if PLATFORM_HAS_ARDUINO
         Serial.println("[CTRL_TASK] Stopped (HAL)");
@@ -395,7 +425,7 @@ void stopControlTask() {
     // Delete the task
     vTaskDelete(g_controlTaskHandle);
     g_controlTaskHandle = nullptr;
-    g_taskRunning = false;
+    g_taskRunning.store(false, std::memory_order_release);
     g_taskCtx = nullptr;
 
 #if PLATFORM_HAS_ARDUINO
@@ -405,23 +435,24 @@ void stopControlTask() {
 }
 
 bool isControlTaskRunning() {
+    bool running = g_taskRunning.load(std::memory_order_acquire);
     if (g_halScheduler && g_halTaskHandle.native != nullptr) {
-        return g_taskRunning;
+        return running;
     }
 #if HAS_FREERTOS
-    return g_taskRunning && g_controlTaskHandle != nullptr;
+    return running && g_controlTaskHandle != nullptr;
 #else
-    return g_taskRunning;
+    return running;
 #endif
 }
 
 ControlTaskStats getControlTaskStats() {
-    // Return a copy (volatile reads)
+    // Return a copy with atomic loads
     ControlTaskStats stats;
-    stats.iterations = g_stats.iterations;
-    stats.max_exec_us = g_stats.max_exec_us;
-    stats.overruns = g_stats.overruns;
-    stats.last_exec_us = g_stats.last_exec_us;
+    stats.iterations = g_stats.iterations.load(std::memory_order_relaxed);
+    stats.max_exec_us = g_stats.max_exec_us.load(std::memory_order_relaxed);
+    stats.overruns = g_stats.overruns.load(std::memory_order_relaxed);
+    stats.last_exec_us = g_stats.last_exec_us.load(std::memory_order_relaxed);
     // Jitter stats
     stats.min_period_us = (g_rtStats.min_period_us == UINT32_MAX) ? 0 : g_rtStats.min_period_us;
     stats.max_period_us = g_rtStats.max_period_us;
@@ -430,13 +461,13 @@ ControlTaskStats getControlTaskStats() {
 }
 
 void resetControlTaskStats() {
-    g_stats.iterations = 0;
-    g_stats.max_exec_us = 0;
-    g_stats.overruns = 0;
-    g_stats.last_exec_us = 0;
-    g_stats.min_period_us = 0;
-    g_stats.max_period_us = 0;
-    g_stats.jitter_violations = 0;
+    g_stats.iterations.store(0, std::memory_order_relaxed);
+    g_stats.max_exec_us.store(0, std::memory_order_relaxed);
+    g_stats.overruns.store(0, std::memory_order_relaxed);
+    g_stats.last_exec_us.store(0, std::memory_order_relaxed);
+    g_stats.min_period_us.store(0, std::memory_order_relaxed);
+    g_stats.max_period_us.store(0, std::memory_order_relaxed);
+    g_stats.jitter_violations.store(0, std::memory_order_relaxed);
     g_rtStats.reset();
 }
 

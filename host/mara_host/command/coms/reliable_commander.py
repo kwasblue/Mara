@@ -184,12 +184,18 @@ class ReliableCommander:
         """
         Get latency percentiles (P50, P95, P99).
 
+        Note: This sorts the entire deque (O(n log n) where n=max_latency_samples).
+        With n=1000 samples, this is ~10,000 comparisons per call. Acceptable
+        for infrequent calls (< 10 Hz) but not suitable for hot paths.
+        Consider caching or using order-statistics structures if called frequently.
+
         Returns:
             Dict with keys 'p50', 'p95', 'p99', 'count', or empty if no samples.
         """
         if not self._latencies_ms:
             return {"p50": -1, "p95": -1, "p99": -1, "count": 0}
 
+        # O(n log n) sort - see docstring for performance notes
         sorted_latencies = sorted(self._latencies_ms)
         count = len(sorted_latencies)
 

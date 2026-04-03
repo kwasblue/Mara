@@ -36,6 +36,11 @@ public:
         }
     }
 
+    /// Check if a PWM channel is registered
+    bool hasChannel(int ch) const {
+        return channelToLedc_.count(ch) > 0;
+    }
+
     void set(int ch, float duty, float freq = 0.0f) {
         if (!exists(ch)) return;
         if (!hal_) return;

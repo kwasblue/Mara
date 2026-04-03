@@ -17,14 +17,16 @@ void GpioHandler::init(mara::ServiceContext& ctx) {
 
 void GpioHandler::handleGpioWrite(JsonVariantConst payload, CommandContext& ctx) {
     int ch = payload["channel"] | -1;
-    int val = payload["value"] | 0;
+    int rawVal = payload["value"] | 0;
+    // Normalize to 0 or 1 for safety (accepts any truthy/falsy value)
+    int val = (rawVal != 0) ? 1 : 0;
 
     bool ok = gpio_->hasChannel(ch);
     if (ok) {
         gpio_->write(ch, val);
     }
 
-    DBG_PRINTF("[GPIO] WRITE ch=%d val=%d ok=%d\n", ch, val, (int)ok);
+    DBG_PRINTF("[GPIO] WRITE ch=%d val=%d (raw=%d) ok=%d\n", ch, val, rawVal, (int)ok);
 
     JsonDocument resp;
     resp["channel"] = ch;
@@ -107,13 +109,20 @@ void GpioHandler::handlePwmSet(JsonVariantConst payload, CommandContext& ctx) {
 
     DBG_PRINTF("[GPIO] PWM_SET ch=%d duty=%.3f freq=%.1f\n", channel, duty, freq);
 
-    pwm_->set(channel, duty, freq);
+    // Check if channel is registered before setting
+    bool ok = pwm_->hasChannel(channel);
+    if (ok) {
+        pwm_->set(channel, duty, freq);
+    }
 
     JsonDocument resp;
     resp["channel"] = channel;
     resp["duty"] = duty;
     resp["freq_hz"] = freq;
-    ctx.sendAck("CMD_PWM_SET", true, resp);
+    if (!ok) {
+        resp["error"] = "channel_not_registered";
+    }
+    ctx.sendAck("CMD_PWM_SET", ok, resp);
 }
 
 void GpioHandler::handleLedOn(CommandContext& ctx) {

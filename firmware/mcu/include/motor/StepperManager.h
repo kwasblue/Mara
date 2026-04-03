@@ -8,6 +8,11 @@
 #include <map>
 #include "hw/GpioManager.h"
 #include "hal/ITimer.h"
+#include "hal/IWatchdog.h"
+
+// Maximum number of steppers. GPIO channels are allocated as motorId*3,
+// so with 8 steppers, channels 0-23 are used for steppers.
+static constexpr int MARA_MAX_STEPPERS = 8;
 
 struct StepperConfig {
     int  pinStep;
@@ -60,6 +65,9 @@ public:
     /// Set the HAL timer driver for microsecond delays
     void setHal(hal::ITimer* timer) { timer_ = timer; }
 
+    /// Set the HAL watchdog driver (optional, for feeding during blocking moves)
+    void setWatchdog(hal::IWatchdog* watchdog) { watchdog_ = watchdog; }
+
     // Register a stepper motor
     void registerStepper(int motorId,
                          int pinStep,
@@ -88,6 +96,7 @@ private:
 
     GpioManager& gpio_;
     hal::ITimer* timer_ = nullptr;
+    hal::IWatchdog* watchdog_ = nullptr;
     std::map<int, StepperState> steppers_;
 };
 

@@ -13,6 +13,13 @@ void StepperManager::registerStepper(int motorId,
                                       int pinEnable,
                                       bool invertDir)
 {
+    // Bounds check to prevent GPIO channel collision with other managers
+    if (motorId < 0 || motorId >= MARA_MAX_STEPPERS) {
+        DBG_PRINTF("[STEPPER] registerStepper FAILED: motorId=%d out of range [0, %d)\n",
+                   motorId, MARA_MAX_STEPPERS);
+        return;
+    }
+
     // 3 channels per stepper: step, dir, enable
     const int baseCh   = motorId * 3;
     const int chStep   = baseCh;
@@ -103,6 +110,12 @@ void StepperManager::moveRelative(int motorId, int steps, float speedStepsPerSec
         st->enabled = true;
     }
 
+    // WARNING: This is a blocking loop. For long moves (e.g., 1000 steps at 100 Hz = 10s),
+    // this blocks the calling task. We feed the watchdog periodically to prevent reset,
+    // but telemetry and host heartbeat processing are still blocked.
+    // TODO: Consider async stepping with interrupt-driven or FreeRTOS task for non-blocking moves.
+    constexpr int WATCHDOG_FEED_INTERVAL = 100;  // Feed watchdog every N steps
+
     for (int i = 0; i < count; ++i) {
         gpio_.write(st->chStep, HIGH);
         if (timer_) {
@@ -111,6 +124,11 @@ void StepperManager::moveRelative(int motorId, int steps, float speedStepsPerSec
         gpio_.write(st->chStep, LOW);
         if (timer_) {
             timer_->delayMicros(delayMicros);
+        }
+
+        // Feed watchdog periodically to prevent reset during long moves
+        if (watchdog_ && (i % WATCHDOG_FEED_INTERVAL == 0)) {
+            watchdog_->reset();
         }
     }
 

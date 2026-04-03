@@ -101,6 +101,15 @@ class TestStateService:
         assert "Motor not ready" in result.error
         assert state_service.current_state == RobotState.UNKNOWN
 
+        # Verify history records the failed transition correctly
+        history = state_service.get_history()
+        assert len(history) == 1
+        last_transition = history[0]
+        assert last_transition.success is False
+        assert last_transition.from_state == RobotState.UNKNOWN
+        assert last_transition.to_state == RobotState.ARMED  # Attempted target state
+        assert "Motor not ready" in (last_transition.error or "")
+
     @pytest.mark.asyncio
     async def test_disarm_success(self, state_service, mock_client):
         """Test successful disarm operation."""

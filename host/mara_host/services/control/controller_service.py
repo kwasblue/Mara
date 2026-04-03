@@ -150,10 +150,18 @@ class ControllerService:
         )
 
         if ok:
+            # Parse kind with fallback for unknown/future firmware signal kinds
+            try:
+                signal_kind = SignalKind(kind)
+            except ValueError:
+                # Firmware accepted the kind but it's not in our enum.
+                # Default to CONTINUOUS to avoid host/firmware cache desync.
+                signal_kind = SignalKind.CONTINUOUS
+
             self._signals[signal_id] = Signal(
                 signal_id=signal_id,
                 name=name,
-                kind=SignalKind(kind),
+                kind=signal_kind,
                 value=initial_value,
             )
             return ServiceResult.success(
@@ -199,7 +207,7 @@ class ControllerService:
         Request list of all signals.
 
         Returns:
-            ServiceResult
+            ServiceResult with cached signal IDs in data
         """
         ok, error = await self.client.send_reliable(
             "CMD_CTRL_SIGNALS_LIST",
@@ -207,7 +215,10 @@ class ControllerService:
         )
 
         if ok:
-            return ServiceResult.success()
+            # Return cached signal IDs (MCU ACK doesn't include signal list)
+            return ServiceResult.success(
+                data={"signals": list(self._signals.keys())}
+            )
         else:
             return ServiceResult.failure(error=error or "Failed to list signals")
 
@@ -305,9 +316,17 @@ class ControllerService:
         )
 
         if ok:
+            # Parse controller_type with fallback for unknown/future firmware types
+            try:
+                ctrl_type = ControllerType(controller_type)
+            except ValueError:
+                # Firmware accepted the type but it's not in our enum.
+                # Default to PID to avoid host/firmware cache desync.
+                ctrl_type = ControllerType.PID
+
             self._controllers[slot] = ControllerSlot(
                 slot=slot,
-                controller_type=ControllerType(controller_type),
+                controller_type=ctrl_type,
                 ref_id=ref_id,
                 meas_id=meas_id,
                 out_id=out_id,

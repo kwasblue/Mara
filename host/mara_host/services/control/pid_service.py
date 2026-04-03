@@ -191,9 +191,9 @@ class PidService:
                 kp=kp,
                 ki=ki,
                 kd=kd,
-                output_min=output_min or -1.0,
-                output_max=output_max or 1.0,
-                integral_max=integral_max or 1.0,
+                output_min=output_min if output_min is not None else -1.0,
+                output_max=output_max if output_max is not None else 1.0,
+                integral_max=integral_max if integral_max is not None else 1.0,
             )
             return ServiceResult.success(data=payload)
         else:
@@ -257,9 +257,11 @@ class PidService:
             state.target = 0.0
             return ServiceResult.success(data={"motor_id": motor_id})
         else:
-            return ServiceResult.failure(
-                error=error or f"Failed to stop motor {motor_id}"
-            )
+            # Chain PID disable error if both operations failed
+            stop_error = error or f"Failed to stop motor {motor_id}"
+            if not pid_result.ok:
+                stop_error = f"{stop_error}; PID disable also failed: {pid_result.error}"
+            return ServiceResult.failure(error=stop_error)
 
     def is_enabled(self, motor_id: int) -> bool:
         """

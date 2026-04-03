@@ -13,6 +13,17 @@ from mara_host.tools.schema.control_graph import SOURCE_DEFS
 
 @dataclass
 class SensorHealthStatus:
+    """
+    Health status tracking for a single sensor.
+
+    Note on staleness: The `available` and `usable` properties automatically
+    call `refresh_staleness()` which may mutate the `stale` field based on
+    elapsed time. This auto-refresh design ensures callers always see current
+    staleness state without manual refresh calls, but means reading these
+    properties has side effects. Call `refresh_staleness()` explicitly if you
+    need to control when staleness is updated.
+    """
+
     name: str
     kind: str
     sensor_id: int = 0
@@ -192,11 +203,16 @@ class SensorsFacade:
             max_distance_cm = float(sensor_config.config.get("max_distance_cm", 400.0))
             return Ultrasonic(self._robot, sensor_id=sensor_id, max_distance_cm=max_distance_cm)
         if lowered == "encoder":
+            # Use encoder_defaults from robot config as fallback for pins
+            config = getattr(self._robot, "config", None)
+            enc_defaults = getattr(config, "encoder_defaults", None) if config else None
+            default_pin_a = enc_defaults.pin_a if enc_defaults else 32
+            default_pin_b = enc_defaults.pin_b if enc_defaults else 33
             return Encoder(
                 self._robot,
                 encoder_id=sensor_id,
-                pin_a=int(sensor_config.pins.get("pin_a", 32)),
-                pin_b=int(sensor_config.pins.get("pin_b", 33)),
+                pin_a=int(sensor_config.pins.get("pin_a", default_pin_a)),
+                pin_b=int(sensor_config.pins.get("pin_b", default_pin_b)),
                 counts_per_rev=sensor_config.config.get("counts_per_rev"),
             )
         topic = getattr(sensor_config, "topic", None) or self._GENERIC_TOPICS.get(lowered)
@@ -205,28 +221,50 @@ class SensorsFacade:
         return None
 
     def _on_sensor_health(self, telemetry: Any) -> None:
-        sensors = getattr(telemetry, "sensors", None)
+        # Handle both dict and object telemetry formats
+        if isinstance(telemetry, dict):
+            sensors = telemetry.get("sensors")
+            ts_ms = telemetry.get("ts_ms")
+        else:
+            sensors = getattr(telemetry, "sensors", None)
+            ts_ms = getattr(telemetry, "ts_ms", None)
+
         if sensors is None:
             return
         now_s = time.monotonic()
-        ts_ms = getattr(telemetry, "ts_ms", None)
         for entry in sensors:
             handle = self._match_entry(entry)
             if handle is None:
                 continue
-            handle.health.present = bool(entry.present)
-            handle.health.healthy = bool(entry.healthy)
-            handle.health.degraded = bool(entry.degraded)
-            handle.health.stale = bool(entry.stale)
-            handle.health.detail = entry.detail
+            # Handle both dict and object entry formats
+            if isinstance(entry, dict):
+                handle.health.present = bool(entry.get("present", False))
+                handle.health.healthy = bool(entry.get("healthy", False))
+                handle.health.degraded = bool(entry.get("degraded", False))
+                handle.health.stale = bool(entry.get("stale", False))
+                handle.health.detail = entry.get("detail")
+            else:
+                handle.health.present = bool(getattr(entry, "present", False))
+                handle.health.healthy = bool(getattr(entry, "healthy", False))
+                handle.health.degraded = bool(getattr(entry, "degraded", False))
+                handle.health.stale = bool(getattr(entry, "stale", False))
+                handle.health.detail = getattr(entry, "detail", None)
             handle.health.source = "telemetry"
             handle.health.last_update_monotonic_s = now_s
             handle.health.last_telemetry_ts_ms = ts_ms
             handle.health.refresh_staleness(now_s)
 
     def _match_entry(self, entry: Any) -> Optional[SensorHandle]:
+        # Handle both dict and object entry formats
+        if isinstance(entry, dict):
+            entry_kind = entry.get("kind")
+            entry_sensor_id = entry.get("sensor_id")
+        else:
+            entry_kind = getattr(entry, "kind", None)
+            entry_sensor_id = getattr(entry, "sensor_id", None)
+
         for handle in self._handles.values():
-            if handle.kind == entry.kind and handle.sensor_id == entry.sensor_id:
+            if handle.kind == entry_kind and handle.sensor_id == entry_sensor_id:
                 return handle
         return None
 

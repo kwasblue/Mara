@@ -112,9 +112,10 @@ class DCMotor:
         """
         Stop the motor with active braking.
 
-        Uses motor driver's stop command.
+        Uses motor driver's brake command to short motor windings,
+        providing rapid deceleration compared to coast stop.
         """
-        result = await self._service.stop(self._motor_id)
+        result = await self._service.brake(self._motor_id)
         if not result.ok:
             raise RuntimeError(result.error)
 

@@ -91,6 +91,11 @@ class VelocityController:
             omega: Angular velocity in rad/s (positive = counter-clockwise)
 
         Uses binary encoding for minimal latency when streaming.
+
+        Note: This is a fire-and-forget command with no ACK for maximum
+        throughput. If the transport is disconnected, an exception will
+        propagate and _last_vx/_last_omega will not be updated. Callers
+        should handle transport errors at the control loop level.
         """
         if self._use_binary:
             # Binary protocol: 9 bytes vs ~50 bytes JSON

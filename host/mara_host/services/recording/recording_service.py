@@ -126,6 +126,10 @@ class RecordingService:
         recording_bus = RecordingEventBus(self._client.bus, self._bundle)
 
         # Patch publish to count events (wildcard subscribe doesn't work with exact-match EventBus)
+        # NOTE: This monkey-patch captures original_publish by closure. If recording_bus.publish
+        # is replaced again after this point, the outer reference becomes stale.
+        # The _event_count increment is not strictly thread-safe, but CPython's GIL makes
+        # int += atomic in practice. For stricter correctness, use threading.Lock or atomic.
         original_publish = recording_bus.publish
         def counting_publish(topic: str, data):
             self._event_count += 1
@@ -294,8 +298,34 @@ class ReplayService:
                     # Validate JSON is a dict before accessing .get()
                     if not isinstance(data, dict):
                         continue
+
+                    # Handle timestamp formats from different writers:
+                    # - JsonlLogger uses "ts_ns" (nanoseconds as int)
+                    # - Other writers may use "ts" (seconds as float, or ISO string)
+                    timestamp = 0.0
+                    if "ts_ns" in data:
+                        # Nanoseconds -> seconds
+                        timestamp = data["ts_ns"] / 1e9
+                    elif "ts" in data:
+                        ts_val = data["ts"]
+                        if isinstance(ts_val, (int, float)):
+                            # If ts > 1e12, assume nanoseconds (dates after 2001)
+                            # If ts < 1e12, assume seconds
+                            if ts_val > 1e12:
+                                timestamp = ts_val / 1e9
+                            else:
+                                timestamp = float(ts_val)
+                        elif isinstance(ts_val, str):
+                            # ISO format string - parse it
+                            from datetime import datetime
+                            try:
+                                dt = datetime.fromisoformat(ts_val.replace("Z", "+00:00"))
+                                timestamp = dt.timestamp()
+                            except ValueError:
+                                timestamp = 0.0
+
                     yield RecordedEvent(
-                        timestamp=data.get("ts", 0) / 1e9,  # Convert ns to s
+                        timestamp=timestamp,
                         event_type=data.get("event", "unknown"),
                         topic=data.get("topic"),
                         data=data.get("data", data),

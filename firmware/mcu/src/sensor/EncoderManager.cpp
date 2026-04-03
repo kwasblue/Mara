@@ -81,17 +81,11 @@ int32_t EncoderManager::getCount(uint8_t id) const {
         return 0;
     }
 
-    // Take an atomic-ish snapshot. On ESP32, reading a 32-bit volatile is
-    // already atomic, but this guards against weirdness if you want.
-    // Use HAL if available, fallback to direct calls for ISR safety
-    if (hal_) {
-        hal_->disableInterrupts();
-    }
-    int32_t c = encoders_[id].count;
-    if (hal_) {
-        hal_->enableInterrupts();
-    }
-    return c;
+    // On ESP32 (32-bit Xtensa), a 32-bit aligned read of a volatile int32_t
+    // is atomic at the hardware level - no interrupt disable needed.
+    // Disabling all interrupts globally causes WiFi/timer jitter.
+    // The count field is volatile, ensuring the compiler doesn't cache it.
+    return encoders_[id].count;
 }
 
 void EncoderManager::reset(uint8_t id) {
@@ -99,23 +93,28 @@ void EncoderManager::reset(uint8_t id) {
         return;
     }
 
-    if (hal_) {
-        hal_->disableInterrupts();
-    }
+    // On ESP32, 32-bit aligned write to volatile int32_t is atomic.
+    // No need to disable interrupts globally (which causes WiFi jitter).
     encoders_[id].count = 0;
-    if (hal_) {
-        hal_->enableInterrupts();
-    }
 }
 
 // ---- ISR helpers ----
 
-// Quadrature rule used:
-//   On a change of A or B, read both pins and decide direction.
-//   A == B  -> +1
-//   A != B  -> -1
+// Quadrature decoding (4x resolution):
 //
-// We call the same logic from handleA and handleB, so you get up to 4x decoding.
+// For proper quadrature decoding, the direction depends on WHICH signal
+// changed (A or B) and the state of the OTHER signal at that moment.
+//
+// When A changes:
+//   - If A == B after the change -> forward  (+1)
+//   - If A != B after the change -> backward (-1)
+//
+// When B changes:
+//   - If A != B after the change -> forward  (+1)  <-- OPPOSITE of A rule
+//   - If A == B after the change -> backward (-1)
+//
+// This gives 4 edges per encoder cycle (4x resolution).
+
 void EncoderManager::handleA(uint8_t id) {
     if (id >= MAX_ENCODERS || !encoders_[id].initialized || !hal_) {
         return;
@@ -125,6 +124,7 @@ void EncoderManager::handleA(uint8_t id) {
     int a = hal_->digitalRead(e.pinA);
     int b = hal_->digitalRead(e.pinB);
 
+    // A changed: direction = (A == B) ? +1 : -1
     int dir = (a == b) ? +1 : -1;
     e.count += dir;
 }
@@ -138,7 +138,8 @@ void EncoderManager::handleB(uint8_t id) {
     int a = hal_->digitalRead(e.pinA);
     int b = hal_->digitalRead(e.pinB);
 
-    int dir = (a == b) ? +1 : -1;
+    // B changed: direction = (A != B) ? +1 : -1  (opposite of A rule!)
+    int dir = (a != b) ? +1 : -1;
     e.count += dir;
 }
 

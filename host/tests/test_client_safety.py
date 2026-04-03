@@ -4,7 +4,7 @@ import pytest
 import asyncio
 import time
 
-from mara_host.command.coms.connection_monitor import ConnectionMonitor
+from mara_host.command.coms.connection_monitor import ConnectionMonitor, ConnectionState
 from mara_host.command.coms.reliable_commander import ReliableCommander
 
 
@@ -75,10 +75,65 @@ class TestConnectionMonitor:
         monitor = ConnectionMonitor(timeout_s=1.0)
         monitor.on_message_received()
         assert monitor.connected is True
-        
+
         monitor.reset()
         assert monitor.connected is False
         assert monitor.time_since_last_message is None
+
+    def test_callback_can_access_monitor_state_no_deadlock(self):
+        """Verify callbacks can access monitor.connected without deadlock.
+
+        This tests the fix where callbacks are fired AFTER releasing _state_lock.
+        Before the fix, accessing monitor.connected in a callback would deadlock
+        because the callback was invoked while _state_lock was still held.
+        """
+        callback_results = []
+
+        def on_reconnect():
+            # This access to monitor.connected would deadlock before the fix
+            # because on_reconnect was called while _state_lock was held
+            callback_results.append(("reconnect", monitor.connected))
+
+        def on_disconnect():
+            # Same issue with on_disconnect
+            callback_results.append(("disconnect", monitor.connected))
+
+        monitor = ConnectionMonitor(
+            timeout_s=0.05,
+            on_disconnect=on_disconnect,
+            on_reconnect=on_reconnect,
+        )
+
+        # This triggers on_reconnect callback
+        monitor.on_message_received()
+        assert len(callback_results) == 1
+        assert callback_results[0] == ("reconnect", True)
+
+        # Wait for timeout and trigger on_disconnect
+        time.sleep(0.1)
+        monitor.check()
+        assert len(callback_results) == 2
+        assert callback_results[1] == ("disconnect", False)
+
+    def test_state_change_callback_can_access_state(self):
+        """Verify on_state_change callback can read state without deadlock."""
+        events = []
+
+        def on_state_change(event):
+            # Access state inside callback - would deadlock before fix
+            current = monitor.state
+            events.append((event.from_state, event.to_state, current))
+
+        monitor = ConnectionMonitor(timeout_s=0.05, on_state_change=on_state_change)
+
+        # Transition DISCONNECTED -> CONNECTING -> CONNECTED
+        monitor.on_message_received()
+
+        # Should have recorded both transitions without deadlock
+        assert len(events) == 2
+        # Verify state was readable in callbacks
+        for _, to_state, current_in_callback in events:
+            assert current_in_callback == to_state
 
 
 # -----------------------------------------------------------------------------

@@ -451,6 +451,12 @@ class MaraRuntime:
     async def ensure_armed(self) -> None:
         """Ensure connected and armed for actuator commands."""
         await self.ensure_connected()
+
+        # Check current state - don't arm if already ARMED or ACTIVE
+        current_state = self._store.robot_state.value
+        if current_state in ("ARMED", "ACTIVE"):
+            return
+
         # Use state_service for convergence with CLI/GUI
         result = await self.state_service.arm()
         if result.ok:
@@ -715,16 +721,18 @@ class MaraRuntime:
             params: Command parameters
             success: Whether command succeeded
             error: Error message if failed
-            sent_at: When command was sent (for latency calculation)
+            sent_at: When command was sent (for latency calculation).
+                     If None, latency_ms will be None (unknown) rather than 0.
 
         Returns the CommandRecord for correlation.
         """
         now = datetime.now()
         seq_id = self._store.next_seq()
 
-        # Calculate latency if sent_at provided
+        # Calculate latency only if sent_at is provided
+        # If sent_at is None, latency is unknown (not zero)
         latency_ms = None
-        if sent_at:
+        if sent_at is not None:
             latency_ms = (now - sent_at).total_seconds() * 1000
 
         # Redact sensitive fields before storing to prevent credential exposure
@@ -734,7 +742,7 @@ class MaraRuntime:
             seq_id=seq_id,
             command=command,
             params=safe_params,
-            sent_at=sent_at or now,
+            sent_at=sent_at if sent_at is not None else now,
             acked_at=now,
             success=success,
             error=error,
@@ -868,14 +876,15 @@ class MaraRuntime:
 
     def _on_imu(self, imu_data) -> None:
         """Handle IMU telemetry."""
+        # ImuTelemetry uses ax_g/ay_g/az_g (G-force) and gx_dps/gy_dps/gz_dps (degrees/sec)
         self._store.imu = FreshValue(
             value={
-                "ax": imu_data.ax,
-                "ay": imu_data.ay,
-                "az": imu_data.az,
-                "gx": imu_data.gx,
-                "gy": imu_data.gy,
-                "gz": imu_data.gz,
+                "ax_g": imu_data.ax_g,
+                "ay_g": imu_data.ay_g,
+                "az_g": imu_data.az_g,
+                "gx_dps": imu_data.gx_dps,
+                "gy_dps": imu_data.gy_dps,
+                "gz_dps": imu_data.gz_dps,
             },
             updated_at=datetime.now(),
             stale_after_s=0.5,

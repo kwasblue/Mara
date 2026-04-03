@@ -120,16 +120,25 @@ class ConnectionMonitor:
         self._max_history = 100
         self._event_history: Deque[ConnectionEvent] = deque(maxlen=self._max_history)
 
-    def _transition_to(self, new_state: ConnectionState, reason: str = "") -> None:
+    def _transition_to(self, new_state: ConnectionState, reason: str = "") -> List[Callable[[], None]]:
         """
-        Transition to a new state and emit events.
+        Transition to a new state and collect callbacks to fire.
+
+        IMPORTANT: Caller MUST fire returned callbacks AFTER releasing _state_lock
+        to prevent deadlock (callbacks may access monitor.connected/state properties).
 
         Args:
             new_state: Target state
             reason: Optional reason for the transition
+
+        Returns:
+            List of callbacks to invoke after releasing the lock
         """
+        callbacks_to_fire: List[Callable[[], None]] = []
+
+        # Note: _state_lock is already held by caller
         if new_state == self._state:
-            return
+            return callbacks_to_fire
 
         old_state = self._state
         now = time.monotonic()
@@ -171,12 +180,9 @@ class ConnectionMonitor:
         ):
             self._stats.reconnects += 1
 
-        # Fire callbacks
+        # Collect callbacks to fire after lock is released
         if self.on_state_change:
-            try:
-                self.on_state_change(event)
-            except Exception as e:
-                _log.warning("on_state_change callback failed: %s", e)
+            callbacks_to_fire.append(lambda e=event: self.on_state_change(e))
 
         # Legacy callbacks for backward compatibility
         if (
@@ -184,10 +190,7 @@ class ConnectionMonitor:
             and new_state == ConnectionState.RECONNECTING
         ):
             if self.on_disconnect:
-                try:
-                    self.on_disconnect()
-                except Exception as e:
-                    _log.warning("on_disconnect callback failed: %s", e)
+                callbacks_to_fire.append(self.on_disconnect)
         elif new_state == ConnectionState.CONNECTED and old_state in (
             ConnectionState.RECONNECTING,
             ConnectionState.CONNECTING,
@@ -196,29 +199,43 @@ class ConnectionMonitor:
             # Fire on_reconnect for any transition TO connected state
             # (including first connection, for backward compatibility)
             if self.on_reconnect:
-                try:
-                    self.on_reconnect()
-                except Exception as e:
-                    _log.warning("on_reconnect callback failed: %s", e)
+                callbacks_to_fire.append(self.on_reconnect)
+
+        return callbacks_to_fire
+
+    def _fire_callbacks(self, callbacks: List[Callable[[], None]]) -> None:
+        """Fire collected callbacks. Must be called OUTSIDE _state_lock."""
+        for callback in callbacks:
+            try:
+                callback()
+            except Exception as e:
+                _log.warning("Connection monitor callback failed: %s", e)
 
     def on_message_received(self) -> None:
         """Call this whenever any valid message arrives from firmware."""
+        callbacks: List[Callable[[], None]] = []
+
         with self._state_lock:
             self._last_message_time = time.monotonic()
             self._stats.messages_received += 1
 
             if self._state == ConnectionState.CONNECTING:
-                self._transition_to(ConnectionState.CONNECTED, "first_message")
+                callbacks.extend(self._transition_to(ConnectionState.CONNECTED, "first_message"))
             elif self._state == ConnectionState.RECONNECTING:
-                self._transition_to(ConnectionState.CONNECTED, "message_after_timeout")
+                callbacks.extend(self._transition_to(ConnectionState.CONNECTED, "message_after_timeout"))
             elif self._state == ConnectionState.DISCONNECTED:
                 # Received message while disconnected - transition through connecting
                 # Use _transition_to for both transitions to ensure proper event recording
-                self._transition_to(ConnectionState.CONNECTING, "unexpected_message_start")
-                self._transition_to(ConnectionState.CONNECTED, "unexpected_message")
+                callbacks.extend(self._transition_to(ConnectionState.CONNECTING, "unexpected_message_start"))
+                callbacks.extend(self._transition_to(ConnectionState.CONNECTED, "unexpected_message"))
+
+        # Fire callbacks after releasing lock to prevent deadlock
+        self._fire_callbacks(callbacks)
 
     def check(self) -> None:
         """Check for timeout. Call periodically or use start_monitoring()."""
+        callbacks: List[Callable[[], None]] = []
+
         with self._state_lock:
             if self._last_message_time is None:
                 return
@@ -226,14 +243,23 @@ class ConnectionMonitor:
             elapsed = time.monotonic() - self._last_message_time
 
             if self._state == ConnectionState.CONNECTED and elapsed > self.timeout_s:
-                self._transition_to(
+                callbacks.extend(self._transition_to(
                     ConnectionState.RECONNECTING, f"timeout_{elapsed:.2f}s"
-                )
+                ))
+
+        # Fire callbacks after releasing lock to prevent deadlock
+        self._fire_callbacks(callbacks)
 
     async def start_monitoring(self, interval_s: float = 0.1) -> None:
         """Start background monitoring task and enter CONNECTING state."""
-        if self._state == ConnectionState.DISCONNECTED:
-            self._transition_to(ConnectionState.CONNECTING, "start_monitoring")
+        callbacks: List[Callable[[], None]] = []
+
+        with self._state_lock:
+            if self._state == ConnectionState.DISCONNECTED:
+                callbacks.extend(self._transition_to(ConnectionState.CONNECTING, "start_monitoring"))
+
+        # Fire callbacks after releasing lock
+        self._fire_callbacks(callbacks)
 
         self._monitor_task = asyncio.create_task(self._monitor_loop(interval_s))
 
@@ -292,7 +318,12 @@ class ConnectionMonitor:
 
     def reset(self) -> None:
         """Reset state (e.g., on manual disconnect)."""
+        callbacks: List[Callable[[], None]] = []
+
         with self._state_lock:
             if self._state != ConnectionState.DISCONNECTED:
-                self._transition_to(ConnectionState.DISCONNECTED, "manual_reset")
+                callbacks.extend(self._transition_to(ConnectionState.DISCONNECTED, "manual_reset"))
             self._last_message_time = None
+
+        # Fire callbacks after releasing lock to prevent deadlock
+        self._fire_callbacks(callbacks)

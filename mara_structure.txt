@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-04-02 17:46:39
+Generated: 2026-04-02 22:21:27
 Total Files: 1044
-Total Lines of Code: 121,331
+Total Lines of Code: 121,880
 ================================================================================
 
 
@@ -1300,7 +1300,7 @@ HOST (Python)
     [Fn] format_pin_status(gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
     [Fn] confirm(message, default)
 
-  host/mara_host/cli/context.py (378 lines)
+  host/mara_host/cli/context.py (385 lines)
     [Class] CLIContextConfig
     [Class] CLIContext
       |-- __init__(self, port, baudrate, host, tcp_port, ble_name, verbose, robot_config, robot_config_path)
@@ -1421,7 +1421,7 @@ HOST (Python)
       |-- _init_binary_encoder(self)
       `-- set_prefer_binary(self, prefer)
 
-  host/mara_host/command/client.py (507 lines)
+  host/mara_host/command/client.py (536 lines)
     [Class] HasSendBytes
       |-- set_frame_handler(self, handler)
       |-- start(self)
@@ -1450,6 +1450,7 @@ HOST (Python)
       |-- board(self)
       |-- platform_name(self)
       `-- get_stats(self)
+    [Fn] _on_handshake_error(t)
     [Fn] on_response(msg)
     [Class] MaraClient
 
@@ -1481,7 +1482,7 @@ HOST (Python)
       |-- get_event_history(self, count)
       `-- reset(self)
 
-  host/mara_host/command/coms/reliable_commander.py (370 lines)
+  host/mara_host/command/coms/reliable_commander.py (366 lines)
     [Class] CommandStatus
     [Class] RetryConfig
       `-- calculate_backoff(self, retry_n)
@@ -2122,7 +2123,7 @@ HOST (Python)
     [Fn] get_limits()
     [Fn] get_limit(name)
 
-  host/mara_host/core/event_bus.py (74 lines)
+  host/mara_host/core/event_bus.py (81 lines)
     [Class] EventBus
       |-- __init__(self)
       |-- subscribe(self, topic, handler)
@@ -2147,7 +2148,7 @@ HOST (Python)
   host/mara_host/core/messages.py (9 lines)
     [Class] MsgType
 
-  host/mara_host/core/protocol.py (128 lines)
+  host/mara_host/core/protocol.py (129 lines)
     [Fn] _make_crc16_table()
     [Fn] crc16_ccitt(data, crc)
     [Fn] crc16_ccitt_frame(len_hi, len_lo, msg_type, payload)
@@ -4389,7 +4390,7 @@ HOST (Python)
       |-- _validate_arg(self, name, spec, value)
       `-- _validate_actions(self, actions)
 
-  host/mara_host/services/control/control_graph_service.py (260 lines)
+  host/mara_host/services/control/control_graph_service.py (270 lines)
     [Class] ControlGraphService
       |-- __init__(self, client, sensor_policy_provider, persistence_store)
       |-- _subscribe(self, topic, handler)
@@ -4487,7 +4488,7 @@ HOST (Python)
     [Class] PwmService
       `-- configure(self, channel, frequency_hz, resolution)
 
-  host/mara_host/services/control/service_base.py (119 lines)
+  host/mara_host/services/control/service_base.py (133 lines)
     [Class] ConfigurableService
       |-- __init__(self, client)
       |-- _subscribe(self, topic, handler)
@@ -4519,11 +4520,16 @@ HOST (Python)
       |-- signals(self)
       `-- get_cached(self, signal_id)
 
-  host/mara_host/services/control/state_service.py (274 lines)
+  host/mara_host/services/control/state_service.py (305 lines)
     [Class] RobotState
     [Class] StateTransition
     [Class] StateService
       |-- __init__(self, client, history_size)
+      |-- _subscribe_to_connection_events(self)
+      |-- _unsubscribe_from_connection_events(self)
+      |-- _on_connection_lost(self, _data)
+      |-- _on_connection_restored(self, _data)
+      |-- close(self)
       |-- current_state(self)
       |-- is_armed(self)
       |-- is_active(self)
@@ -4988,7 +4994,7 @@ HOST (Python)
     [Fn] _make_empty(ts_ms, raw_len, meta)
     [Fn] parse_telemetry_bin(payload)
 
-  host/mara_host/telemetry/file_logger.py (121 lines)
+  host/mara_host/telemetry/file_logger.py (132 lines)
     [Class] TelemetryFileLogger
       |-- __init__(self, bus, log_dir)
       |-- start(self)
@@ -5892,7 +5898,7 @@ HOST (Python)
       |-- _safe_handle_body(self, body)
       `-- _send_bytes_sync(self, data)
 
-  host/mara_host/transport/tcp_transport.py (144 lines)
+  host/mara_host/transport/tcp_transport.py (147 lines)
     [Class] AsyncTcpTransport
       |-- __init__(self, host, port, reconnect_delay, max_reconnect_delay)
       |-- is_connected(self)
@@ -6215,7 +6221,7 @@ HOST (Python)
   host/tests/test_client_json_telemetry.py (15 lines)
     [Fn] test_client_json_telemetry_still_publishes_topics()
 
-  host/tests/test_client_safety.py (153 lines)
+  host/tests/test_client_safety.py (159 lines)
     [Class] TestConnectionMonitor
       |-- test_initial_state_is_disconnected(self)
       |-- test_message_received_sets_connected(self)
@@ -6374,9 +6380,33 @@ HOST (Python)
       |-- test_zero_factory(self)
       `-- test_construction(self)
 
-  host/tests/test_event_bus.py (10 lines)
+  host/tests/test_event_bus.py (159 lines)
     [Fn] test_event_bus_subscribe_publish()
     [Fn] handler(data)
+    [Fn] test_unsubscribe_removes_handler()
+    [Fn] handler(data)
+    [Fn] test_unsubscribe_during_callback()
+    [Fn] handler1(data)
+    [Fn] handler2(data)
+    [Fn] handler3(data)
+    [Fn] test_unsubscribe_other_handler_during_callback()
+    [Fn] handler2(data)
+    [Fn] handler1(data)
+    [Fn] sync_handler(data)
+    [Fn] test_publish_warns_on_async_handler()
+    [Fn] test_subscription_leak_warning()
+    [Fn] test_get_subscription_count()
+    [Fn] test_get_subscription_count_excludes_empty()
+    [Fn] handler(d)
+    [Fn] test_publish_to_nonexistent_topic()
+    [Fn] test_handler_exception_doesnt_stop_others()
+    [Fn] bad_handler(data)
+    [Fn] good_handler(data)
+    [Fn] test_unsubscribe_nonexistent_handler()
+    [Fn] handler1(d)
+    [Fn] handler2(d)
+    [Fn] test_unsubscribe_from_nonexistent_topic()
+    [Fn] handler(d)
 
   host/tests/test_gen_telemetry.py (22 lines)
     [Fn] test_section_items_supports_current_dataclass_schema()
@@ -6893,7 +6923,7 @@ HOST (Python)
 
   host/tests/test_streaming.py (86 lines)
 
-  host/tests/test_systemic_fixes.py (502 lines)
+  host/tests/test_systemic_fixes.py (503 lines)
     [Class] TestAsyncSafety
     [Class] TestResourceLimits
       `-- test_subscription_leak_warning(self, caplog)
@@ -7286,7 +7316,7 @@ FIRMWARE/MCU (C++)
     [Fn] sendSimple(uint8_t msgType)
     [Fn] sendVersionResponse()
 
-  firmware/mcu/include/command/ModeManager.h (108 lines)
+  firmware/mcu/include/command/ModeManager.h (114 lines)
     [Fn] maraModeToString(MaraMode m)
     [Struct] SafetyConfig
     [Struct] ModeWatchdogStats
@@ -8116,7 +8146,7 @@ FIRMWARE/MCU (C++)
     [Class] ILogger
     [Fn] logLevelPrefix(LogLevel level)
 
-  firmware/mcu/include/hal/IOta.h (34 lines)
+  firmware/mcu/include/hal/IOta.h (35 lines)
     [Class] IOta
 
   firmware/mcu/include/hal/IPersistence.h (26 lines)
@@ -8188,13 +8218,13 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/hal/esp32/Esp32Logger.h (49 lines)
     [Class] Esp32Logger
 
-  firmware/mcu/include/hal/esp32/Esp32Ota.h (24 lines)
+  firmware/mcu/include/hal/esp32/Esp32Ota.h (25 lines)
     [Class] Esp32Ota
 
   firmware/mcu/include/hal/esp32/Esp32Persistence.h (30 lines)
     [Class] Esp32Persistence
 
-  firmware/mcu/include/hal/esp32/Esp32Pwm.h (24 lines)
+  firmware/mcu/include/hal/esp32/Esp32Pwm.h (27 lines)
     [Class] Esp32Pwm
     [Struct] ChannelConfig
 
@@ -8290,7 +8320,7 @@ FIRMWARE/MCU (C++)
     [Fn] loop(uint32_t now_ms)
     [Fn] name()
 
-  firmware/mcu/include/module/IdentityModule.h (24 lines)
+  firmware/mcu/include/module/IdentityModule.h (25 lines)
     [Class] IdentityModule
     [Fn] setup()
     [Fn] loop(uint32_t now_ms)
@@ -8428,7 +8458,7 @@ FIRMWARE/MCU (C++)
     [Struct] ServiceContext
     [Class] IActuator
 
-  firmware/mcu/include/motor/MotionController.h (64 lines)
+  firmware/mcu/include/motor/MotionController.h (65 lines)
     [Class] DcMotorManager
     [Class] ServoManager
     [Class] StepperManager
@@ -8828,7 +8858,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/command/handlers/BenchmarkHandler.cpp (147 lines)
 
-  firmware/mcu/src/command/handlers/ControlHandler.cpp (347 lines)
+  firmware/mcu/src/command/handlers/ControlHandler.cpp (348 lines)
 
   firmware/mcu/src/command/handlers/DcMotorHandler.cpp (88 lines)
 
@@ -8843,7 +8873,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/src/command/handlers/SensorHandler.cpp (200 lines)
     [Fn] classifyI2cDevice(uint8_t address, uint8_t whoAmI, bool whoOk, bool imuOnline, uint8_t imuAddr)
 
-  firmware/mcu/src/command/handlers/ServoHandler.cpp (355 lines)
+  firmware/mcu/src/command/handlers/ServoHandler.cpp (362 lines)
     [Fn] isFiniteNumber(float value)
     [Fn] hasMotorSetFor(const mara::CompositeIntent& batch, uint8_t motorId)
     [Fn] hasMotorStopFor(const mara::CompositeIntent& batch, uint8_t motorId)
@@ -8906,7 +8936,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/src/core/ModuleManager.cpp (84 lines)
     [Fn] domainToString(LoopDomain d)
 
-  firmware/mcu/src/core/Runtime.cpp (172 lines)
+  firmware/mcu/src/core/Runtime.cpp (173 lines)
 
   firmware/mcu/src/core/ServiceStorage.cpp (222 lines)
 
@@ -8920,20 +8950,20 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/hal/esp32/Esp32HeapMonitor.cpp (31 lines)
 
-  firmware/mcu/src/hal/esp32/Esp32I2c.cpp (80 lines)
+  firmware/mcu/src/hal/esp32/Esp32I2c.cpp (86 lines)
 
   firmware/mcu/src/hal/esp32/Esp32I2sAudio.cpp (94 lines)
 
   firmware/mcu/src/hal/esp32/Esp32Logger.cpp (10 lines)
     [Fn] getDefaultLogger()
 
-  firmware/mcu/src/hal/esp32/Esp32Ota.cpp (81 lines)
+  firmware/mcu/src/hal/esp32/Esp32Ota.cpp (86 lines)
 
   firmware/mcu/src/hal/esp32/Esp32Persistence.cpp (66 lines)
 
-  firmware/mcu/src/hal/esp32/Esp32Pwm.cpp (50 lines)
+  firmware/mcu/src/hal/esp32/Esp32Pwm.cpp (91 lines)
 
-  firmware/mcu/src/hal/esp32/Esp32Servo.cpp (100 lines)
+  firmware/mcu/src/hal/esp32/Esp32Servo.cpp (101 lines)
 
   firmware/mcu/src/hal/esp32/Esp32SystemInfo.cpp (91 lines)
 
@@ -8943,7 +8973,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/hal/esp32/Esp32TransportFactory.cpp (67 lines)
 
-  firmware/mcu/src/hal/esp32/Esp32Watchdog.cpp (23 lines)
+  firmware/mcu/src/hal/esp32/Esp32Watchdog.cpp (24 lines)
 
   firmware/mcu/src/hal/esp32/Esp32WifiManager.cpp (155 lines)
 
@@ -8953,19 +8983,19 @@ FIRMWARE/MCU (C++)
   firmware/mcu/src/loop/LoopSafety.cpp (9 lines)
     [Fn] runSafetyLoop(ServiceContext& ctx, uint32_t now_ms)
 
-  firmware/mcu/src/main.cpp (166 lines)
+  firmware/mcu/src/main.cpp (167 lines)
     [Fn] updateLoopSchedulers()
     [Fn] setup()
     [Fn] loop()
 
-  firmware/mcu/src/module/ControlModule.cpp (69 lines)
+  firmware/mcu/src/module/ControlModule.cpp (74 lines)
 
-  firmware/mcu/src/module/IdentityModule.cpp (68 lines)
+  firmware/mcu/src/module/IdentityModule.cpp (69 lines)
     [Fn] publishIdentity(EventBus& bus)
 
   firmware/mcu/src/module/LoggingModule.cpp (214 lines)
 
-  firmware/mcu/src/module/TelemetryModule.cpp (134 lines)
+  firmware/mcu/src/module/TelemetryModule.cpp (140 lines)
 
   firmware/mcu/src/motor/ActuatorRegistry.cpp (78 lines)
 
@@ -8973,7 +9003,7 @@ FIRMWARE/MCU (C++)
     [Fn] setSpeed(id, 0.0f)
     [Fn] setSpeed(id, cmd)
 
-  firmware/mcu/src/motor/MotionController.cpp (153 lines)
+  firmware/mcu/src/motor/MotionController.cpp (155 lines)
 
   firmware/mcu/src/motor/StepperManager.cpp (175 lines)
 
@@ -9035,13 +9065,13 @@ FIRMWARE/MCU (C++)
     [Class] SetupTransportModule
     [Fn] getSetupTransportModule()
 
-  firmware/mcu/src/setup/SetupWifi.cpp (105 lines)
+  firmware/mcu/src/setup/SetupWifi.cpp (111 lines)
     [Fn] onWiFiEvent(WiFiEvent_t event)
     [Class] SetupWifiModule
     [Fn] getSetupWifiModule()
     [Fn] getSetupWifiModule()
 
-  firmware/mcu/src/transport/CanTransport.cpp (230 lines)
+  firmware/mcu/src/transport/CanTransport.cpp (227 lines)
 
   firmware/mcu/src/transport/MqttTransport.cpp (273 lines)
     [Fn] t(topic)
@@ -9290,7 +9320,7 @@ FIRMWARE/MCU (C++)
     [Fn] tearDown()
     [Fn] run_tests()
 
-  firmware/mcu/test/test_observer/test_observer.cpp (100 lines)
+  firmware/mcu/test/test_observer/test_observer.cpp (101 lines)
     [Fn] setUp()
     [Fn] tearDown()
     [Fn] test_initial_state_is_zero()
@@ -9364,7 +9394,7 @@ FIRMWARE/MCU (C++)
     [Fn] main(int argc, char** argv)
     [Fn] UNITY_END()
 
-  firmware/mcu/test/test_safety/test_safety.cpp (293 lines)
+  firmware/mcu/test/test_safety/test_safety.cpp (306 lines)
     [Struct] SafetyConfig
     [Class] TestModeManager
     [Fn] configure(const SafetyConfig& cfg)
@@ -9389,6 +9419,7 @@ FIRMWARE/MCU (C++)
     [Fn] setUp()
     [Fn] tearDown()
     [Fn] test_host_timeout_triggers_stop()
+    [Fn] test_host_timeout_from_idle_no_mode_change()
     [Fn] test_heartbeat_prevents_timeout()
     [Fn] test_no_timeout_before_first_heartbeat()
     [Fn] test_motion_timeout_triggers_stop()
@@ -9410,7 +9441,7 @@ FIRMWARE/MCU (C++)
     [Fn] test_valid_velocity_passes()
     [Fn] run_tests()
 
-  firmware/mcu/test/test_signal_bus/test_signal_bus.cpp (51 lines)
+  firmware/mcu/test/test_signal_bus/test_signal_bus.cpp (227 lines)
     [Fn] setUp()
     [Fn] tearDown()
     [Fn] test_define_and_get()
@@ -9419,6 +9450,17 @@ FIRMWARE/MCU (C++)
     [Fn] test_exists()
     [Fn] test_count()
     [Fn] test_clear()
+    [Fn] test_remove()
+    [Fn] test_create_alias_and_resolve()
+    [Fn] test_remove_alias()
+    [Fn] test_get_and_set_by_name()
+    [Fn] test_set_with_rate_limit_min_interval()
+    [Fn] test_set_with_rate_limit_max_updates()
+    [Fn] test_snapshot()
+    [Fn] test_capacity_limit()
+    [Fn] test_define_same_id_updates()
+    [Fn] test_find()
+    [Fn] test_get_timestamp()
     [Fn] main(int argc, char** argv)
     [Fn] UNITY_END()
 
@@ -9707,15 +9749,15 @@ FILES
 DEFINITIONS
   Classes:          1365
   Structs:          182
-  Functions:        2512
-  Methods:          3500
+  Functions:        2549
+  Methods:          3505
 
 LINES OF CODE
-  Python:           93,753
-  C++:              27,578
-  Total Code:       121,331
-  Blank Lines:      32,945
-  Comment Lines:    33,089
-  Total Lines:      187,365
+  Python:           94,018
+  C++:              27,862
+  Total Code:       121,880
+  Blank Lines:      33,158
+  Comment Lines:    33,339
+  Total Lines:      188,377
 
 ================================================================================

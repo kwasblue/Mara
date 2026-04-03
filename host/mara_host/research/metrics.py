@@ -26,11 +26,10 @@ def load_jsonl(path: str) -> List[Dict[str, Any]]:
     rows = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            # JSON parser handles whitespace; skip empty lines without strip
-            if line and line[0] not in ('\n', '\r', ' ', '\t'):
-                rows.append(json.loads(line))
-            elif line.strip():
-                rows.append(json.loads(line))
+            # strip() handles all cases: empty lines, leading/trailing whitespace
+            stripped = line.strip()
+            if stripped:
+                rows.append(json.loads(stripped))
     return rows
 
 
@@ -148,7 +147,8 @@ def heartbeat_roundtrip(rows: List[Dict]) -> LatencyStats:
 
     Matches 'heartbeat.send' with 'heartbeat.recv' events.
     """
-    sends = []  # List of (ts_ns,) for sequential matching
+    from collections import deque
+    sends: deque = deque()  # O(1) popleft for FIFO matching
     latencies = []
 
     for row in rows:
@@ -158,7 +158,7 @@ def heartbeat_roundtrip(rows: List[Dict]) -> LatencyStats:
         if event == "heartbeat.send":
             sends.append(ts_ns)
         elif event == "heartbeat.recv" and sends:
-            send_ts = sends.pop(0)
+            send_ts = sends.popleft()  # O(1) instead of O(n) list.pop(0)
             latency_ms = (ts_ns - send_ts) * 1e-6
             latencies.append(latency_ms)
 
@@ -489,9 +489,28 @@ def analyze_connection_quality(rows: List[Dict]) -> ConnectionQuality:
     disconnect_count = sum(1 for r in rows if r.get("event") == "connection.lost")
     reconnect_count = sum(1 for r in rows if r.get("event") == "connection.restored")
 
-    # Estimate connected duration (rough: total - disconnect periods)
-    # This is simplified; a more accurate version would track state transitions
-    connected_duration_s = total_duration_s  # Assume mostly connected
+    # Compute actual connected duration by tracking connection.lost and connection.restored
+    # Assume initially connected until first connection.lost event
+    connected_duration_s = 0.0
+    last_connected_ts = min(timestamps) if timestamps else 0
+    is_connected = True
+
+    for row in sorted(rows, key=lambda r: r.get("ts_ns", 0)):
+        event = row.get("event", "")
+        ts_ns = row.get("ts_ns", 0)
+
+        if event == "connection.lost" and is_connected:
+            # Add time spent connected
+            connected_duration_s += (ts_ns - last_connected_ts) * 1e-9
+            is_connected = False
+        elif event == "connection.restored" and not is_connected:
+            # Mark reconnection time
+            last_connected_ts = ts_ns
+            is_connected = True
+
+    # Add final connected period if still connected at end
+    if is_connected and timestamps:
+        connected_duration_s += (max(timestamps) - last_connected_ts) * 1e-9
 
     # Estimate message loss from sequence gaps
     seqs = []

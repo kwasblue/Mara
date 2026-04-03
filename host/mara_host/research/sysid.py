@@ -619,6 +619,16 @@ def identify_arx(
     # Least squares solution
     theta, residuals, rank, s = linalg.lstsq(Phi, Y)
 
+    # Warn if system is underdetermined (rank < n_params means degenerate data)
+    if rank < n_params:
+        import warnings
+        warnings.warn(
+            f"ARX identification: rank {rank} < n_params {n_params}. "
+            "System is underdetermined (correlated regressors or insufficient data). "
+            "Estimated parameters may be unreliable.",
+            stacklevel=2
+        )
+
     a = theta[:na]
     b = theta[na:]
 
@@ -703,12 +713,26 @@ def identify_stribeck_friction(
     def cost(params):
         return np.sum((model(params, v) - tau) ** 2)
 
-    # Initial guess
+    # Initial guess with guards against empty arrays
     v_abs = np.abs(v)
     tau_abs = np.abs(tau)
-    Fc0 = np.median(tau_abs[v_abs > np.percentile(v_abs, 80)])
-    Fs0 = np.max(tau_abs[v_abs < np.percentile(v_abs, 20)])
-    vs0 = np.percentile(v_abs, 10)
+
+    # Guard against empty masks (e.g., constant velocity or all values equal)
+    high_vel_mask = v_abs > np.percentile(v_abs, 80)
+    low_vel_mask = v_abs < np.percentile(v_abs, 20)
+
+    if np.any(high_vel_mask):
+        Fc0 = float(np.median(tau_abs[high_vel_mask]))
+    else:
+        Fc0 = float(np.median(tau_abs)) if len(tau_abs) > 0 else 0.1
+
+    if np.any(low_vel_mask):
+        Fs0 = float(np.max(tau_abs[low_vel_mask]))
+    else:
+        Fs0 = float(np.max(tau_abs)) if len(tau_abs) > 0 else Fc0 * 1.5
+
+    vs0 = float(np.percentile(v_abs, 10)) if len(v_abs) > 0 else 0.1
+    vs0 = max(vs0, 1e-6)  # Ensure non-zero
     b0 = 0.01
 
     result = optimize.minimize(

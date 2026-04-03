@@ -53,8 +53,14 @@ class EventBus:
         if topic in self._subs:
             try:
                 self._subs[topic].remove(handler)
-                # Clean up async handler tracking
-                self._async_handlers.discard(handler)
+                # Only remove from async tracking if handler has no remaining subscriptions
+                # This prevents breaking async detection for handlers subscribed to multiple topics
+                if handler in self._async_handlers:
+                    still_subscribed = any(
+                        handler in handlers for handlers in self._subs.values()
+                    )
+                    if not still_subscribed:
+                        self._async_handlers.discard(handler)
             except ValueError:
                 pass  # Handler not found, ignore
 
@@ -71,20 +77,24 @@ class EventBus:
         if not handlers:
             return
 
+        # Copy handler list to prevent mutation during iteration
+        # (handlers may unsubscribe themselves or others during callback)
+        handlers_snapshot = list(handlers)
+
         # Fast path: check if any async handlers exist for this topic
         async_handlers = self._async_handlers
-        has_async = any(h in async_handlers for h in handlers)
+        has_async = any(h in async_handlers for h in handlers_snapshot)
 
         if not has_async:
             # Ultra-fast path: all handlers are sync, no coroutine checks needed
-            for h in handlers:
+            for h in handlers_snapshot:
                 try:
                     h(data)
                 except Exception as e:
                     logger.warning("Handler error on '%s': %s", topic, e)
         else:
             # Slower path: mixed sync/async handlers
-            for h in handlers:
+            for h in handlers_snapshot:
                 try:
                     result = h(data)
                     # Only check for coroutine if handler is known async
@@ -111,8 +121,10 @@ class EventBus:
         if not handlers:
             return
 
+        # Copy handler list to prevent mutation during iteration
+        handlers_snapshot = list(handlers)
         async_handlers = self._async_handlers
-        for h in handlers:
+        for h in handlers_snapshot:
             try:
                 if h in async_handlers:
                     await h(data)

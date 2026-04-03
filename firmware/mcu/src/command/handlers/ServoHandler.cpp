@@ -17,6 +17,9 @@ void ServoHandler::init(mara::ServiceContext& ctx) {
 }
 
 void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
+    // ESP32 GPIO range: 0-39 (with some pins reserved/input-only, but HAL handles that)
+    static constexpr int MAX_GPIO_PIN = 39;
+
     int servoId = payload["servo_id"] | 0;
     int minUs = payload["min_us"] | 1000;
     int maxUs = payload["max_us"] | 2000;
@@ -25,15 +28,25 @@ void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
     uint8_t pin = 0;
     bool ok = true;
     bool usedRequestedChannel = false;
+    const char* error = nullptr;
 
     if (requestedChannel >= 0) {
-        pin = static_cast<uint8_t>(requestedChannel);
-        usedRequestedChannel = true;
+        // Validate GPIO pin range when channel is explicitly specified
+        if (requestedChannel > MAX_GPIO_PIN) {
+            ok = false;
+            error = "invalid_gpio_pin";
+            MARA_LOG_WARN("servo", "ATTACH: invalid GPIO pin=%d (max=%d)", requestedChannel, MAX_GPIO_PIN);
+        } else {
+            pin = static_cast<uint8_t>(requestedChannel);
+            usedRequestedChannel = true;
+        }
     } else {
+        // Use default pin mapping for known servo IDs
         switch (servoId) {
             case 0: pin = Pins::SERVO1_SIG; break;
             default:
                 ok = false;
+                error = "no_default_pin_for_servo_id";
                 break;
         }
     }
@@ -41,9 +54,8 @@ void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
     if (ok) {
         MARA_LOG_DEBUG("servo", "ATTACH id=%d pin=%d min=%d max=%d requested=%d",
                        servoId, pin, minUs, maxUs, requestedChannel);
+        // Note: ServoManager::attach validates servoId internally
         servo_->attach(servoId, pin, minUs, maxUs);
-    } else {
-        MARA_LOG_WARN("servo", "ATTACH: unknown servoId=%d", servoId);
     }
 
     JsonDocument resp;
@@ -53,8 +65,8 @@ void ServoHandler::handleAttach(JsonVariantConst payload, CommandContext& ctx) {
     resp["min_us"] = minUs;
     resp["max_us"] = maxUs;
     resp["used_requested_channel"] = usedRequestedChannel;
-    if (!ok) {
-        resp["error"] = "unknown_servo_id";
+    if (!ok && error) {
+        resp["error"] = error;
     }
     ctx.sendAck("CMD_SERVO_ATTACH", ok, resp);
 }
@@ -384,8 +396,10 @@ void ServoHandler::handleBatchApply(JsonVariantConst payload, CommandContext& ct
         ++index;
     }
 
-    ctx.mode.onMotionCommand(now_ms);
+    // Set intent first, then update motion heartbeat
+    // (heartbeat should only be updated after successful dispatch)
     ctx.intents->setCompositeIntent(batch);
+    ctx.mode.onMotionCommand(now_ms);
 
     JsonDocument resp;
     resp["action_count"] = actions.size();

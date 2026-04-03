@@ -84,6 +84,63 @@ class StateService:
         # State history buffer
         self._history: deque[StateTransition] = deque(maxlen=history_size)
 
+        # Subscribe to connection events to reset stale state
+        self._subscribed = False
+        self._subscribe_to_connection_events()
+
+    def _subscribe_to_connection_events(self) -> None:
+        """Subscribe to connection events to handle disconnect/reconnect."""
+        if self._subscribed:
+            return
+
+        try:
+            self.client.bus.subscribe("connection.lost", self._on_connection_lost)
+            self.client.bus.subscribe("connection.restored", self._on_connection_restored)
+            self._subscribed = True
+        except Exception:
+            # Best effort - client.bus may not be available
+            pass
+
+    def _unsubscribe_from_connection_events(self) -> None:
+        """Unsubscribe from connection events (for cleanup)."""
+        if not self._subscribed:
+            return
+
+        try:
+            self.client.bus.unsubscribe("connection.lost", self._on_connection_lost)
+            self.client.bus.unsubscribe("connection.restored", self._on_connection_restored)
+        except Exception:
+            pass
+        self._subscribed = False
+
+    def _on_connection_lost(self, _data: dict) -> None:
+        """
+        Handle connection lost event.
+
+        Resets state to UNKNOWN since we can no longer trust our cached state.
+        The MCU may have reset to IDLE while we were disconnected.
+        """
+        from_state = self._state
+        if from_state != RobotState.UNKNOWN:
+            self._state = RobotState.UNKNOWN
+            self._record_transition(
+                from_state, RobotState.UNKNOWN, "connection_lost"
+            )
+
+    def _on_connection_restored(self, _data: dict) -> None:
+        """
+        Handle connection restored event.
+
+        State will be synced on next command or telemetry update.
+        We don't query here to avoid blocking the event handler.
+        """
+        # State remains UNKNOWN until next get_state() or telemetry sync
+        pass
+
+    def close(self) -> None:
+        """Clean up subscriptions. Call when service is no longer needed."""
+        self._unsubscribe_from_connection_events()
+
     @property
     def current_state(self) -> RobotState:
         """Get current robot state."""

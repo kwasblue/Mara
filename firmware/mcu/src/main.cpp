@@ -106,6 +106,9 @@ void setup() {
     // Build context from storage
     g_ctx = g_storage.buildContext();
 
+    // Initialize handlers with dependencies (must be after buildContext)
+    g_storage.initHandlers(g_ctx);
+
     // =========================================================================
     // Phase 2: Run setup modules from manifest
     // =========================================================================

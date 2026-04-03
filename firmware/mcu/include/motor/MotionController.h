@@ -2,6 +2,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <atomic>
 #include "core/Clock.h"
 #include "core/RealTimeContract.h"
 
@@ -82,8 +83,10 @@ private:
     float   maxAngular_ = 1.0f;
 
     // Velocity state
-    float vxRef_      = 0.0f;
-    float omegaRef_   = 0.0f;
+    // NOTE: vxRef_ and omegaRef_ are written from command thread (Core 0)
+    // and read from control task (Core 1). Use atomic for thread safety.
+    std::atomic<float> vxRef_{0.0f};
+    std::atomic<float> omegaRef_{0.0f};
     float vxCmd_      = 0.0f;
     float omegaCmd_   = 0.0f;
     float maxLinAccel_  = 1.0f;

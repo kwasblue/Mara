@@ -4,7 +4,7 @@ _generated_config.py
 AUTO-GENERATED FILE - DO NOT EDIT
 =============================================================================
 Generated from: config/mara_build.yaml
-Generated at:   2026-04-02T18:01:17.365866
+Generated at:   2026-04-02T20:38:25.460662
 Active profile: full
 
 To regenerate, run:

@@ -77,6 +77,10 @@ bool Runtime::initializeStorage() {
     storage_.initHost(config_.device_name);
 
     ctx_ = storage_.buildContext();
+
+    // Initialize handlers with dependencies (must be after buildContext)
+    storage_.initHandlers(ctx_);
+
     return true;
 }
 

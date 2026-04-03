@@ -225,8 +225,12 @@ class AsyncTcpTransport(AsyncBaseTransport):
                     # Accumulate and let protocol.extract_frames parse frames.
                     self._rx_buffer.extend(data)
 
-                    # This will call self._frame_handler(body) for each frame found.
-                    protocol.extract_frames(self._rx_buffer, self._frame_handler)
+                    # Only process frames if a handler is registered
+                    if self._frame_handler:
+                        protocol.extract_frames(self._rx_buffer, self._frame_handler)
+                    else:
+                        # No handler - just clear buffer to avoid unbounded growth
+                        self._rx_buffer.clear()
 
             except Exception as e:
                 _log.warning("Error: %s", e)

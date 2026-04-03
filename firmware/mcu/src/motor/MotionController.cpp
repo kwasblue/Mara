@@ -42,16 +42,18 @@ void MotionController::setVelocity(float vx, float omega) {
     if (omega >  maxAngular_) omega =  maxAngular_;
     if (omega < -maxAngular_) omega = -maxAngular_;
 
-    vxRef_    = vx;
-    omegaRef_ = omega;
+    // Use relaxed ordering - we don't need synchronization with other variables,
+    // just atomicity to prevent torn reads on dual-core ESP32
+    vxRef_.store(vx, std::memory_order_relaxed);
+    omegaRef_.store(omega, std::memory_order_relaxed);
 
     // Optional: automatically enable base control when you first use it
     // baseEnabled_ = true;
 }
 
 void MotionController::stop() {
-    vxRef_    = 0.0f;
-    omegaRef_ = 0.0f;
+    vxRef_.store(0.0f, std::memory_order_relaxed);
+    omegaRef_.store(0.0f, std::memory_order_relaxed);
 
     // Still force motors to stop regardless of baseEnabled_
     motors_.setSpeed(leftId_,  0.0f);
@@ -59,11 +61,11 @@ void MotionController::stop() {
 }
 
 float MotionController::vx() const {
-    return vxRef_;
+    return vxRef_.load(std::memory_order_relaxed);
 }
 
 float MotionController::omega() const {
-    return omegaRef_;
+    return omegaRef_.load(std::memory_order_relaxed);
 }
 
 void MotionController::setAccelLimits(float maxLinAccel, float maxAngAccel) {
@@ -142,15 +144,19 @@ void MotionController::enableStepper(int motorId, bool enabled) {
 void MotionController::update(float dt) {
     // --- 1) Base velocity / motor control ---
     if (baseEnabled_) {
-        // Ramp vxCmd_ toward vxRef_
-        float dvx = vxRef_ - vxCmd_;
+        // Load reference velocities atomically (may be written from another core)
+        float vxTarget = vxRef_.load(std::memory_order_relaxed);
+        float omegaTarget = omegaRef_.load(std::memory_order_relaxed);
+
+        // Ramp vxCmd_ toward vxTarget
+        float dvx = vxTarget - vxCmd_;
         float maxDeltaVx = maxLinAccel_ * dt;
         if (dvx >  maxDeltaVx) dvx =  maxDeltaVx;
         if (dvx < -maxDeltaVx) dvx = -maxDeltaVx;
         vxCmd_ += dvx;
 
-        // Ramp omegaCmd_ toward omegaRef_
-        float domega = omegaRef_ - omegaCmd_;
+        // Ramp omegaCmd_ toward omegaTarget
+        float domega = omegaTarget - omegaCmd_;
         float maxDeltaOmega = maxAngAccel_ * dt;
         if (domega >  maxDeltaOmega) domega =  maxDeltaOmega;
         if (domega < -maxDeltaOmega) domega = -maxDeltaOmega;

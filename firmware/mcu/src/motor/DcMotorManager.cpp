@@ -52,7 +52,7 @@ bool DcMotorManager::attach(uint8_t id,
     m.pid.setOutputLimits(-1.0f, 1.0f);
     m.pid.reset();
     m.pidEnabled      = false;
-    m.targetOmegaRadS = 0.0f;
+    m.targetOmegaRadS.store(0.0f, std::memory_order_relaxed);
 
     DBG_PRINTF(
         "[DcMotorManager] attach id=%u in1=%d in2=%d pwmPin=%d ledcCH=%d "
@@ -108,7 +108,7 @@ bool DcMotorManager::stop(uint8_t id) {
     }
 
     m.pidEnabled = false;
-    m.targetOmegaRadS = 0.0f;
+    m.targetOmegaRadS.store(0.0f, std::memory_order_relaxed);
 
     return setSpeed(id, 0.0f);
 }
@@ -141,7 +141,7 @@ bool DcMotorManager::getMotorDebugInfo(uint8_t id, MotorDebugInfo& out) const {
     out.resolution  = m.resolution;
 
     out.pidEnabled      = m.pidEnabled;
-    out.targetOmegaRadS = m.targetOmegaRadS;
+    out.targetOmegaRadS = m.targetOmegaRadS.load(std::memory_order_relaxed);
 
     return m.attached;
 }
@@ -171,7 +171,7 @@ void DcMotorManager::dumpAllMotorMappings() const {
             m.resolution,
             m.lastSpeed,
             m.pidEnabled ? 1 : 0,
-            m.targetOmegaRadS
+            m.targetOmegaRadS.load(std::memory_order_relaxed)
         );
     }
     DBG_PRINTF("=== end DcMotorManager mappings ===\n");
@@ -194,7 +194,8 @@ bool DcMotorManager::setVelocityTarget(uint8_t id, float omegaRadPerSec) {
         DBG_PRINTF("[DcMotorManager] setVelocityTarget ignored, id=%u not attached\n", id);
         return false;
     }
-    motors_[id].targetOmegaRadS = omegaRadPerSec;
+    // Atomic store for cross-core safety (handler on Core 0, PID on Core 1)
+    motors_[id].targetOmegaRadS.store(omegaRadPerSec, std::memory_order_relaxed);
     DBG_PRINTF("[DcMotorManager] id=%u targetOmega=%.3f rad/s\n", id, omegaRadPerSec);
     return true;
 }
@@ -223,7 +224,9 @@ bool DcMotorManager::updateVelocityPid(uint8_t id, float measuredOmegaRadS, floa
         return false;
     }
 
-    float cmd = m.pid.compute(m.targetOmegaRadS, measuredOmegaRadS, dt);
+    // Atomic load for cross-core safety (handler on Core 0 writes, PID on Core 1 reads)
+    float target = m.targetOmegaRadS.load(std::memory_order_relaxed);
+    float cmd = m.pid.compute(target, measuredOmegaRadS, dt);
     // cmd should be within -1..1 due to PID output limits
     return setSpeed(id, cmd);
 }

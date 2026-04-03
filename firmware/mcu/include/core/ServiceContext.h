@@ -55,6 +55,7 @@ namespace hal {
     class II2c;
     class ITimer;
     class IWatchdog;
+    class IOta;
     struct HalContext;
 }
 
@@ -132,6 +133,7 @@ struct ServiceContext {
     hal::II2c*      halI2c1     = nullptr;   // Platform I2C abstraction (secondary bus)
     hal::ITimer*    halTimer    = nullptr;   // Platform timer abstraction
     hal::IWatchdog* halWatchdog = nullptr;   // Platform watchdog abstraction
+    hal::IOta*      halOta      = nullptr;   // Platform OTA abstraction
 
     // =========================================================================
     // Tier 1: Core infrastructure (no dependencies)

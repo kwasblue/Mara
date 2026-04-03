@@ -113,6 +113,15 @@ class StreamTransport(BaseTransport, ABC):
     _MAX_CONSECUTIVE_ERRORS = 5
 
     def _reader_loop(self) -> None:
+        """
+        Background reader thread that processes incoming data.
+
+        Threading note on _rx_buffer:
+        _rx_buffer is only written and consumed by this reader thread - there's
+        no concurrent access from send_bytes. The frame handlers invoked via
+        _safe_handle_body may trigger reply sends, but those go through
+        send_bytes which uses _async_lock + executor, properly serialized.
+        """
         consecutive_errors = 0
 
         while not self._stop:
@@ -150,6 +159,13 @@ class StreamTransport(BaseTransport, ABC):
 
         Uses asyncio.Lock to serialize async callers (no thread overhead),
         then delegates actual I/O to a dedicated executor thread.
+
+        NOTE: Race window with stop()
+        There's a narrow window where send_bytes reads _cached_loop, then stop()
+        clears it and closes the transport, then send_bytes proceeds with the
+        stale loop reference. This is harmless in practice because the _is_open
+        check under _async_lock will catch it, but the error message may be
+        misleading ("Transport not open" rather than "Transport stopped").
         """
         # Fast path: cache loop reference to avoid get_running_loop() overhead
         # Validate loop is still running, not just not-closed

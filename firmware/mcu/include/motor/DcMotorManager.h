@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include <cstdint>
+#include <atomic>
 #include "hw/GpioManager.h"
 #include "hw/PwmManager.h"
 #include "motor/PID.h"
@@ -36,7 +37,10 @@ public:
 
         // PID / velocity control
         bool  pidEnabled      = false;
-        float targetOmegaRadS = 0.0f;
+        // Use std::atomic for cross-core safety: handlers on Core 0 write,
+        // control loop on Core 1 reads. memory_order_relaxed is sufficient
+        // since we only need atomicity, not ordering guarantees.
+        std::atomic<float> targetOmegaRadS{0.0f};
         PID   pid;
 
         // Encoder state for velocity calculation (per-motor, not shared)

@@ -404,11 +404,16 @@ void stopControlTask() {
     Serial.println("[CTRL_TASK] Stopping...");
 #endif
 
+    // Signal stop FIRST so task knows to exit cleanly
+    g_taskRunning.store(false, std::memory_order_release);
+
     // Use HAL if available and task was created via HAL
     if (g_halScheduler && g_halTaskHandle.native != nullptr) {
+        // Brief delay to let in-progress iteration complete and idle task clean up
+        // The control task runs at 100-1000Hz, so 20ms ensures 2-20 iterations pass
+        g_halScheduler->delayMs(20);
         g_halScheduler->deleteTask(g_halTaskHandle);
         g_halTaskHandle.native = nullptr;
-        g_taskRunning.store(false, std::memory_order_release);
         g_taskCtx = nullptr;
 #if PLATFORM_HAS_ARDUINO
         Serial.println("[CTRL_TASK] Stopped (HAL)");
@@ -419,13 +424,16 @@ void stopControlTask() {
 #if HAS_FREERTOS
     // Direct FreeRTOS path
     if (g_controlTaskHandle == nullptr) {
+        g_taskCtx = nullptr;
         return;
     }
+
+    // Brief delay to let in-progress iteration complete
+    vTaskDelay(pdMS_TO_TICKS(20));
 
     // Delete the task
     vTaskDelete(g_controlTaskHandle);
     g_controlTaskHandle = nullptr;
-    g_taskRunning.store(false, std::memory_order_release);
     g_taskCtx = nullptr;
 
 #if PLATFORM_HAS_ARDUINO

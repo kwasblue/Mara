@@ -3,6 +3,11 @@
 
 namespace hal {
 
+// NOTE: MemoryCaps enum values map one-to-one to MALLOC_CAP_* flags.
+// This design doesn't support combining flags (e.g., Internal | DMA).
+// To query DMA-capable internal memory, callers would need a new enum value
+// or direct access to heap_caps_* with raw uint32_t flags. For typical use
+// (monitoring heap by region), single-cap queries are sufficient.
 uint32_t Esp32HeapMonitor::toEspCaps(MemoryCaps caps) {
     switch (caps) {
         case MemoryCaps::Internal:

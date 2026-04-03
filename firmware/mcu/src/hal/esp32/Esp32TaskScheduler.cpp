@@ -41,6 +41,11 @@ bool Esp32TaskScheduler::createTask(TaskFunction func, void* param,
 }
 
 void Esp32TaskScheduler::deleteTask(TaskHandle handle) {
+    // NOTE: vTaskDelete on a task running on another core is legal in FreeRTOS,
+    // but the deleted task's stack and TCB aren't freed until the idle task runs
+    // on that core. Callers should ensure the task has exited its critical work
+    // (e.g., by setting a stop flag and waiting briefly) before calling deleteTask
+    // to avoid races with stack/context cleanup.
     if (handle.native != nullptr) {
         vTaskDelete(static_cast<TaskHandle_t>(handle.native));
     }

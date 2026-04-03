@@ -248,21 +248,29 @@ public:
         }
 
         if (ctx.persistence && ctx.mode) {
+            // Capture pointers by value - ctx is a local variable that goes out of scope
+            // after setup() returns, so capturing by reference would be use-after-return UB
+            persistence::McuPersistence* persistence = ctx.persistence;
+            ModeManager* mode = ctx.mode;
             ctx.telemetry->registerProvider(
                 "persistence",
-                [&ctx](ArduinoJson::JsonObject node) {
-                    ctx.persistence->updateFromMode(*ctx.mode, mara::getSystemClock().millis());
-                    ctx.persistence->fillTelemetry(node);
+                [persistence, mode](ArduinoJson::JsonObject node) {
+                    persistence->updateFromMode(*mode, mara::getSystemClock().millis());
+                    persistence->fillTelemetry(node);
                 }
             );
         }
 
+        // Capture sensor pointers by value - ctx goes out of scope after setup()
+        ImuManager* sensorImu = ctx.imu;
+        UltrasonicManager* sensorUltrasonic = ctx.ultrasonic;
+        LidarManager* sensorLidar = ctx.lidar;
         ctx.telemetry->registerProvider(
             "sensor_health",
-            [&ctx](ArduinoJson::JsonObject node) {
+            [sensorImu, sensorUltrasonic, sensorLidar](ArduinoJson::JsonObject node) {
                 ArduinoJson::JsonArray sensors = node["sensors"].to<ArduinoJson::JsonArray>();
-                if (ctx.imu) {
-                    const SensorHealthEntry imu = buildImuHealth(ctx.imu);
+                if (sensorImu) {
+                    const SensorHealthEntry imu = buildImuHealth(sensorImu);
                     ArduinoJson::JsonObject item = sensors.add<ArduinoJson::JsonObject>();
                     item["kind"] = "imu";
                     item["sensor_id"] = imu.sensor_id;
@@ -273,8 +281,8 @@ public:
                     item["detail"] = imu.detail;
                     item["flags"] = imu.flags;
                 }
-                if (ctx.ultrasonic) {
-                    const SensorHealthEntry ultrasonic = buildUltrasonicHealth(ctx.ultrasonic, 0);
+                if (sensorUltrasonic) {
+                    const SensorHealthEntry ultrasonic = buildUltrasonicHealth(sensorUltrasonic, 0);
                     ArduinoJson::JsonObject item = sensors.add<ArduinoJson::JsonObject>();
                     item["kind"] = "ultrasonic";
                     item["sensor_id"] = ultrasonic.sensor_id;
@@ -285,8 +293,8 @@ public:
                     item["detail"] = ultrasonic.detail;
                     item["flags"] = ultrasonic.flags;
                 }
-                if (ctx.lidar) {
-                    const SensorHealthEntry lidar = buildLidarHealth(ctx.lidar);
+                if (sensorLidar) {
+                    const SensorHealthEntry lidar = buildLidarHealth(sensorLidar);
                     ArduinoJson::JsonObject item = sensors.add<ArduinoJson::JsonObject>();
                     item["kind"] = "lidar";
                     item["sensor_id"] = lidar.sensor_id;
@@ -300,14 +308,15 @@ public:
             }
         );
 
+        // Reuse the captured pointers from above (sensorImu, sensorUltrasonic, sensorLidar)
         ctx.telemetry->registerBinProvider(
             TelemetrySections::id(TelemetrySections::SectionId::TELEM_SENSOR_HEALTH),
-            [&ctx](std::vector<uint8_t>& out) {
+            [sensorImu, sensorUltrasonic, sensorLidar](std::vector<uint8_t>& out) {
                 std::vector<SensorHealthEntry> entries;
                 entries.reserve(3);
-                if (ctx.imu) entries.push_back(buildImuHealth(ctx.imu));
-                if (ctx.ultrasonic) entries.push_back(buildUltrasonicHealth(ctx.ultrasonic, 0));
-                if (ctx.lidar) entries.push_back(buildLidarHealth(ctx.lidar));
+                if (sensorImu) entries.push_back(buildImuHealth(sensorImu));
+                if (sensorUltrasonic) entries.push_back(buildUltrasonicHealth(sensorUltrasonic, 0));
+                if (sensorLidar) entries.push_back(buildLidarHealth(sensorLidar));
                 out.push_back(static_cast<uint8_t>(entries.size()));
                 for (const auto& entry : entries) {
                     out.push_back(entry.kind);

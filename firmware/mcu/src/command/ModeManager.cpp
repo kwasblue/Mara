@@ -40,25 +40,36 @@ void ModeManager::update(uint32_t now_ms) {
     if (halWatchdog_) halWatchdog_->reset();
     readHardwareInputs();
 
+    // Track whether we need to fire the persistent state callback AFTER releasing locks.
+    // NVS writes are slow (potentially milliseconds) and must not block ISRs.
+    bool firePersistCallback = false;
+
     // Host timeout: 0 = disabled
     if (cfg_.host_timeout_ms > 0 && hostEverSeen_ && isConnected() && !isEstopped()) {
         uint32_t dt = now_ms - lastHostHeartbeat_;
         if (dt > cfg_.host_timeout_ms) {
-            mara::CriticalSection lock(lock_);
-            triggerStop();
-            // Downgrade only ACTIVE->ARMED on host timeout
-            // Leave ARMED as-is, don't touch DISCONNECTED or other states
-            if (mode_ == MaraMode::ACTIVE) {
-                mode_ = MaraMode::ARMED;
+            {
+                mara::CriticalSection lock(lock_);
+                triggerStop();
+                // Downgrade only ACTIVE->ARMED on host timeout
+                // Leave ARMED as-is, don't touch DISCONNECTED or other states
+                if (mode_ == MaraMode::ACTIVE) {
+                    mode_ = MaraMode::ARMED;
+                }
+                // ARMED stays ARMED, IDLE stays IDLE, DISCONNECTED stays DISCONNECTED
+                hostTimedOut_ = true;
+                stats_.host_timeout_count++;
+                stats_.last_host_timeout_ms = now_ms;
+                if (dt > stats_.max_host_gap_ms) stats_.max_host_gap_ms = dt;
+                stats_.last_fault = FaultCode::HOST_TIMEOUT;
+                lastHostHeartbeat_ = now_ms;
+                firePersistCallback = (persistentStateCallback_ != nullptr);
             }
-            // ARMED stays ARMED, IDLE stays IDLE, DISCONNECTED stays DISCONNECTED
-            hostTimedOut_ = true;
-            stats_.host_timeout_count++;
-            stats_.last_host_timeout_ms = now_ms;
-            if (dt > stats_.max_host_gap_ms) stats_.max_host_gap_ms = dt;
-            stats_.last_fault = FaultCode::HOST_TIMEOUT;
-            lastHostHeartbeat_ = now_ms;
-            if (persistentStateCallback_) persistentStateCallback_();
+            // Fire callback OUTSIDE lock - NVS writes block for milliseconds
+            if (firePersistCallback) {
+                persistentStateCallback_();
+                firePersistCallback = false;
+            }
         }
     }
 
@@ -66,16 +77,23 @@ void ModeManager::update(uint32_t now_ms) {
     if (cfg_.motion_timeout_ms > 0 && mode_ == MaraMode::ACTIVE && lastMotionCmd_ > 0 && wasMoving_) {
         uint32_t dtm = now_ms - lastMotionCmd_;
         if (dtm > cfg_.motion_timeout_ms) {
-            mara::CriticalSection lock(lock_);
-            triggerStop();
-            mode_ = MaraMode::ARMED;
-            wasMoving_ = false;
-            stats_.motion_timeout_count++;
-            stats_.last_motion_timeout_ms = now_ms;
-            if (dtm > stats_.max_motion_gap_ms) stats_.max_motion_gap_ms = dtm;
-            stats_.last_fault = FaultCode::MOTION_TIMEOUT;
-            lastMotionCmd_ = now_ms;
-            if (persistentStateCallback_) persistentStateCallback_();
+            {
+                mara::CriticalSection lock(lock_);
+                triggerStop();
+                mode_ = MaraMode::ARMED;
+                wasMoving_ = false;
+                stats_.motion_timeout_count++;
+                stats_.last_motion_timeout_ms = now_ms;
+                if (dtm > stats_.max_motion_gap_ms) stats_.max_motion_gap_ms = dtm;
+                stats_.last_fault = FaultCode::MOTION_TIMEOUT;
+                lastMotionCmd_ = now_ms;
+                firePersistCallback = (persistentStateCallback_ != nullptr);
+            }
+            // Fire callback OUTSIDE lock - NVS writes block for milliseconds
+            if (firePersistCallback) {
+                persistentStateCallback_();
+                firePersistCallback = false;
+            }
         }
     }
 
@@ -97,28 +115,33 @@ void ModeManager::readHardwareInputs() {
 }
 
 void ModeManager::onHostHeartbeat(uint32_t now_ms) {
-    if (hostEverSeen_) {
-        const uint32_t gap = now_ms - lastHostHeartbeat_;
-        if (gap > stats_.max_host_gap_ms) stats_.max_host_gap_ms = gap;
-    }
-    if (hostTimedOut_) {
-        stats_.host_recovery_count++;
-        hostTimedOut_ = false;
-    }
-    lastHostHeartbeat_ = now_ms;
-    stats_.last_host_heartbeat_ms = now_ms;
-    stats_.host_heartbeat_count++;
-    stopLatched_ = false;
-    if (!hostEverSeen_) hostEverSeen_ = true;
-    if (mode_ == MaraMode::DISCONNECTED) mode_ = MaraMode::IDLE;
+    bool firePersistCallback = false;
+    {
+        mara::CriticalSection lock(lock_);
+        if (hostEverSeen_) {
+            const uint32_t gap = now_ms - lastHostHeartbeat_;
+            if (gap > stats_.max_host_gap_ms) stats_.max_host_gap_ms = gap;
+        }
+        if (hostTimedOut_) {
+            stats_.host_recovery_count++;
+            hostTimedOut_ = false;
+        }
+        lastHostHeartbeat_ = now_ms;
+        stats_.last_host_heartbeat_ms = now_ms;
+        stats_.host_heartbeat_count++;
+        stopLatched_ = false;
+        if (!hostEverSeen_) hostEverSeen_ = true;
+        if (mode_ == MaraMode::DISCONNECTED) mode_ = MaraMode::IDLE;
 
-    // Heartbeats also reset motion timeout - if host is alive, keep MCU active
-    // This prevents timeout when using servo/GPIO commands that aren't velocity-based
-    if (lastMotionCmd_ > 0) {
-        lastMotionCmd_ = now_ms;
+        // Heartbeats also reset motion timeout - if host is alive, keep MCU active
+        // This prevents timeout when using servo/GPIO commands that aren't velocity-based
+        if (lastMotionCmd_ > 0) {
+            lastMotionCmd_ = now_ms;
+        }
+        firePersistCallback = (persistentStateCallback_ != nullptr);
     }
-
-    if (persistentStateCallback_) persistentStateCallback_();
+    // Fire callback OUTSIDE lock - NVS writes block for milliseconds
+    if (firePersistCallback) persistentStateCallback_();
 }
 
 void ModeManager::onMotionCommand(uint32_t now_ms, float vx, float omega) {
@@ -148,16 +171,39 @@ void ModeManager::arm() { mara::CriticalSection lock(lock_); stopLatched_ = fals
 void ModeManager::activate(uint32_t now_ms) { mara::CriticalSection lock(lock_); stopLatched_ = false; if (mode_ == MaraMode::ARMED) { lastMotionCmd_ = now_ms; mode_ = MaraMode::ACTIVE; } }
 void ModeManager::deactivate(uint32_t now_ms) { mara::CriticalSection lock(lock_); if (mode_ == MaraMode::ACTIVE) { triggerStop(); mode_ = MaraMode::ARMED; lastMotionCmd_ = now_ms; } }
 void ModeManager::disarm() { mara::CriticalSection lock(lock_); if (mode_ == MaraMode::ARMED || mode_ == MaraMode::ACTIVE) { triggerStop(); mode_ = MaraMode::IDLE; } }
-void ModeManager::estop() { mara::CriticalSection lock(lock_); triggerStop(); triggerEmergencyStop(); mode_ = MaraMode::ESTOPPED; stats_.last_fault = FaultCode::ESTOP; if (persistentStateCallback_) persistentStateCallback_(); }
+void ModeManager::estop() {
+    bool firePersistCallback = false;
+    {
+        mara::CriticalSection lock(lock_);
+        triggerStop();
+        triggerEmergencyStop();
+        mode_ = MaraMode::ESTOPPED;
+        stats_.last_fault = FaultCode::ESTOP;
+        firePersistCallback = (persistentStateCallback_ != nullptr);
+    }
+    // Fire callback OUTSIDE lock - NVS writes block for milliseconds
+    if (firePersistCallback) persistentStateCallback_();
+}
 
 bool ModeManager::clearEstop() {
-    mara::CriticalSection lock(lock_);
-    stopLatched_ = false;
-    if (!isEstopped()) return true;
-    if (cfg_.estop_pin >= 0 && halGpio_ && halGpio_->digitalRead(cfg_.estop_pin) == 0) return false;
-    mode_ = MaraMode::IDLE;
-    if (persistentStateCallback_) persistentStateCallback_();
-    return true;
+    bool firePersistCallback = false;
+    bool result = false;
+    {
+        mara::CriticalSection lock(lock_);
+        stopLatched_ = false;
+        if (!isEstopped()) {
+            return true;  // Early return is safe - no callback needed
+        }
+        if (cfg_.estop_pin >= 0 && halGpio_ && halGpio_->digitalRead(cfg_.estop_pin) == 0) {
+            return false;  // Early return is safe - no callback needed
+        }
+        mode_ = MaraMode::IDLE;
+        firePersistCallback = (persistentStateCallback_ != nullptr);
+        result = true;
+    }
+    // Fire callback OUTSIDE lock - NVS writes block for milliseconds
+    if (firePersistCallback) persistentStateCallback_();
+    return result;
 }
 
 bool ModeManager::validateVelocity(float vx, float omega, float& out_vx, float& out_omega) {

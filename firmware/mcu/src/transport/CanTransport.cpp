@@ -125,6 +125,10 @@ bool CanTransport::sendProtocol(const uint8_t* data, size_t len, uint8_t targetN
         numFrames = can::PROTO_MAX_FRAMES;
     }
 
+    // Note: msgId wraps at 256. If 256+ messages are in-flight simultaneously,
+    // the receiver could match a new message against stale reassembly state.
+    // In practice this is extremely unlikely since messages complete in <100ms
+    // and we'd need to send 256 concurrent protocol messages to trigger collision.
     uint8_t msgId = protoTxMsgId_++;
     uint16_t canId = can::makeId(can::MsgId::PROTO_CMD_BASE, targetNode);
 
@@ -274,7 +278,17 @@ void CanTransport::handleProtocolFrame(uint8_t srcNode, const uint8_t* data, siz
     }
 
     // Get reassembly buffer for this source node
-    ProtoReassembly& rx = protoRx_[srcNode & can::MAX_NODE_ID];
+    // Bounds check: ensure masked index fits in array
+    constexpr size_t PROTO_RX_SIZE = can::MAX_NODE_ID + 1;
+    static_assert(PROTO_RX_SIZE == sizeof(protoRx_) / sizeof(protoRx_[0]),
+                  "protoRx_ size must match MAX_NODE_ID + 1");
+    size_t nodeIdx = srcNode & can::MAX_NODE_ID;
+    // Runtime check for extra safety (should never trigger if static_assert holds)
+    if (nodeIdx >= PROTO_RX_SIZE) {
+        LOG_WARN(TAG, "Node index out of bounds: %u", nodeIdx);
+        return;
+    }
+    ProtoReassembly& rx = protoRx_[nodeIdx];
 
     // Check if this is a new message or continuation
     if (rx.msgId != msgId || rx.expectedFrames != totalFrames) {

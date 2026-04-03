@@ -395,16 +395,21 @@ class BaseMaraClient(BinaryCommandsMixin):
         # Clear stale in-flight commands (they won't get ACKs from reset MCU)
         self.commander.clear_pending_sync()
 
-        self.bus.publish("connection.restored", {})
-        self.logs.events.write("connection.restored")
-
         # Schedule async re-handshake if required
         if self._require_version_match and self._running:
+            # Publish reconnecting (not restored) - handshake not yet complete
+            # Services should NOT send commands until connection.restored fires
+            self.bus.publish("connection.reconnecting", {})
+            self.logs.events.write("connection.reconnecting")
+
             task = asyncio.create_task(self._perform_handshake())
             # Attach error handler to prevent silent failures on version mismatch
-            def _on_handshake_error(t: asyncio.Task) -> None:
+            def _on_handshake_done(t: asyncio.Task) -> None:
                 try:
                     t.result()
+                    # Handshake succeeded - NOW publish connection.restored
+                    self.bus.publish("connection.restored", {})
+                    self.logs.events.write("connection.restored")
                 except asyncio.CancelledError:
                     pass  # Expected on shutdown
                 except Exception as e:
@@ -415,7 +420,11 @@ class BaseMaraClient(BinaryCommandsMixin):
                         "Connection may be in unverified state.", e
                     )
                     self.bus.publish("handshake.failed", {"error": str(e)})
-            task.add_done_callback(_on_handshake_error)
+            task.add_done_callback(_on_handshake_done)
+        else:
+            # No handshake required - connection is immediately restored
+            self.bus.publish("connection.restored", {})
+            self.logs.events.write("connection.restored")
 
     # ---------- Heartbeat ----------
 

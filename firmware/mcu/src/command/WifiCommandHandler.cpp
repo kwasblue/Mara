@@ -69,8 +69,18 @@ private:
         ctx.sendAck("CMD_WIFI_STATUS", true, resp);
     }
 
+    // WARNING: If wait_for_connect=true and timeout_ms is large (e.g., 10s),
+    // this handler BLOCKS the command task. During this time:
+    //   - No other JSON commands are processed
+    //   - Host heartbeat responses won't be sent
+    //   - Host may fire E-stop due to connection timeout
+    // Recommendation: Use wait_for_connect=false and poll WiFi status separately,
+    // or use a short timeout (< host heartbeat timeout).
+    static constexpr int MAX_SAFE_TIMEOUT_MS = 2000;  // Avoid triggering host timeout
+
     void handleJoin(JsonVariantConst payload, CommandContext& ctx) {
         const char* ssid = payload["ssid"] | "";
+        // Note: password is NOT logged to avoid exposing credentials
         const char* password = payload["password"] | "";
         bool wait_for_connect = payload["wait_for_connect"].isNull() ? true : payload["wait_for_connect"].as<bool>();
         int timeout_ms = payload["timeout_ms"].isNull() ? 10000 : payload["timeout_ms"].as<int>();
@@ -80,6 +90,13 @@ private:
             return;
         }
         if (timeout_ms < 0) timeout_ms = 0;
+
+        // Warn if timeout exceeds safe limit (may cause host E-stop)
+        bool timeout_capped = false;
+        if (wait_for_connect && timeout_ms > MAX_SAFE_TIMEOUT_MS) {
+            timeout_ms = MAX_SAFE_TIMEOUT_MS;
+            timeout_capped = true;
+        }
 
         WiFi.mode(WIFI_AP_STA);
         WiFi.setAutoReconnect(false);
@@ -104,6 +121,10 @@ private:
         resp["mode"] = wifiModeString();
         resp["wait_for_connect"] = wait_for_connect;
         resp["timeout_ms"] = timeout_ms;
+        if (timeout_capped) {
+            resp["timeout_capped"] = true;
+            resp["warning"] = "timeout_ms capped to avoid host E-stop";
+        }
 
         ctx.sendAck("CMD_WIFI_JOIN", connected, resp);
     }

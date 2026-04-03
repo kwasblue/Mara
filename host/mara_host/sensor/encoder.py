@@ -51,10 +51,12 @@ class EncoderHostModule(CommandHostModule):
             pin_b=pb,
         )
 
-    async def read(self, encoder_id: int | None = None) -> None:
+    async def read(self, encoder_id: int | None = None):
+        """Read encoder value. Returns the result from cmd_encoder_read."""
         eid = encoder_id if encoder_id is not None else self._defaults.encoder_id
-        await self._client.cmd_encoder_read(encoder_id=eid)
+        return await self._client.cmd_encoder_read(encoder_id=eid)
 
-    async def reset(self, encoder_id: int | None = None) -> None:
+    async def reset(self, encoder_id: int | None = None):
+        """Reset encoder count. Returns the result from cmd_encoder_reset."""
         eid = encoder_id if encoder_id is not None else self._defaults.encoder_id
-        await self._client.cmd_encoder_reset(encoder_id=eid)
+        return await self._client.cmd_encoder_reset(encoder_id=eid)

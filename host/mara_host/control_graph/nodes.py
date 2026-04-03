@@ -673,6 +673,13 @@ class Slot:
         rate_hz: int | None = None,
         enabled: bool = True,
     ):
+        # Validate that sink and sinks are not both provided
+        if sink is not None and sinks:
+            raise ValueError(
+                f"Slot {id!r}: cannot specify both 'sink' and 'sinks'. "
+                "Use 'sink' for a single output or 'sinks' for multiple outputs."
+            )
+
         self.id = id
         self.source = source
         self.sink = sink

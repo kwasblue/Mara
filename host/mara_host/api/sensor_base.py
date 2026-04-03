@@ -27,11 +27,14 @@ Example:
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable, Generic, Optional, TypeVar
 
 if TYPE_CHECKING:
     from ..robot import Robot
+
+_log = logging.getLogger(__name__)
 
 # Type variable for the reading type
 T = TypeVar("T")
@@ -182,7 +185,14 @@ class TelemetrySensor(ABC, Generic[T]):
         try:
             reading = self._parse_reading(data)
         except Exception:
-            return  # Silently ignore parse errors
+            _log.warning(
+                "Failed to parse telemetry for %s (sensor_id=%d): %s",
+                self.__class__.__name__,
+                self._sensor_id,
+                data,
+                exc_info=True,
+            )
+            return
 
         # Cache the reading
         self._last_reading = reading
@@ -196,7 +206,13 @@ class TelemetrySensor(ABC, Generic[T]):
             try:
                 callback(reading)
             except Exception:
-                pass  # Don't let callback errors break telemetry
+                _log.warning(
+                    "Callback %s raised exception for %s (sensor_id=%d)",
+                    getattr(callback, "__name__", repr(callback)),
+                    self.__class__.__name__,
+                    self._sensor_id,
+                    exc_info=True,
+                )
 
     def on_reading(
         self, callback: Callable[[T], None]
@@ -252,4 +268,17 @@ class TelemetrySensor(ABC, Generic[T]):
 
     def clear_callbacks(self) -> None:
         """Remove all registered callbacks."""
+        self._callbacks.clear()
+
+    def close(self) -> None:
+        """
+        Unsubscribe from telemetry and clean up resources.
+
+        Call this when the sensor is no longer needed to prevent
+        handler accumulation in long-running sessions.
+        """
+        if self._subscribed:
+            topic = self._get_topic()
+            self._robot.off(topic, self._on_telemetry)
+            self._subscribed = False
         self._callbacks.clear()

@@ -202,8 +202,19 @@ void Esp32Can::setFilter(uint32_t filter, uint32_t mask, bool extended) {
     twai_timing_config_t t_config = getBaudConfig(baudRate_);
 
     twai_driver_uninstall();
-    twai_driver_install(&g_config, &t_config, &f_config);
-    twai_start();
+    esp_err_t err = twai_driver_install(&g_config, &t_config, &f_config);
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "Filter install failed: %d", err);
+        initialized_ = false;
+        return;
+    }
+    err = twai_start();
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "Filter start failed: %d", err);
+        twai_driver_uninstall();
+        initialized_ = false;
+        return;
+    }
 
     LOG_DEBUG(TAG, "Filter set: 0x%08X mask 0x%08X", filter, mask);
 }
@@ -226,8 +237,19 @@ void Esp32Can::clearFilters() {
     twai_timing_config_t t_config = getBaudConfig(baudRate_);
 
     twai_driver_uninstall();
-    twai_driver_install(&g_config, &t_config, &f_config);
-    twai_start();
+    esp_err_t err = twai_driver_install(&g_config, &t_config, &f_config);
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "clearFilters install failed: %d", err);
+        initialized_ = false;
+        return;
+    }
+    err = twai_start();
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "clearFilters start failed: %d", err);
+        twai_driver_uninstall();
+        initialized_ = false;
+        return;
+    }
 
     LOG_DEBUG(TAG, "Filters cleared");
 }
@@ -288,7 +310,10 @@ void Esp32Can::canToTwaiMessage(const CanMessage& msg, twai_message_t& twai) {
     twai.data_length_code = msg.len;
     twai.extd = msg.extended ? 1 : 0;
     twai.rtr = msg.rtr ? 1 : 0;
-    twai.ss = 1;  // Single shot mode
+    // Use standard retransmit mode (ss=0) for reliable command bus operation.
+    // Single-shot (ss=1) would silently drop frames on arbitration loss or NACK,
+    // which is problematic for robotics commands where reliability matters.
+    twai.ss = 0;
     for (int i = 0; i < 8; i++) {
         twai.data[i] = msg.data[i];
     }

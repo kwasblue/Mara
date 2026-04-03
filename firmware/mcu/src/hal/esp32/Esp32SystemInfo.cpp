@@ -8,6 +8,10 @@ namespace hal {
 
 ResetReason Esp32SystemInfo::convertResetReason(int rawReason) {
     // ESP32 RESET_REASON enum values from rom/rtc.h
+    // NOTE: These values are for the original ESP32. ESP32-S3 and ESP32-C3 have
+    // different enum values for some reset reasons (e.g., TG0WDT_CPU_RST differs).
+    // Use getResetReasonRaw() for chip-specific debugging if Unknown is returned
+    // unexpectedly on newer chips.
     switch (rawReason) {
         case 1:  // POWERON_RESET
             return ResetReason::PowerOn;

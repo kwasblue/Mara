@@ -4,12 +4,13 @@
 
 namespace hal {
 
-// Static callback wrapper for esp_timer
-static TimerCallback s_currentCallback = nullptr;
-
-static void IRAM_ATTR timerCallbackWrapper(void* arg) {
-    if (s_currentCallback) {
-        s_currentCallback();
+// Callback wrapper - dispatches through instance pointer in arg
+// This supports multiple Esp32Timer instances with independent callbacks
+// (unlike the previous design which used a single global callback pointer)
+void IRAM_ATTR timerCallbackWrapper(void* arg) {
+    Esp32Timer* self = static_cast<Esp32Timer*>(arg);
+    if (self && self->callback_) {
+        self->callback_();
     }
 }
 
@@ -21,15 +22,18 @@ Esp32Timer::~Esp32Timer() {
 }
 
 void Esp32Timer::createTimer(TimerCallback callback) {
+    // NOTE: Every startRepeating/startOnce call destroys and recreates the timer,
+    // which involves heap allocation. For high-frequency timer restarts, consider
+    // reusing the existing timer handle with esp_timer_stop + esp_timer_start.
     if (timerHandle_ != nullptr) {
         deleteTimer();
     }
 
-    s_currentCallback = callback;
+    callback_ = callback;
 
     esp_timer_create_args_t timerArgs = {};
     timerArgs.callback = timerCallbackWrapper;
-    timerArgs.arg = nullptr;
+    timerArgs.arg = this;  // Pass instance pointer for per-timer callback dispatch
     timerArgs.dispatch_method = ESP_TIMER_TASK;
     timerArgs.name = "hal_timer";
 
@@ -41,7 +45,7 @@ void Esp32Timer::deleteTimer() {
         esp_timer_delete(timerHandle_);
         timerHandle_ = nullptr;
     }
-    s_currentCallback = nullptr;
+    callback_ = nullptr;
 }
 
 bool Esp32Timer::startRepeating(uint32_t intervalUs, TimerCallback callback) {

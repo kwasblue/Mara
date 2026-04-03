@@ -10,6 +10,9 @@ namespace hal {
 
 /// ESP32 timer implementation using esp_timer API
 class Esp32Timer : public ITimer {
+    // Allow the callback wrapper (defined in .cpp) to access callback_
+    friend void timerCallbackWrapper(void* arg);
+
 public:
     Esp32Timer();
     ~Esp32Timer();
@@ -25,6 +28,7 @@ public:
 
 private:
     esp_timer_handle_t timerHandle_ = nullptr;
+    TimerCallback callback_ = nullptr;  // Per-instance callback for multi-timer support
     bool running_ = false;
 
     void createTimer(TimerCallback callback);

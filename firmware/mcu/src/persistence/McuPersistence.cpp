@@ -13,12 +13,17 @@ void McuPersistence::begin(const config::MaraConfig& cfg, uint32_t now_ms) {
     loadDiagnostics_();
     loadConfigMirror_();
 
+    // NOTE: boot_recorded_ is an in-memory flag. If McuPersistence is destroyed
+    // and re-created (e.g., in tests), this will re-increment boot_count even
+    // though NVS already has the incremented value. For production use where
+    // the object persists across reboots, this is correct behavior.
     if (!boot_recorded_) {
         diagnostics_.boot_count += 1;
         diagnostics_.last_boot_ms = now_ms;
         diagnostics_.last_reset_reason = readResetReason_();
         diagnostics_.dirty = true;
-        saveDiagnostics_();
+        saveDiagnostics_();  // Boot count is always saved immediately
+        lastSaveMs_ = now_ms;
         boot_recorded_ = true;
     }
 
@@ -67,8 +72,22 @@ void McuPersistence::updateFromMode(const ModeManager& mode, uint32_t now_ms) {
 
     if (changed) {
         diagnostics_.dirty = true;
-        saveDiagnostics_();
+        // Debounce NVS writes to prevent flash wear - save at most once per minute
+        // Critical changes (e-stop, faults) are still tracked in memory immediately
+        saveIfDirtyAndDebounced_(now_ms);
     }
+}
+
+void McuPersistence::saveIfDirtyAndDebounced_(uint32_t now_ms) {
+    if (!diagnostics_.dirty) {
+        return;
+    }
+    // Only write to NVS if enough time has passed since last write
+    if (now_ms - lastSaveMs_ >= kMinSaveIntervalMs) {
+        saveDiagnostics_();
+        lastSaveMs_ = now_ms;
+    }
+    // Note: dirty flag remains set if debounced - will be saved on next interval
 }
 
 void McuPersistence::resetDiagnostics(uint32_t now_ms) {

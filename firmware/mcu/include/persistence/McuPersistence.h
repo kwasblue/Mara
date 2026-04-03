@@ -65,10 +65,13 @@ public:
 private:
     static constexpr const char* kDiagNs = "mara_diag";
     static constexpr const char* kCfgNs = "mara_cfg";
+    // Minimum interval between NVS writes (ms) to prevent flash wear
+    static constexpr uint32_t kMinSaveIntervalMs = 60000;  // 1 minute
 
     uint8_t readResetReason_() const;
     void loadDiagnostics_();
     void saveDiagnostics_();
+    void saveIfDirtyAndDebounced_(uint32_t now_ms);
     void loadConfigMirror_();
     void saveConfigMirror_();
 
@@ -76,6 +79,7 @@ private:
     PersistedConfigMirror config_mirror_{};
     bool ready_ = false;
     bool boot_recorded_ = false;
+    uint32_t lastSaveMs_ = 0;  // For debouncing NVS writes
 
     // HAL interfaces (optional, nullptr means use direct platform calls)
     hal::IPersistence* halPersistence_ = nullptr;

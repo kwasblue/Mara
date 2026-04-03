@@ -195,13 +195,13 @@ class CLIContext:
         # Auto-arm for CLI commands (use state_service for convergence)
         result = await self.state_service.arm()
         if not result.ok:
-            # Warn but don't fail - some commands work without arming
+            # Warn clearly - subsequent actuator commands will fail with "not_armed"
             import logging
             logging.getLogger(__name__).warning(
-                f"Auto-arm failed: {result.error}. "
-                "Actuator commands will fail until robot is armed."
+                f"Auto-arm failed at connect time: {result.error}. "
+                "Actuator commands will fail with 'not_armed' error until robot is armed manually."
             )
-        await asyncio.sleep(0.1)  # Allow state to settle before actuator commands
+        # Note: No sleep needed here - telemetry.start() already waits for data
 
     async def disconnect(self) -> None:
         """Disconnect from the robot."""
@@ -271,19 +271,27 @@ class CLIContext:
         return self.robot_config
 
     def _sensor_policy_provider(self):
+        # Capture client reference locally to avoid race with disconnect()
+        # which may set self._client = None while this method is running
+        client = self._client
+        if client is None:
+            return None
+
         config = self._resolve_robot_config()
         if config is None:
             return None
+
         if self._policy_robot is None:
             robot = config.create_robot()
-            robot._client = self._client
-            robot._bus = getattr(self._client, "bus", None)
-            robot._connected = self.is_connected
+            robot._client = client
+            robot._bus = getattr(client, "bus", None)
+            robot._connected = client is not None
             self._policy_robot = robot
         else:
-            self._policy_robot._client = self._client
-            self._policy_robot._bus = getattr(self._client, "bus", None)
-            self._policy_robot._connected = self.is_connected
+            # Only update if client is still valid
+            self._policy_robot._client = client
+            self._policy_robot._bus = getattr(client, "bus", None)
+            self._policy_robot._connected = client is not None
         return self._policy_robot.sensors
 
     def _control_graph_persistence_store(self):

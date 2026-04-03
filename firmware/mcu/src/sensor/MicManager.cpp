@@ -108,18 +108,18 @@ bool MicManager::readLevel(Level& outLevel, size_t sampleCount) {
 
     // 32-bit samples
     const size_t bytesPerSample = sizeof(int32_t);
-    const size_t bufBytes = sampleCount * bytesPerSample;
 
-    static int32_t buffer[1024];  // enough for sampleCount <= 1024
-    if (sampleCount > 1024) {
-        sampleCount = 1024;
+    // Clamp to buffer size
+    if (sampleCount > kMaxSampleCount) {
+        sampleCount = kMaxSampleCount;
     }
+    const size_t bufBytes = sampleCount * bytesPerSample;
 
     size_t bytesRead = 0;
 
     if (usingHal_ && halAudio_) {
         // Use HAL interface
-        hal::I2sResult result = halAudio_->read(buffer, bufBytes, &bytesRead, 50);
+        hal::I2sResult result = halAudio_->read(sampleBuffer_, bufBytes, &bytesRead, 50);
         if (result != hal::I2sResult::Ok || bytesRead == 0) {
             return false;
         }
@@ -127,7 +127,7 @@ bool MicManager::readLevel(Level& outLevel, size_t sampleCount) {
         // Use direct ESP32 I2S driver
         esp_err_t err = i2s_read(
             port_,
-            (void*)buffer,
+            (void*)sampleBuffer_,
             bufBytes,
             &bytesRead,
             /*ticks_to_wait=*/50 / portTICK_PERIOD_MS
@@ -151,7 +151,7 @@ bool MicManager::readLevel(Level& outLevel, size_t sampleCount) {
     const double denom = 2147483648.0;  // 2^31
 
     for (size_t i = 0; i < actualSamples; ++i) {
-        int32_t raw = buffer[i];
+        int32_t raw = sampleBuffer_[i];
 
         double x = (double)raw / denom;   // normalize to -1..+1
         double a = fabs(x);

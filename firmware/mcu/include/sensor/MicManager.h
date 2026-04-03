@@ -37,8 +37,14 @@ public:
     void end();
 
 private:
+    static constexpr size_t kMaxSampleCount = 1024;
+
     i2s_port_t port_;
     bool       online_;
     hal::II2sAudio* halAudio_;
     bool       usingHal_ = false;
+    // Per-instance buffer to avoid static shared state across concurrent calls.
+    // Previously this was a static local variable which would cause data races
+    // if readLevel() were called from multiple tasks simultaneously.
+    int32_t    sampleBuffer_[kMaxSampleCount];
 };

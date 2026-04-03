@@ -149,6 +149,32 @@ class TestMaraRuntime:
 
         assert runtime._store.robot_state.value == "ARMED"
 
+    @pytest.mark.asyncio
+    async def test_ensure_armed_idempotent_when_already_armed(self, runtime, mock_ctx):
+        """Ensure ensure_armed() is a no-op when already ARMED."""
+        runtime._ctx = mock_ctx
+        runtime._store.connected = True
+        runtime._store.robot_state = FreshValue("ARMED", datetime.now(), stale_after_s=2.0)
+
+        await runtime.ensure_armed()
+
+        # arm() should NOT be called since we're already ARMED
+        mock_ctx.state_service.arm.assert_not_called()
+        assert runtime._store.robot_state.value == "ARMED"
+
+    @pytest.mark.asyncio
+    async def test_ensure_armed_idempotent_when_active(self, runtime, mock_ctx):
+        """Ensure ensure_armed() is a no-op when already ACTIVE."""
+        runtime._ctx = mock_ctx
+        runtime._store.connected = True
+        runtime._store.robot_state = FreshValue("ACTIVE", datetime.now(), stale_after_s=2.0)
+
+        await runtime.ensure_armed()
+
+        # arm() should NOT be called since we're already ACTIVE (which implies armed)
+        mock_ctx.state_service.arm.assert_not_called()
+        assert runtime._store.robot_state.value == "ACTIVE"
+
     def test_state_service_property(self, runtime, mock_ctx):
         runtime._ctx = mock_ctx
         assert runtime.state_service == mock_ctx.state_service

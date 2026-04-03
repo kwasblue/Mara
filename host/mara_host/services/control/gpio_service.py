@@ -166,21 +166,22 @@ class GpioService(ConfigurableService[GpioChannel, GpioChannel]):
 
         Args:
             channel: GPIO channel number
-            value: Value to write (0 or 1)
+            value: Value to write (0 or 1, or any truthy/falsy value)
 
         Returns:
             ServiceResult
         """
-        value = 1 if value else 0
+        # Normalize to 0 or 1 (accepts truthy/falsy values like True, 255, etc.)
+        normalized_value = 1 if value else 0
 
-        payload = GpioWritePayload(channel=channel, value=value)
+        payload = GpioWritePayload(channel=channel, value=normalized_value)
         ok, error = await self.client.send_reliable(payload._cmd, payload.to_dict())
 
         if ok:
             ch = self._channels.get(channel)
             if ch:
-                ch.value = value
-            return ServiceResult.success(data=GpioWriteResponse(channel=channel, value=value))
+                ch.value = normalized_value
+            return ServiceResult.success(data=GpioWriteResponse(channel=channel, value=normalized_value))
         else:
             return ServiceResult.failure(
                 error=error or f"Failed to write GPIO channel {channel}"
@@ -290,7 +291,11 @@ class GpioService(ConfigurableService[GpioChannel, GpioChannel]):
         values: dict[int, int],
     ) -> ServiceResult:
         """
-        Write multiple GPIO channels.
+        Write multiple GPIO channels atomically in a single MCU batch.
+
+        Uses CMD_BATCH_APPLY to commit all writes in one round-trip,
+        avoiding inter-channel timing skew that would occur with
+        sequential writes.
 
         Args:
             values: Dict of {channel: value}
@@ -298,12 +303,35 @@ class GpioService(ConfigurableService[GpioChannel, GpioChannel]):
         Returns:
             ServiceResult
         """
-        errors = []
-        for channel, value in values.items():
-            result = await self.write(channel, value)
-            if not result.ok:
-                errors.append(f"Channel {channel}: {result.error}")
+        if not values:
+            return ServiceResult.success(data={"values": {}})
 
-        if errors:
-            return ServiceResult.failure(error="; ".join(errors))
-        return ServiceResult.success(data={"values": values})
+        # Build batch actions for CMD_BATCH_APPLY
+        # Format: actions=[{cmd, args}, ...]
+        actions = []
+        normalized_values = {}
+        for channel, value in values.items():
+            normalized = 1 if value else 0
+            normalized_values[channel] = normalized
+            actions.append({
+                "cmd": "CMD_GPIO_WRITE",
+                "args": {"channel": channel, "value": normalized}
+            })
+
+        # Send as single batch command
+        ok, error = await self.client.send_reliable(
+            "CMD_BATCH_APPLY",
+            {"actions": actions}
+        )
+
+        if ok:
+            # Update local state for all channels
+            for channel, normalized in normalized_values.items():
+                ch = self._channels.get(channel)
+                if ch:
+                    ch.value = normalized
+            return ServiceResult.success(data={"values": normalized_values})
+        else:
+            return ServiceResult.failure(
+                error=error or f"Failed to write GPIO channels {list(values.keys())}"
+            )

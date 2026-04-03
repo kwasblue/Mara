@@ -127,11 +127,11 @@ void ControlKernel::step(uint32_t now_ms, float dt_s, SignalBus& signals, bool i
         if (s.ctrl->isMultiState()) {
             // State-space controller
             const auto& io = s.cfg.ss_io;
-            
+
             float states[StateSpaceIO::MAX_STATES];
             float refs[StateSpaceIO::MAX_STATES];
             float outputs[StateSpaceIO::MAX_INPUTS];
-            
+
             // Read state signals
             bool all_ok = true;
             for (uint8_t i = 0; i < io.num_states; i++) {
@@ -146,14 +146,18 @@ void ControlKernel::step(uint32_t now_ms, float dt_s, SignalBus& signals, bool i
                     refs[i] = 0.0f;
                 }
             }
-            
-            if (!all_ok) continue;
-            
+
+            if (!all_ok) {
+                // End watchdog timing even on error - slot completed (with error), not stuck
+                watchdog_.endSlot(s.cfg.slot, now_ms);
+                continue;
+            }
+
             // Compute
-            s.ctrl->computeMulti(states, refs, io.num_states, 
-                                  outputs, io.num_inputs, 
+            s.ctrl->computeMulti(states, refs, io.num_states,
+                                  outputs, io.num_inputs,
                                   dt_s, signals, io);
-            
+
             // Write output signals
             for (uint8_t j = 0; j < io.num_inputs; j++) {
                 signals.set(io.output_ids[j], outputs[j], now_ms);
@@ -168,14 +172,18 @@ void ControlKernel::step(uint32_t now_ms, float dt_s, SignalBus& signals, bool i
             if (!signals.get(s.cfg.io.ref_id, ref)) {
                 s.status.last_error = "ref_signal_missing";
                 s.status.ok = false;
+                // End watchdog timing even on error - slot completed (with error), not stuck
+                watchdog_.endSlot(s.cfg.slot, now_ms);
                 continue;
             }
             if (!signals.get(s.cfg.io.meas_id, meas)) {
                 s.status.last_error = "meas_signal_missing";
                 s.status.ok = false;
+                // End watchdog timing even on error - slot completed (with error), not stuck
+                watchdog_.endSlot(s.cfg.slot, now_ms);
                 continue;
             }
-            
+
             // Compute control output
             float out = s.ctrl->compute(ref, meas, dt_s);
 
@@ -219,35 +227,38 @@ PidController::PidController(float kp, float ki, float kd)
 
 float PidController::compute(float ref, float meas, float dt_s) {
     float error = ref - meas;
-    
+
     // Proportional
     float p_term = kp_ * error;
-    
+
     // Integral
     if (dt_s > 0.0f) {
         integral_ += error * dt_s;
         integral_ = std::max(i_min_, std::min(i_max_, integral_));
     }
     float i_term = ki_ * integral_;
-    
-    // Derivative
+
+    // Derivative on measurement (not error) to avoid "derivative kick" on setpoint changes.
+    // When setpoint changes, error changes instantly but measurement is smooth.
+    // Using -dMeas/dt instead of dError/dt eliminates spikes on setpoint steps.
     float d_term = 0.0f;
     if (!first_run_ && dt_s > 0.0f) {
-        d_term = kd_ * (error - prev_error_) / dt_s;
+        float d_meas = (meas - prev_meas_) / dt_s;
+        d_term = -kd_ * d_meas;  // Negative sign: increasing measurement decreases output
     }
-    prev_error_ = error;
+    prev_meas_ = meas;
     first_run_ = false;
-    
+
     // Sum and clamp
     float out = p_term + i_term + d_term;
     out = std::max(out_min_, std::min(out_max_, out));
-    
+
     return out;
 }
 
 void PidController::reset() {
     integral_ = 0.0f;
-    prev_error_ = 0.0f;
+    prev_meas_ = 0.0f;
     first_run_ = true;
 }
 

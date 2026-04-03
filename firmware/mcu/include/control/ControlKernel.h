@@ -165,14 +165,14 @@ private:
     float kp_ = 1.0f;
     float ki_ = 0.0f;
     float kd_ = 0.0f;
-    
+
     float out_min_ = -1.0f;
     float out_max_ = 1.0f;
     float i_min_ = -1.0f;
     float i_max_ = 1.0f;
-    
+
     float integral_ = 0.0f;
-    float prev_error_ = 0.0f;
+    float prev_meas_ = 0.0f;  // For derivative-on-measurement (avoids setpoint kick)
     bool first_run_ = true;
 };
 

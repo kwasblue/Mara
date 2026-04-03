@@ -293,6 +293,27 @@ class TestMotionService:
         mock_client.set_vel.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_set_velocity_reliable_failure_preserves_last_velocity(
+        self, motion_service, mock_client
+    ):
+        """Test that set_velocity_reliable does NOT update _last_velocity on MCU failure."""
+        # Set initial velocity
+        await motion_service.set_velocity(0.5, 0.2)
+        assert motion_service.last_velocity.vx == 0.5
+        assert motion_service.last_velocity.omega == 0.2
+
+        # Mock MCU rejection
+        mock_client.set_vel.return_value = (False, "Not armed")
+
+        result = await motion_service.set_velocity_reliable(1.0, 1.0)
+
+        assert result.ok is False
+        assert "Not armed" in result.error
+        # _last_velocity should NOT have changed
+        assert motion_service.last_velocity.vx == 0.5
+        assert motion_service.last_velocity.omega == 0.2
+
+    @pytest.mark.asyncio
     async def test_stop(self, motion_service, mock_client):
         """Test stop command."""
         await motion_service.set_velocity(0.5, 0.2)
@@ -301,6 +322,24 @@ class TestMotionService:
         assert result.ok is True
         assert motion_service.last_velocity.vx == 0.0
         assert motion_service.last_velocity.omega == 0.0
+
+    @pytest.mark.asyncio
+    async def test_stop_failure_preserves_last_velocity(self, motion_service, mock_client):
+        """Test that stop() does NOT update _last_velocity on MCU failure."""
+        # Set initial velocity
+        await motion_service.set_velocity(0.5, 0.2)
+        assert motion_service.last_velocity.vx == 0.5
+        assert motion_service.last_velocity.omega == 0.2
+
+        # Mock MCU rejection
+        mock_client.cmd_stop.return_value = (False, "Command rejected")
+
+        result = await motion_service.stop()
+
+        assert result.ok is False
+        # _last_velocity should NOT have changed
+        assert motion_service.last_velocity.vx == 0.5
+        assert motion_service.last_velocity.omega == 0.2
 
     @pytest.mark.asyncio
     async def test_forward(self, motion_service, mock_client):

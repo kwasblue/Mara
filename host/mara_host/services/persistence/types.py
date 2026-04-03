@@ -22,12 +22,16 @@ class CalibrationRecord:
 
     @classmethod
     def from_dict(cls, name: str, data: dict[str, Any]) -> CalibrationRecord:
-        """Parse from stored dict format."""
+        """Parse from stored dict format.
+
+        Note: Makes a shallow copy of values dict to preserve frozen semantics.
+        Callers should not mutate nested structures within values.
+        """
         return cls(
             name=name,
             calibration_type=data.get("type", "generic"),
             saved_at=data.get("saved_at", 0.0),
-            values=data.get("values", {}),
+            values=dict(data.get("values", {})),  # Copy to preserve frozen semantics
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -125,9 +129,15 @@ class CalibrationData:
         """Get a calibration record by name."""
         return self.records.get(name)
 
-    def set(self, record: CalibrationRecord) -> None:
-        """Set a calibration record."""
+    def set(self, record: CalibrationRecord) -> bool:
+        """Set a calibration record.
+
+        Returns:
+            True if this was a new insert, False if it updated an existing record.
+        """
+        is_insert = record.name not in self.records
         self.records[record.name] = record
+        return is_insert
 
 
 @dataclass(slots=True)

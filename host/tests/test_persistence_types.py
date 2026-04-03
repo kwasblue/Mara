@@ -47,6 +47,20 @@ class TestCalibrationRecord:
         with pytest.raises(AttributeError):
             record.name = "changed"
 
+    def test_from_dict_copies_values(self):
+        """Test that from_dict makes a copy of the values dict."""
+        original_values = {"key": "value", "nested": {"a": 1}}
+        data = {
+            "type": "test",
+            "saved_at": 0.0,
+            "values": original_values,
+        }
+        record = CalibrationRecord.from_dict("test", data)
+
+        # Modifying original should not affect record
+        original_values["key"] = "modified"
+        assert record.values["key"] == "value"
+
 
 class TestDiagnosticRecord:
     def test_from_dict(self):
@@ -141,6 +155,33 @@ class TestCalibrationData:
 
         assert store.get("test") == record
         assert store.get("nonexistent") is None
+
+    def test_set_returns_insert_vs_update(self):
+        """Test that set() returns True for insert, False for update."""
+        store = CalibrationData()
+        record1 = CalibrationRecord(
+            name="cal_1",
+            calibration_type="encoder",
+            saved_at=100.0,
+            values={"offset": 0.1},
+        )
+        record2 = CalibrationRecord(
+            name="cal_1",  # Same name - update
+            calibration_type="encoder",
+            saved_at=200.0,
+            values={"offset": 0.2},
+        )
+
+        # First set is an insert
+        is_insert = store.set(record1)
+        assert is_insert is True
+
+        # Second set with same name is an update
+        is_insert = store.set(record2)
+        assert is_insert is False
+
+        # Verify the record was updated
+        assert store.get("cal_1").saved_at == 200.0
 
     def test_to_dict(self):
         store = CalibrationData(version=1)

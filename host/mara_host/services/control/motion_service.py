@@ -69,6 +69,9 @@ class MotionService:
         # Re-entrancy protection: serialize concurrent velocity commands
         self._command_lock = asyncio.Lock()
 
+        # Separate lock for rate limit check to avoid TOCTOU race
+        self._rate_limit_lock = asyncio.Lock()
+
     @property
     def last_velocity(self) -> Velocity:
         """Get the last commanded velocity."""
@@ -131,20 +134,22 @@ class MotionService:
             self._rate_limit_hz = max(1.0, abs(rate_hz))
             self._min_interval_s = 1.0 / self._rate_limit_hz
 
-    def _check_rate_limit(self) -> bool:
+    async def _check_rate_limit(self) -> bool:
         """
         Check if rate limit allows sending a command.
 
         Returns:
             True if enough time has passed since last send
 
-        Optimized: Uses pre-computed interval and time.monotonic() for lower overhead.
+        Uses a lock to prevent TOCTOU race where two concurrent calls
+        both pass the time check before either updates _last_send_time.
         """
-        now = time.monotonic()
-        if now - self._last_send_time >= self._min_interval_s:
-            self._last_send_time = now
-            return True
-        return False
+        async with self._rate_limit_lock:
+            now = time.monotonic()
+            if now - self._last_send_time >= self._min_interval_s:
+                self._last_send_time = now
+                return True
+            return False
 
     async def set_velocity(
         self,
@@ -170,8 +175,8 @@ class MotionService:
         Returns:
             True if command was sent, False if skipped due to rate limit
         """
-        # Check rate limit if requested (outside lock for fast rejection)
-        if respect_rate_limit and not self._check_rate_limit():
+        # Check rate limit if requested (separate lock for atomicity without blocking command lock)
+        if respect_rate_limit and not await self._check_rate_limit():
             return False
 
         if clamp:
@@ -221,7 +226,9 @@ class MotionService:
         # Serialize concurrent velocity commands
         async with self._command_lock:
             ok, error = await self.client.set_vel(vx, omega)
-            self._last_velocity = Velocity(vx=vx, omega=omega)
+            # Only update _last_velocity if MCU accepted the command
+            if ok:
+                self._last_velocity = Velocity(vx=vx, omega=omega)
 
         if ok:
             return ServiceResult.success(
@@ -237,10 +244,14 @@ class MotionService:
         Returns:
             ServiceResult with success/failure
         """
-        ok, error = await self.client.cmd_stop()
+        # Serialize with velocity commands to avoid racing _last_velocity updates
+        async with self._command_lock:
+            ok, error = await self.client.cmd_stop()
+
+            if ok:
+                self._last_velocity = Velocity.zero()
 
         if ok:
-            self._last_velocity = Velocity.zero()
             return ServiceResult.success()
         else:
             return ServiceResult.failure(error=error or "Failed to stop")

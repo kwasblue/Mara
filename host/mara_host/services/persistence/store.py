@@ -24,12 +24,14 @@ class JsonArtifactStore:
     def load(self) -> dict[str, Any] | None:
         if not self.path.exists():
             return None
-        return json.loads(self.path.read_text())
+        # Use explicit UTF-8 encoding to avoid platform-dependent defaults (Windows cp1252)
+        return json.loads(self.path.read_text(encoding="utf-8"))
 
     def save(self, payload: dict[str, Any]) -> dict[str, Any]:
         self.root.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(self.path.suffix + ".tmp")
-        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        # Use explicit UTF-8 encoding for cross-platform compatibility
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         tmp.replace(self.path)
         return payload
 
@@ -99,10 +101,18 @@ class CalibrationStore(JsonArtifactStore):
 
 
 class DiagnosticRecordStore(JsonArtifactStore):
-    """Stores lightweight diagnostic snapshots for later inspection."""
+    """Stores lightweight diagnostic snapshots for later inspection.
 
-    def __init__(self, root: str | Path):
+    Records are capped at max_records to prevent unbounded growth during long
+    soak tests. When the limit is reached, oldest records are evicted first.
+    """
+
+    # Default max records - old diagnostics become irrelevant quickly
+    DEFAULT_MAX_RECORDS = 1000
+
+    def __init__(self, root: str | Path, max_records: int | None = None):
         super().__init__(root, "diagnostics")
+        self._max_records = max_records if max_records is not None else self.DEFAULT_MAX_RECORDS
 
     def append(self, name: str, details: dict[str, Any]) -> dict[str, Any]:
         payload = self.load() or {"kind": "diagnostics", "version": 1, "records": []}
@@ -111,7 +121,13 @@ class DiagnosticRecordStore(JsonArtifactStore):
             captured_at=time.time(),
             details=details,
         )
-        payload.setdefault("records", []).append(record.to_dict())
+        records = payload.setdefault("records", [])
+        records.append(record.to_dict())
+
+        # Evict oldest records if over limit (keeps most recent)
+        if self._max_records > 0 and len(records) > self._max_records:
+            payload["records"] = records[-self._max_records:]
+
         return self.save(payload)
 
     def get_records(self) -> list[DiagnosticRecord]:

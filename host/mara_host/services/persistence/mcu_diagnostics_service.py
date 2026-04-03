@@ -82,10 +82,18 @@ class McuDiagnosticsService:
         if self._diagnostics_store is not None:
             self._diagnostics_store.append("mcu_persistence", normalized)
 
+        # Resolve all pending waiters with the new snapshot.
+        # list() creates a copy to avoid mutation during iteration.
+        # set_result() may synchronously trigger callbacks that append new
+        # waiters, but those won't be in our copy and will be handled by
+        # subsequent snapshots.
         for waiter in list(self._waiters):
             if waiter.done():
                 continue
             waiter.set_result(dict(normalized))
+        # Replace the list to clean up resolved futures. This is safe because
+        # any new waiters added during set_result() callbacks are on the old
+        # list reference which we're replacing entirely.
         self._waiters = [waiter for waiter in self._waiters if not waiter.done()]
 
     def _on_telemetry(self, telemetry: dict[str, Any]) -> None:
@@ -157,6 +165,9 @@ class McuDiagnosticsService:
         return ServiceResult.success(data=payload)
 
     async def _send_ack_query(self, command: str, error_message: str, payload: dict[str, Any] | None = None) -> ServiceResult:
+        # Subscribe to the command response topic. The client publishes JSON
+        # responses to "cmd.{cmd_str}" where cmd_str is the command name from
+        # the MCU response (see MaraClient._handle_json line 555).
         topic = f"cmd.{command}"
         last_error: str | None = None
 

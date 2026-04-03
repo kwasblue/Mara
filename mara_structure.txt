@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-04-03 02:59:09
+Generated: 2026-04-03 15:37:34
 Total Files: 1044
-Total Lines of Code: 122,195
+Total Lines of Code: 122,541
 ================================================================================
 
 
@@ -123,7 +123,7 @@ HOST (Python)
       |-- is_moving(self)
       `-- __repr__(self)
 
-  host/mara_host/api/differential_drive.py (133 lines)
+  host/mara_host/api/differential_drive.py (134 lines)
     [Class] DriveConfig
     [Class] DifferentialDrive
       |-- __init__(self, robot, wheel_radius, wheel_base, max_linear_vel, max_angular_vel, control_rate_hz)
@@ -230,7 +230,7 @@ HOST (Python)
       |-- set_bias(self, accel_bias, gyro_bias)
       `-- __repr__(self)
 
-  host/mara_host/api/observer_slot.py (102 lines)
+  host/mara_host/api/observer_slot.py (114 lines)
     [Class] ObserverType
     [Class] ObserverConfig
     [Class] ObserverSlot
@@ -292,7 +292,7 @@ HOST (Python)
       |-- get_session(self, name)
       `-- delete_session(self, name)
 
-  host/mara_host/api/sensor_base.py (79 lines)
+  host/mara_host/api/sensor_base.py (100 lines)
     [Class] TelemetrySensor
       |-- __init__(self, robot, sensor_id, auto_subscribe)
       |-- robot(self)
@@ -309,9 +309,10 @@ HOST (Python)
       |-- on_reading(self, callback)
       |-- on_update(self, callback)
       |-- remove_callback(self, callback)
-      `-- clear_callbacks(self)
+      |-- clear_callbacks(self)
+      `-- close(self)
 
-  host/mara_host/api/sensors.py (283 lines)
+  host/mara_host/api/sensors.py (304 lines)
     [Class] SensorHealthStatus
       |-- refresh_staleness(self, now_s)
       |-- available(self)
@@ -370,7 +371,7 @@ HOST (Python)
       |-- __getitem__(self, signal_id)
       `-- __contains__(self, signal_id)
 
-  host/mara_host/api/stepper.py (81 lines)
+  host/mara_host/api/stepper.py (89 lines)
     [Class] Stepper
       |-- __init__(self, robot, motor_id, steps_per_rev)
       |-- client(self)
@@ -381,7 +382,7 @@ HOST (Python)
       |-- reset_position(self, position)
       `-- __repr__(self)
 
-  host/mara_host/api/testing.py (238 lines)
+  host/mara_host/api/testing.py (242 lines)
     [Class] TestStatus
     [Class] TestResult
       `-- passed(self)
@@ -427,7 +428,7 @@ HOST (Python)
     [Fn] run_benchmark(host, port, duration, target_fps, timeout, save_report)
     [Fn] main()
 
-  host/mara_host/benchmarks/commands/command_rtt.py (267 lines)
+  host/mara_host/benchmarks/commands/command_rtt.py (270 lines)
     [Class] CommandTiming
     [Class] CommandRTTBenchmark
       `-- __init__(self, client, bus)
@@ -1300,7 +1301,7 @@ HOST (Python)
     [Fn] format_pin_status(gpio, assigned_name, is_flash, is_boot, is_input_only, has_warning)
     [Fn] confirm(message, default)
 
-  host/mara_host/cli/context.py (385 lines)
+  host/mara_host/cli/context.py (387 lines)
     [Class] CLIContextConfig
     [Class] CLIContext
       |-- __init__(self, port, baudrate, host, tcp_port, ble_name, verbose, robot_config, robot_config_path)
@@ -1421,7 +1422,7 @@ HOST (Python)
       |-- _init_binary_encoder(self)
       `-- set_prefer_binary(self, prefer)
 
-  host/mara_host/command/client.py (541 lines)
+  host/mara_host/command/client.py (555 lines)
     [Class] HasSendBytes
       |-- set_frame_handler(self, handler)
       |-- start(self)
@@ -1876,7 +1877,7 @@ HOST (Python)
       |-- create_robot(self)
       `-- __repr__(self)
 
-  host/mara_host/config/robot_config_schema.py (373 lines)
+  host/mara_host/config/robot_config_schema.py (385 lines)
     [Fn] validate_config_with_context(data)
     [Class] ConfigValidationError
       |-- __init__(self, message, errors)
@@ -1929,7 +1930,7 @@ HOST (Python)
 
   host/mara_host/control_graph/__init__.py (1 lines)
 
-  host/mara_host/control_graph/nodes.py (552 lines)
+  host/mara_host/control_graph/nodes.py (557 lines)
     [Class] Constant
       |-- __init__(self, value)
       |-- to_dict(self)
@@ -3744,7 +3745,7 @@ HOST (Python)
     [Fn] set_mcu_log_level(client, level)
     [Fn] shutdown_logging()
 
-  host/mara_host/logger/logger.py (223 lines)
+  host/mara_host/logger/logger.py (234 lines)
     [Class] DedupFilter
       |-- __init__(self, cooldown_s)
       `-- filter(self, record)
@@ -3760,6 +3761,7 @@ HOST (Python)
       |-- __init__(self, path, mkdirs)
       |-- write(self, event)
       |-- close(self)
+      |-- __del__(self)
       |-- __enter__(self)
       |-- __exit__(self, exc_type, exc, tb)
       `-- _normalize(self, obj)
@@ -3884,7 +3886,7 @@ HOST (Python)
     [Class] MotionHostModule
       `-- __init__(self, bus, client)
 
-  host/mara_host/motor/pill_carousel.py (100 lines)
+  host/mara_host/motor/pill_carousel.py (102 lines)
     [Class] PillCarouselConfig
     [Class] PillCarousel
       |-- __init__(self, client, config)
@@ -3894,7 +3896,7 @@ HOST (Python)
     [Fn] _check_research_deps()
     [Fn] __getattr__(name)
 
-  host/mara_host/research/analysis.py (330 lines)
+  host/mara_host/research/analysis.py (342 lines)
     [Fn] load_session_df(jsonl_path)
     [Fn] extract_telemetry_df(df, event_filter, flatten)
     [Fn] lowpass_filter(data, cutoff_hz, sample_rate_hz, order)
@@ -3993,7 +3995,7 @@ HOST (Python)
     [Class] ExperimentRunner
       `-- __init__(self)
 
-  host/mara_host/research/metrics.py (364 lines)
+  host/mara_host/research/metrics.py (377 lines)
     [Fn] load_jsonl(path)
     [Fn] filter_events(rows, event_prefix)
     [Fn] basic_metrics(jsonl_path)
@@ -4080,7 +4082,7 @@ HOST (Python)
       |-- _load(self, path)
       `-- to_dataframe(self)
 
-  host/mara_host/research/simulation.py (305 lines)
+  host/mara_host/research/simulation.py (312 lines)
     [Class] GaussianNoise
       |-- sample(self)
       `-- add_to(self, value)
@@ -4113,7 +4115,7 @@ HOST (Python)
       |-- receive(self, current_time_s)
       `-- clear(self)
     [Class] SimulationRunner
-      |-- __init__(self, robot, controller, dt, delay_config)
+      |-- __init__(self, robot, controller, dt, delay_config, max_history)
       |-- step(self)
       |-- run(self, duration_s)
       `-- reset(self)
@@ -4125,7 +4127,7 @@ HOST (Python)
       |-- encoders(self)
       `-- get_state(self)
 
-  host/mara_host/research/sysid.py (385 lines)
+  host/mara_host/research/sysid.py (402 lines)
     [Class] FirstOrderParams
       |-- transfer_function(self)
       `-- to_dict(self)
@@ -4211,7 +4213,7 @@ HOST (Python)
       `-- _format_structure(self)
     [Fn] format_joint(joint, indent)
 
-  host/mara_host/robot_layer/loader.py (129 lines)
+  host/mara_host/robot_layer/loader.py (137 lines)
     [Class] RobotConfigError
     [Fn] load_robot_model(path)
     [Fn] _parse_config(config, source_path)
@@ -4233,7 +4235,7 @@ HOST (Python)
       |-- get_root_joints(self)
       `-- get_children(self, joint_name)
 
-  host/mara_host/robot_layer/pose.py (107 lines)
+  host/mara_host/robot_layer/pose.py (106 lines)
     [Class] PoseSnapshot
     [Class] PoseTracker
       |-- __init__(self, model)
@@ -4251,7 +4253,7 @@ HOST (Python)
       |-- get_history(self, limit)
       `-- clear(self)
 
-  host/mara_host/robot_layer/service.py (333 lines)
+  host/mara_host/robot_layer/service.py (339 lines)
     [Class] Waypoint
     [Class] Trajectory
       |-- from_dicts(cls, waypoints, duration_ms)
@@ -4383,7 +4385,7 @@ HOST (Python)
 
   host/mara_host/services/control/__init__.py (126 lines)
 
-  host/mara_host/services/control/composite_service.py (138 lines)
+  host/mara_host/services/control/composite_service.py (147 lines)
     [Class] CompositeService
       |-- __init__(self, client)
       |-- _is_finite_number(value)
@@ -4409,7 +4411,7 @@ HOST (Python)
       |-- persistence_store(self)
       `-- _graph_for_safe_restore(graph)
 
-  host/mara_host/services/control/controller_service.py (359 lines)
+  host/mara_host/services/control/controller_service.py (369 lines)
     [Class] SignalKind
     [Class] ControllerType
     [Class] ObserverType
@@ -4419,7 +4421,7 @@ HOST (Python)
     [Class] ControllerService
       `-- __init__(self, client)
 
-  host/mara_host/services/control/encoder_service.py (127 lines)
+  host/mara_host/services/control/encoder_service.py (128 lines)
     [Class] EncoderConfig
     [Class] EncoderState
     [Class] EncoderService
@@ -4441,7 +4443,7 @@ HOST (Python)
     [Class] I2cService
       `-- __init__(self, client)
 
-  host/mara_host/services/control/imu_service.py (143 lines)
+  host/mara_host/services/control/imu_service.py (145 lines)
     [Class] ImuReading
     [Class] ImuBias
     [Class] ImuService
@@ -4466,14 +4468,14 @@ HOST (Python)
       |-- set_limits(self, linear, angular, rate_hz)
       `-- compute_arcade_drive(self, throttle, steering, max_linear, max_angular)
 
-  host/mara_host/services/control/motor_service.py (139 lines)
+  host/mara_host/services/control/motor_service.py (140 lines)
     [Class] MotorConfig
     [Class] MotorState
     [Class] MotorService
       |-- configure(self, motor_id, min_speed, max_speed, inverted)
       `-- compute_diff_drive(self, vx, omega, track_width, wheel_radius, max_speed)
 
-  host/mara_host/services/control/pid_service.py (144 lines)
+  host/mara_host/services/control/pid_service.py (145 lines)
     [Class] PidGains
     [Class] PidState
     [Class] PidService
@@ -4482,7 +4484,7 @@ HOST (Python)
       |-- is_enabled(self, motor_id)
       `-- get_gains(self, motor_id)
 
-  host/mara_host/services/control/pwm_service.py (76 lines)
+  host/mara_host/services/control/pwm_service.py (72 lines)
     [Class] PwmConfig
     [Class] PwmState
     [Class] PwmService
@@ -4505,20 +4507,21 @@ HOST (Python)
       `-- clear_states(self)
     [Fn] _handler(data)
 
-  host/mara_host/services/control/servo_service.py (189 lines)
+  host/mara_host/services/control/servo_service.py (218 lines)
     [Class] ServoConfig
     [Class] ServoState
     [Class] ServoService
       |-- configure(self, servo_id, channel, min_angle, max_angle, min_us, max_us, inverted)
       `-- get_attached_servos(self)
 
-  host/mara_host/services/control/signal_service.py (123 lines)
+  host/mara_host/services/control/signal_service.py (149 lines)
     [Class] SignalKind
     [Class] Signal
     [Class] SignalService
       |-- __init__(self, client)
       |-- signals(self)
       `-- get_cached(self, signal_id)
+    [Fn] _handler(data)
 
   host/mara_host/services/control/state_service.py (305 lines)
     [Class] RobotState
@@ -4540,7 +4543,7 @@ HOST (Python)
       |-- set_state(self, state)
       `-- sync_from_telemetry(self, state_str)
 
-  host/mara_host/services/control/stepper_service.py (172 lines)
+  host/mara_host/services/control/stepper_service.py (176 lines)
     [Class] StepperConfig
     [Class] StepperState
     [Class] StepperService
@@ -4559,9 +4562,10 @@ HOST (Python)
       `-- update_reading(self, sensor_id, distance_cm)
     [Fn] _handler(data)
 
-  host/mara_host/services/control/wifi_service.py (51 lines)
+  host/mara_host/services/control/wifi_service.py (77 lines)
     [Class] WifiService
       `-- __init__(self, client)
+    [Fn] _handler(data)
 
   host/mara_host/services/persistence/__init__.py (26 lines)
 
@@ -4579,7 +4583,7 @@ HOST (Python)
       `-- clear_persisted_records(self)
     [Fn] _handler(data)
 
-  host/mara_host/services/persistence/store.py (91 lines)
+  host/mara_host/services/persistence/store.py (96 lines)
     [Class] JsonArtifactStore
       |-- __init__(self, root, namespace)
       |-- load(self)
@@ -4595,7 +4599,7 @@ HOST (Python)
       |-- upsert(self, name, values)
       `-- get_record(self, name)
     [Class] DiagnosticRecordStore
-      |-- __init__(self, root)
+      |-- __init__(self, root, max_records)
       |-- append(self, name, details)
       `-- get_records(self)
 
@@ -4896,7 +4900,7 @@ HOST (Python)
 
   host/mara_host/services/transport/__init__.py (14 lines)
 
-  host/mara_host/services/transport/connection_service.py (127 lines)
+  host/mara_host/services/transport/connection_service.py (122 lines)
     [Class] TransportType
     [Class] ConnectionConfig
     [Class] ConnectionInfo
@@ -4914,7 +4918,7 @@ HOST (Python)
       |-- is_active(self)
       `-- attached_servos(self)
 
-  host/mara_host/services/types.py (427 lines)
+  host/mara_host/services/types.py (429 lines)
     [Class] GpioReadResponse
       `-- from_dict(cls, data)
     [Class] GpioWriteResponse
@@ -4990,7 +4994,7 @@ HOST (Python)
 
   host/mara_host/telemetry/__init__.py (38 lines)
 
-  host/mara_host/telemetry/binary_parser.py (228 lines)
+  host/mara_host/telemetry/binary_parser.py (231 lines)
     [Fn] _make_empty(ts_ms, raw_len, meta)
     [Fn] parse_telemetry_bin(payload)
 
@@ -5010,7 +5014,7 @@ HOST (Python)
       |-- latest(self)
       `-- _on_raw(self, msg)
 
-  host/mara_host/telemetry/models.py (157 lines)
+  host/mara_host/telemetry/models.py (158 lines)
     [Class] ImuTelemetry
     [Class] UltrasonicTelemetry
     [Class] LidarTelemetry
@@ -5128,7 +5132,7 @@ HOST (Python)
     [Fn] generate_py()
     [Fn] main()
 
-  host/mara_host/tools/gen_control_graph_types.py (148 lines)
+  host/mara_host/tools/gen_control_graph_types.py (153 lines)
     [Fn] param_to_python_type(param)
     [Fn] param_default_repr(param)
     [Fn] to_class_name(kind)
@@ -5945,7 +5949,7 @@ HOST (Python)
     [Fn] __getattr__(name)
     [Fn] __dir__()
 
-  host/mara_host/workflows/base.py (73 lines)
+  host/mara_host/workflows/base.py (72 lines)
     [Class] WorkflowState
     [Class] WorkflowResult
       |-- success(cls, data)
@@ -6108,7 +6112,7 @@ HOST (Python)
       |-- test_bench_start_payload(self)
       `-- test_legacy_export(self)
 
-  host/tests/conftest.py (208 lines)
+  host/tests/conftest.py (200 lines)
     [Fn] bus()
     [Fn] transport()
     [Fn] pytest_addoption(parser)
@@ -6118,10 +6122,8 @@ HOST (Python)
     [Fn] mara_port(request)
     [Fn] hil_timeout(request)
     [Fn] _find_serial_port()
-    [Fn] hil(mcu)
     [Class] HIL
       `-- __init__(self, client)
-    [Fn] event_loop()
     [Fn] attach_bus_dump(client, path, cycle)
     [Fn] _ser(x)
     [Fn] log(topic, obj)
@@ -8248,7 +8250,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/hal/esp32/Esp32TaskScheduler.h (25 lines)
     [Class] Esp32TaskScheduler
 
-  firmware/mcu/include/hal/esp32/Esp32Timer.h (24 lines)
+  firmware/mcu/include/hal/esp32/Esp32Timer.h (26 lines)
     [Struct] esp_timer
     [Class] Esp32Timer
 
@@ -8529,7 +8531,7 @@ FIRMWARE/MCU (C++)
     [Fn] getStepperDebugInfo(int, StepperDebugInfo&)
     [Fn] dumpAllStepperMappings()
 
-  firmware/mcu/include/persistence/McuPersistence.h (67 lines)
+  firmware/mcu/include/persistence/McuPersistence.h (70 lines)
     [Struct] PersistedDiagnostics
     [Struct] PersistedConfigMirror
     [Class] McuPersistence
@@ -8592,7 +8594,7 @@ FIRMWARE/MCU (C++)
     [Fn] deviceType()
     [Fn] readSample(Sample&)
 
-  firmware/mcu/include/sensor/LidarManager.h (55 lines)
+  firmware/mcu/include/sensor/LidarManager.h (59 lines)
     [Class] LidarManager
     [Struct] Sample
     [Fn] setHal(hal::II2c* i2c)
@@ -8621,7 +8623,7 @@ FIRMWARE/MCU (C++)
     [Fn] publishTriggered(uint8_t id)
     [Fn] publishCleared(uint8_t id)
 
-  firmware/mcu/include/sensor/MicManager.h (28 lines)
+  firmware/mcu/include/sensor/MicManager.h (30 lines)
     [Class] MicManager
     [Struct] Level
     [Fn] setHal(hal::II2sAudio* audio)
@@ -8959,11 +8961,11 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/hal/drivers/Vl53l0x.cpp (370 lines)
 
-  firmware/mcu/src/hal/esp32/Esp32Can.cpp (226 lines)
+  firmware/mcu/src/hal/esp32/Esp32Can.cpp (248 lines)
 
   firmware/mcu/src/hal/esp32/Esp32CriticalSection.cpp (26 lines)
 
-  firmware/mcu/src/hal/esp32/Esp32Gpio.cpp (52 lines)
+  firmware/mcu/src/hal/esp32/Esp32Gpio.cpp (57 lines)
 
   firmware/mcu/src/hal/esp32/Esp32HeapMonitor.cpp (31 lines)
 
@@ -9024,7 +9026,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/motor/StepperManager.cpp (184 lines)
 
-  firmware/mcu/src/persistence/McuPersistence.cpp (314 lines)
+  firmware/mcu/src/persistence/McuPersistence.cpp (324 lines)
 
   firmware/mcu/src/sensor/EncoderManager.cpp (84 lines)
     [Fn] getGlobalEncoderManager()
@@ -9033,13 +9035,13 @@ FIRMWARE/MCU (C++)
     [Fn] classifyDevice(uint8_t who)
     [Fn] writeChecked(hal::II2c* hal, uint8_t addr, uint8_t reg, uint8_t value, const char* name)
 
-  firmware/mcu/src/sensor/LidarManager.cpp (41 lines)
+  firmware/mcu/src/sensor/LidarManager.cpp (53 lines)
 
-  firmware/mcu/src/sensor/MicManager.cpp (133 lines)
+  firmware/mcu/src/sensor/MicManager.cpp (132 lines)
 
   firmware/mcu/src/sensor/SensorRegistry.cpp (83 lines)
 
-  firmware/mcu/src/setup/SetupControlTask.cpp (355 lines)
+  firmware/mcu/src/setup/SetupControlTask.cpp (357 lines)
     [Struct] AtomicControlTaskStats
     [Fn] controlTaskFunc(void* param)
     [Fn] setControlTaskHal(hal::ITaskScheduler* scheduler)
@@ -9768,14 +9770,14 @@ DEFINITIONS
   Classes:          1366
   Structs:          183
   Functions:        2560
-  Methods:          3510
+  Methods:          3512
 
 LINES OF CODE
-  Python:           94,198
-  C++:              27,997
-  Total Code:       122,195
-  Blank Lines:      33,250
-  Comment Lines:    33,555
-  Total Lines:      189,000
+  Python:           94,483
+  C++:              28,058
+  Total Code:       122,541
+  Blank Lines:      33,328
+  Comment Lines:    33,881
+  Total Lines:      189,750
 
 ================================================================================

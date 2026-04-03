@@ -326,19 +326,23 @@ cd host && pytest tests/test_protocol.py -v
 
 ### Hardware-in-the-Loop (HIL) Testing
 
-Run tests against real hardware:
+Run tests against real hardware (1026 total tests, 53 HIL):
 
 ```bash
-# Run all HIL tests (TCP + serial)
-# Defaults: MCU_PORT=/dev/cu.usbserial-0001, ROBOT_HOST=10.0.0.60
-make test-hil
+# Run all HIL tests (requires --run-hil flag)
+cd host && pytest tests/ -m hil --run-hil
 
-# Override defaults
-MCU_PORT=/dev/ttyUSB0 ROBOT_HOST=192.168.1.100 make test-hil
+# Specify serial port
+pytest tests/ -m hil --run-hil --mcu-port=/dev/ttyUSB0
 
-# Serial-only tests
-make test-hil-serial
+# Use TCP transport instead
+pytest tests/ -m hil --run-hil --mcu-port=tcp --mara-host=10.0.0.60
+
+# Skip specific hardware (if not connected)
+pytest tests/ -m hil --run-hil --skip-dc-motor --skip-stepper
 ```
+
+Serial transport uses 921600 baud by default (from `DEFAULT_BAUD_RATE`).
 
 ### MQTT Broker
 
@@ -414,6 +418,7 @@ mara generate telemetry  # Telemetry sections
 ## Documentation
 
 - **[Getting Started Guide](docs/GETTING_STARTED.md)** - Build your first robot
+- **[Command Reference](docs/COMMAND_REFERENCE.md)** - All 117 protocol commands
 - [Architecture Overview](docs/ARCHITECTURE.md)
 - [Adding Commands](docs/ADDING_COMMANDS.md) - Extend the protocol
 - [Extending MARA](docs/EXTENDING.md) - Add transports, sensors, motors, modules
@@ -425,9 +430,21 @@ mara generate telemetry  # Telemetry sections
 
 ## Performance
 
+**Benchmarked Results** (April 2026):
+
 | Metric | Value |
 |--------|-------|
-| Command latency | < 5ms (USB serial) |
+| Velocity E2E latency | 52.90μs mean (USB serial @ 921600 baud) |
+| Max command rate | 18,903 Hz (theoretical) |
+| Binary encoding | 0.13μs per command (17.8x faster than JSON) |
+| Event bus | 0.57μs per publish (5 subscribers) |
+| Protocol framing | 1.71μs binary, 6.60μs JSON |
+| Import time | 73ms |
+
+**System Rates**:
+
+| Metric | Value |
+|--------|-------|
 | Telemetry rate | 50-100 Hz |
 | Control loop | 100 Hz (FreeRTOS) |
 | MJPEG streaming | ~15-30 fps |

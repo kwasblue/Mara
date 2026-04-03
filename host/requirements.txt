@@ -1,13 +1,35 @@
+# MARA Host Dependencies
+# Generated from pyproject.toml - use `pip install -e .[full]` for complete install
+
+# ============== Core (required) ==============
+pyserial>=3.5
 aiohttp>=3.9.0
 aiomqtt>=2.0.0
-matplotlib>=3.10.0
-numpy>=2.2.0
-opencv-python>=4.12.0
-pillow>=12.0.0
-PySide6>=6.6
-pyserial>=3.5
-python-can>=4.0.0
-PyYAML>=6.0.0
-requests>=2.32.0
 rich>=13.0.0
-torch>=2.9.0
+PyYAML>=6.0.0
+typing_extensions>=4.15.0
+jsonschema>=4.0.0
+mcp>=1.0.0
+requests>=2.31.0
+starlette>=0.27.0
+python-can>=4.0.0
+
+# ============== Development ==============
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# ============== Research/Simulation ==============
+numpy>=2.0.0
+matplotlib>=3.8.0
+scipy>=1.11.0
+sympy>=1.12.0
+
+# ============== Computer Vision ==============
+opencv-python>=4.8.0
+pillow>=10.0.0
+
+# ============== Machine Learning ==============
+torch>=2.0.0
+
+# ============== GUI ==============
+PySide6>=6.5.0

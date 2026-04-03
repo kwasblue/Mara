@@ -5,7 +5,7 @@
 #include <cstdint>
 
 namespace Version {
-    constexpr const char* FIRMWARE = "0.5.0";
+    constexpr const char* FIRMWARE = "1.0.0";
     constexpr uint8_t PROTOCOL = 1;
     constexpr uint8_t SCHEMA_VERSION = 1;
     constexpr const char* BOARD = "esp32";

@@ -11,10 +11,12 @@ Includes:
 """
 from __future__ import annotations
 
+import bisect
 import math
 import random
+from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Deque, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -176,10 +178,20 @@ class DCMotor:
 
         # Friction torque
         if abs(self.velocity) > 1e-6:
+            # Kinetic friction: Coulomb + viscous
             friction_torque = cfg.Kf * np.sign(self.velocity) + cfg.b * self.velocity
         else:
-            # Static friction at zero velocity
-            friction_torque = np.clip(motor_torque - load_torque, -cfg.Kf, cfg.Kf)
+            # Static friction at zero velocity:
+            # Applied torque is what's trying to move the motor
+            applied_torque = motor_torque - load_torque
+
+            if abs(applied_torque) <= cfg.Kf:
+                # Static friction exactly cancels applied torque - motor stays stuck
+                friction_torque = applied_torque
+            else:
+                # Applied torque overcomes static friction - transition to kinetic
+                # Use kinetic friction in the direction of applied torque
+                friction_torque = cfg.Kf * np.sign(applied_torque)
 
         # Mechanical dynamics: J*dw/dt = tau_motor - tau_friction - tau_load
         net_torque = motor_torque - friction_torque - load_torque
@@ -417,8 +429,8 @@ class DelaySimulator:
 
         delivery_time = current_time_s + delay_ms / 1000
 
-        self.queue.append((delivery_time, message))
-        self.queue.sort(key=lambda x: x[0])
+        # Use bisect to maintain sorted order in O(log n) instead of O(n log n) sort
+        bisect.insort(self.queue, (delivery_time, message))
 
         return True
 
@@ -458,14 +470,29 @@ class SimulationRunner:
         controller: Optional[Callable[[Dict[str, Any]], Tuple[float, float]]] = None,
         dt: float = 0.01,
         delay_config: Optional[DelayConfig] = None,
+        max_history: Optional[int] = None,
     ):
+        """
+        Initialize simulation runner.
+
+        Args:
+            robot: Robot model to simulate
+            controller: Optional controller function (state -> (vx, omega))
+            dt: Time step in seconds
+            delay_config: Optional communication delay configuration
+            max_history: Maximum history entries to keep (None = unlimited).
+                         For long simulations, set this to limit memory usage.
+                         E.g., 60s at 100Hz with max_history=6000 keeps ~1 minute.
+        """
         self.robot = robot
         self.controller = controller
         self.dt = dt
         self.delay = DelaySimulator(delay_config) if delay_config else None
+        self._max_history = max_history
 
         self.time = 0.0
-        self.history: List[Dict[str, Any]] = []
+        # Use deque with maxlen for bounded history, list for unbounded
+        self.history: Deque[Dict[str, Any]] = deque(maxlen=max_history)
 
     def step(self) -> Dict[str, Any]:
         """Run one simulation step."""
@@ -498,19 +525,23 @@ class SimulationRunner:
         return new_state
 
     def run(self, duration_s: float) -> List[Dict[str, Any]]:
-        """Run simulation for specified duration."""
+        """Run simulation for specified duration.
+
+        Returns:
+            List of state dictionaries (copy of history for backward compatibility).
+        """
         n_steps = int(duration_s / self.dt)
 
         for _ in range(n_steps):
             self.step()
 
-        return self.history
+        return list(self.history)
 
     def reset(self):
         """Reset simulation."""
         self.robot.reset()
         self.time = 0.0
-        self.history = []
+        self.history = deque(maxlen=self._max_history)
         if self.delay:
             self.delay.clear()
 

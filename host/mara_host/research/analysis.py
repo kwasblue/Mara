@@ -13,6 +13,7 @@ Includes:
 from __future__ import annotations
 
 import json
+import warnings
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -35,11 +36,9 @@ def load_session_df(jsonl_path: str) -> pd.DataFrame:
     rows = []
     with open(jsonl_path, "r", encoding="utf-8") as f:
         for line in f:
-            # JSON parser handles whitespace; skip empty lines efficiently
-            if line and line[0] not in ('\n', '\r', ' ', '\t'):
-                rows.append(json.loads(line))
-            elif line.strip():
-                rows.append(json.loads(line))
+            stripped = line.strip()
+            if stripped:
+                rows.append(json.loads(stripped))
 
     df = pd.DataFrame(rows)
 
@@ -265,7 +264,21 @@ def fill_gaps(
 
     # Interpolate with limit based on max_gap
     if isinstance(df.index, pd.DatetimeIndex):
-        freq = pd.infer_freq(df.index) or "100ms"
+        freq = pd.infer_freq(df.index)
+        if freq is None:
+            # Infer from median interval when pd.infer_freq fails (irregular data)
+            if len(df.index) >= 2:
+                intervals = pd.Series(df.index).diff().dropna()
+                median_interval = intervals.median()
+                # Convert to frequency string (e.g., "20ms", "100ms")
+                freq = f"{int(median_interval.total_seconds() * 1000)}ms"
+                warnings.warn(
+                    f"pd.infer_freq failed on irregular timestamps; "
+                    f"using median interval {freq} for resampling",
+                    stacklevel=2,
+                )
+            else:
+                freq = "100ms"  # Fallback for single-point data
         df_resampled = df.resample(freq).mean()
         df_resampled[numeric_cols] = df_resampled[numeric_cols].interpolate(
             method=method,

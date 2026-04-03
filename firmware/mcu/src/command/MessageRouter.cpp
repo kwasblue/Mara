@@ -6,13 +6,14 @@
 #include "core/Clock.h"
 #include <ArduinoJson.h>
 
-MessageRouter* MessageRouter::s_instance = nullptr;
+std::atomic<MessageRouter*> MessageRouter::s_instance{nullptr};
 
 MessageRouter::MessageRouter(EventBus& bus, ITransport& transport)
     : bus_(bus)
     , transport_(transport)
 {
-    s_instance = this;
+    // Release ensures all constructor writes are visible before pointer is published
+    s_instance.store(this, std::memory_order_release);
 }
 
 void MessageRouter::setup() {
@@ -31,8 +32,10 @@ void MessageRouter::loop() {
 }
 
 void MessageRouter::onEventStatic(const Event& evt) {
-    if (s_instance) {
-        s_instance->onEvent(evt);
+    // Acquire ensures we see all constructor writes before using the instance
+    MessageRouter* instance = s_instance.load(std::memory_order_acquire);
+    if (instance) {
+        instance->onEvent(evt);
     }
 }
 
@@ -61,7 +64,7 @@ void MessageRouter::onFrame(const uint8_t* frame, size_t len) {
         Event evt;
         evt.type = EventType::BIN_MESSAGE_RX;
         evt.timestamp_ms = now_ms;
-        evt.payload.bin = { 0x20 };  // BinaryCommands::Opcode::HEARTBEAT
+        evt.payload.bin = { static_cast<uint8_t>(BinaryCommands::Opcode::HEARTBEAT) };
         bus_.publish(evt);
         break;
     }

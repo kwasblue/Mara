@@ -9,13 +9,14 @@
 #include "core/ServiceContext.h"
 #include <Arduino.h>
 
-CommandRegistry* CommandRegistry::s_instance = nullptr;
+std::atomic<CommandRegistry*> CommandRegistry::s_instance{nullptr};
 
 CommandRegistry::CommandRegistry(EventBus& bus, ModeManager& mode, MotionController& motion)
     : ctx_(bus, mode)
     , motion_(&motion)
 {
-    s_instance = this;
+    // Release ensures all constructor writes are visible before pointer is published
+    s_instance.store(this, std::memory_order_release);
 }
 
 void CommandRegistry::registerStringHandler(IStringHandler* handler) {
@@ -54,8 +55,10 @@ void CommandRegistry::setup() {
 }
 
 void CommandRegistry::handleEventStatic(const Event& evt) {
-    if (s_instance) {
-        s_instance->handleEvent(evt);
+    // Acquire ensures we see all constructor writes before using the instance
+    CommandRegistry* instance = s_instance.load(std::memory_order_acquire);
+    if (instance) {
+        instance->handleEvent(evt);
     }
 }
 

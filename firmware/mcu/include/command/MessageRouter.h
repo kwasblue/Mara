@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <vector>
 #include <Arduino.h>
 
@@ -20,7 +21,9 @@ private:
     ITransport&          transport_;
     std::vector<uint8_t> txBuffer_;
 
-    static MessageRouter* s_instance;
+    // Atomic for cross-core safety: written in constructor (Core 0),
+    // read in onEventStatic (event bus callback, any context).
+    static std::atomic<MessageRouter*> s_instance;
     static void onEventStatic(const Event& evt);
 
     void onFrame(const uint8_t* frame, size_t len);

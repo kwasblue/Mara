@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <vector>
 #include <string>
 #include <ArduinoJson.h>
@@ -115,7 +116,9 @@ private:
     // Event handling
     static void handleEventStatic(const Event& evt);
     void handleEvent(const Event& evt);
-    static CommandRegistry* s_instance;
+    // Atomic for cross-core safety: written in constructor (Core 0),
+    // read in handleEventStatic (event bus callback, any context).
+    static std::atomic<CommandRegistry*> s_instance;
 
     // Find handler for command type
     ICommandHandler* findHandler(CmdType cmd);

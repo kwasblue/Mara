@@ -31,6 +31,7 @@ import os
 import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from mcp.server import Server
@@ -154,6 +155,7 @@ def create_server(
     ble_name: str | None = None,
     tcp_port: int = 3333,
     mode: str = "standard",
+    plugins_dir: Path | None = None,
 ) -> Server:
     """
     Create and configure the MCP server.
@@ -164,6 +166,7 @@ def create_server(
         ble_name: Bluetooth SPP device name
         tcp_port: TCP port number
         mode: Tool mode - "standard" (~35 tools) or "developer" (all ~155 tools)
+        plugins_dir: Plugin directory (default: ~/.mara/plugins/)
     """
     server = Server("mara", instructions=SERVER_INSTRUCTIONS)
     runtime = MaraRuntime(port=port, host=host, ble_name=ble_name, tcp_port=tcp_port)
@@ -171,8 +174,8 @@ def create_server(
     # Get tool filter for this mode
     mode_tools = get_mode_tools(mode)
 
-    # Load plugins from ~/.mara/plugins/
-    plugins = load_plugins()
+    # Load plugins from specified directory or ~/.mara/plugins/
+    plugins = load_plugins(plugins_dir)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # Tools
@@ -398,6 +401,9 @@ Examples:
 
   # With specific serial port
   python -m mara_host.mcp -p /dev/ttyUSB0
+
+  # With project-specific plugins
+  python -m mara_host.mcp --plugins-dir ./my_robot/plugins
 """
     )
     parser.add_argument("-p", "--port", help="Serial port (default: from config)")
@@ -411,6 +417,11 @@ Examples:
         choices=["standard", "developer"],
         default="standard",
         help="Tool mode: 'standard' (~35 tools) or 'developer' (all ~155 tools)",
+    )
+    parser.add_argument(
+        "--plugins-dir",
+        metavar="DIR",
+        help="Plugin directory (default: ~/.mara/plugins/)",
     )
     args = parser.parse_args()
 
@@ -440,12 +451,14 @@ Examples:
         )
     else:
         # MCP mode with server instructions
+        plugins_dir = Path(args.plugins_dir) if args.plugins_dir else None
         server = create_server(
             port=port,
             host=host,
             ble_name=ble_name,
             tcp_port=tcp_port,
             mode=args.mode,
+            plugins_dir=plugins_dir,
         )
 
         # Create initialization options

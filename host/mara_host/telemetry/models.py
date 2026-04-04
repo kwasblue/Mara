@@ -130,6 +130,14 @@ class ControlSignalsTelemetry:
 
 
 @dataclass
+class SignalTraceTelemetry:
+    """Telemetry from signal trace subscription."""
+    rate_hz: int
+    signals: list[SignalTelemetry]
+    count: int
+
+
+@dataclass
 class ObserverTelemetry:
     slot: int
     enabled: bool
@@ -172,6 +180,7 @@ class TelemetryPacket:
     ctrl_signals: Optional[ControlSignalsTelemetry] = None
     ctrl_observers: Optional[ControlObserversTelemetry] = None
     ctrl_slots: Optional[ControlSlotsTelemetry] = None
+    signal_trace: Optional["SignalTraceTelemetry"] = None
 
 
 __all__ = [

@@ -20,6 +20,7 @@ from .models import (
     SensorHealthTelemetry,
     SignalTelemetry,
     ControlSignalsTelemetry,
+    SignalTraceTelemetry,
     ObserverTelemetry,
     ControlObserversTelemetry,
     ControlSlotTelemetry,
@@ -39,6 +40,7 @@ from .telemetry_sections import (
     TELEM_CTRL_SIGNALS,
     TELEM_CTRL_OBSERVERS,
     TELEM_CTRL_SLOTS,
+    TELEM_SIGNAL_TRACE,
 )
 
 # Pre-compiled struct formats for performance (avoid format string parsing each call)
@@ -88,6 +90,7 @@ def _make_empty(ts_ms: int, raw_len: int, meta: Dict[str, Any]) -> TelemetryPack
         ctrl_signals=None,
         ctrl_observers=None,
         ctrl_slots=None,
+        signal_trace=None,
     )
 
 
@@ -269,6 +272,28 @@ def parse_telemetry_bin(payload: bytes) -> TelemetryPacket:
                     pos += _SLOT_FMT.size
                     slots.append(ControlSlotTelemetry(slot=slot, enabled=bool(enabled), ok=bool(ok), run_count=run_count))
                 pkt.ctrl_slots = ControlSlotsTelemetry(slots=slots)
+            continue
+
+        if section_id == TELEM_SIGNAL_TRACE:
+            # Format: count(u8) rate_hz(u8) [id(u16) value(f32) ts_ms(u32)]...
+            if len(body) >= 2:
+                count = body[0]
+                rate_hz = body[1]
+                signals = []
+                pos = 2
+                # Each signal entry is 10 bytes: id(u16) + value(f32) + ts_ms(u32)
+                max_entries = (len(body) - pos) // 10
+                for _ in range(min(count, max_entries)):
+                    if pos + 10 > len(body):
+                        break
+                    sig_id, value, sig_ts = _SIGNAL_FMT.unpack_from(body, pos)
+                    signals.append(SignalTelemetry(id=sig_id, name="", value=value, ts_ms=sig_ts))
+                    pos += 10
+                pkt.signal_trace = SignalTraceTelemetry(
+                    rate_hz=rate_hz,
+                    signals=signals,
+                    count=len(signals),
+                )
             continue
 
         # Fallback: try auto-discovered sections from registry

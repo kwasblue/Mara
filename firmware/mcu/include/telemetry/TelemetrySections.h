@@ -24,6 +24,7 @@ enum class SectionId : uint8_t {
     TELEM_CTRL_OBSERVERS = 0x11,  // Observer state estimates
     TELEM_CTRL_SLOTS     = 0x12,  // Control slot status
     TELEM_BENCHMARK      = 0x13,  // Benchmark system state and latest results
+    TELEM_SIGNAL_TRACE   = 0x14,  // Signal trace subscription (up to 16 signals)
 };
 
 // Helper to get section ID as raw byte
@@ -71,6 +72,9 @@ inline uint8_t id(SectionId s) {
 //
 // TELEM_BENCHMARK: bench_state(u8) active_test(u8) queue_depth(u8) result_count(u8)
 //   Size: variable
+//
+// TELEM_SIGNAL_TRACE: count(u8) rate_hz(u8) [id(u16) value(f32) ts_ms(u32)]...
+//   Size: 2 + count * 10 bytes (up to 162 bytes for 16 signals)
 //
 
 } // namespace TelemetrySections

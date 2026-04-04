@@ -19,7 +19,9 @@
 #include "persistence/McuPersistence.h"
 #include "module/ControlModule.h"
 #include "control/ControlGraphRuntime.h"
+#include "control/SignalBus.h"
 #include <algorithm>
+#include <cstring>
 
 namespace {
 
@@ -532,6 +534,51 @@ public:
                     ArduinoJson::JsonArray arr = node["values"].to<ArduinoJson::JsonArray>();
                     for (uint8_t i = 0; i < count; ++i) {
                         arr.add(values[i]);
+                    }
+                }
+            );
+
+            // Signal trace subscription - binary telemetry for traced signals
+            SignalBus* signals = &control->signals();
+            ctx.telemetry->registerBinProvider(
+                TelemetrySections::id(TelemetrySections::SectionId::TELEM_SIGNAL_TRACE),
+                [signals](std::vector<uint8_t>& out) {
+                    // Skip if tracing is not enabled
+                    if (!signals->isTraceEnabled()) {
+                        return;
+                    }
+
+                    // Get traced signal snapshots
+                    SignalBus::SignalSnapshot snapshots[16];
+                    size_t count = signals->getTracedSnapshot(snapshots, 16);
+
+                    // Encode: count(u8) rate_hz(u8) [id(u16) value(f32) ts_ms(u32)]...
+                    out.push_back(static_cast<uint8_t>(count));
+                    out.push_back(static_cast<uint8_t>(signals->getTraceRateHz()));
+
+                    auto put_u16 = [&out](uint16_t v) {
+                        out.push_back(static_cast<uint8_t>(v & 0xFF));
+                        out.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
+                    };
+                    auto put_u32 = [&out](uint32_t v) {
+                        out.push_back(static_cast<uint8_t>(v & 0xFF));
+                        out.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
+                        out.push_back(static_cast<uint8_t>((v >> 16) & 0xFF));
+                        out.push_back(static_cast<uint8_t>((v >> 24) & 0xFF));
+                    };
+                    auto put_f32 = [&out](float v) {
+                        uint32_t bits;
+                        memcpy(&bits, &v, sizeof(bits));
+                        out.push_back(static_cast<uint8_t>(bits & 0xFF));
+                        out.push_back(static_cast<uint8_t>((bits >> 8) & 0xFF));
+                        out.push_back(static_cast<uint8_t>((bits >> 16) & 0xFF));
+                        out.push_back(static_cast<uint8_t>((bits >> 24) & 0xFF));
+                    };
+
+                    for (size_t i = 0; i < count; ++i) {
+                        put_u16(snapshots[i].id);
+                        put_f32(snapshots[i].value);
+                        put_u32(snapshots[i].ts_ms);
                     }
                 }
             );

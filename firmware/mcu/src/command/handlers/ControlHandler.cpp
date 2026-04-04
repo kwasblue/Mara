@@ -7,9 +7,13 @@
 #include "command/decoders/ControlDecoders.h"
 #include "core/Debug.h"
 #include "persistence/McuPersistence.h"
+#include "sensor/ImuManager.h"
+#include "sensor/EncoderManager.h"
 
 void ControlHandler::init(mara::ServiceContext& ctx) {
     controlModule_ = ctx.control;
+    imu_ = ctx.imu;
+    encoder_ = ctx.encoder;
 }
 
 // -------------------------------------------------------------------------
@@ -208,9 +212,57 @@ void ControlHandler::handleAutoSignalsConfig(JsonVariantConst payload, CommandCo
     // Auto-signals config requires ARMED or ACTIVE - IDLE is read-only
     if (!ctx.requireArmedOrActive(ACK)) return;
 
-    // This handler requires access to sensor managers via ServiceContext
-    // For now, send error - full implementation requires ServiceContext wiring
-    ctx.sendError(ACK, "not_implemented");
+    if (!controlModule_) {
+        ctx.sendError(ACK, "no_control_module");
+        return;
+    }
+
+    SignalBus& signals = controlModule_->signals();
+    JsonDocument resp;
+    bool anyEnabled = false;
+
+    // Configure IMU auto-signals
+    JsonVariantConst imuConfig = payload["imu"];
+    if (!imuConfig.isNull() && imu_) {
+        bool enabled = imuConfig["enabled"] | false;
+        uint16_t rate_hz = imuConfig["rate_hz"] | 100;
+
+        if (enabled) {
+            imu_->enableAutoSignals(&signals, rate_hz);
+            anyEnabled = true;
+            DBG_PRINTF("[CTRL] IMU auto-signals enabled at %u Hz\n", rate_hz);
+        } else {
+            imu_->disableAutoSignals();
+            DBG_PRINTLN("[CTRL] IMU auto-signals disabled");
+        }
+
+        JsonObject imuResp = resp["imu"].to<JsonObject>();
+        imuResp["enabled"] = imu_->autoSignalsEnabled();
+        imuResp["rate_hz"] = rate_hz;
+    }
+
+    // Configure encoder auto-signals
+    JsonVariantConst encoderConfig = payload["encoder"];
+    if (!encoderConfig.isNull() && encoder_) {
+        bool enabled = encoderConfig["enabled"] | false;
+        uint16_t rate_hz = encoderConfig["rate_hz"] | 100;
+
+        if (enabled) {
+            encoder_->enableAutoSignals(&signals, rate_hz);
+            anyEnabled = true;
+            DBG_PRINTF("[CTRL] Encoder auto-signals enabled at %u Hz\n", rate_hz);
+        } else {
+            encoder_->disableAutoSignals();
+            DBG_PRINTLN("[CTRL] Encoder auto-signals disabled");
+        }
+
+        JsonObject encResp = resp["encoder"].to<JsonObject>();
+        encResp["enabled"] = encoder_->autoSignalsEnabled();
+        encResp["rate_hz"] = rate_hz;
+    }
+
+    resp["any_enabled"] = anyEnabled;
+    ctx.sendAck(ACK, true, resp);
 }
 
 // -------------------------------------------------------------------------

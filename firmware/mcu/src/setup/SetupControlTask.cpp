@@ -16,6 +16,8 @@
 #include "hal/ILogger.h"
 #include "core/Clock.h"
 #include "core/Debug.h"
+#include "sensor/ImuManager.h"
+#include "sensor/EncoderManager.h"
 
 #if PLATFORM_HAS_ARDUINO
 #include <Arduino.h>
@@ -135,6 +137,17 @@ static void controlTaskFunc(void* param) {
         // All code in this zone must be RT_SAFE - no heap allocation, no blocking
         // =====================================================================
         RT_ZONE_BEGIN("ControlLoop");
+
+        // =====================================================================
+        // Publish auto-signals from hardware managers
+        // This runs BEFORE consuming intents so control algorithms get fresh data
+        // =====================================================================
+        if (ctx->imu && ctx->imu->autoSignalsEnabled()) {
+            ctx->imu->publishToSignals(now_ms);
+        }
+        if (ctx->encoder && ctx->encoder->autoSignalsEnabled()) {
+            ctx->encoder->publishToSignals(now_ms);
+        }
 
         // =====================================================================
         // Consume intents at deterministic boundary

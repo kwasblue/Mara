@@ -6,8 +6,10 @@
 #include "command/ICommandHandler.h"
 #include "command/CommandContext.h"
 
-// Forward declaration
+// Forward declarations
 class ControlModule;
+class ImuManager;
+class EncoderManager;
 
 class ControlHandler : public ICommandHandler {
 public:
@@ -81,7 +83,9 @@ public:
     }
 
 private:
-    ControlModule* controlModule_;
+    ControlModule* controlModule_ = nullptr;
+    ImuManager* imu_ = nullptr;
+    EncoderManager* encoder_ = nullptr;
 
     void handleSignalDefine(JsonVariantConst payload, CommandContext& ctx);
     void handleSignalSet(JsonVariantConst payload, CommandContext& ctx);

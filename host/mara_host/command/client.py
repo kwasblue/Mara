@@ -5,7 +5,10 @@ import contextlib
 import asyncio
 import inspect
 import time
-from typing import Optional, Protocol, Callable, Dict, Any, Tuple
+from typing import Optional, Protocol, Callable, Dict, Any, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mara_host.observability.recording import ObservabilityBus
 
 # Optimized JSON: Use orjson if available (2-3x faster than stdlib json)
 try:
@@ -121,6 +124,7 @@ class BaseMaraClient(BinaryCommandsMixin):
         verbose: bool = True,
         robot_name: Optional[str] = None,
         signing_key: Optional[bytes] = None,
+        observability_bus: Optional["ObservabilityBus"] = None,
     ) -> None:
         self.transport = transport
         self.bus = bus or EventBus()
@@ -135,6 +139,9 @@ class BaseMaraClient(BinaryCommandsMixin):
         # Signing key for state transition commands (ARM, ACTIVATE, etc.)
         # If set, these commands will include an HMAC-SHA256 signature
         self._signing_key = signing_key
+
+        # Observability bus for cross-layer event tracking and MCU clock sync
+        self._observability_bus = observability_bus
 
         # Unique client ID for session ownership
         # Generated from process ID and timestamp to be unique per connection
@@ -413,6 +420,14 @@ class BaseMaraClient(BinaryCommandsMixin):
             )
 
         self._version_verified = True
+
+        # Sync MCU/host clocks for cross-layer timestamp correlation
+        uptime_ms = result.get("uptime_ms")
+        if uptime_ms is not None and self._observability_bus is not None:
+            self._observability_bus.set_mcu_sync(uptime_ms)
+            if self._verbose:
+                print(f"[MaraClient] MCU clock synced (uptime={uptime_ms}ms)")
+
         if self._verbose:
             print("[MaraClient] Handshake OK")
 

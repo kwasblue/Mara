@@ -1,5 +1,6 @@
 #include "module/IdentityModule.h"
 #include "core/Debug.h"
+#include "core/Clock.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
@@ -64,6 +65,9 @@ static void publishIdentity(EventBus& bus) {
     if (caps & DeviceCap::TELEMETRY) features.add("telemetry");
     if (caps & DeviceCap::GPIO) features.add("gpio");
     if (caps & DeviceCap::PWM) features.add("pwm");
+
+    // Add MCU uptime for host clock synchronization
+    doc["uptime_ms"] = mara::getSystemClock().millis();
 
     // Add loop rates
     const auto& rates = getLoopRates();

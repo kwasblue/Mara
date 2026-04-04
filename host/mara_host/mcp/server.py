@@ -43,6 +43,7 @@ from mara_host.mcp.errors import wrap_exception, StructuredResult
 from mara_host.mcp.instructions import SERVER_INSTRUCTIONS, get_mode_tools
 from mara_host.mcp.resources import get_resource_definitions, read_resource
 from mara_host.mcp.prompts import get_prompt_definitions, get_prompt_template
+from mara_host.mcp.plugin_loader import load_plugins, get_plugin_tools, dispatch_plugin_tool
 from mara_host.mcp.categories import (
     get_tool_category,
     get_category_description,
@@ -164,11 +165,14 @@ def create_server(
         tcp_port: TCP port number
         mode: Tool mode - "standard" (~35 tools) or "developer" (all ~155 tools)
     """
-    server = Server("mara")
+    server = Server("mara", instructions=SERVER_INSTRUCTIONS)
     runtime = MaraRuntime(port=port, host=host, ble_name=ble_name, tcp_port=tcp_port)
 
     # Get tool filter for this mode
     mode_tools = get_mode_tools(mode)
+
+    # Load plugins from ~/.mara/plugins/
+    plugins = load_plugins()
 
     # ═══════════════════════════════════════════════════════════════════════════
     # Tools
@@ -219,8 +223,11 @@ def create_server(
         # Add category prefixes to descriptions
         categorized_tools = [_add_category_to_description(t) for t in all_tools]
 
-        # Add meta-tool at the beginning
-        return [META_TOOL_LIST] + categorized_tools
+        # Add plugin tools
+        plugin_tools = get_plugin_tools(plugins)
+
+        # Add meta-tool at the beginning, then core tools, then plugins
+        return [META_TOOL_LIST] + categorized_tools + plugin_tools
 
     def _handle_list_tools(arguments: dict[str, Any] | None) -> dict:
         """Handle the mara_list_tools meta-tool."""
@@ -276,7 +283,11 @@ def create_server(
             if name == "mara_list_tools":
                 result = _handle_list_tools(arguments)
             else:
-                result = await dispatch_tool(runtime, name, arguments)
+                # Try plugin dispatch first
+                result = await dispatch_plugin_tool(plugins, runtime, name, arguments or {})
+                if result is None:
+                    # Fall back to generated tools
+                    result = await dispatch_tool(runtime, name, arguments)
 
             # Wrap successful results in structured format
             if isinstance(result, dict):
@@ -437,10 +448,8 @@ Examples:
             mode=args.mode,
         )
 
-        # Create initialization options with server instructions
+        # Create initialization options
         init_options = server.create_initialization_options()
-        # Note: Server instructions are available via get_server_instructions()
-        # The MCP spec supports server instructions in the InitializeResult
 
         async with stdio_server() as (read_stream, write_stream):
             await server.run(read_stream, write_stream, init_options)

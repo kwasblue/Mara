@@ -1,148 +1,109 @@
-// core/WifiTransport.h
+// include/transport/WifiTransport.h
+// WiFi TCP transport using HAL interfaces
 #pragma once
 
 #include "config/FeatureFlags.h"
 
 #if HAS_WIFI
 
-#include <Arduino.h>
-#include <WiFi.h>      // ESP32 WiFi
 #include <vector>
 #include "core/ITransport.h"
 #include "core/Protocol.h"
+#include "core/Debug.h"
+#include "hal/ITcpServer.h"
 
+/// WiFi TCP transport using HAL interfaces.
+/// Platform-agnostic: works with any ITcpServer/ITcpClient implementation.
 class WifiTransport : public ITransport {
 public:
-    explicit WifiTransport(uint16_t port)
-        : server_(port),
-          port_(port) {}
+    /// @param server TCP server (caller retains ownership, transport does NOT delete)
+    explicit WifiTransport(hal::ITcpServer* server)
+        : server_(server) {}
+
+    ~WifiTransport() {
+        if (client_) {
+            client_->stop();
+            delete client_;
+            client_ = nullptr;
+        }
+    }
 
     void begin() override {
-        // Assumes WiFi already configured elsewhere (SSID/password, mode)
-        server_.begin();
+        if (!server_) return;
+
+        server_->begin();
         rxBuffer_.clear();
         rxBuffer_.reserve(256);
 
-        // Figure out which IP we actually have
-        IPAddress sta = WiFi.localIP();
-        IPAddress ap  = WiFi.softAPIP();
-
-        Serial.println("[WifiTransport] begin()");
-        Serial.printf("  [WifiTransport] STA IP: %s\n", sta.toString().c_str());
-        Serial.printf("  [WifiTransport] AP  IP: %s\n", ap.toString().c_str());
-
-        IPAddress listenIp = sta;
-        if (listenIp.toString() == String("0.0.0.0")) {
-            // fall back to AP IP if STA not connected
-            listenIp = ap;
-        }
-
-        Serial.printf("  [WifiTransport] listening on %s:%u\n",
-                      listenIp.toString().c_str(), port_);
+        DBG_PRINTF("[WifiTransport] listening on port %u\n", server_->getPort());
     }
 
-void loop() override {
-    // Accept / monitor client
-    if (!client_ || !client_.connected()) {
-        // If we previously had a client and it disconnected, log it
-        if (client_) {
-            Serial.println("[WifiTransport] client disconnected");
-            client_.stop();
+    void loop() override {
+        if (!server_) return;
+
+        // Accept / monitor client
+        if (!client_ || !client_->connected()) {
+            // If we previously had a client and it disconnected, clean up
+            if (client_) {
+                DBG_PRINTLN("[WifiTransport] client disconnected");
+                client_->stop();
+                delete client_;
+                client_ = nullptr;
+            }
+
+            // Check for new client
+            client_ = server_->accept();
+            if (client_) {
+                char addrBuf[24];
+                client_->getRemoteAddr(addrBuf, sizeof(addrBuf));
+                DBG_PRINTF("[WifiTransport] client connected from %s:%u\n",
+                           addrBuf, client_->getRemotePort());
+            }
+            return;
         }
 
-        WiFiClient newClient = server_.available();
-        if (newClient) {
-            client_ = newClient;
-            Serial.printf(
-                "[WifiTransport] client connected from %s:%u\n",
-                client_.remoteIP().toString().c_str(),
-                client_.remotePort()
+        // Read bytes from client
+        while (client_->available() > 0) {
+            int b = client_->read();
+            if (b >= 0) {
+                rxBuffer_.push_back(static_cast<uint8_t>(b));
+            }
+        }
+
+        // Frame extraction
+        if (handler_) {
+            Protocol::extractFrames(
+                rxBuffer_,
+                [this](const uint8_t* frame, size_t len) {
+                    handler_(frame, len);
+                }
             );
         }
-        return;
     }
-
-    // 🔹 Debug: send a simple heartbeat over WiFi every second
-    // static uint32_t lastDebugMs = 0;
-    // uint32_t now = millis();
-    // if (now - lastDebugMs > 1000) {
-    //     const char* dbg = "[WifiTransport] hello over WiFi\n";
-    //     client_.write((const uint8_t*)dbg, strlen(dbg));
-    //     lastDebugMs = now;
-    // }
-
-    // Read bytes from client
-    while (client_.available() > 0) {
-        uint8_t b = static_cast<uint8_t>(client_.read());
-        rxBuffer_.push_back(b);
-    }
-
-    // Frame extraction
-    if (handler_) {
-        Protocol::extractFrames(
-            rxBuffer_,
-            [this](const uint8_t* frame, size_t len) {
-                handler_(frame, len);
-            }
-        );
-    }
-}
 
     bool sendBytes(const uint8_t* data, size_t len) override {
-        if (!client_ || !client_.connected()) {
-            // Optional debug:
-            //Serial.println("[WifiTransport] sendBytes(): no connected client");
+        if (!client_ || !client_->connected()) {
             return false;
         }
-        size_t written = client_.write(data, len);
-        // Optional:
-        // Serial.printf("[WifiTransport] sendBytes(): wrote %u/%u bytes\n",
-        //               (unsigned)written, (unsigned)len);
+        size_t written = client_->write(data, len);
         return written == len;
     }
 
 private:
-    WiFiServer           server_;
-    WiFiClient           client_;
-    std::vector<uint8_t> rxBuffer_;
-    uint16_t             port_;
+    hal::ITcpServer*      server_ = nullptr;
+    hal::ITcpClient*      client_ = nullptr;
+    std::vector<uint8_t>  rxBuffer_;
 };
-
-// example code for setupwifi()
-
-//#include <WiFi.h>
-// void setupWifi() {
-//     WiFi.mode(WIFI_STA);
-//     WiFi.begin("YourHomeSSID", "YourHomePassword");
-//     Serial.print("[WiFi] Connecting");
-//     while (WiFi.status() != WL_CONNECTED) {
-//         delay(500);
-//         Serial.print(".");
-//     }
-//     Serial.println();
-//     Serial.print("[WiFi] Connected, IP: ");
-//     Serial.println(WiFi.localIP());
-// }
-
-// const char* WIFI_SSID = "RobotAP";
-// const char* WIFI_PASS = "robotpass";  // change to whatever
-
-// void setupWifi() {
-//     WiFi.mode(WIFI_AP);
-//     WiFi.softAP(WIFI_SSID, WIFI_PASS);
-//     IPAddress ip = WiFi.softAPIP();
-//     Serial.print("[WiFi] AP started, IP: ");
-//     Serial.println(ip);
-// }
 
 #else // !HAS_WIFI
 
 #include "core/ITransport.h"
+#include "hal/ITcpServer.h"
 
 // Stub when WiFi is disabled
 class WifiTransport : public ITransport {
 public:
-    explicit WifiTransport(uint16_t) {}
+    explicit WifiTransport(hal::ITcpServer*) {}
     void begin() override {}
     void loop() override {}
     bool sendBytes(const uint8_t*, size_t) override { return true; }

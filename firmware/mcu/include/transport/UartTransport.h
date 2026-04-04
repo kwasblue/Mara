@@ -4,26 +4,36 @@
 
 #if HAS_UART_TRANSPORT
 
-#include <Arduino.h>
 #include <vector>
 #include "core/ITransport.h"
 #include "core/Protocol.h"
+#include "hal/IByteStream.h"
 
+/// UART transport using HAL byte stream interface.
+/// Platform-agnostic: works with any IByteStream implementation.
 class UartTransport : public ITransport {
 public:
-    UartTransport(HardwareSerial& serial, uint32_t baud)
-        : serial_(serial), baud_(baud) {}
+    /// @param stream Byte stream (caller retains ownership)
+    /// @param baud Baud rate to initialize stream with
+    UartTransport(hal::IByteStream* stream, uint32_t baud)
+        : stream_(stream), baud_(baud) {}
 
     void begin() override {
-        serial_.begin(baud_);
+        if (stream_) {
+            stream_->begin(baud_);
+        }
         rxBuffer_.clear();
         rxBuffer_.reserve(256);
     }
 
     void loop() override {
-        while (serial_.available() > 0) {
-            uint8_t b = static_cast<uint8_t>(serial_.read());
-            rxBuffer_.push_back(b);
+        if (!stream_) return;
+
+        while (stream_->available() > 0) {
+            int b = stream_->read();
+            if (b >= 0) {
+                rxBuffer_.push_back(static_cast<uint8_t>(b));
+            }
         }
 
         if (!handler_) return;
@@ -34,12 +44,13 @@ public:
     }
 
     bool sendBytes(const uint8_t* data, size_t len) override {
-        size_t written = serial_.write(data, len);
+        if (!stream_) return false;
+        size_t written = stream_->write(data, len);
         return written == len;
     }
 
 private:
-    HardwareSerial&       serial_;
+    hal::IByteStream*     stream_;
     uint32_t              baud_;
     std::vector<uint8_t>  rxBuffer_;
 };
@@ -47,11 +58,12 @@ private:
 #else // !HAS_UART_TRANSPORT
 
 #include "core/ITransport.h"
+#include "hal/IByteStream.h"
 
 // Stub when UART is disabled
 class UartTransport : public ITransport {
 public:
-    UartTransport(HardwareSerial&, uint32_t) {}
+    UartTransport(hal::IByteStream*, uint32_t) {}
     void begin() override {}
     void loop() override {}
     bool sendBytes(const uint8_t*, size_t) override { return true; }

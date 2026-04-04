@@ -6,6 +6,9 @@
 #if PLATFORM_ESP32
 
 #include "hal/esp32/Esp32TransportFactory.h"
+#include "hal/esp32/Esp32SerialStream.h"
+#include "hal/esp32/Esp32TcpServer.h"
+#include "hal/esp32/Esp32BluetoothStream.h"
 #include "config/FeatureFlags.h"
 #include "transport/UartTransport.h"
 #include "transport/WifiTransport.h"
@@ -16,17 +19,34 @@
 
 namespace hal {
 
+Esp32TransportFactory::~Esp32TransportFactory() {
+    delete uartStream_;
+    delete tcpServer_;
+    delete bleStream_;
+}
+
 void* Esp32TransportFactory::createUart(const UartTransportConfig& config) {
     if (!config.serial) {
         return nullptr;
     }
-    auto* serial = static_cast<HardwareSerial*>(config.serial);
-    return new UartTransport(*serial, config.baudRate);
+
+    // Create HAL wrapper if not already created
+    if (!uartStream_) {
+        auto* serial = static_cast<HardwareSerial*>(config.serial);
+        uartStream_ = new Esp32SerialStream(*serial);
+    }
+
+    return new UartTransport(uartStream_, config.baudRate);
 }
 
 void* Esp32TransportFactory::createWifi(const WifiTransportConfig& config) {
 #if HAS_WIFI
-    return new WifiTransport(config.tcpPort);
+    // Create HAL wrapper if not already created
+    if (!tcpServer_) {
+        tcpServer_ = new Esp32TcpServer(config.tcpPort);
+    }
+
+    return new WifiTransport(tcpServer_);
 #else
     (void)config;
     return nullptr;
@@ -35,7 +55,12 @@ void* Esp32TransportFactory::createWifi(const WifiTransportConfig& config) {
 
 void* Esp32TransportFactory::createBle(const BleTransportConfig& config) {
 #if HAS_BLE
-    return new BleTransport(config.deviceName);
+    // Create HAL wrapper if not already created
+    if (!bleStream_) {
+        bleStream_ = new Esp32BluetoothStream(config.deviceName);
+    }
+
+    return new BleTransport(bleStream_);
 #else
     (void)config;
     return nullptr;

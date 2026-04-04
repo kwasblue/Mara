@@ -1,5 +1,5 @@
 #include "hal/esp32/Esp32I2sAudio.h"
-#include <Arduino.h>
+#include "core/Debug.h"
 
 namespace hal {
 
@@ -55,7 +55,7 @@ I2sResult Esp32I2sAudio::beginRx(const I2sConfig& config, const I2sPins& pins) {
 
     esp_err_t err = i2s_driver_install(port_, &i2sCfg, 0, nullptr);
     if (err != ESP_OK) {
-        Serial.printf("[Esp32I2sAudio] i2s_driver_install failed: %d\n", err);
+        DBG_PRINTF("[Esp32I2sAudio] i2s_driver_install failed: %d\n", err);
         return I2sResult::ErrorDriver;
     }
 
@@ -67,7 +67,7 @@ I2sResult Esp32I2sAudio::beginRx(const I2sConfig& config, const I2sPins& pins) {
 
     err = i2s_set_pin(port_, &pinCfg);
     if (err != ESP_OK) {
-        Serial.printf("[Esp32I2sAudio] i2s_set_pin failed: %d\n", err);
+        DBG_PRINTF("[Esp32I2sAudio] i2s_set_pin failed: %d\n", err);
         i2s_driver_uninstall(port_);
         return I2sResult::ErrorPins;
     }

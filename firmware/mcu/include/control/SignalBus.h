@@ -162,8 +162,13 @@ public:
     // Number of defined signals
     size_t count() const { return signals_.size(); }
 
-    // Clear all signals - NOT THREAD SAFE, use during setup only
-    void clear() { signals_.clear(); idToIndex_.clear(); aliases_.clear(); }
+    // Clear all signals and trace state - NOT THREAD SAFE, use during setup only
+    void clear() {
+        signals_.clear();
+        idToIndex_.clear();
+        aliases_.clear();
+        trace_count_ = 0;  // Also reset trace state
+    }
 
     // -------------------------------------------------------------------------
     // Thread-safe snapshot for telemetry

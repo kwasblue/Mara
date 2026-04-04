@@ -3,56 +3,62 @@
 """
 MCP server for MARA robot control.
 
-Exposes robot control and telemetry as MCP tools.
+Exposes robot control and telemetry as MCP tools with:
+- Server-level instructions to guide LLM behavior
+- Structured error responses with recovery hints
+- MCP Resources for passive context
+- MCP Prompts for common workflows
+- Tool modes (standard/developer) for tool count management
 
 Usage:
     python -m mara_host.mcp.server
 
-    # Or with options:
-    python -m mara_host.mcp.server --port /dev/cu.usbserial-0001
-    python -m mara_host.mcp.server --tcp 192.168.4.1
+    # Standard mode (~35 curated tools)
+    python -m mara_host.mcp.server --mode standard
+
+    # Developer mode (all ~155 tools)
+    python -m mara_host.mcp.server --mode developer
+
+    # With specific serial port
+    python -m mara_host.mcp.server -p /dev/ttyUSB0
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import Tool, TextContent, Resource, Prompt, PromptMessage, GetPromptResult
 
 from mara_host.mcp.runtime import MaraRuntime
 from mara_host.mcp._generated_tools import get_tool_definitions, dispatch_tool
+from mara_host.mcp.errors import wrap_exception, StructuredResult
+from mara_host.mcp.instructions import SERVER_INSTRUCTIONS, get_mode_tools
+from mara_host.mcp.resources import get_resource_definitions, read_resource
+from mara_host.mcp.prompts import get_prompt_definitions, get_prompt_template
 
 
 @dataclass
 class MCPToolStats:
-    """Statistics for a single MCP tool.
-
-    Attributes:
-        calls: Number of times this tool was called.
-        errors: Number of calls that resulted in errors.
-        total_latency_ms: Sum of all call latencies in milliseconds.
-    """
-
+    """Statistics for a single MCP tool."""
     calls: int = 0
     errors: int = 0
     total_latency_ms: float = 0.0
 
     @property
     def avg_latency_ms(self) -> float:
-        """Average latency per call in milliseconds."""
         if self.calls == 0:
             return 0.0
         return self.total_latency_ms / self.calls
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for serialization."""
         return {
             "calls": self.calls,
             "errors": self.errors,
@@ -62,28 +68,13 @@ class MCPToolStats:
 
 
 class MCPInstrumentation:
-    """Instrumentation for MCP tool calls.
-
-    Tracks per-tool metrics for observability.
-
-    Example:
-        instr = MCPInstrumentation()
-
-        # Record a tool call
-        with instr.track("mara_arm"):
-            result = await dispatch_tool(runtime, "mara_arm", {})
-
-        # Get stats
-        stats = instr.get_stats()
-        print(stats["mara_arm"]["avg_latency_ms"])
-    """
+    """Instrumentation for MCP tool calls."""
 
     def __init__(self) -> None:
         self._stats: dict[str, MCPToolStats] = {}
         self._lock = asyncio.Lock()
 
     def _get_or_create(self, tool_name: str) -> MCPToolStats:
-        """Get or create stats for a tool (not thread-safe, use under lock)."""
         if tool_name not in self._stats:
             self._stats[tool_name] = MCPToolStats()
         return self._stats[tool_name]
@@ -91,7 +82,6 @@ class MCPInstrumentation:
     async def record_call(
         self, tool_name: str, latency_ms: float, is_error: bool = False
     ) -> None:
-        """Record a tool call with its latency."""
         async with self._lock:
             stats = self._get_or_create(tool_name)
             stats.calls += 1
@@ -100,20 +90,16 @@ class MCPInstrumentation:
                 stats.errors += 1
 
     def get_stats(self) -> dict[str, dict[str, Any]]:
-        """Get statistics for all tools."""
         return {name: stats.to_dict() for name, stats in self._stats.items()}
 
     def get_tool_stats(self, tool_name: str) -> dict[str, Any] | None:
-        """Get statistics for a specific tool."""
         stats = self._stats.get(tool_name)
         return stats.to_dict() if stats else None
 
     def reset(self) -> None:
-        """Reset all statistics."""
         self._stats.clear()
 
     def get_summary(self) -> dict[str, Any]:
-        """Get aggregate summary across all tools."""
         total_calls = sum(s.calls for s in self._stats.values())
         total_errors = sum(s.errors for s in self._stats.values())
         total_latency = sum(s.total_latency_ms for s in self._stats.values())
@@ -134,33 +120,23 @@ def get_mcp_instrumentation() -> MCPInstrumentation:
     """Get the global MCP instrumentation instance."""
     return _instrumentation
 
-# Optional token-based authentication via environment variable
-# When set, clients must provide the token to execute tools
+
+# Optional token-based authentication
 AUTH_TOKEN = os.environ.get("MARA_MCP_TOKEN")
 
 
 def _check_auth(arguments: dict[str, Any] | None) -> tuple[bool, str | None, dict[str, Any]]:
-    """
-    Check if the request is authenticated.
-
-    Returns:
-        (is_authenticated, error_message, cleaned_arguments)
-
-    Note: Returns a copy of arguments with _auth_token removed,
-    avoiding mutation of caller-owned input and handling None.
-    """
+    """Check if the request is authenticated."""
     args = dict(arguments or {})
 
     if not AUTH_TOKEN:
-        # No token configured, allow all requests
         return True, None, args
 
-    # Check for token in arguments (initial handshake)
     provided_token = args.pop("_auth_token", None)
     if provided_token == AUTH_TOKEN:
         return True, None, args
 
-    return False, "Authentication required. Set _auth_token in arguments or disable auth by unsetting MARA_MCP_TOKEN.", args
+    return False, "Authentication required. Set _auth_token in arguments.", args
 
 
 def create_server(
@@ -168,37 +144,142 @@ def create_server(
     host: str | None = None,
     ble_name: str | None = None,
     tcp_port: int = 3333,
+    mode: str = "standard",
 ) -> Server:
-    """Create and configure the MCP server."""
+    """
+    Create and configure the MCP server.
 
+    Args:
+        port: Serial port path
+        host: TCP host for WiFi connection
+        ble_name: Bluetooth SPP device name
+        tcp_port: TCP port number
+        mode: Tool mode - "standard" (~35 tools) or "developer" (all ~155 tools)
+    """
     server = Server("mara")
     runtime = MaraRuntime(port=port, host=host, ble_name=ble_name, tcp_port=tcp_port)
 
+    # Get tool filter for this mode
+    mode_tools = get_mode_tools(mode)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Tools
+    # ═══════════════════════════════════════════════════════════════════════════
+
     @server.list_tools()
     async def list_tools() -> list[Tool]:
-        return get_tool_definitions()
+        all_tools = get_tool_definitions()
+        if mode_tools is None:
+            return all_tools
+        # Filter to mode-specific tools
+        return [t for t in all_tools if t.name in mode_tools]
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict[str, Any] | None) -> list[TextContent]:
-        """Execute a tool and return result."""
-        # Check authentication if token is configured
+        """Execute a tool with structured error handling."""
+        # Check authentication
         is_auth, auth_error, arguments = _check_auth(arguments)
         if not is_auth:
-            return [TextContent(type="text", text=f"Error: {auth_error}")]
+            return [TextContent(type="text", text=json.dumps({
+                "success": False,
+                "error": "AUTHENTICATION_REQUIRED",
+                "message": auth_error,
+                "next_action": None,
+            }))]
 
         start_time = time.monotonic()
         is_error = False
+
         try:
             result = await dispatch_tool(runtime, name, arguments)
-            return [TextContent(type="text", text=str(result))]
+
+            # Wrap successful results in structured format
+            if isinstance(result, dict):
+                response = StructuredResult(success=True, data=result)
+            else:
+                response = StructuredResult(success=True, data={"result": result})
+
+            return [TextContent(type="text", text=response.to_json())]
+
         except Exception as e:
             is_error = True
-            return [TextContent(type="text", text=f"Error: {e}")]
+            # Wrap exceptions in structured error with recovery hints
+            error = wrap_exception(e, context=name)
+            return [TextContent(type="text", text=error.to_json())]
+
         finally:
             latency_ms = (time.monotonic() - start_time) * 1000
             await _instrumentation.record_call(name, latency_ms, is_error)
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Resources
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    @server.list_resources()
+    async def list_resources() -> list[Resource]:
+        """List available resources for passive context."""
+        defs = get_resource_definitions()
+        return [
+            Resource(
+                uri=d["uri"],
+                name=d["name"],
+                description=d["description"],
+                mimeType=d["mimeType"],
+            )
+            for d in defs
+        ]
+
+    @server.read_resource()
+    async def read_resource_handler(uri: str) -> str:
+        """Read a resource."""
+        return await read_resource(runtime, uri)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Prompts
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    @server.list_prompts()
+    async def list_prompts() -> list[Prompt]:
+        """List available workflow prompts."""
+        defs = get_prompt_definitions()
+        return [
+            Prompt(
+                name=d["name"],
+                description=d["description"],
+                arguments=[
+                    {"name": a["name"], "description": a["description"], "required": a.get("required", False)}
+                    for a in d.get("arguments", [])
+                ],
+            )
+            for d in defs
+        ]
+
+    @server.get_prompt()
+    async def get_prompt(name: str, arguments: dict[str, str] | None = None) -> GetPromptResult:
+        """Get a prompt with arguments filled in."""
+        template = get_prompt_template(name, arguments)
+        if template is None:
+            return GetPromptResult(
+                description=f"Unknown prompt: {name}",
+                messages=[],
+            )
+
+        return GetPromptResult(
+            description=f"Workflow: {name}",
+            messages=[
+                PromptMessage(
+                    role="user",
+                    content=TextContent(type="text", text=template),
+                )
+            ],
+        )
+
     return server
+
+
+def get_server_instructions() -> str:
+    """Get server instructions for LLM context injection."""
+    return SERVER_INSTRUCTIONS
 
 
 async def main():
@@ -210,29 +291,34 @@ async def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # MCP mode (for Claude Code)
+  # MCP mode with standard tools (~35 curated tools)
   python -m mara_host.mcp
+
+  # Developer mode (all ~155 tools)
+  python -m mara_host.mcp --mode developer
 
   # HTTP mode (for any LLM)
   python -m mara_host.mcp --http
-  python -m mara_host.mcp --http --http-port 8080
 
   # With specific serial port
   python -m mara_host.mcp -p /dev/ttyUSB0
-
-  # With TCP connection
-  python -m mara_host.mcp --tcp 192.168.4.1
 """
     )
     parser.add_argument("-p", "--port", help="Serial port (default: from config)")
     parser.add_argument("--tcp", metavar="HOST", help="TCP host (instead of serial)")
-    parser.add_argument("--ble-name", default=None, help="Bluetooth SPP device name (instead of serial/TCP)")
+    parser.add_argument("--ble-name", default=None, help="Bluetooth SPP device name")
     parser.add_argument("--tcp-port", type=int, default=3333, help="TCP port (default: 3333)")
     parser.add_argument("--http", action="store_true", help="Run HTTP server instead of MCP")
     parser.add_argument("--http-port", type=int, default=8000, help="HTTP port (default: 8000)")
+    parser.add_argument(
+        "--mode",
+        choices=["standard", "developer"],
+        default="standard",
+        help="Tool mode: 'standard' (~35 tools) or 'developer' (all ~155 tools)",
+    )
     args = parser.parse_args()
 
-    # Get port from args or environment or config
+    # Get connection params from args or environment or config
     port = args.port or os.environ.get("MARA_PORT")
     host = args.tcp or os.environ.get("MARA_HOST")
     ble_name = args.ble_name or os.environ.get("MARA_BLE_NAME")
@@ -243,9 +329,8 @@ Examples:
         from mara_host.cli.cli_config import get_serial_port
         port = get_serial_port()
 
-    # Debug output to stderr (doesn't interfere with MCP stdio)
-    import sys
-    print(f"[MCP Server] port={port}, host={host}, ble={ble_name}", file=sys.stderr)
+    # Debug output to stderr
+    print(f"[MCP Server] port={port}, host={host}, ble={ble_name}, mode={args.mode}", file=sys.stderr)
 
     if args.http:
         # HTTP mode
@@ -258,10 +343,22 @@ Examples:
             http_port=args.http_port,
         )
     else:
-        # MCP mode
-        server = create_server(port=port, host=host, ble_name=ble_name, tcp_port=tcp_port)
+        # MCP mode with server instructions
+        server = create_server(
+            port=port,
+            host=host,
+            ble_name=ble_name,
+            tcp_port=tcp_port,
+            mode=args.mode,
+        )
+
+        # Create initialization options with server instructions
+        init_options = server.create_initialization_options()
+        # Note: Server instructions are available via get_server_instructions()
+        # The MCP spec supports server instructions in the InitializeResult
+
         async with stdio_server() as (read_stream, write_stream):
-            await server.run(read_stream, write_stream, server.create_initialization_options())
+            await server.run(read_stream, write_stream, init_options)
 
 
 if __name__ == "__main__":

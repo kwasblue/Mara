@@ -95,9 +95,17 @@ public:
         WiFi.setAutoReconnect(true);
         WiFi.setAutoConnect(true);
 
-        // Set WiFi power and sleep settings for stability
+        // Set WiFi power and sleep settings
         WiFi.setTxPower(WIFI_POWER_19_5dBm);  // Max power
-        WiFi.setSleep(false);  // Disable WiFi sleep for reliability
+
+        // Enable WiFi modem sleep for BT+WiFi coexistence
+        // Note: Required when both WiFi and Bluetooth Classic are enabled
+#if HAS_BLE
+        WiFi.setSleep(true);   // Enable modem sleep for BT coexistence
+        Serial.println("[WiFi] Modem sleep enabled for BT coexistence");
+#else
+        WiFi.setSleep(false);  // Disable WiFi sleep for reliability (no BT)
+#endif
 
         Serial.print("[WiFi][STA] Connecting to ");
         Serial.println(WIFI_STA_SSID);

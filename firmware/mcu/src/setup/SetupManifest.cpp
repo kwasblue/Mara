@@ -17,50 +17,55 @@ namespace {
 // Critical modules (isCritical() = true) will halt the system on failure.
 //
 // Order rationale:
-// - WiFi/OTA first: needed for debugging and recovery
+// - BLE FIRST: Must init BT controller before WiFi for coexistence
+// - WiFi/OTA next: needed for debugging and recovery
 // - Safety before motors: ensures state machine is ready
 // - Motors before sensors: actuators should be ready first
 // - Transport after motors/sensors: can query state
 // - Telemetry last: needs all providers registered
 //
 mara::ISetupModule* g_setupManifest[] = {
+    // --- Bluetooth (must be before WiFi!) ---
+    nullptr,  // [0] Bluetooth - BT controller init
+
     // --- Network ---
-    nullptr,  // [0] WiFi - populated at runtime (getSetupWifiModule())
-    nullptr,  // [1] OTA  - populated at runtime (getSetupOtaModule())
+    nullptr,  // [1] WiFi - populated at runtime (getSetupWifiModule())
+    nullptr,  // [2] OTA  - populated at runtime (getSetupOtaModule())
 
     // --- Safety (CRITICAL) ---
-    nullptr,  // [2] Safety - ModeManager, watchdogs
+    nullptr,  // [3] Safety - ModeManager, watchdogs
 
     // --- Actuators ---
-    nullptr,  // [3] Motors - DC motors, servos, steppers
+    nullptr,  // [4] Motors - DC motors, servos, steppers
 
     // --- Sensors ---
-    nullptr,  // [4] Sensors - IMU, encoders, ultrasonic, lidar
+    nullptr,  // [5] Sensors - IMU, encoders, ultrasonic, lidar
 
     // --- Communication (CRITICAL) ---
-    nullptr,  // [5] Transport - Router, commands, host
+    nullptr,  // [6] Transport - Router, commands, host
 
     // --- Telemetry ---
-    nullptr,  // [6] Telemetry - Providers registration
+    nullptr,  // [7] Telemetry - Providers registration
 
     // Null terminator
     nullptr
 };
 
-constexpr size_t MANIFEST_SIZE = 7;  // Excluding null terminator
+constexpr size_t MANIFEST_SIZE = 8;  // Excluding null terminator
 
 bool g_manifestPopulated = false;
 
 void populateManifest() {
     if (g_manifestPopulated) return;
 
-    g_setupManifest[0] = getSetupWifiModule();
-    g_setupManifest[1] = getSetupOtaModule();
-    g_setupManifest[2] = getSetupSafetyModule();
-    g_setupManifest[3] = getSetupMotorsModule();
-    g_setupManifest[4] = getSetupSensorsModule();
-    g_setupManifest[5] = getSetupTransportModule();
-    g_setupManifest[6] = getSetupTelemetryModule();
+    g_setupManifest[0] = getSetupBleModule();
+    g_setupManifest[1] = getSetupWifiModule();
+    g_setupManifest[2] = getSetupOtaModule();
+    g_setupManifest[3] = getSetupSafetyModule();
+    g_setupManifest[4] = getSetupMotorsModule();
+    g_setupManifest[5] = getSetupSensorsModule();
+    g_setupManifest[6] = getSetupTransportModule();
+    g_setupManifest[7] = getSetupTelemetryModule();
 
     g_manifestPopulated = true;
 }

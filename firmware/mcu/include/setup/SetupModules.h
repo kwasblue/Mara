@@ -18,6 +18,7 @@ struct ServiceContext;
 // =============================================================================
 
 // Individual setup module accessors
+mara::ISetupModule* getSetupBleModule();  // Must run BEFORE WiFi for coexistence
 mara::ISetupModule* getSetupWifiModule();
 mara::ISetupModule* getSetupOtaModule();
 mara::ISetupModule* getSetupSafetyModule();
@@ -32,6 +33,7 @@ mara::ISetupModule* getSetupTelemetryModule();
  * Critical modules are marked and will halt the system on failure.
  *
  * Order:
+ * 0. Bluetooth - BT controller init (MUST be before WiFi for coexistence)
  * 1. WiFi - Network connectivity
  * 2. OTA - Over-the-air updates
  * 3. Safety - Mode manager, watchdogs (CRITICAL)

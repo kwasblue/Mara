@@ -7,6 +7,9 @@
 #if HAS_BLE
 
 #include <BluetoothSerial.h>
+#include <esp32-hal-bt.h>     // For btStart(), btStarted()
+#include <esp_bt_main.h>
+#include <esp_gap_bt_api.h>   // For esp_bt_gap_set_scan_mode
 #include <vector>
 #include "core/Protocol.h"
 #include "core/Debug.h"
@@ -21,43 +24,35 @@ public:
         : name_(deviceName) {}
 
     void begin() override {
-        DBG_PRINTLN("[BleTransport] begin()");
-
-        SerialBT_.onAuthComplete(
-            [](bool success) {
-                DBG_PRINTF("[BleTransport] Auth complete: %s\n",
-                           success ? "success" : "failed");
-            }
-        );
-
-        if (!SerialBT_.begin(name_)) {
-            DBG_PRINTLN("[BleTransport] Failed to start BluetoothSerial");
+        // Prevent double initialization (can be called by SetupBle AND MultiTransport)
+        if (initialized_) {
+            DBG_PRINTLN("[BleTransport] begin() - already initialized, skipping");
             return;
         }
 
-        constexpr const char* kLegacyPin = "1234";
-        if (!SerialBT_.setPin(kLegacyPin)) {
-            DBG_PRINTLN("[BleTransport] Failed to set Bluetooth PIN");
-        } else {
-            DBG_PRINT("[BleTransport] Legacy PIN configured: ");
-            DBG_PRINTLN(kLegacyPin);
+        DBG_PRINTLN("[BleTransport] begin()");
+
+        // Check if Bluetooth controller is already running (SetupBle may have started it)
+        if (!btStarted()) {
+            if (!btStart()) {
+                Serial.println("[BleTransport] FAILED to start BT controller");
+                return;
+            }
         }
 
-        esp_bt_io_cap_t iocap = ESP_BT_IO_CAP_NONE;
-        esp_err_t secErr = esp_bt_gap_set_security_param(
-            ESP_BT_SP_IOCAP_MODE,
-            &iocap,
-            sizeof(iocap)
-        );
-        if (secErr != ESP_OK) {
-            DBG_PRINTF("[BleTransport] Failed to set IO capability: %d\n",
-                       static_cast<int>(secErr));
-        } else {
-            DBG_PRINTLN("[BleTransport] IO capability forced to NoInputNoOutput");
-        }
+        // Set up auth callback for pairing events
+        SerialBT_.onAuthComplete([](bool success) {
+            Serial.printf("[BleTransport] Auth: %s\n", success ? "OK" : "FAIL");
+        });
 
-        DBG_PRINT("[BleTransport] Started as: ");
-        DBG_PRINTLN(name_);
+        // Start in slave mode (device name, master=false)
+        if (!SerialBT_.begin(name_, false)) {
+            Serial.println("[BleTransport] Failed to start");
+            return;
+        }
+        initialized_ = true;
+
+        Serial.printf("[BleTransport] Started as: %s\n", name_);
 
         rxBuffer_.clear();
         rxBuffer_.reserve(256);
@@ -112,6 +107,7 @@ private:
     BluetoothSerial      SerialBT_;
     std::vector<uint8_t> rxBuffer_;
     bool                 lastClientConnected_ = false;
+    bool                 initialized_ = false;
 };
 
 #else // !HAS_BLE

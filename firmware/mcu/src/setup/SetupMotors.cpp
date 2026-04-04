@@ -1,12 +1,8 @@
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
 #include "hal/ILogger.h"
+#include "hal/IGpio.h"
 #include "config/PinConfig.h"
-#include "config/PlatformConfig.h"
-
-#if PLATFORM_HAS_ARDUINO
-#include <Arduino.h>
-#endif
 #include "config/FeatureFlags.h"
 #include "config/GpioChannelDefs.h"
 #include "hw/GpioManager.h"

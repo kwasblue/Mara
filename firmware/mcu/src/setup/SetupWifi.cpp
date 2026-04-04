@@ -7,10 +7,7 @@
 #include "core/Clock.h"
 #include "core/Debug.h"
 #include "hal/ILogger.h"
-
-// TODO: Migrate to hal::IWifiManager for full platform portability
-// Currently uses ESP32 WiFi APIs directly (guarded by HAS_WIFI)
-#include <WiFi.h>
+#include "hal/IWifiManager.h"
 
 #include "config/WifiSecrets.h"
 #include "transport/WifiTransport.h"
@@ -50,25 +47,30 @@ volatile bool g_wifiReconnecting = false;
 uint32_t g_lastReconnectAttempt = 0;
 const uint32_t RECONNECT_INTERVAL_MS = 5000;
 
+// Helper to format IP address as string
+void formatIp(const hal::IpAddress& ip, char* buf, size_t bufSize) {
+    snprintf(buf, bufSize, "%d.%d.%d.%d", ip.octets[0], ip.octets[1], ip.octets[2], ip.octets[3]);
+}
+
 // WiFi event handler (static, uses DBG_* macros for HAL-based logging)
-void onWiFiEvent(WiFiEvent_t event) {
+void onHalWifiEvent(hal::WifiEvent event) {
     switch (event) {
-        case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-            DBG_PRINTF("[WiFi][EVENT] Connected, IP: %s\n", WiFi.localIP().toString().c_str());
+        case hal::WifiEvent::STA_GOT_IP:
+            DBG_PRINTLN("[WiFi][EVENT] Connected, got IP");
             g_wifiConnected = true;
             g_wifiReconnecting = false;
             break;
 
-        case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+        case hal::WifiEvent::STA_DISCONNECTED:
             DBG_PRINTLN("[WiFi][EVENT] Disconnected from AP");
             g_wifiConnected = false;
             break;
 
-        case ARDUINO_EVENT_WIFI_STA_CONNECTED:
+        case hal::WifiEvent::STA_CONNECTED:
             DBG_PRINTLN("[WiFi][EVENT] Associated with AP");
             break;
 
-        case ARDUINO_EVENT_WIFI_STA_LOST_IP:
+        case hal::WifiEvent::STA_LOST_IP:
             DBG_PRINTLN("[WiFi][EVENT] Lost IP address");
             g_wifiConnected = false;
             break;
@@ -84,33 +86,40 @@ public:
 
     mara::Result<void> setup(mara::ServiceContext& ctx) override {
         hal::ILogger* logger = ctx.halLogger;
+        hal::IWifiManager* wifi = ctx.halWifi;
+
+        if (!wifi) {
+            if (logger) logger->println("[WiFi] HAL WiFi manager not available");
+            return mara::Result<void>::err(mara::ErrorCode::NotSupported);
+        }
+
         if (logger) logger->println("[WiFi] Starting AP + STA with auto-reconnect...");
 
         // Register event handler BEFORE starting WiFi
-        WiFi.onEvent(onWiFiEvent);
+        wifi->onEvent(onHalWifiEvent);
 
-        WiFi.mode(WIFI_AP_STA);
-        WiFi.persistent(false);
+        wifi->setMode(hal::WifiMode::AP_STA);
+        wifi->setPersistent(false);
 
         // Enable auto-reconnect for stable connection
-        WiFi.setAutoReconnect(true);
-        WiFi.setAutoConnect(true);
+        wifi->setAutoReconnect(true);
+        wifi->setAutoConnect(true);
 
-        // Set WiFi power and sleep settings
-        WiFi.setTxPower(WIFI_POWER_19_5dBm);  // Max power
+        // Set WiFi power (max power = ~20 dBm)
+        wifi->setTxPower(20);
 
         // Enable WiFi modem sleep for BT+WiFi coexistence
         // Note: Required when both WiFi and Bluetooth Classic are enabled
 #if HAS_BLE
-        WiFi.setSleep(true);   // Enable modem sleep for BT coexistence
+        wifi->setSleepEnabled(true);
         if (logger) logger->println("[WiFi] Modem sleep enabled for BT coexistence");
 #else
-        WiFi.setSleep(false);  // Disable WiFi sleep for reliability (no BT)
+        wifi->setSleepEnabled(false);
 #endif
 
         if (logger) logger->printf("[WiFi][STA] Connecting to %s\n", WIFI_STA_SSID);
 
-        WiFi.begin(WIFI_STA_SSID, WIFI_STA_PASSWORD);
+        wifi->beginSta(WIFI_STA_SSID, WIFI_STA_PASSWORD);
 
         // BLOCKING WAIT: This blocks setup for up to 15 seconds.
         // The ESP32 hardware watchdog (if enabled) has a default timeout of ~8 seconds.
@@ -118,23 +127,25 @@ public:
         // If using a custom watchdog with shorter timeout, either:
         // 1. Disable watchdog during setup (not recommended), or
         // 2. Reduce this timeout, or
-        // 3. Use non-blocking WiFi init with event callbacks (onWiFiEvent handles this)
+        // 3. Use non-blocking WiFi init with event callbacks (onHalWifiEvent handles this)
         //
-        // Since WiFi.setAutoReconnect(true) is set, if initial connect fails,
+        // Since wifi->setAutoReconnect(true) is set, if initial connect fails,
         // background reconnection will continue after setup completes.
         uint32_t start = mara::getSystemClock().millis();
         const uint32_t timeoutMs = 15000;
 
-        while (WiFi.status() != WL_CONNECTED && mara::getSystemClock().millis() - start < timeoutMs) {
+        while (!wifi->isStaConnected() && mara::getSystemClock().millis() - start < timeoutMs) {
             mara::getSystemClock().delay(500);  // Yields to FreeRTOS scheduler
             if (logger) logger->print(".");
         }
         if (logger) logger->println("");
 
-        if (WiFi.status() == WL_CONNECTED) {
+        if (wifi->isStaConnected()) {
+            char ipBuf[16];
+            formatIp(wifi->getStaIp(), ipBuf, sizeof(ipBuf));
             if (logger) {
-                logger->printf("[WiFi][STA] Connected, IP: %s\n", WiFi.localIP().toString().c_str());
-                logger->printf("[WiFi][STA] RSSI: %d dBm\n", WiFi.RSSI());
+                logger->printf("[WiFi][STA] Connected, IP: %s\n", ipBuf);
+                logger->printf("[WiFi][STA] RSSI: %d dBm\n", wifi->getStaRssi());
             }
             g_wifiConnected = true;
         } else {
@@ -143,10 +154,11 @@ public:
         }
 
         // Always start AP for fallback access
-        bool apOk = WiFi.softAP(AP_SSID, AP_PASS);
+        bool apOk = wifi->beginAp(AP_SSID, AP_PASS);
         if (apOk) {
-            IPAddress apIp = WiFi.softAPIP();
-            if (logger) logger->printf("[WiFi][AP] Started, SSID: %s  IP: %s\n", AP_SSID, apIp.toString().c_str());
+            char apIpBuf[16];
+            formatIp(wifi->getApIp(), apIpBuf, sizeof(apIpBuf));
+            if (logger) logger->printf("[WiFi][AP] Started, SSID: %s  IP: %s\n", AP_SSID, apIpBuf);
         } else {
             if (logger) logger->println("[WiFi][AP] Failed to start AP!");
         }

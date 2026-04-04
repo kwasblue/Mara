@@ -5,10 +5,11 @@
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
 #include "core/Clock.h"
+#include "core/Debug.h"
+#include "hal/ILogger.h"
 
 // TODO: Migrate to hal::IWifiManager for full platform portability
-// Currently uses ESP32 WiFi APIs directly
-#include <Arduino.h>
+// Currently uses ESP32 WiFi APIs directly (guarded by HAS_WIFI)
 #include <WiFi.h>
 
 #include "config/WifiSecrets.h"
@@ -49,27 +50,26 @@ volatile bool g_wifiReconnecting = false;
 uint32_t g_lastReconnectAttempt = 0;
 const uint32_t RECONNECT_INTERVAL_MS = 5000;
 
-// WiFi event handler
+// WiFi event handler (static, uses DBG_* macros for HAL-based logging)
 void onWiFiEvent(WiFiEvent_t event) {
     switch (event) {
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-            Serial.print("[WiFi][EVENT] Connected, IP: ");
-            Serial.println(WiFi.localIP());
+            DBG_PRINTF("[WiFi][EVENT] Connected, IP: %s\n", WiFi.localIP().toString().c_str());
             g_wifiConnected = true;
             g_wifiReconnecting = false;
             break;
 
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-            Serial.println("[WiFi][EVENT] Disconnected from AP");
+            DBG_PRINTLN("[WiFi][EVENT] Disconnected from AP");
             g_wifiConnected = false;
             break;
 
         case ARDUINO_EVENT_WIFI_STA_CONNECTED:
-            Serial.println("[WiFi][EVENT] Associated with AP");
+            DBG_PRINTLN("[WiFi][EVENT] Associated with AP");
             break;
 
         case ARDUINO_EVENT_WIFI_STA_LOST_IP:
-            Serial.println("[WiFi][EVENT] Lost IP address");
+            DBG_PRINTLN("[WiFi][EVENT] Lost IP address");
             g_wifiConnected = false;
             break;
 
@@ -83,7 +83,8 @@ public:
     const char* name() const override { return "WiFi"; }
 
     mara::Result<void> setup(mara::ServiceContext& ctx) override {
-        Serial.println("[WiFi] Starting AP + STA with auto-reconnect...");
+        hal::ILogger* logger = ctx.halLogger;
+        if (logger) logger->println("[WiFi] Starting AP + STA with auto-reconnect...");
 
         // Register event handler BEFORE starting WiFi
         WiFi.onEvent(onWiFiEvent);
@@ -102,19 +103,18 @@ public:
         // Note: Required when both WiFi and Bluetooth Classic are enabled
 #if HAS_BLE
         WiFi.setSleep(true);   // Enable modem sleep for BT coexistence
-        Serial.println("[WiFi] Modem sleep enabled for BT coexistence");
+        if (logger) logger->println("[WiFi] Modem sleep enabled for BT coexistence");
 #else
         WiFi.setSleep(false);  // Disable WiFi sleep for reliability (no BT)
 #endif
 
-        Serial.print("[WiFi][STA] Connecting to ");
-        Serial.println(WIFI_STA_SSID);
+        if (logger) logger->printf("[WiFi][STA] Connecting to %s\n", WIFI_STA_SSID);
 
         WiFi.begin(WIFI_STA_SSID, WIFI_STA_PASSWORD);
 
         // BLOCKING WAIT: This blocks setup for up to 15 seconds.
         // The ESP32 hardware watchdog (if enabled) has a default timeout of ~8 seconds.
-        // We use delay(500) which yields to the scheduler and feeds the task watchdog.
+        // We use mara::getSystemClock().delay(500) which yields to the scheduler.
         // If using a custom watchdog with shorter timeout, either:
         // 1. Disable watchdog during setup (not recommended), or
         // 2. Reduce this timeout, or
@@ -126,20 +126,19 @@ public:
         const uint32_t timeoutMs = 15000;
 
         while (WiFi.status() != WL_CONNECTED && mara::getSystemClock().millis() - start < timeoutMs) {
-            delay(500);  // Yields to FreeRTOS scheduler, feeds task watchdog
-            Serial.print(".");
+            mara::getSystemClock().delay(500);  // Yields to FreeRTOS scheduler
+            if (logger) logger->print(".");
         }
-        Serial.println();
+        if (logger) logger->println("");
 
         if (WiFi.status() == WL_CONNECTED) {
-            Serial.print("[WiFi][STA] Connected, IP: ");
-            Serial.println(WiFi.localIP());
-            Serial.print("[WiFi][STA] RSSI: ");
-            Serial.print(WiFi.RSSI());
-            Serial.println(" dBm");
+            if (logger) {
+                logger->printf("[WiFi][STA] Connected, IP: %s\n", WiFi.localIP().toString().c_str());
+                logger->printf("[WiFi][STA] RSSI: %d dBm\n", WiFi.RSSI());
+            }
             g_wifiConnected = true;
         } else {
-            Serial.println("[WiFi][STA] Initial connect failed, will retry in background");
+            if (logger) logger->println("[WiFi][STA] Initial connect failed, will retry in background");
             g_wifiConnected = false;
         }
 
@@ -147,12 +146,9 @@ public:
         bool apOk = WiFi.softAP(AP_SSID, AP_PASS);
         if (apOk) {
             IPAddress apIp = WiFi.softAPIP();
-            Serial.print("[WiFi][AP] Started, SSID: ");
-            Serial.print(AP_SSID);
-            Serial.print("  IP: ");
-            Serial.println(apIp);
+            if (logger) logger->printf("[WiFi][AP] Started, SSID: %s  IP: %s\n", AP_SSID, apIp.toString().c_str());
         } else {
-            Serial.println("[WiFi][AP] Failed to start AP!");
+            if (logger) logger->println("[WiFi][AP] Failed to start AP!");
         }
 
         // Initialize WiFi transport if available

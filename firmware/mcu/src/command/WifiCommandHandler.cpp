@@ -8,8 +8,7 @@
 #include "core/Clock.h"
 
 // TODO: Migrate to hal::IWifiManager for full platform portability
-// Currently uses ESP32 WiFi APIs directly
-#include <Arduino.h>
+// Currently uses ESP32 WiFi APIs directly (guarded by HAS_WIFI)
 #include <WiFi.h>
 
 namespace {
@@ -107,7 +106,7 @@ private:
         if (wait_for_connect) {
             uint32_t start = mara::getSystemClock().millis();
             while (WiFi.status() != WL_CONNECTED && (mara::getSystemClock().millis() - start) < static_cast<uint32_t>(timeout_ms)) {
-                delay(100);
+                mara::getSystemClock().delay(100);
             }
             connected = (WiFi.status() == WL_CONNECTED);
         }

@@ -1,7 +1,6 @@
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
-
-#include <Arduino.h>
+#include "hal/ILogger.h"
 #include "config/PinConfig.h"
 #include "config/FeatureFlags.h"
 #include "sensor/ImuManager.h"
@@ -45,8 +44,10 @@ public:
 
         // Initialize all self-registered sensors
         ctx.sensorRegistry->initAll();
-        Serial.printf("[SENSORS] Initialized %zu self-registered sensors\n",
-                      ctx.sensorRegistry->count());
+        if (ctx.halLogger) {
+            ctx.halLogger->printf("[SENSORS] Initialized %zu self-registered sensors\n",
+                                  ctx.sensorRegistry->count());
+        }
 
         // Legacy sensors (still using old pattern)
         // TODO: Migrate these to self-registration
@@ -54,16 +55,20 @@ public:
         // Initialize IMU
         if (ctx.imu) {
             bool imuOk = ctx.imu->begin(Pins::I2C_SDA, Pins::I2C_SCL, 0x68);
-            Serial.printf("[SENSORS] IMU init: %s\n", imuOk ? "OK" : "FAILED");
+            if (ctx.halLogger) {
+                ctx.halLogger->printf("[SENSORS] IMU init: %s\n", imuOk ? "OK" : "FAILED");
+            }
         }
 
         // Initialize LiDAR
         if (ctx.lidar) {
             bool lidarOk = ctx.lidar->begin(Pins::I2C_SDA, Pins::I2C_SCL);
-            Serial.printf("[SENSORS] LiDAR init: %s\n", lidarOk ? "OK" : "FAILED");
+            if (ctx.halLogger) {
+                ctx.halLogger->printf("[SENSORS] LiDAR init: %s\n", lidarOk ? "OK" : "FAILED");
+            }
         }
 
-        Serial.println("[SENSORS] Sensor initialization complete");
+        if (ctx.halLogger) ctx.halLogger->println("[SENSORS] Sensor initialization complete");
 
         return mara::Result<void>::ok();
     }

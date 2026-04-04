@@ -56,6 +56,9 @@ namespace hal {
     class ITimer;
     class IWatchdog;
     class IOta;
+    class ILogger;
+    class IWifiManager;
+    class IClock;
     struct HalContext;
 }
 
@@ -128,14 +131,17 @@ struct ServiceContext {
     // =========================================================================
     // Tier 0: Hardware Abstraction Layer (platform-specific)
     // =========================================================================
-    hal::IGpio*     halGpio     = nullptr;   // Platform GPIO abstraction
-    hal::IPwm*      halPwm      = nullptr;   // Platform PWM abstraction
-    hal::IServo*    halServo    = nullptr;   // Platform servo abstraction
-    hal::II2c*      halI2c      = nullptr;   // Platform I2C abstraction (primary bus)
-    hal::II2c*      halI2c1     = nullptr;   // Platform I2C abstraction (secondary bus)
-    hal::ITimer*    halTimer    = nullptr;   // Platform timer abstraction
-    hal::IWatchdog* halWatchdog = nullptr;   // Platform watchdog abstraction
-    hal::IOta*      halOta      = nullptr;   // Platform OTA abstraction
+    hal::IGpio*       halGpio     = nullptr;   // Platform GPIO abstraction
+    hal::IPwm*        halPwm      = nullptr;   // Platform PWM abstraction
+    hal::IServo*      halServo    = nullptr;   // Platform servo abstraction
+    hal::II2c*        halI2c      = nullptr;   // Platform I2C abstraction (primary bus)
+    hal::II2c*        halI2c1     = nullptr;   // Platform I2C abstraction (secondary bus)
+    hal::ITimer*      halTimer    = nullptr;   // Platform timer abstraction
+    hal::IWatchdog*   halWatchdog = nullptr;   // Platform watchdog abstraction
+    hal::IOta*        halOta      = nullptr;   // Platform OTA abstraction
+    hal::ILogger*     halLogger   = nullptr;   // Platform logging abstraction
+    hal::IWifiManager* halWifi    = nullptr;   // Platform WiFi abstraction
+    hal::IClock*      halClock    = nullptr;   // Platform clock abstraction
 
     // =========================================================================
     // Tier 1: Core infrastructure (no dependencies)

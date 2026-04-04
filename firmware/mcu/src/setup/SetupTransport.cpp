@@ -1,7 +1,6 @@
-#include <Arduino.h>
-
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
+#include "hal/ILogger.h"
 #include "core/IModule.h"
 #include "command/MessageRouter.h"
 #include "command/CommandRegistry.h"
@@ -40,7 +39,7 @@ public:
         // Setup host with ServiceContext for self-registered modules
         ctx.host->setup(&ctx);
 
-        Serial.println("[TRANSPORT] Router and host configured");
+        if (ctx.halLogger) ctx.halLogger->println("[TRANSPORT] Router and host configured");
 
         return mara::Result<void>::ok();
     }

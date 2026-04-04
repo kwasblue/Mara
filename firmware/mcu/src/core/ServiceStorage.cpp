@@ -220,6 +220,14 @@ ServiceContext ServiceStorage::buildContext() {
     ctx.halI2c1     = &hal.i2c1;
     ctx.halTimer    = &hal.timer;
     ctx.halWatchdog = &hal.watchdog;
+    ctx.halLogger   = &hal.logger;
+    ctx.halClock    = &hal.clock;
+#if HAS_OTA
+    ctx.halOta      = &hal.ota;
+#endif
+#if HAS_WIFI
+    ctx.halWifi     = &hal.wifiManager;
+#endif
 
     // Tier 1
     ctx.clock   = &clock;

@@ -1,8 +1,12 @@
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
-
-#include <Arduino.h>
+#include "hal/ILogger.h"
 #include "config/PinConfig.h"
+#include "config/PlatformConfig.h"
+
+#if PLATFORM_HAS_ARDUINO
+#include <Arduino.h>
+#endif
 #include "config/FeatureFlags.h"
 #include "config/GpioChannelDefs.h"
 #include "hw/GpioManager.h"
@@ -26,9 +30,11 @@ public:
             return mara::Result<void>::err(mara::ErrorCode::NotInitialized);
         }
 
-        // Setup status LED
-        pinMode(Pins::LED_STATUS, OUTPUT);
-        digitalWrite(Pins::LED_STATUS, LOW);
+        // Setup status LED via HAL
+        if (ctx.halGpio) {
+            ctx.halGpio->pinMode(Pins::LED_STATUS, hal::PinMode::Output);
+            ctx.halGpio->digitalWrite(Pins::LED_STATUS, 0);
+        }
 
         // Register GPIO channels from auto-generated definitions
         for (size_t i = 0; i < GPIO_CHANNEL_COUNT; ++i) {
@@ -56,8 +62,10 @@ public:
             ctx.actuatorRegistry->setAvailableCaps(actuatorCaps);
             ctx.actuatorRegistry->initAll(ctx);
             ctx.actuatorRegistry->setupAll();
-            Serial.printf("[MOTORS] Initialized %zu self-registered actuators\n",
-                          ctx.actuatorRegistry->count());
+            if (ctx.halLogger) {
+                ctx.halLogger->printf("[MOTORS] Initialized %zu self-registered actuators\n",
+                                      ctx.actuatorRegistry->count());
+            }
         }
 
         // Legacy actuators (until fully migrated)
@@ -70,7 +78,9 @@ public:
         // Legacy DC motors (can be removed once DcMotorActuator is fully tested)
         if (ctx.dcMotor) {
             int dcCount = mara::autoConfigureDcMotors(*ctx.dcMotor);
-            Serial.printf("[MOTORS] Legacy: Auto-configured %d DC motors\n", dcCount);
+            if (ctx.halLogger) {
+                ctx.halLogger->printf("[MOTORS] Legacy: Auto-configured %d DC motors\n", dcCount);
+            }
             ctx.dcMotor->dumpAllMotorMappings();
         }
 
@@ -79,7 +89,7 @@ public:
             mara::autoConfigureEncoders(*ctx.encoder);
         }
 
-        Serial.println("[MOTORS] GPIO and actuators configured");
+        if (ctx.halLogger) ctx.halLogger->println("[MOTORS] GPIO and actuators configured");
 
         return mara::Result<void>::ok();
     }

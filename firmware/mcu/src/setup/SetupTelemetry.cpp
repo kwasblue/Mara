@@ -1,8 +1,8 @@
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
 #include "core/Clock.h"
+#include "hal/ILogger.h"
 
-#include <Arduino.h>
 #include <ArduinoJson.h>
 #include "module/TelemetryModule.h"
 #include "command/ModeManager.h"
@@ -539,7 +539,7 @@ public:
 
         ctx.telemetry->setup();
 
-        Serial.println("[TELEMETRY] Providers registered");
+        if (ctx.halLogger) ctx.halLogger->println("[TELEMETRY] Providers registered");
 
         return mara::Result<void>::ok();
     }

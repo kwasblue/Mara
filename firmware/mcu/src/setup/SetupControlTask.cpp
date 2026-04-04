@@ -15,6 +15,7 @@
 #include "hal/ITaskScheduler.h"
 #include "hal/ILogger.h"
 #include "core/Clock.h"
+#include "core/Debug.h"
 
 #if PLATFORM_HAS_ARDUINO
 #include <Arduino.h>
@@ -94,10 +95,8 @@ static void controlTaskFunc(void* param) {
     }
 #endif
 
-#if PLATFORM_HAS_ARDUINO
-    Serial.printf("[CTRL_TASK] Started on Core %d at %d Hz (period=%lu ticks)\n",
-                  core, g_taskConfig.rate_hz, (unsigned long)periodTicks);
-#endif
+    DBG_PRINTF("[CTRL_TASK] Started on Core %d at %d Hz (period=%lu ticks)\n",
+               core, g_taskConfig.rate_hz, (unsigned long)periodTicks);
 
     // Get clock for timing (use system clock if no HAL clock available)
     auto& sysClock = mara::getSystemClock();
@@ -327,17 +326,13 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
 #endif
 
     if (alreadyRunning) {
-#if PLATFORM_HAS_ARDUINO
-        Serial.println("[CTRL_TASK] Already running");
-#endif
+        DBG_PRINTLN("[CTRL_TASK] Already running");
         return false;
     }
 
     // Validate config
     if (config.rate_hz < 10 || config.rate_hz > 1000) {
-#if PLATFORM_HAS_ARDUINO
-        Serial.printf("[CTRL_TASK] Invalid rate: %d Hz (must be 10-1000)\n", config.rate_hz);
-#endif
+        DBG_PRINTF("[CTRL_TASK] Invalid rate: %d Hz (must be 10-1000)\n", config.rate_hz);
         return false;
     }
 
@@ -363,9 +358,7 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
         halConfig.core = config.core;
 
         if (!g_halScheduler->createTask(controlTaskFunc, &ctx, halConfig, g_halTaskHandle)) {
-#if PLATFORM_HAS_ARDUINO
-            Serial.println("[CTRL_TASK] Failed to create task via HAL");
-#endif
+            DBG_PRINTLN("[CTRL_TASK] Failed to create task via HAL");
             g_halTaskHandle.native = nullptr;
             return false;
         }
@@ -385,9 +378,7 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
     );
 
     if (result != pdPASS) {
-#if PLATFORM_HAS_ARDUINO
-        Serial.println("[CTRL_TASK] Failed to create task");
-#endif
+        DBG_PRINTLN("[CTRL_TASK] Failed to create task");
         g_controlTaskHandle = nullptr;
         return false;
     }
@@ -400,9 +391,7 @@ bool startControlTask(ServiceContext& ctx, const ControlTaskConfig& config) {
 }
 
 void stopControlTask() {
-#if PLATFORM_HAS_ARDUINO
-    Serial.println("[CTRL_TASK] Stopping...");
-#endif
+    DBG_PRINTLN("[CTRL_TASK] Stopping...");
 
     // Signal stop FIRST so task knows to exit cleanly
     g_taskRunning.store(false, std::memory_order_release);
@@ -415,9 +404,7 @@ void stopControlTask() {
         g_halScheduler->deleteTask(g_halTaskHandle);
         g_halTaskHandle.native = nullptr;
         g_taskCtx = nullptr;
-#if PLATFORM_HAS_ARDUINO
-        Serial.println("[CTRL_TASK] Stopped (HAL)");
-#endif
+        DBG_PRINTLN("[CTRL_TASK] Stopped (HAL)");
         return;
     }
 
@@ -436,9 +423,7 @@ void stopControlTask() {
     g_controlTaskHandle = nullptr;
     g_taskCtx = nullptr;
 
-#if PLATFORM_HAS_ARDUINO
-    Serial.println("[CTRL_TASK] Stopped");
-#endif
+    DBG_PRINTLN("[CTRL_TASK] Stopped");
 #endif // HAS_FREERTOS
 }
 

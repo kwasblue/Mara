@@ -1,8 +1,8 @@
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
 #include "core/Clock.h"
-
-#include <Arduino.h>
+#include "core/Debug.h"
+#include "hal/ILogger.h"
 #include "command/ModeManager.h"
 #include "motor/MotionController.h"
 #include "motor/DcMotorManager.h"
@@ -49,8 +49,10 @@ public:
         }
 
         // Set up stop callback (normal deactivation, timeout, etc.)
-        ctx.mode->onStop([ctx]() {
-            Serial.println("[SAFETY] Stop triggered!");
+        // Capture halLogger by value - ctx goes out of scope but halLogger pointer is stable
+        hal::ILogger* logger = ctx.halLogger;
+        ctx.mode->onStop([ctx, logger]() {
+            if (logger) logger->println("[SAFETY] Stop triggered!");
             if (ctx.motion) {
                 ctx.motion->stop();
             }
@@ -61,8 +63,8 @@ public:
 
         // Emergency stop callback - directly disables motors at PWM level
         // This is called during E-stop and doesn't rely on motion controller
-        ctx.mode->onEmergencyStop([ctx]() {
-            Serial.println("[SAFETY] EMERGENCY STOP - Direct motor disable!");
+        ctx.mode->onEmergencyStop([ctx, logger]() {
+            if (logger) logger->println("[SAFETY] EMERGENCY STOP - Direct motor disable!");
 
             // Stop DC motors directly (bypasses motion controller)
             if (ctx.dcMotor) {
@@ -80,7 +82,7 @@ public:
             // E-stop sets mode to ESTOPPED, so canMove() returns false, cutting relay
         });
 
-        Serial.println("[SAFETY] ModeManager configured and started");
+        if (ctx.halLogger) ctx.halLogger->println("[SAFETY] ModeManager configured and started");
 
         return mara::Result<void>::ok();
     }

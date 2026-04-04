@@ -2,7 +2,8 @@
 
 #include "command/ModeManager.h"
 #include "core/CriticalSection.h"
-#include <Arduino.h>
+#include "core/Debug.h"
+#include <algorithm>
 #include <cmath>
 
 const char* maraModeToString(MaraMode m) {
@@ -98,7 +99,7 @@ void ModeManager::update(uint32_t now_ms) {
     }
 
     if (mode_ != lastLoggedMode_) {
-        Serial.printf("[MODE] %s -> %s  hostAge=%lu  motionAge=%lu\n", maraModeToString(lastLoggedMode_), maraModeToString(mode_), (unsigned long)hostAgeMs(now_ms), (unsigned long)motionAgeMs(now_ms));
+        DBG_PRINTF("[MODE] %s -> %s  hostAge=%lu  motionAge=%lu\n", maraModeToString(lastLoggedMode_), maraModeToString(mode_), (unsigned long)hostAgeMs(now_ms), (unsigned long)motionAgeMs(now_ms));
         lastLoggedMode_ = mode_;
     }
 
@@ -212,8 +213,8 @@ bool ModeManager::validateVelocity(float vx, float omega, float& out_vx, float& 
         out_omega = 0;
         return false;
     }
-    out_vx = constrain(vx, -cfg_.max_linear_vel, cfg_.max_linear_vel);
-    out_omega = constrain(omega, -cfg_.max_angular_vel, cfg_.max_angular_vel);
+    out_vx = std::clamp(vx, -cfg_.max_linear_vel, cfg_.max_linear_vel);
+    out_omega = std::clamp(omega, -cfg_.max_angular_vel, cfg_.max_angular_vel);
     return true;
 }
 

@@ -5,8 +5,8 @@
 #include "core/ServiceContext.h"
 #include "config/GeneratedBuildConfig.h"
 #include "hal/IOta.h"
-
-#include <Arduino.h>
+#include "hal/ILogger.h"
+#include "core/Debug.h"
 
 // OTA password configuration
 // SECURITY: Override OTA_PASSWORD in WifiSecrets.h or build_flags for production!
@@ -28,9 +28,11 @@ public:
     const char* name() const override { return "OTA"; }
 
     mara::Result<void> setup(mara::ServiceContext& ctx) override {
+        hal::ILogger* logger = ctx.halLogger;
+
         // Use HAL OTA interface if available
         if (ctx.halOta == nullptr) {
-            Serial.println("[OTA] Warning: HAL OTA not available, skipping setup");
+            if (logger) logger->println("[OTA] Warning: HAL OTA not available, skipping setup");
             return mara::Result<void>::ok();
         }
 
@@ -43,41 +45,42 @@ public:
         const char* password = OTA_PASSWORD;
         if (password != nullptr && password[0] != '\0') {
             ota->setPassword(password);
-            Serial.println("[OTA] Password authentication enabled");
+            if (logger) logger->println("[OTA] Password authentication enabled");
         } else {
-            Serial.println("[OTA] WARNING: No OTA password set - updates are unauthenticated!");
+            if (logger) logger->println("[OTA] WARNING: No OTA password set - updates are unauthenticated!");
         }
 
-        // Register callbacks via HAL
+        // Register callbacks via HAL (use DBG_* macros since lambdas are static)
         ota->onStart([](hal::OtaType type) {
             const char* typeStr = (type == hal::OtaType::FIRMWARE) ? "firmware" : "filesystem";
-            Serial.printf("[OTA] Start updating %s\n", typeStr);
+            DBG_PRINTF("[OTA] Start updating %s\n", typeStr);
         });
 
         ota->onEnd([]() {
-            Serial.println("\n[OTA] End");
+            DBG_PRINTLN("\n[OTA] End");
         });
 
         ota->onProgress([](uint32_t progress, uint32_t total) {
-            Serial.printf("[OTA] Progress: %u%%\r", (progress * 100U) / total);
+            DBG_PRINTF("[OTA] Progress: %u%%\r", (progress * 100U) / total);
         });
 
         ota->onError([](hal::OtaError error) {
-            Serial.print("[OTA] Error: ");
+            const char* errorStr = "Unknown";
             switch (error) {
-                case hal::OtaError::AUTH_FAILED:    Serial.println("Auth Failed"); break;
-                case hal::OtaError::BEGIN_FAILED:   Serial.println("Begin Failed"); break;
-                case hal::OtaError::CONNECT_FAILED: Serial.println("Connect Failed"); break;
-                case hal::OtaError::RECEIVE_FAILED: Serial.println("Receive Failed"); break;
-                case hal::OtaError::END_FAILED:     Serial.println("End Failed"); break;
-                default:                            Serial.println("Unknown"); break;
+                case hal::OtaError::AUTH_FAILED:    errorStr = "Auth Failed"; break;
+                case hal::OtaError::BEGIN_FAILED:   errorStr = "Begin Failed"; break;
+                case hal::OtaError::CONNECT_FAILED: errorStr = "Connect Failed"; break;
+                case hal::OtaError::RECEIVE_FAILED: errorStr = "Receive Failed"; break;
+                case hal::OtaError::END_FAILED:     errorStr = "End Failed"; break;
+                default: break;
             }
+            DBG_PRINTF("[OTA] Error: %s\n", errorStr);
         });
 
         // Initialize OTA system (HAL has duplicate-init guard)
         ota->begin();
 
-        Serial.printf("[OTA] Ready. Hostname: %s.local\n", OTA_HOSTNAME);
+        if (logger) logger->printf("[OTA] Ready. Hostname: %s.local\n", OTA_HOSTNAME);
 
         return mara::Result<void>::ok();
     }

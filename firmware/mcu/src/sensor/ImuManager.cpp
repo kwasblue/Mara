@@ -3,8 +3,12 @@
 #if HAS_IMU
 
 #include "sensor/ImuManager.h"
+#include "core/Clock.h"
 
+#include "config/PlatformConfig.h"
+#if PLATFORM_HAS_ARDUINO
 #include <Arduino.h>
+#endif
 
 namespace {
 // MPU-60x0 / MPU-9250 / MPU-6500 register set
@@ -86,7 +90,7 @@ bool ImuManager::begin(uint8_t addr) {
     if (!writeChecked(hal_, addr_, REG_PWR_MGMT_1, 0x00, "PWR_MGMT_1")) {
         return false;
     }
-    delay(100);
+    mara::getSystemClock().delay(100);
 
     if (!writeChecked(hal_, addr_, REG_SMPLRT_DIV, 0x07, "SMPLRT_DIV")) {
         return false;
@@ -103,7 +107,7 @@ bool ImuManager::begin(uint8_t addr) {
     if (!writeChecked(hal_, addr_, REG_ACCEL_CONFIG2, 0x06, "ACCEL_CONFIG2")) {
         return false;
     }
-    delay(10);
+    mara::getSystemClock().delay(10);
 
     DBG_PRINTLN("[ImuManager] IMU online and initialized");
     online_ = true;

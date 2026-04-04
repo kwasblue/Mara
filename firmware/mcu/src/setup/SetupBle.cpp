@@ -8,7 +8,7 @@
 #include "setup/ISetupModule.h"
 #include "core/ServiceContext.h"
 #include "transport/BleTransport.h"
-#include <Arduino.h>
+#include "core/Debug.h"
 #include <esp32-hal-bt.h>
 
 namespace {
@@ -25,7 +25,7 @@ public:
         // This is critical for coexistence - BT must be initialized first
         if (!btStarted()) {
             if (!btStart()) {
-                Serial.println("[BLE] FAILED to start Bluetooth controller");
+                DBG_PRINTLN("[BLE] FAILED to start Bluetooth controller");
                 return mara::Result<void>::err(mara::ErrorCode::NotSupported);
             }
         }
@@ -35,7 +35,7 @@ public:
             ctx.ble->begin();
         }
 
-        Serial.println("[BLE] Bluetooth Classic SPP initialized");
+        DBG_PRINTLN("[BLE] Bluetooth Classic SPP initialized");
         return mara::Result<void>::ok();
     }
 };

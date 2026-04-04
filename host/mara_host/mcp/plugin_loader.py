@@ -358,12 +358,29 @@ async def dispatch_plugin_tool(
     Dispatch a tool call to the appropriate plugin handler.
 
     Returns None if no plugin handles this tool name.
+    Returns {"error": "..."} if the handler raises an exception.
+
+    A plugin handler error should NEVER crash the server.
     """
     api = MaraPluginAPI(_runtime=runtime)
 
     for plugin in plugins:
         if name in plugin.handlers:
             handler = plugin.handlers[name]
-            return await handler(api, args)
+            try:
+                return await handler(api, args)
+            except Exception as e:
+                # Return structured error - never bubble up
+                error_type = type(e).__name__
+                error_msg = str(e)
+                print(
+                    f"[Plugin] Handler {name} from {plugin.name} raised {error_type}: {error_msg}",
+                    file=sys.stderr,
+                )
+                return {
+                    "error": f"{error_type}: {error_msg}",
+                    "plugin": plugin.name,
+                    "tool": name,
+                }
 
     return None

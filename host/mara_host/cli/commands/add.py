@@ -627,6 +627,9 @@ def generate_sensor(
         firmware_dir: Firmware mcu directory
         bus: Bus type - "gpio" (header-only), "i2c" or "spi" (header + cpp)
     """
+    # Normalize name: hyphens -> underscores, lowercase
+    name = name.lower().replace("-", "_")
+
     created = []
     date = datetime.now().strftime("%Y-%m-%d")
 
@@ -690,6 +693,9 @@ def generate_complex_sensor(
 
     Creates both header and cpp file like ImuManager pattern.
     """
+    # Normalize name: hyphens -> underscores, lowercase
+    name = name.lower().replace("-", "_")
+
     created = []
     date = datetime.now().strftime("%Y-%m-%d")
 
@@ -762,6 +768,9 @@ def generate_actuator(
     firmware_dir: Path,
 ) -> list[Path]:
     """Generate actuator skeleton files."""
+    # Normalize name: hyphens -> underscores, lowercase
+    name = name.lower().replace("-", "_")
+
     created = []
     date = datetime.now().strftime("%Y-%m-%d")
 

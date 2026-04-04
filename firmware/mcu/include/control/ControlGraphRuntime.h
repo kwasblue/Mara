@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
+#include <string>
 #include <vector>
 
 #include <Arduino.h>
@@ -417,7 +418,7 @@ public:
         pending_.hash = computeHash_(graph);
 
         // Cache the JSON for later commit
-        String jsonStr;
+        std::string jsonStr;
         serializeJson(graph, jsonStr);
         if (jsonStr.length() >= MAX_PENDING_JSON) {
             error = "graph_too_large";
@@ -1296,7 +1297,7 @@ private:
 
     uint32_t computeHash_(JsonVariantConst graph) const {
         // Simple FNV-1a hash of serialized JSON
-        String jsonStr;
+        std::string jsonStr;
         serializeJson(graph, jsonStr);
         uint32_t hash = 2166136261u;  // FNV offset basis
         for (size_t i = 0; i < jsonStr.length(); ++i) {
@@ -1308,7 +1309,7 @@ private:
 
     uint32_t computeSlotHash_(JsonObjectConst slot) const {
         // FNV-1a hash of slot JSON (canonical form)
-        String jsonStr;
+        std::string jsonStr;
         serializeJson(slot, jsonStr);
         uint32_t hash = 2166136261u;
         for (size_t i = 0; i < jsonStr.length(); ++i) {

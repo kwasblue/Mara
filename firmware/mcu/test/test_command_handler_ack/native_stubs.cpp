@@ -11,8 +11,10 @@
 #include "core/LoopRates.h"
 #include "core/Clock.h"
 #include "core/IntentBuffer.h"
+#include "core/SessionManager.h"
 #include "module/LoggingModule.h"
 #include "persistence/McuPersistence.h"
+#include "security/SignatureVerifier.h"
 #include "sensor/EncoderManager.h"
 #include "module/TelemetryModule.h"
 #include "motor/MotionController.h"
@@ -667,4 +669,111 @@ ObserverConfigResult decodeObserverConfig(JsonVariantConst payload) {
 }
 
 } // namespace cmd
+} // namespace mara
+
+// ============================================================================
+// SessionManager stubs
+// ============================================================================
+namespace mara {
+
+bool SessionManager::claimSession(uint32_t clientId, uint32_t now_ms) {
+    if (active_ && ownerId_ != clientId) {
+        return false;  // Another client owns the session
+    }
+    ownerId_ = clientId;
+    lastHeartbeatMs_ = now_ms;
+    active_ = true;
+    return true;
+}
+
+void SessionManager::releaseSession() {
+    active_ = false;
+    ownerId_ = 0;
+}
+
+bool SessionManager::checkTimeout(uint32_t now_ms) {
+    if (!active_) return false;
+    if (now_ms - lastHeartbeatMs_ > SESSION_TIMEOUT_MS) {
+        releaseSession();
+        return true;
+    }
+    return false;
+}
+
+void SessionManager::onHeartbeat(uint32_t clientId, uint32_t now_ms) {
+    if (active_ && ownerId_ == clientId) {
+        lastHeartbeatMs_ = now_ms;
+    }
+}
+
+} // namespace mara
+
+// ============================================================================
+// SignatureVerifier stubs
+// ============================================================================
+namespace mara {
+
+void SignatureVerifier::setKey(const uint8_t* key, size_t len) {
+    if (len > KEY_SIZE) len = KEY_SIZE;
+    for (size_t i = 0; i < len; ++i) key_[i] = key[i];
+    keyLen_ = len;
+    hasKey_ = true;
+}
+
+void SignatureVerifier::clearKey() {
+    hasKey_ = false;
+    keyLen_ = 0;
+    for (size_t i = 0; i < KEY_SIZE; ++i) key_[i] = 0;
+}
+
+bool SignatureVerifier::verify(const char* payload, size_t payloadLen, const char* signature) const {
+    (void)payload; (void)payloadLen; (void)signature;
+    // Stub always returns true for testing
+    return hasKey_;
+}
+
+bool SignatureVerifier::sign(const char* payload, size_t payloadLen, char* outSignature) const {
+    (void)payload; (void)payloadLen;
+    if (!hasKey_) return false;
+    // Stub produces dummy signature
+    for (int i = 0; i < 64; ++i) outSignature[i] = '0';
+    outSignature[64] = '\0';
+    return true;
+}
+
+void SignatureVerifier::hmacSha256(const uint8_t*, size_t, const uint8_t*, size_t, uint8_t* out) const {
+    // Stub produces zeros
+    for (int i = 0; i < 32; ++i) out[i] = 0;
+}
+
+void SignatureVerifier::sha256(const uint8_t*, size_t, uint8_t* out) const {
+    // Stub produces zeros
+    for (int i = 0; i < 32; ++i) out[i] = 0;
+}
+
+void SignatureVerifier::bytesToHex(const uint8_t* bytes, size_t len, char* hex) {
+    static const char* hexDigits = "0123456789abcdef";
+    for (size_t i = 0; i < len; ++i) {
+        hex[i * 2] = hexDigits[(bytes[i] >> 4) & 0x0F];
+        hex[i * 2 + 1] = hexDigits[bytes[i] & 0x0F];
+    }
+    hex[len * 2] = '\0';
+}
+
+bool SignatureVerifier::hexToBytes(const char* hex, size_t hexLen, uint8_t* bytes, size_t bytesLen) {
+    if (hexLen / 2 > bytesLen) return false;
+    for (size_t i = 0; i < hexLen / 2; ++i) {
+        char hi = hex[i * 2];
+        char lo = hex[i * 2 + 1];
+        uint8_t hiVal = (hi >= '0' && hi <= '9') ? (hi - '0') :
+                        (hi >= 'a' && hi <= 'f') ? (hi - 'a' + 10) :
+                        (hi >= 'A' && hi <= 'F') ? (hi - 'A' + 10) : 0;
+        uint8_t loVal = (lo >= '0' && lo <= '9') ? (lo - '0') :
+                        (lo >= 'a' && lo <= 'f') ? (lo - 'a' + 10) :
+                        (lo >= 'A' && lo <= 'F') ? (lo - 'A' + 10) : 0;
+        bytes[i] = (hiVal << 4) | loVal;
+    }
+    return true;
+}
+
 } // namespace mara

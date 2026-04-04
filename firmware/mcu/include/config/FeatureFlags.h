@@ -3,7 +3,22 @@
 // All optional features can be enabled/disabled via platformio.ini build_flags
 #pragma once
 
-// Include platform detection first
+// =============================================================================
+// GENERATED CONFIG - SINGLE SOURCE OF TRUTH
+// =============================================================================
+// Include GeneratedBuildConfig.h first if available - it defines:
+// - PLATFORM_* macros (target platform selection)
+// - HAS_* macros (feature flags from active profile)
+// - MARA_* macros (transport settings, resource limits)
+//
+// For native test builds, these may be overridden by -D flags.
+
+// The __has_include check allows graceful fallback when generated file doesn't exist
+#if defined(__has_include) && __has_include("config/GeneratedBuildConfig.h")
+    #include "config/GeneratedBuildConfig.h"
+#endif
+
+// Include platform detection (uses generated defines if available, else auto-detects)
 #include "config/PlatformConfig.h"
 
 // =============================================================================

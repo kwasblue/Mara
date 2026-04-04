@@ -4,8 +4,9 @@ _generated_config.py
 AUTO-GENERATED FILE - DO NOT EDIT
 =============================================================================
 Generated from: config/mara_build.yaml
-Generated at:   2026-04-04T09:20:06.935212
+Generated at:   2026-04-04T09:41:14.880168
 Active profile: full
+Target platform: esp32
 
 To regenerate, run:
   mara generate all
@@ -15,6 +16,17 @@ Import from here, do not hardcode values elsewhere.
 """
 
 from typing import Dict, List, Any
+
+# =============================================================================
+# Target Platform
+# =============================================================================
+PLATFORM_TARGET: str = "esp32"
+PLATFORM_BOARD: str = "esp32dev"
+PLATFORM_SDK: str = "arduino"
+PLATFORM_VARIANT: str = ""
+
+VALID_TARGETS: List[str] = ['esp32', 'stm32', 'rp2040', 'native']
+VALID_SDKS: List[str] = ['arduino', 'espidf', 'mbed']
 
 # =============================================================================
 # Transport Settings

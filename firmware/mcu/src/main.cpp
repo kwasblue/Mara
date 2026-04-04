@@ -96,8 +96,12 @@ void setup() {
     // Phase 1: Initialize storage components that need runtime parameters
     // =========================================================================
 
-    g_storage.initTransports(Serial, serial_baud, 3333,
-                              MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_ROBOT_ID);
+    // Configure transports using HAL config structs
+    hal::UartTransportConfig uartCfg{&Serial, serial_baud};
+    hal::WifiTransportConfig wifiCfg{3333};
+    hal::BleTransportConfig bleCfg{"ESP32-SPP"};
+    hal::MqttTransportConfig mqttCfg{MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_ROBOT_ID};
+    g_storage.initTransports(uartCfg, wifiCfg, bleCfg, mqttCfg);
     g_storage.initRouter();
     g_storage.initCommands();
     g_storage.initControl();

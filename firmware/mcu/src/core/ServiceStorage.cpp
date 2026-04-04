@@ -66,19 +66,30 @@ ServiceStorage::~ServiceStorage() {
     delete uart;
 }
 
-void ServiceStorage::initTransports(HardwareSerial& serial, uint32_t baud, uint16_t tcpPort,
-                                    const char* mqttBroker, uint16_t mqttPort,
-                                    const char* robotId) {
-    uart = new UartTransport(serial, baud);
-    wifi = new WifiTransport(tcpPort);
+void ServiceStorage::initTransports(const hal::UartTransportConfig& uartConfig,
+                                    const hal::WifiTransportConfig& wifiConfig,
+                                    const hal::BleTransportConfig& bleConfig,
+                                    const hal::MqttTransportConfig& mqttConfig) {
+    // Use HAL transport factory to create transports
+    hal::ITransportFactory* factory = &hal.transportFactory;
+
+    uart = static_cast<UartTransport*>(factory->createUart(uartConfig));
+    wifi = static_cast<WifiTransport*>(factory->createWifi(wifiConfig));
+
 #if HAS_BLE
-    ble = new BleTransport("ESP32-SPP");
+    ble = static_cast<BleTransport*>(factory->createBle(bleConfig));
+#else
+    (void)bleConfig;
 #endif
+
 #if HAS_MQTT_TRANSPORT && HAS_WIFI
-    if (mqttBroker != nullptr) {
-        mqtt = new MqttTransport(mqttBroker, mqttPort, robotId);
+    if (mqttConfig.broker != nullptr) {
+        mqtt = static_cast<MqttTransport*>(factory->createMqtt(mqttConfig));
     }
+#else
+    (void)mqttConfig;
 #endif
+
     if (uart) transport.addTransport(uart);
     if (wifi) transport.addTransport(wifi);
 #if HAS_BLE

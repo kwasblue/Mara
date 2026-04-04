@@ -1,10 +1,9 @@
 #pragma once
 
-#include <Arduino.h>  // For HardwareSerial
 #include "core/ITransport.h"
 
-// HAL (Hardware Abstraction Layer)
-#include "hal/esp32/Esp32Hal.h"
+// HAL (Hardware Abstraction Layer) - Platform auto-detected
+#include "hal/PlatformHal.h"
 
 // Include all necessary headers for service types
 #include "core/Clock.h"
@@ -129,9 +128,9 @@ struct ServiceStorage {
     ~ServiceStorage();
 
     // =========================================================================
-    // Tier 0: Hardware Abstraction Layer (platform-specific)
+    // Tier 0: Hardware Abstraction Layer (platform auto-selected)
     // =========================================================================
-    hal::Esp32HalStorage hal;
+    hal::PlatformHalStorage hal;
 
     // =========================================================================
     // Tier 1: Core infrastructure (no dependencies)
@@ -269,12 +268,17 @@ struct ServiceStorage {
         hal.i2c.begin(sda, scl, freq);
     }
 
-    /// Initialize transports that require runtime parameters.
+    /// Initialize transports using HAL transport factory.
     /// Call this in setup() after Serial is ready.
-    /// mqttBroker can be nullptr to disable MQTT.
-    void initTransports(HardwareSerial& serial, uint32_t baud, uint16_t tcpPort,
-                        const char* mqttBroker = nullptr, uint16_t mqttPort = 1883,
-                        const char* robotId = "node0");
+    ///
+    /// @param uartConfig UART configuration (set serial to &Serial on Arduino)
+    /// @param wifiConfig WiFi TCP configuration
+    /// @param bleConfig BLE configuration (device name)
+    /// @param mqttConfig MQTT configuration (set broker to nullptr to disable)
+    void initTransports(const hal::UartTransportConfig& uartConfig,
+                        const hal::WifiTransportConfig& wifiConfig,
+                        const hal::BleTransportConfig& bleConfig = {},
+                        const hal::MqttTransportConfig& mqttConfig = {});
 
     /// Initialize CAN transport (optional, call after initHal).
     /// @param nodeId Local CAN node ID (0-14)

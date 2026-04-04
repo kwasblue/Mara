@@ -27,6 +27,13 @@ from mara_host.core.build_profiles import (
     feature_to_macro,
     LIMIT_TO_MACRO,
     CONFIG_PATH,
+    # Platform settings
+    get_platform_settings,
+    get_platform_target,
+    platform_to_macro,
+    PLATFORM_TO_MACRO,
+    VALID_TARGETS,
+    VALID_SDKS,
 )
 
 
@@ -44,9 +51,14 @@ def generate_cpp_header(profile_name: str | None = None) -> str:
         profile_name: Profile to use (default: active_profile from config)
     """
     transport = get_transport_settings()
+    platform = get_platform_settings()
     categories = get_feature_categories()
     active_profile = profile_name or get_active_profile()
     features = get_profile(active_profile)
+
+    # Get platform target and macro
+    target = platform.get("target", "esp32")
+    target_macro = platform_to_macro(target)
 
     lines = [
         "// GeneratedBuildConfig.h",
@@ -56,12 +68,41 @@ def generate_cpp_header(profile_name: str | None = None) -> str:
         f"// Generated from: config/mara_build.yaml",
         f"// Generated at:   {datetime.now().isoformat()}",
         f"// Active profile: {active_profile}",
+        f"// Target platform: {target}",
         "//",
         "// To regenerate, run:",
         "//   mara generate all",
+        "//",
+        "// Note: PLATFORM_* and HAS_* macros use #ifndef guards to allow",
+        "// command-line overrides (e.g., -DPLATFORM_NATIVE=1 for unit tests).",
         "// =============================================================================",
         "",
         "#pragma once",
+        "",
+        "// =============================================================================",
+        "// Target Platform",
+        "// =============================================================================",
+        "// Only one PLATFORM_* should be 1, all others should be 0.",
+        "// This controls HAL selection via hal/PlatformHal.h",
+        "//",
+        "// For native/unit test builds, PLATFORM_NATIVE should be set via build flags",
+        "// which take precedence over these generated defaults.",
+    ]
+
+    # Generate platform defines with guards (allow command-line override)
+    for platform_name, macro in PLATFORM_TO_MACRO.items():
+        value = 1 if platform_name == target else 0
+        lines.append(f"#ifndef {macro}")
+        lines.append(f"#define {macro} {value}")
+        lines.append("#endif")
+
+    # Add platform metadata
+    lines.extend([
+        "",
+        f"#define MARA_PLATFORM_TARGET \"{target}\"",
+        f"#define MARA_PLATFORM_BOARD \"{platform.get('board', 'esp32dev')}\"",
+        f"#define MARA_PLATFORM_SDK \"{platform.get('sdk', 'arduino')}\"",
+        f"#define MARA_PLATFORM_VARIANT \"{platform.get('variant', '')}\"",
         "",
         "// =============================================================================",
         "// Transport Settings",
@@ -74,17 +115,20 @@ def generate_cpp_header(profile_name: str | None = None) -> str:
         "// =============================================================================",
         f"// Feature Flags (profile: {active_profile})",
         "// =============================================================================",
-    ]
+    ])
 
     # Group features by category
     # These are the authoritative values from mara_build.yaml
+    # Using #ifndef guards to allow command-line overrides for test builds
     for category, feature_names in categories.items():
         lines.append(f"// {category}")
         for name in feature_names:
             if name in features:
                 value = 1 if features[name] else 0
                 define_name = feature_to_macro(name)
+                lines.append(f"#ifndef {define_name}")
                 lines.append(f"#define {define_name} {value}")
+                lines.append("#endif")
         lines.append("")
 
     # Add profile name as a string define
@@ -151,6 +195,7 @@ def generate_python_module(profile_name: str | None = None) -> str:
         profile_name: Profile to use (default: active_profile from config)
     """
     transport = get_transport_settings()
+    platform = get_platform_settings()
     categories = get_feature_categories()
     dependencies = get_feature_dependencies()
     all_profiles = get_all_profiles()
@@ -167,6 +212,7 @@ def generate_python_module(profile_name: str | None = None) -> str:
         f"Generated from: config/mara_build.yaml",
         f"Generated at:   {datetime.now().isoformat()}",
         f"Active profile: {active_profile}",
+        f"Target platform: {platform.get('target', 'esp32')}",
         "",
         "To regenerate, run:",
         "  mara generate all",
@@ -176,6 +222,17 @@ def generate_python_module(profile_name: str | None = None) -> str:
         '"""',
         "",
         "from typing import Dict, List, Any",
+        "",
+        "# =============================================================================",
+        "# Target Platform",
+        "# =============================================================================",
+        f"PLATFORM_TARGET: str = \"{platform.get('target', 'esp32')}\"",
+        f"PLATFORM_BOARD: str = \"{platform.get('board', 'esp32dev')}\"",
+        f"PLATFORM_SDK: str = \"{platform.get('sdk', 'arduino')}\"",
+        f"PLATFORM_VARIANT: str = \"{platform.get('variant', '')}\"",
+        "",
+        f"VALID_TARGETS: List[str] = {list(VALID_TARGETS)}",
+        f"VALID_SDKS: List[str] = {list(VALID_SDKS)}",
         "",
         "# =============================================================================",
         "# Transport Settings",

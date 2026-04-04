@@ -43,6 +43,93 @@ def get_config() -> dict[str, Any]:
 
 
 # =============================================================================
+# Platform Settings
+# =============================================================================
+
+# Default platform settings
+DEFAULT_PLATFORM: dict[str, str] = {
+    "target": "esp32",
+    "board": "esp32dev",
+    "sdk": "arduino",
+    "variant": "",
+}
+
+# Maps target names to C++ platform macros
+PLATFORM_TO_MACRO: dict[str, str] = {
+    "esp32": "PLATFORM_ESP32",
+    "stm32": "PLATFORM_STM32",
+    "rp2040": "PLATFORM_RP2040",
+    "native": "PLATFORM_NATIVE",
+}
+
+# Valid platform targets
+VALID_TARGETS = ["esp32", "stm32", "rp2040", "native"]
+VALID_SDKS = ["arduino", "espidf", "mbed"]
+
+
+def get_platform_settings() -> dict[str, str]:
+    """Get platform settings (target, board, sdk, variant)."""
+    config = _load_config().get("platform", {})
+    result = DEFAULT_PLATFORM.copy()
+    result.update(config)
+    return result
+
+
+def get_platform_target() -> str:
+    """Get target platform (esp32, stm32, rp2040, native)."""
+    return get_platform_settings().get("target", "esp32")
+
+
+def get_platform_board() -> str:
+    """Get PlatformIO board name."""
+    return get_platform_settings().get("board", "esp32dev")
+
+
+def get_platform_sdk() -> str:
+    """Get SDK/framework (arduino, espidf, mbed)."""
+    return get_platform_settings().get("sdk", "arduino")
+
+
+def get_platform_variant() -> str:
+    """Get optional platform variant (e.g., 's3' for ESP32-S3)."""
+    return get_platform_settings().get("variant", "")
+
+
+def platform_to_macro(target: str) -> str:
+    """Convert target name to C++ platform macro.
+
+    Args:
+        target: Platform target (e.g., "esp32", "native")
+
+    Returns:
+        Macro name (e.g., "PLATFORM_ESP32", "PLATFORM_NATIVE")
+    """
+    if target in PLATFORM_TO_MACRO:
+        return PLATFORM_TO_MACRO[target]
+    return f"PLATFORM_{target.upper()}"
+
+
+def validate_platform_settings() -> list[str]:
+    """Validate platform settings.
+
+    Returns:
+        List of validation error messages (empty if valid)
+    """
+    errors = []
+    settings = get_platform_settings()
+
+    target = settings.get("target", "")
+    if target not in VALID_TARGETS:
+        errors.append(f"Invalid platform target '{target}'. Valid: {VALID_TARGETS}")
+
+    sdk = settings.get("sdk", "")
+    if sdk not in VALID_SDKS:
+        errors.append(f"Invalid SDK '{sdk}'. Valid: {VALID_SDKS}")
+
+    return errors
+
+
+# =============================================================================
 # Transport Settings
 # =============================================================================
 

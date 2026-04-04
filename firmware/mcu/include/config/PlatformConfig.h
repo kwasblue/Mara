@@ -5,30 +5,44 @@
 #pragma once
 
 // =============================================================================
-// PLATFORM DETECTION
+// PLATFORM SELECTION - SINGLE SOURCE OF TRUTH
 // =============================================================================
-// These are automatically detected based on compiler/build system defines.
-// Only ONE platform should be active at a time.
+// Platform is configured in config/mara_build.yaml and generated to
+// GeneratedBuildConfig.h. Include that first if available.
+//
+// Priority:
+// 1. Generated config from mara_build.yaml (if PLATFORM_* already defined)
+// 2. Compiler/build system detection (fallback for PlatformIO environments)
+// 3. Default to native for unit tests
 
-#if defined(ESP32) || defined(ARDUINO_ARCH_ESP32)
-    #define PLATFORM_ESP32 1
-    #define PLATFORM_NAME "esp32"
-#elif defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(ARDUINO_ARCH_STM32)
-    #define PLATFORM_STM32 1
-    #define PLATFORM_NAME "stm32"
-#elif defined(ARDUINO_ARCH_RP2040) || defined(PICO_BUILD)
-    #define PLATFORM_RP2040 1
-    #define PLATFORM_NAME "rp2040"
-#elif defined(NATIVE_BUILD) || defined(UNIT_TEST) || !defined(ARDUINO)
-    #define PLATFORM_NATIVE 1
-    #define PLATFORM_NAME "native"
+// Check if platform was already defined (from GeneratedBuildConfig.h or CLI)
+#if defined(PLATFORM_ESP32) || defined(PLATFORM_STM32) || defined(PLATFORM_RP2040) || defined(PLATFORM_NATIVE)
+    // Platform already defined - skip auto-detection
+    #define PLATFORM_FROM_CONFIG 1
 #else
-    // Default to native for unknown platforms (unit tests, etc.)
-    #define PLATFORM_NATIVE 1
-    #define PLATFORM_NAME "native"
+    // Auto-detect from compiler defines (fallback)
+    #define PLATFORM_FROM_CONFIG 0
+
+    #if defined(ESP32) || defined(ARDUINO_ARCH_ESP32)
+        #define PLATFORM_ESP32 1
+        #define PLATFORM_NAME "esp32"
+    #elif defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(ARDUINO_ARCH_STM32)
+        #define PLATFORM_STM32 1
+        #define PLATFORM_NAME "stm32"
+    #elif defined(ARDUINO_ARCH_RP2040) || defined(PICO_BUILD)
+        #define PLATFORM_RP2040 1
+        #define PLATFORM_NAME "rp2040"
+    #elif defined(NATIVE_BUILD) || defined(UNIT_TEST) || !defined(ARDUINO)
+        #define PLATFORM_NATIVE 1
+        #define PLATFORM_NAME "native"
+    #else
+        // Default to native for unknown platforms (unit tests, etc.)
+        #define PLATFORM_NATIVE 1
+        #define PLATFORM_NAME "native"
+    #endif
 #endif
 
-// Ensure mutually exclusive
+// Ensure all platform macros are defined (0 if not set)
 #ifndef PLATFORM_ESP32
     #define PLATFORM_ESP32 0
 #endif
@@ -40,6 +54,19 @@
 #endif
 #ifndef PLATFORM_NATIVE
     #define PLATFORM_NATIVE 0
+#endif
+
+// Set PLATFORM_NAME if not already set
+#ifndef PLATFORM_NAME
+    #if PLATFORM_ESP32
+        #define PLATFORM_NAME "esp32"
+    #elif PLATFORM_STM32
+        #define PLATFORM_NAME "stm32"
+    #elif PLATFORM_RP2040
+        #define PLATFORM_NAME "rp2040"
+    #else
+        #define PLATFORM_NAME "native"
+    #endif
 #endif
 
 // =============================================================================

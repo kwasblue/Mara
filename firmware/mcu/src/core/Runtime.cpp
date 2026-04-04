@@ -70,7 +70,10 @@ void Runtime::loop() {
 }
 
 bool Runtime::initializeStorage() {
-    storage_.initTransports(Serial, config_.serial_baud, config_.tcp_port);
+    // Configure transports using HAL config structs
+    hal::UartTransportConfig uartCfg{&Serial, config_.serial_baud};
+    hal::WifiTransportConfig wifiCfg{config_.tcp_port};
+    storage_.initTransports(uartCfg, wifiCfg);
     storage_.initRouter();
     storage_.initCommands();
     storage_.initControl();

@@ -5,8 +5,32 @@
 # This file defines ALL shared settings between firmware and host.
 # Run `mara generate all` to regenerate:
 #   - firmware/mcu/include/config/GeneratedBuildConfig.h
+#   - firmware/mcu/include/config/GeneratedLimits.h
 #   - host/mara_host/core/_generated_config.py
 # =============================================================================
+
+# -----------------------------------------------------------------------------
+# Target Platform
+# -----------------------------------------------------------------------------
+# This is the ONE PLACE to configure the target MCU platform.
+# Changing this will regenerate the correct HAL selection.
+#
+# Supported platforms:
+#   - esp32: ESP32, ESP32-S2, ESP32-S3, ESP32-C3
+#   - stm32: STM32 family (future)
+#   - rp2040: Raspberry Pi Pico (future)
+#   - native: Host/test builds (stubs)
+#
+# Supported SDKs:
+#   - arduino: Arduino framework (default)
+#   - espidf: ESP-IDF native (future)
+#   - mbed: Mbed OS (future)
+#
+platform:
+  target: esp32           # Target MCU: esp32 | stm32 | rp2040 | native
+  board: esp32dev         # PlatformIO board name
+  sdk: arduino            # SDK/framework: arduino | espidf | mbed
+  variant: ""             # Optional variant (e.g., "s3" for ESP32-S3)
 
 # -----------------------------------------------------------------------------
 # Transport Settings

@@ -7,8 +7,6 @@
 # Ignore private WiFi credentials
 include/config/WifiSecrets.h
 
-partitions_ota_big.csv
-
 # ---- PlatformIO build folders ----
 .pio/
 .pioenvs/

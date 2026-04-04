@@ -21,6 +21,7 @@ RESOURCE_CAPABILITIES = "mara://robot/capabilities"
 RESOURCE_SIGNALS = "mara://robot/signals"
 RESOURCE_EVENTS = "mara://robot/events"
 RESOURCE_COMMANDS = "mara://robot/commands"
+RESOURCE_TOOLS = "mara://robot/tools"
 
 
 def get_resource_definitions() -> list[dict]:
@@ -60,6 +61,12 @@ def get_resource_definitions() -> list[dict]:
             "description": "Recent commands with success/failure status and latency",
             "mimeType": "application/json",
         },
+        {
+            "uri": RESOURCE_TOOLS,
+            "name": "Tool Categories",
+            "description": "Available tools organized by category - use to find the right tool for a task",
+            "mimeType": "application/json",
+        },
     ]
 
 
@@ -84,6 +91,8 @@ async def read_resource(runtime: "MaraRuntime", uri: str) -> str:
         return _read_events(runtime)
     elif uri == RESOURCE_COMMANDS:
         return _read_commands(runtime)
+    elif uri == RESOURCE_TOOLS:
+        return _read_tools()
     else:
         return json.dumps({"error": f"Unknown resource: {uri}"})
 
@@ -208,4 +217,36 @@ def _read_commands(runtime: "MaraRuntime") -> str:
     return json.dumps({
         "stats": stats,
         "recent": commands,
+    }, indent=2)
+
+
+def _read_tools() -> str:
+    """Read available tools organized by category."""
+    from mara_host.mcp._generated_tools import get_tool_definitions
+    from mara_host.mcp.categories import (
+        list_tools_by_category,
+        CATEGORIES,
+    )
+
+    all_tools = get_tool_definitions()
+    by_cat = list_tools_by_category(all_tools)
+
+    categories = {}
+    for cat_id, cat in CATEGORIES.items():
+        tools_in_cat = by_cat.get(cat_id, [])
+        if tools_in_cat:
+            categories[cat_id] = {
+                "name": cat.name,
+                "icon": cat.icon,
+                "description": cat.description,
+                "tools": [
+                    {"name": t["name"], "description": t["description"]}
+                    for t in sorted(tools_in_cat, key=lambda x: x["name"])
+                ],
+            }
+
+    return json.dumps({
+        "total_tools": len(all_tools),
+        "categories": categories,
+        "usage_hint": "Use mara_list_tools(category='motion') to see tools in a specific category",
     }, indent=2)

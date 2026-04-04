@@ -43,6 +43,14 @@ from mara_host.mcp.errors import wrap_exception, StructuredResult
 from mara_host.mcp.instructions import SERVER_INSTRUCTIONS, get_mode_tools
 from mara_host.mcp.resources import get_resource_definitions, read_resource
 from mara_host.mcp.prompts import get_prompt_definitions, get_prompt_template
+from mara_host.mcp.categories import (
+    get_tool_category,
+    get_category_description,
+    list_tools_by_category,
+    get_category_summary,
+    format_tools_for_llm,
+    CATEGORIES,
+)
 
 
 @dataclass
@@ -166,13 +174,86 @@ def create_server(
     # Tools
     # ═══════════════════════════════════════════════════════════════════════════
 
+    # Meta-tool for listing tools by category
+    META_TOOL_LIST = Tool(
+        name="mara_list_tools",
+        description="List all available tools organized by category. Use this to find the right tool for a task.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": "Filter to specific category (lifecycle, state, safety, motion, servo, motor, sensor, signal, control, gpio, config, diagnostic, recording, network, benchmark, camera)",
+                },
+                "format": {
+                    "type": "string",
+                    "enum": ["summary", "detailed"],
+                    "description": "Output format: 'summary' for category counts, 'detailed' for full tool list",
+                    "default": "summary",
+                },
+            },
+        },
+    )
+
+    def _add_category_to_description(tool: Tool) -> Tool:
+        """Add category prefix to tool description."""
+        cat = get_tool_category(tool.name)
+        if cat:
+            prefix = f"[{cat.name}] "
+            if not tool.description.startswith("["):
+                return Tool(
+                    name=tool.name,
+                    description=prefix + tool.description,
+                    inputSchema=tool.inputSchema,
+                )
+        return tool
+
     @server.list_tools()
     async def list_tools() -> list[Tool]:
         all_tools = get_tool_definitions()
-        if mode_tools is None:
-            return all_tools
+
         # Filter to mode-specific tools
-        return [t for t in all_tools if t.name in mode_tools]
+        if mode_tools is not None:
+            all_tools = [t for t in all_tools if t.name in mode_tools]
+
+        # Add category prefixes to descriptions
+        categorized_tools = [_add_category_to_description(t) for t in all_tools]
+
+        # Add meta-tool at the beginning
+        return [META_TOOL_LIST] + categorized_tools
+
+    def _handle_list_tools(arguments: dict[str, Any] | None) -> dict:
+        """Handle the mara_list_tools meta-tool."""
+        args = arguments or {}
+        category_filter = args.get("category")
+        output_format = args.get("format", "summary")
+
+        all_tools = get_tool_definitions()
+        if mode_tools is not None:
+            all_tools = [t for t in all_tools if t.name in mode_tools]
+
+        if output_format == "summary":
+            # Return category summary with counts
+            by_cat = list_tools_by_category(all_tools)
+            summary = {}
+            for cat_id, cat in CATEGORIES.items():
+                tools_in_cat = by_cat.get(cat_id, [])
+                if category_filter and cat_id != category_filter:
+                    continue
+                if tools_in_cat:
+                    summary[cat_id] = {
+                        "name": cat.name,
+                        "icon": cat.icon,
+                        "description": cat.description,
+                        "tool_count": len(tools_in_cat),
+                        "tools": [t["name"] for t in tools_in_cat],
+                    }
+            return {"categories": summary, "total_tools": len(all_tools)}
+        else:
+            # Return detailed markdown format
+            if category_filter:
+                all_tools = [t for t in all_tools if get_tool_category(t.name) and get_tool_category(t.name).id == category_filter]
+            return {"tools_by_category": format_tools_for_llm(all_tools)}
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict[str, Any] | None) -> list[TextContent]:
@@ -191,7 +272,11 @@ def create_server(
         is_error = False
 
         try:
-            result = await dispatch_tool(runtime, name, arguments)
+            # Handle meta-tools locally
+            if name == "mara_list_tools":
+                result = _handle_list_tools(arguments)
+            else:
+                result = await dispatch_tool(runtime, name, arguments)
 
             # Wrap successful results in structured format
             if isinstance(result, dict):

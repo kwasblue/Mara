@@ -73,8 +73,8 @@ inline uint8_t id(SectionId s) {
 // TELEM_BENCHMARK: bench_state(u8) active_test(u8) queue_depth(u8) result_count(u8)
 //   Size: variable
 //
-// TELEM_SIGNAL_TRACE: count(u8) rate_hz(u8) [id(u16) value(f32) ts_ms(u32)]...
-//   Size: 2 + count * 10 bytes (up to 162 bytes for 16 signals)
+// TELEM_SIGNAL_TRACE: 
+//   Size: variable
 //
 
 } // namespace TelemetrySections

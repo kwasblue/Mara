@@ -132,7 +132,7 @@ ACTUATOR_TEMPLATE = '''\
 #if HAS_{feature_flag}
 
 #include "motor/IActuator.h"
-#include "motor/ActuatorMacros.h"
+#include "motor/ActuatorRegistry.h"  // Contains REGISTER_ACTUATOR macro
 #include "config/PinConfig.h"
 #include "core/ServiceContext.h"
 #include <Arduino.h>

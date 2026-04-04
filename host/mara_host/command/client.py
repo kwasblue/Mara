@@ -910,6 +910,26 @@ class BaseMaraClient(BinaryCommandsMixin):
             **self.commander.stats(),
         }
 
+    def commander_stats(self) -> Dict[str, Any]:
+        """
+        Get command latency and reliability statistics.
+
+        Returns:
+            Dict with keys:
+            - commands_sent: Total commands sent
+            - commands_sent_binary: Binary-encoded commands sent
+            - acks_received: ACKs received
+            - timeouts: Commands that timed out
+            - retries: Total retry attempts
+            - pending: Currently pending commands
+            - latency: Dict with p50, p95, p99, count
+        """
+        return self.commander.stats()
+
+    def reset_commander_stats(self) -> None:
+        """Reset commander statistics for fresh measurement window."""
+        self.commander.reset_stats()
+
 
 class MaraClient(BaseMaraClient, RobotCommandsMixin):
     """

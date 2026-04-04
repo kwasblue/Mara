@@ -6,12 +6,64 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from typing import Optional
 
 from mara_host.core import protocol
 from mara_host.transport.base_transport import BaseTransport
 
 _log = logging.getLogger(__name__)
+
+
+@dataclass
+class TransportStats:
+    """Statistics for transport layer monitoring.
+
+    Tracks frame-level metrics for observability and debugging.
+
+    Attributes:
+        bytes_sent: Total bytes transmitted.
+        bytes_received: Total bytes received.
+        frames_sent: Number of frames successfully sent.
+        frames_received: Number of frames successfully parsed.
+        crc_errors: Number of CRC mismatches detected.
+        crc_bytes_skipped: Total bytes skipped due to CRC errors.
+        header_resyncs: Number of header resync events (framing errors).
+        consecutive_errors: Current streak of consecutive read errors.
+    """
+
+    bytes_sent: int = 0
+    bytes_received: int = 0
+    frames_sent: int = 0
+    frames_received: int = 0
+    crc_errors: int = 0
+    crc_bytes_skipped: int = 0
+    header_resyncs: int = 0
+    consecutive_errors: int = 0
+
+    def reset(self) -> None:
+        """Reset all counters to zero."""
+        self.bytes_sent = 0
+        self.bytes_received = 0
+        self.frames_sent = 0
+        self.frames_received = 0
+        self.crc_errors = 0
+        self.crc_bytes_skipped = 0
+        self.header_resyncs = 0
+        self.consecutive_errors = 0
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for serialization."""
+        return {
+            "bytes_sent": self.bytes_sent,
+            "bytes_received": self.bytes_received,
+            "frames_sent": self.frames_sent,
+            "frames_received": self.frames_received,
+            "crc_errors": self.crc_errors,
+            "crc_bytes_skipped": self.crc_bytes_skipped,
+            "header_resyncs": self.header_resyncs,
+            "consecutive_errors": self.consecutive_errors,
+        }
 
 
 class StreamTransport(BaseTransport, ABC):
@@ -34,6 +86,9 @@ class StreamTransport(BaseTransport, ABC):
         # Cached event loop reference (avoid get_running_loop() per call)
         self._cached_loop: Optional[asyncio.AbstractEventLoop] = None
 
+        # Transport statistics for observability
+        self._stats = TransportStats()
+
     # ---- subclass hooks ----
     @abstractmethod
     def _open(self) -> None: ...
@@ -50,6 +105,14 @@ class StreamTransport(BaseTransport, ABC):
     # ---- helpers ----
     def is_open(self) -> bool:
         return self._is_open
+
+    def get_stats(self) -> TransportStats:
+        """Get current transport statistics."""
+        return self._stats
+
+    def reset_stats(self) -> None:
+        """Reset transport statistics to zero."""
+        self._stats.reset()
 
     # ---- sync lifecycle ----
     def start(self) -> None:
@@ -129,12 +192,19 @@ class StreamTransport(BaseTransport, ABC):
                 data = self._read_raw(256)
                 if data:
                     consecutive_errors = 0  # Reset on successful read
+                    self._stats.consecutive_errors = 0
+                    self._stats.bytes_received += len(data)
                     self._rx_buffer.extend(data)
-                    protocol.extract_frames(self._rx_buffer, self._safe_handle_body)
+                    protocol.extract_frames(
+                        self._rx_buffer,
+                        self._safe_handle_body,
+                        on_error=self._on_frame_error,
+                    )
                 else:
                     time.sleep(0.01)
             except Exception as e:
                 consecutive_errors += 1
+                self._stats.consecutive_errors = consecutive_errors
                 _log.warning(
                     "Reader loop error (%d/%d): %s",
                     consecutive_errors, self._MAX_CONSECUTIVE_ERRORS, e
@@ -145,8 +215,17 @@ class StreamTransport(BaseTransport, ABC):
                     break
                 time.sleep(0.5)
 
+    def _on_frame_error(self, error_type: str, bytes_skipped: int) -> None:
+        """Handle frame parsing errors for stats tracking."""
+        if error_type == "crc_mismatch":
+            self._stats.crc_errors += 1
+            self._stats.crc_bytes_skipped += bytes_skipped
+        elif error_type == "header_resync":
+            self._stats.header_resyncs += 1
+
     def _safe_handle_body(self, body: bytes) -> None:
         """Wrap frame handler to catch and log exceptions."""
+        self._stats.frames_received += 1
         try:
             self._handle_body(body)
         except Exception as e:
@@ -196,3 +275,5 @@ class StreamTransport(BaseTransport, ABC):
             if not self._is_open or self._stop:
                 raise RuntimeError("Transport not open")
             self._send_bytes(data)
+            self._stats.bytes_sent += len(data)
+            self._stats.frames_sent += 1

@@ -601,6 +601,55 @@ class Robot:
         await self.client.cmd_telem_set_interval(interval_ms=interval_ms)
 
     # -------------------------------------------------------------------------
+    # Observability
+    # -------------------------------------------------------------------------
+
+    def get_commander_stats(self) -> Dict[str, Any]:
+        """
+        Get command latency and reliability statistics.
+
+        Returns:
+            Dict with keys:
+            - commands_sent: Total commands sent
+            - commands_sent_binary: Binary-encoded commands sent
+            - acks_received: ACKs received
+            - timeouts: Commands that timed out
+            - retries: Total retry attempts
+            - pending: Currently pending commands
+            - latency: Dict with p50, p95, p99, count
+
+        Example:
+            stats = robot.get_commander_stats()
+            print(f"P99 latency: {stats['latency']['p99']:.1f}ms")
+        """
+        return self.client.commander_stats()
+
+    def get_transport_stats(self) -> Dict[str, Any]:
+        """
+        Get transport layer statistics.
+
+        Returns:
+            Dict with keys:
+            - bytes_sent: Total bytes transmitted
+            - bytes_received: Total bytes received
+            - frames_sent: Frames successfully sent
+            - frames_received: Frames successfully parsed
+            - crc_errors: CRC mismatch count
+            - crc_bytes_skipped: Bytes discarded due to CRC errors
+            - header_resyncs: Header resync events
+            - consecutive_errors: Current error streak
+
+        Example:
+            stats = robot.get_transport_stats()
+            print(f"CRC errors: {stats['crc_errors']}")
+        """
+        if self._transport is None:
+            return {}
+        if hasattr(self._transport, 'get_stats'):
+            return self._transport.get_stats().to_dict()
+        return {}
+
+    # -------------------------------------------------------------------------
     # Convenience Methods
     # -------------------------------------------------------------------------
 

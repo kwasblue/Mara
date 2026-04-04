@@ -114,7 +114,12 @@ def encode(msg_type: int, payload: bytes = b"") -> bytes:
 
 _HEADER_BYTE = bytes([HEADER])  # Pre-allocated for find()
 
-def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None:
+
+def extract_frames(
+    buffer: bytearray,
+    on_frame: Callable[[bytes], None],
+    on_error: Callable[[str, int], None] | None = None,
+) -> None:
     """
     Parse as many frames as possible from buffer.
 
@@ -126,6 +131,18 @@ def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None
     where:
         body[0] = msg_type
         body[1:] = payload
+
+    Args:
+        buffer: Incoming data buffer (mutated, consumed bytes removed).
+        on_frame: Called with frame body on successful parse.
+        on_error: Optional callback for parse errors. Called with:
+            - error_type: "crc_mismatch" | "header_resync"
+            - bytes_skipped: Number of bytes skipped
+
+            Distinguishing error types enables diagnosis:
+            - Occasional "crc_mismatch" with small bytes_skipped = noise
+            - Frequent "crc_mismatch" with large bytes_skipped = systematic corruption
+            - "header_resync" = out-of-band data or framing desync
 
     Mutates buffer, removing consumed bytes.
     """
@@ -159,6 +176,8 @@ def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None
         # sanity check
         if length < 1 or length > _MAX_LEN:
             # bogus length -> treat as false header, resync
+            if on_error:
+                on_error("header_resync", 1)
             i += 1
             continue
 
@@ -177,6 +196,8 @@ def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None
 
         if not body:
             # should not happen if length >= 1, but be defensive
+            if on_error:
+                on_error("header_resync", 1)
             i += 1
             continue
 
@@ -186,6 +207,8 @@ def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None
         # Validate message type before CRC check (fast rejection of garbage)
         if msg_type not in _VALID_MSG_TYPES:
             # Unknown message type, skip this header and resync
+            if on_error:
+                on_error("header_resync", 1)
             i += 1
             continue
 
@@ -208,6 +231,8 @@ def extract_frames(buffer: bytearray, on_frame: Callable[[bytes], None]) -> None
             # Log at WARNING so corruption is visible on noisy serial lines
             _log.warning("CRC mismatch at offset %d, skipping %d bytes (expected=0x%04X, got=0x%04X)",
                          i, frame_total, expected_crc, recv_crc)
+            if on_error:
+                on_error("crc_mismatch", frame_total)
             i += frame_total
 
         n = len(buffer)

@@ -606,3 +606,20 @@ class ReliableCommander:
             "pending": self.pending_count(),
             "latency": self.get_latency_percentiles(),
         }
+
+    def reset_stats(self) -> None:
+        """
+        Reset all counters for fresh measurement window.
+
+        Clears:
+        - Send/ack/timeout/retry counters
+        - Latency samples
+
+        Does NOT clear pending commands or affect in-flight operations.
+        """
+        self.commands_sent = 0
+        self.commands_sent_binary = 0
+        self.acks_received = 0
+        self.timeouts = 0
+        self.retries = 0
+        self._latencies_ms.clear()

@@ -8,6 +8,9 @@
 #include "hal/IGpio.h"
 #include <cstdint>
 
+// Forward declaration for auto-signals
+class SignalBus;
+
 // Simple quadrature encoder manager (A/B only, no index/Z yet).
 // - Supports up to MAX_ENCODERS encoders
 // - Uses ISR callbacks wired in EncoderManager.cpp
@@ -48,9 +51,44 @@ public:
         return (id < MAX_ENCODERS) && encoders_[id].initialized;
     }
 
+    // Detach encoder
+    void detach(uint8_t id);
+
+    // -------------------------------------------------------------------------
+    // Auto-Signals Support
+    // -------------------------------------------------------------------------
+
+    /// Enable auto-signal publishing to SignalBus.
+    /// Defines signals for encoder count and velocity for each attached encoder.
+    /// @param bus SignalBus instance to publish to
+    /// @param rate_hz Desired publish rate
+    void enableAutoSignals(SignalBus* bus, uint16_t rate_hz = 100);
+
+    /// Disable auto-signal publishing
+    void disableAutoSignals();
+
+    /// Check if auto-signals are enabled
+    bool autoSignalsEnabled() const { return signals_ != nullptr; }
+
+    /// Publish current encoder readings to SignalBus.
+    /// Should be called periodically (e.g., in main loop or control task).
+    void publishToSignals(uint32_t now_ms);
+
+    /// Set ticks per radian for velocity calculation (per encoder)
+    void setTicksPerRad(uint8_t id, float ticksPerRad);
+
 private:
     hal::IGpio* hal_ = nullptr;
     Encoder encoders_[MAX_ENCODERS];
+
+    // Auto-signals state
+    SignalBus* signals_ = nullptr;
+    uint16_t signalRateHz_ = 100;
+    uint32_t lastPublishMs_ = 0;
+    bool signalsDefined_[MAX_ENCODERS] = {false};
+    int32_t lastCount_[MAX_ENCODERS] = {0};
+    uint32_t lastCountMs_[MAX_ENCODERS] = {0};
+    float ticksPerRad_[MAX_ENCODERS] = {1.0f, 1.0f};
 };
 
 // Global pointer used by file-local ISRs to call into the manager.
@@ -77,11 +115,17 @@ public:
     EncoderManager() = default;
     void setHal(hal::IGpio*) {}
     void attach(uint8_t, uint8_t, uint8_t) {}
+    void detach(uint8_t) {}
     int32_t getCount(uint8_t) const { return 0; }
     void reset(uint8_t) {}
     void handleA(uint8_t) {}
     void handleB(uint8_t) {}
     bool isAttached(uint8_t) const { return false; }
+    void enableAutoSignals(void*, uint16_t = 100) {}
+    void disableAutoSignals() {}
+    bool autoSignalsEnabled() const { return false; }
+    void publishToSignals(uint32_t) {}
+    void setTicksPerRad(uint8_t, float) {}
 };
 
 inline EncoderManager* getGlobalEncoderManager() { return nullptr; }

@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT
 // =============================================================================
 // Generated from: config/mara_build.yaml
-// Generated at:   2026-04-04T09:41:14.879756
+// Generated at:   2026-04-04T11:20:13.597283
 // Active profile: full
 // Target platform: esp32
 //

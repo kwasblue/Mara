@@ -7,6 +7,9 @@
 #include "hal/II2c.h"
 #include "core/Debug.h"
 
+// Forward declaration for auto-signals
+class SignalBus;
+
 class ImuManager {
 public:
     struct Sample {
@@ -51,12 +54,39 @@ public:
     /// Read one accel/gyro/temp sample. Returns false if IMU offline or read failed.
     bool readSample(Sample& out);
 
+    // -------------------------------------------------------------------------
+    // Auto-Signals Support
+    // -------------------------------------------------------------------------
+
+    /// Enable auto-signal publishing to SignalBus.
+    /// Defines signals for IMU readings (ax, ay, az, gx, gy, gz, pitch, roll).
+    /// @param bus SignalBus instance to publish to
+    /// @param rate_hz Desired publish rate (actual rate depends on loop() call frequency)
+    void enableAutoSignals(SignalBus* bus, uint16_t rate_hz = 100);
+
+    /// Disable auto-signal publishing
+    void disableAutoSignals();
+
+    /// Check if auto-signals are enabled
+    bool autoSignalsEnabled() const { return signals_ != nullptr; }
+
+    /// Publish current IMU readings to SignalBus.
+    /// Should be called periodically (e.g., in main loop or control task).
+    /// Respects the rate_hz configured in enableAutoSignals().
+    void publishToSignals(uint32_t now_ms);
+
 private:
     hal::II2c* hal_ = nullptr;
     uint8_t addr_ = 0x68;
     uint8_t whoAmI_ = 0;
     DeviceType deviceType_ = DeviceType::Unknown;
     bool online_ = false;
+
+    // Auto-signals state
+    SignalBus* signals_ = nullptr;
+    uint16_t signalRateHz_ = 100;
+    uint32_t lastPublishMs_ = 0;
+    bool signalsDefined_ = false;
 };
 
 #else // !HAS_IMU
@@ -91,6 +121,10 @@ public:
     uint8_t whoAmI() const { return 0; }
     DeviceType deviceType() const { return DeviceType::Unknown; }
     bool readSample(Sample&) { return false; }
+    void enableAutoSignals(void*, uint16_t = 100) {}
+    void disableAutoSignals() {}
+    bool autoSignalsEnabled() const { return false; }
+    void publishToSignals(uint32_t) {}
 };
 
 #endif // HAS_IMU

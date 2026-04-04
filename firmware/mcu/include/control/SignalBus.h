@@ -21,6 +21,58 @@
 #include "core/CriticalSection.h"
 #include "core/RealTimeContract.h"
 
+// -----------------------------------------------------------------------------
+// Signal Namespace - Reserved ID ranges for auto-signals
+// -----------------------------------------------------------------------------
+// User-defined signals: 1-999
+// Auto-signals (hardware managers): 1000-1999
+// This prevents collisions between user-defined signals and auto-published
+// hardware readings.
+
+namespace SignalNamespace {
+    // User-defined signals: 1-999
+    static constexpr uint16_t USER_MIN = 1;
+    static constexpr uint16_t USER_MAX = 999;
+
+    // Auto-signals: 1000-1999
+    static constexpr uint16_t AUTO_MIN = 1000;
+    static constexpr uint16_t AUTO_MAX = 1999;
+
+    // IMU: 1000-1019
+    static constexpr uint16_t IMU_AX = 1000;
+    static constexpr uint16_t IMU_AY = 1001;
+    static constexpr uint16_t IMU_AZ = 1002;
+    static constexpr uint16_t IMU_GX = 1003;
+    static constexpr uint16_t IMU_GY = 1004;
+    static constexpr uint16_t IMU_GZ = 1005;
+    static constexpr uint16_t IMU_PITCH = 1006;
+    static constexpr uint16_t IMU_ROLL = 1007;
+
+    // Encoders: 1020-1039 (encoder_id offset: 1020 + encoder_id*2 for count, +1 for velocity)
+    static constexpr uint16_t ENCODER_BASE = 1020;
+    static constexpr uint16_t ENCODER_COUNT_OFFSET = 0;
+    static constexpr uint16_t ENCODER_VEL_OFFSET = 1;
+
+    // DC Motors: 1040-1059 (motor_id offset: 1040 + motor_id for PWM output)
+    static constexpr uint16_t DC_MOTOR_BASE = 1040;
+
+    // Servos: 1060-1079 (servo_id offset: 1060 + servo_id for angle)
+    static constexpr uint16_t SERVO_BASE = 1060;
+
+    // Ultrasonic: 1080-1099 (sensor_id offset: 1080 + sensor_id for distance)
+    static constexpr uint16_t ULTRASONIC_BASE = 1080;
+
+    // Check if an ID is in the auto-signal range
+    inline bool isAutoSignal(uint16_t id) {
+        return id >= AUTO_MIN && id <= AUTO_MAX;
+    }
+
+    // Check if an ID is in the user-defined range
+    inline bool isUserSignal(uint16_t id) {
+        return id >= USER_MIN && id <= USER_MAX;
+    }
+}
+
 class SignalBus {
 public:
     SignalBus() {
@@ -58,11 +110,22 @@ public:
         uint32_t last_set_ms = 0;
         uint16_t updates_this_sec = 0;
         uint32_t rate_window_start = 0;
+        // Auto-signal protection: read_only prevents external set() calls
+        bool read_only = false;
     };
 
-    // Define a new signal (returns false if ID already exists)
+    // Define a new user signal (returns false if ID already exists or is in auto-signal range)
+    // User signals must be in range 1-999
     bool define(uint16_t id, const char* name, Kind kind, float initial = 0.0f);
-    
+
+    // Define an auto-signal (used by hardware managers, e.g., IMU, encoders)
+    // Auto-signals are read-only and cannot be modified by external set() calls
+    // Auto-signals must be in range 1000-1999
+    bool defineAutoSignal(uint16_t id, const char* name, Kind kind, float initial = 0.0f);
+
+    // Set auto-signal value (bypasses read_only check, for hardware managers only)
+    RT_SAFE bool setAutoSignal(uint16_t id, float v, uint32_t now_ms = 0);
+
     // Check if signal exists
     bool exists(uint16_t id) const;
     
@@ -137,6 +200,25 @@ public:
     // Resolve name to ID (returns 0 if not found)
     uint16_t resolveId(const char* name) const;
 
+    // -------------------------------------------------------------------------
+    // Signal Trace Subscription - stream selected signals via telemetry
+    // -------------------------------------------------------------------------
+
+    /// Set signals to trace (max 16). Pass empty array to disable.
+    /// rate_hz: Update rate for trace telemetry (default 10Hz, max 50Hz)
+    void setTraceSignals(const uint16_t* ids, size_t count, uint16_t rate_hz = 10);
+
+    /// Get current trace configuration
+    size_t getTracedSignals(uint16_t* outIds, size_t maxCount) const;
+    uint16_t getTraceRateHz() const { return trace_rate_hz_; }
+
+    /// Get snapshot of traced signals (for telemetry)
+    /// Returns number of signals written
+    size_t getTracedSnapshot(SignalSnapshot* out, size_t maxCount) const;
+
+    /// Check if tracing is enabled
+    bool isTraceEnabled() const { return trace_count_ > 0; }
+
 private:
     std::vector<SignalDef> signals_;
     std::unordered_map<uint16_t, size_t> idToIndex_;  // O(1) lookup cache
@@ -155,6 +237,12 @@ private:
 
     // Thread safety (spinlock)
     mutable mara::SpinlockType lock_ = MCU_SPINLOCK_INIT;
+
+    // Signal trace subscription
+    static constexpr size_t MAX_TRACE_SIGNALS = 16;
+    uint16_t trace_ids_[MAX_TRACE_SIGNALS] = {0};
+    size_t trace_count_ = 0;
+    uint16_t trace_rate_hz_ = 10;  // Default 10Hz
 };
 
 // -----------------------------------------------------------------------------
@@ -247,6 +335,8 @@ public:
     };
 
     bool define(uint16_t, const char*, Kind, float = 0.0f) { return false; }
+    bool defineAutoSignal(uint16_t, const char*, Kind, float = 0.0f) { return false; }
+    bool setAutoSignal(uint16_t, float, uint32_t = 0) { return false; }
     bool exists(uint16_t) const { return false; }
     bool set(uint16_t, float, uint32_t = 0) { return false; }
     SetResult setWithRateLimit(uint16_t, float, uint32_t) { return SetResult::SIGNAL_NOT_FOUND; }
@@ -269,6 +359,11 @@ public:
     bool getByName(const char*, float&) const { return false; }
     bool setByName(const char*, float, uint32_t = 0) { return false; }
     uint16_t resolveId(const char*) const { return 0; }
+    void setTraceSignals(const uint16_t*, size_t, uint16_t = 10) {}
+    size_t getTracedSignals(uint16_t*, size_t) const { return 0; }
+    uint16_t getTraceRateHz() const { return 0; }
+    size_t getTracedSnapshot(SignalSnapshot*, size_t) const { return 0; }
+    bool isTraceEnabled() const { return false; }
 
 private:
     std::vector<SignalDef> empty_;

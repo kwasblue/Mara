@@ -19,6 +19,12 @@ int SignalBus::indexOf_(uint16_t id) const {
 }
 
 bool SignalBus::define(uint16_t id, const char* name, Kind kind, float initial) {
+    // Reject IDs in the auto-signal reserved range
+    // User signals must be in range 1-999
+    if (SignalNamespace::isAutoSignal(id)) {
+        return false;
+    }
+
     mara::CriticalSection lock(lock_);
 
     // Check if already exists using O(1) lookup
@@ -26,6 +32,8 @@ bool SignalBus::define(uint16_t id, const char* name, Kind kind, float initial) 
     if (it != idToIndex_.end()) {
         // Update existing signal (idempotent)
         auto& d = signals_[it->second];
+        // Don't allow changing a read-only auto-signal to user signal
+        if (d.read_only) return false;
         d.kind = kind;
         d.value = initial;
         d.ts_ms = 0;
@@ -45,6 +53,7 @@ bool SignalBus::define(uint16_t id, const char* name, Kind kind, float initial) 
     d.kind = kind;
     d.value = initial;
     d.ts_ms = 0;
+    d.read_only = false;  // User-defined signals are writable
 
     if (name && name[0] != '\0') {
         strncpy(d.name, name, NAME_MAX_LEN);
@@ -60,6 +69,69 @@ bool SignalBus::define(uint16_t id, const char* name, Kind kind, float initial) 
     return true;
 }
 
+bool SignalBus::defineAutoSignal(uint16_t id, const char* name, Kind kind, float initial) {
+    // Auto-signals must be in range 1000-1999
+    if (!SignalNamespace::isAutoSignal(id)) {
+        return false;
+    }
+
+    mara::CriticalSection lock(lock_);
+
+    // Check if already exists using O(1) lookup
+    auto it = idToIndex_.find(id);
+    if (it != idToIndex_.end()) {
+        // Update existing auto-signal (idempotent)
+        auto& d = signals_[it->second];
+        d.kind = kind;
+        d.value = initial;
+        d.ts_ms = 0;
+        d.read_only = true;  // Ensure it stays read-only
+        if (name && name[0] != '\0') {
+            strncpy(d.name, name, NAME_MAX_LEN);
+            d.name[NAME_MAX_LEN] = '\0';
+        }
+        return true;
+    }
+
+    // Check capacity
+    if (signals_.size() >= MAX_SIGNALS) return false;
+
+    // Create new auto-signal
+    SignalDef d;
+    d.id = id;
+    d.kind = kind;
+    d.value = initial;
+    d.ts_ms = 0;
+    d.read_only = true;  // Auto-signals are read-only
+
+    if (name && name[0] != '\0') {
+        strncpy(d.name, name, NAME_MAX_LEN);
+        d.name[NAME_MAX_LEN] = '\0';
+    } else {
+        d.name[0] = '\0';
+    }
+
+    // Add to vector and update lookup map
+    size_t newIndex = signals_.size();
+    signals_.push_back(d);
+    idToIndex_[id] = newIndex;
+    return true;
+}
+
+bool SignalBus::setAutoSignal(uint16_t id, float v, uint32_t now_ms) {
+    // This method bypasses the read_only check for hardware managers
+    mara::CriticalSection lock(lock_);
+    int idx = indexOf_(id);
+    if (idx < 0) {
+        return false;
+    }
+    auto& sig = signals_[static_cast<size_t>(idx)];
+    sig.value = v;
+    sig.ts_ms = now_ms;
+    sig.last_set_ms = now_ms;
+    return true;
+}
+
 bool SignalBus::exists(uint16_t id) const {
     mara::CriticalSection lock(lock_);
     return indexOf_(id) >= 0;
@@ -72,6 +144,10 @@ bool SignalBus::set(uint16_t id, float v, uint32_t now_ms) {
         return false;
     }
     auto& sig = signals_[static_cast<size_t>(idx)];
+    // Block external writes to read-only auto-signals
+    if (sig.read_only) {
+        return false;
+    }
     sig.value = v;
     sig.ts_ms = now_ms;
     sig.last_set_ms = now_ms;
@@ -259,6 +335,79 @@ size_t SignalBus::snapshot(SignalSnapshot* out, size_t max_count) const {
         out[i].value = s.value;
         out[i].ts_ms = s.ts_ms;
         out[i].kind = s.kind;
+    }
+
+    return count;
+}
+
+// -----------------------------------------------------------------------------
+// Signal Trace Subscription
+// -----------------------------------------------------------------------------
+
+void SignalBus::setTraceSignals(const uint16_t* ids, size_t count, uint16_t rate_hz) {
+    mara::CriticalSection lock(lock_);
+
+    // Clear current trace
+    trace_count_ = 0;
+
+    if (!ids || count == 0) {
+        return;  // Tracing disabled
+    }
+
+    // Limit count to max trace signals
+    if (count > MAX_TRACE_SIGNALS) {
+        count = MAX_TRACE_SIGNALS;
+    }
+
+    // Copy valid signal IDs (only those that exist)
+    for (size_t i = 0; i < count; ++i) {
+        if (indexOf_(ids[i]) >= 0) {
+            trace_ids_[trace_count_++] = ids[i];
+        }
+    }
+
+    // Clamp rate to 1-50Hz
+    if (rate_hz < 1) rate_hz = 1;
+    if (rate_hz > 50) rate_hz = 50;
+    trace_rate_hz_ = rate_hz;
+}
+
+size_t SignalBus::getTracedSignals(uint16_t* outIds, size_t maxCount) const {
+    mara::CriticalSection lock(lock_);
+
+    size_t count = trace_count_;
+    if (count > maxCount) count = maxCount;
+
+    for (size_t i = 0; i < count; ++i) {
+        outIds[i] = trace_ids_[i];
+    }
+
+    return count;
+}
+
+size_t SignalBus::getTracedSnapshot(SignalSnapshot* out, size_t maxCount) const {
+    if (!out || maxCount == 0 || trace_count_ == 0) return 0;
+
+    mara::CriticalSection lock(lock_);
+
+    size_t count = trace_count_;
+    if (count > maxCount) count = maxCount;
+
+    for (size_t i = 0; i < count; ++i) {
+        int idx = indexOf_(trace_ids_[i]);
+        if (idx >= 0) {
+            const auto& s = signals_[static_cast<size_t>(idx)];
+            out[i].id = s.id;
+            out[i].value = s.value;
+            out[i].ts_ms = s.ts_ms;
+            out[i].kind = s.kind;
+        } else {
+            // Signal was removed - zero out the snapshot entry
+            out[i].id = trace_ids_[i];
+            out[i].value = 0.0f;
+            out[i].ts_ms = 0;
+            out[i].kind = Kind::REF;
+        }
     }
 
     return count;

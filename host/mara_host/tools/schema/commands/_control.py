@@ -59,6 +59,40 @@ CONTROL_COMMAND_OBJECTS: dict[str, CommandDef] = {
             "id": FieldDef(type="integer", description="Signal ID to delete"),
         },
     ),
+    "CMD_CTRL_SIGNAL_TRACE": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Subscribe to trace specific signals via telemetry at a configurable rate.",
+        payload={
+            "signal_ids": FieldDef(
+                type="array",
+                items=FieldDef(type="int"),
+                description="List of signal IDs to trace (max 16). Empty array disables tracing.",
+            ),
+            "rate_hz": FieldDef(
+                type="int",
+                default=10,
+                minimum=1,
+                maximum=50,
+                description="Update rate in Hz (1-50, default 10).",
+            ),
+        },
+    ),
+    "CMD_CTRL_AUTO_SIGNALS_CONFIG": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Configure auto-signal publishing from hardware managers (IMU, encoders, etc). Requires ARMED state.",
+        payload={
+            "imu": FieldDef(
+                type="object",
+                description="IMU auto-signal config: {enabled: bool, rate_hz: int}",
+            ),
+            "encoder": FieldDef(
+                type="object",
+                description="Encoder auto-signal config: {enabled: bool, rate_hz: int}",
+            ),
+        },
+    ),
 
     # Slot Configuration
     "CMD_CTRL_SLOT_CONFIG": CommandDef(

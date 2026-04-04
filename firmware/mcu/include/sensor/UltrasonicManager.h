@@ -4,7 +4,10 @@
 
 #if HAS_ULTRASONIC
 
+#include "config/PlatformConfig.h"
+#if PLATFORM_HAS_ARDUINO
 #include <Arduino.h>
+#endif
 #include "core/Debug.h"
 
 class UltrasonicManager {

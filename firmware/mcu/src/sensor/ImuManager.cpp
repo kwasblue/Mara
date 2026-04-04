@@ -3,7 +3,9 @@
 #if HAS_IMU
 
 #include "sensor/ImuManager.h"
+#include "control/SignalBus.h"
 #include "core/Clock.h"
+#include <math.h>
 
 #include "config/PlatformConfig.h"
 #if PLATFORM_HAS_ARDUINO
@@ -170,6 +172,73 @@ bool ImuManager::readSample(Sample& out) {
     out.temp_c = (temp_raw / 340.0f) + 36.53f;
 
     return true;
+}
+
+// -----------------------------------------------------------------------------
+// Auto-Signals Support
+// -----------------------------------------------------------------------------
+
+void ImuManager::enableAutoSignals(SignalBus* bus, uint16_t rate_hz) {
+    signals_ = bus;
+    signalRateHz_ = rate_hz > 0 ? rate_hz : 100;
+    lastPublishMs_ = 0;
+
+    if (!bus || signalsDefined_) {
+        return;
+    }
+
+    // Define auto-signals for IMU readings
+    // These use the reserved namespace from SignalNamespace
+    bus->defineAutoSignal(SignalNamespace::IMU_AX, "imu.ax", SignalBus::Kind::MEAS, 0.0f);
+    bus->defineAutoSignal(SignalNamespace::IMU_AY, "imu.ay", SignalBus::Kind::MEAS, 0.0f);
+    bus->defineAutoSignal(SignalNamespace::IMU_AZ, "imu.az", SignalBus::Kind::MEAS, 0.0f);
+    bus->defineAutoSignal(SignalNamespace::IMU_GX, "imu.gx", SignalBus::Kind::MEAS, 0.0f);
+    bus->defineAutoSignal(SignalNamespace::IMU_GY, "imu.gy", SignalBus::Kind::MEAS, 0.0f);
+    bus->defineAutoSignal(SignalNamespace::IMU_GZ, "imu.gz", SignalBus::Kind::MEAS, 0.0f);
+    bus->defineAutoSignal(SignalNamespace::IMU_PITCH, "imu.pitch", SignalBus::Kind::EST, 0.0f);
+    bus->defineAutoSignal(SignalNamespace::IMU_ROLL, "imu.roll", SignalBus::Kind::EST, 0.0f);
+
+    signalsDefined_ = true;
+    DBG_PRINTF("[ImuManager] Auto-signals enabled at %u Hz\n", signalRateHz_);
+}
+
+void ImuManager::disableAutoSignals() {
+    signals_ = nullptr;
+    lastPublishMs_ = 0;
+    DBG_PRINTLN("[ImuManager] Auto-signals disabled");
+}
+
+void ImuManager::publishToSignals(uint32_t now_ms) {
+    if (!signals_ || !online_) {
+        return;
+    }
+
+    // Rate limiting
+    const uint32_t period_ms = signalRateHz_ > 0 ? (1000 / signalRateHz_) : 10;
+    if (lastPublishMs_ > 0 && (now_ms - lastPublishMs_) < period_ms) {
+        return;
+    }
+
+    Sample sample;
+    if (!readSample(sample)) {
+        return;
+    }
+
+    // Publish raw readings
+    signals_->setAutoSignal(SignalNamespace::IMU_AX, sample.ax_g, now_ms);
+    signals_->setAutoSignal(SignalNamespace::IMU_AY, sample.ay_g, now_ms);
+    signals_->setAutoSignal(SignalNamespace::IMU_AZ, sample.az_g, now_ms);
+    signals_->setAutoSignal(SignalNamespace::IMU_GX, sample.gx_dps, now_ms);
+    signals_->setAutoSignal(SignalNamespace::IMU_GY, sample.gy_dps, now_ms);
+    signals_->setAutoSignal(SignalNamespace::IMU_GZ, sample.gz_dps, now_ms);
+
+    // Compute and publish pitch/roll estimates (using accelerometer only)
+    const float pitch_deg = atan2f(sample.ay_g, sqrtf(sample.ax_g * sample.ax_g + sample.az_g * sample.az_g)) * 57.2957795f;
+    const float roll_deg = atan2f(-sample.ax_g, sample.az_g) * 57.2957795f;
+    signals_->setAutoSignal(SignalNamespace::IMU_PITCH, pitch_deg, now_ms);
+    signals_->setAutoSignal(SignalNamespace::IMU_ROLL, roll_deg, now_ms);
+
+    lastPublishMs_ = now_ms;
 }
 
 #endif // HAS_IMU

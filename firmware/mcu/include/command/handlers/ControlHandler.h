@@ -27,6 +27,8 @@ public:
             case CmdType::CTRL_SIGNALS_LIST:
             case CmdType::CTRL_SIGNAL_DELETE:
             case CmdType::CTRL_SIGNALS_CLEAR:
+            case CmdType::CTRL_SIGNAL_TRACE:
+            case CmdType::CTRL_AUTO_SIGNALS_CONFIG:
             case CmdType::CTRL_SLOT_CONFIG:
             case CmdType::CTRL_SLOT_ENABLE:
             case CmdType::CTRL_SLOT_RESET:
@@ -56,6 +58,8 @@ public:
             case CmdType::CTRL_SIGNALS_LIST:          handleSignalsList(ctx); break;
             case CmdType::CTRL_SIGNAL_DELETE:         handleSignalDelete(payload, ctx); break;
             case CmdType::CTRL_SIGNALS_CLEAR:         handleSignalsClear(ctx); break;
+            case CmdType::CTRL_SIGNAL_TRACE:          handleSignalTrace(payload, ctx); break;
+            case CmdType::CTRL_AUTO_SIGNALS_CONFIG:   handleAutoSignalsConfig(payload, ctx); break;
             case CmdType::CTRL_SLOT_CONFIG:           handleSlotConfig(payload, ctx); break;
             case CmdType::CTRL_SLOT_ENABLE:           handleSlotEnable(payload, ctx); break;
             case CmdType::CTRL_SLOT_RESET:            handleSlotReset(payload, ctx); break;
@@ -85,6 +89,8 @@ private:
     void handleSignalsList(CommandContext& ctx);
     void handleSignalDelete(JsonVariantConst payload, CommandContext& ctx);
     void handleSignalsClear(CommandContext& ctx);
+    void handleSignalTrace(JsonVariantConst payload, CommandContext& ctx);
+    void handleAutoSignalsConfig(JsonVariantConst payload, CommandContext& ctx);
 
     void handleSlotConfig(JsonVariantConst payload, CommandContext& ctx);
     void handleSlotEnable(JsonVariantConst payload, CommandContext& ctx);

@@ -154,6 +154,31 @@ const SignalBus::SignalDef* SignalBus::find(uint16_t id) const {
     return &signals_[idx];
 }
 
+bool SignalBus::defineAutoSignal(uint16_t id, const char* name, Kind kind, float initial) {
+    // Stub: just defer to define for tests
+    return define(id, name, kind, initial);
+}
+
+bool SignalBus::setAutoSignal(uint16_t id, float v, uint32_t now_ms) {
+    // Stub: just defer to set for tests
+    return set(id, v, now_ms);
+}
+
+void SignalBus::setTraceSignals(const uint16_t* ids, size_t count, uint16_t rate_hz) {
+    (void)ids; (void)count; (void)rate_hz;
+    // Stub: no-op for tests
+}
+
+size_t SignalBus::getTracedSignals(uint16_t* outIds, size_t maxCount) const {
+    (void)outIds; (void)maxCount;
+    return 0;
+}
+
+size_t SignalBus::getTracedSnapshot(SignalSnapshot* out, size_t maxCount) const {
+    (void)out; (void)maxCount;
+    return 0;
+}
+
 // ============================================================================
 // ControlKernel stubs
 // ============================================================================

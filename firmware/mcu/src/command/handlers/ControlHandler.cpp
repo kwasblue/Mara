@@ -157,6 +157,62 @@ void ControlHandler::handleSignalsClear(CommandContext& ctx) {
     ctx.sendAck(ACK, true, resp);
 }
 
+void ControlHandler::handleSignalTrace(JsonVariantConst payload, CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_CTRL_SIGNAL_TRACE";
+
+    if (!controlModule_) {
+        ctx.sendError(ACK, "no_control_module");
+        return;
+    }
+
+    // Parse signal IDs array
+    JsonArrayConst ids = payload["signal_ids"].as<JsonArrayConst>();
+    uint16_t rate_hz = payload["rate_hz"] | 10;
+
+    // Validate rate (1-50Hz)
+    if (rate_hz < 1) rate_hz = 1;
+    if (rate_hz > 50) rate_hz = 50;
+
+    SignalBus& bus = controlModule_->signals();
+
+    if (!ids || ids.size() == 0) {
+        // Disable tracing
+        bus.setTraceSignals(nullptr, 0, 0);
+        JsonDocument resp;
+        resp["tracing"] = false;
+        resp["count"] = 0;
+        ctx.sendAck(ACK, true, resp);
+        return;
+    }
+
+    // Convert to array of IDs
+    uint16_t signalIds[16];
+    size_t count = 0;
+    for (JsonVariantConst idVar : ids) {
+        if (count >= 16) break;
+        signalIds[count++] = static_cast<uint16_t>(idVar.as<int>());
+    }
+
+    bus.setTraceSignals(signalIds, count, rate_hz);
+
+    JsonDocument resp;
+    resp["tracing"] = true;
+    resp["count"] = bus.isTraceEnabled() ? static_cast<int>(count) : 0;
+    resp["rate_hz"] = rate_hz;
+    ctx.sendAck(ACK, true, resp);
+}
+
+void ControlHandler::handleAutoSignalsConfig(JsonVariantConst payload, CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_CTRL_AUTO_SIGNALS_CONFIG";
+
+    // Auto-signals config requires ARMED or ACTIVE - IDLE is read-only
+    if (!ctx.requireArmedOrActive(ACK)) return;
+
+    // This handler requires access to sensor managers via ServiceContext
+    // For now, send error - full implementation requires ServiceContext wiring
+    ctx.sendError(ACK, "not_implemented");
+}
+
 // -------------------------------------------------------------------------
 // Slot Commands
 // -------------------------------------------------------------------------

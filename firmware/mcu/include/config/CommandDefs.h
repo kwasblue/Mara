@@ -50,6 +50,8 @@ enum class CmdType {
     CTRL_SIGNAL_DELETE,
     CTRL_SIGNAL_GET,
     CTRL_SIGNAL_SET,
+    CTRL_SIGNAL_TRACE,          // Set signals to trace via telemetry
+    CTRL_AUTO_SIGNALS_CONFIG,   // Configure auto-signal publishing from hardware
     CTRL_SLOT_CONFIG,
     CTRL_SLOT_ENABLE,
     CTRL_SLOT_GET_PARAM,
@@ -175,6 +177,8 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_CTRL_SIGNAL_DELETE", CmdType::CTRL_SIGNAL_DELETE},
         {"CMD_CTRL_SIGNAL_GET", CmdType::CTRL_SIGNAL_GET},
         {"CMD_CTRL_SIGNAL_SET", CmdType::CTRL_SIGNAL_SET},
+        {"CMD_CTRL_SIGNAL_TRACE", CmdType::CTRL_SIGNAL_TRACE},
+        {"CMD_CTRL_AUTO_SIGNALS_CONFIG", CmdType::CTRL_AUTO_SIGNALS_CONFIG},
         {"CMD_CTRL_SLOT_CONFIG", CmdType::CTRL_SLOT_CONFIG},
         {"CMD_CTRL_SLOT_ENABLE", CmdType::CTRL_SLOT_ENABLE},
         {"CMD_CTRL_SLOT_GET_PARAM", CmdType::CTRL_SLOT_GET_PARAM},
@@ -301,6 +305,8 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::CTRL_SIGNAL_DELETE: return "CMD_CTRL_SIGNAL_DELETE";
         case CmdType::CTRL_SIGNAL_GET: return "CMD_CTRL_SIGNAL_GET";
         case CmdType::CTRL_SIGNAL_SET: return "CMD_CTRL_SIGNAL_SET";
+        case CmdType::CTRL_SIGNAL_TRACE: return "CMD_CTRL_SIGNAL_TRACE";
+        case CmdType::CTRL_AUTO_SIGNALS_CONFIG: return "CMD_CTRL_AUTO_SIGNALS_CONFIG";
         case CmdType::CTRL_SLOT_CONFIG: return "CMD_CTRL_SLOT_CONFIG";
         case CmdType::CTRL_SLOT_ENABLE: return "CMD_CTRL_SLOT_ENABLE";
         case CmdType::CTRL_SLOT_GET_PARAM: return "CMD_CTRL_SLOT_GET_PARAM";

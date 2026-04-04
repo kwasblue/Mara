@@ -153,6 +153,20 @@ struct CommandContext {
         return false;
     }
 
+    /**
+     * Require robot to be in ARMED or ACTIVE state.
+     * Used for commands that modify configuration (graph upload, signal define, etc.)
+     * IDLE is read-only to prevent unauthorized configuration changes.
+     */
+    bool requireArmedOrActive(const char* cmdName) {
+        MaraMode m = mode.mode();
+        if (m == MaraMode::ARMED || m == MaraMode::ACTIVE) {
+            return true;
+        }
+        sendError(cmdName, ErrorCode::NOT_ARMED);
+        return false;
+    }
+
     // -------------------------------------------------------------------------
     // Input Validation Helpers
     // -------------------------------------------------------------------------

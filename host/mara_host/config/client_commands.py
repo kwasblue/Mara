@@ -301,10 +301,12 @@ class RobotCommandsMixin:
         payload['slot'] = slot
         await self.send_json_cmd('CMD_CTRL_SLOT_STATUS', payload)
 
-    async def cmd_ctrl_graph_upload(self, graph: Any) -> None:
-        """Upload a runtime control-graph config. First slice stores validated graph config on the MCU. (CMD_CTRL_GRAPH_UPLOAD)"""
+    async def cmd_ctrl_graph_upload(self, graph: Any, commit: bool = True, mode: str = 'replace') -> None:
+        """Upload a runtime control-graph config. Use commit=false for two-phase commit (requires CMD_CTRL_GRAPH_COMMIT to activate). (CMD_CTRL_GRAPH_UPLOAD)"""
         payload: dict[str, Any] = {}
         payload['graph'] = graph
+        payload['commit'] = commit
+        payload['mode'] = mode
         await self.send_json_cmd('CMD_CTRL_GRAPH_UPLOAD', payload)
 
     async def cmd_ctrl_graph_clear(self) -> None:
@@ -322,6 +324,18 @@ class RobotCommandsMixin:
         """Get status of the stored runtime control graph. (CMD_CTRL_GRAPH_STATUS)"""
         payload: dict[str, Any] = {}
         await self.send_json_cmd('CMD_CTRL_GRAPH_STATUS', payload)
+
+    async def cmd_ctrl_graph_debug(self, slot_id: str) -> None:
+        """Enable debug streaming for a single slot to see intermediate transform values. Only one slot can be in debug mode at a time. (CMD_CTRL_GRAPH_DEBUG)"""
+        payload: dict[str, Any] = {}
+        payload['slot_id'] = slot_id
+        await self.send_json_cmd('CMD_CTRL_GRAPH_DEBUG', payload)
+
+    async def cmd_ctrl_graph_commit(self, token: int) -> None:
+        """Commit a pending control graph upload. Use with CMD_CTRL_GRAPH_UPLOAD commit=false for two-phase commit. (CMD_CTRL_GRAPH_COMMIT)"""
+        payload: dict[str, Any] = {}
+        payload['token'] = token
+        await self.send_json_cmd('CMD_CTRL_GRAPH_COMMIT', payload)
 
     async def cmd_mcu_diagnostics_query(self) -> None:
         """Query persisted MCU diagnostics and mirrored persistence metadata. (CMD_MCU_DIAGNOSTICS_QUERY)"""
@@ -563,6 +577,22 @@ class RobotCommandsMixin:
         if motion_timeout_ms is not None:
             payload['motion_timeout_ms'] = motion_timeout_ms
         await self.send_json_cmd('CMD_SET_SAFETY_TIMEOUTS', payload)
+
+    async def cmd_set_signing_key(self, key: Optional[str] = None, signature: Optional[str] = None) -> None:
+        """Set the signing key for state transition authentication. First key allowed unconditionally. Key rotation requires current key signature. (CMD_SET_SIGNING_KEY)"""
+        payload: dict[str, Any] = {}
+        if key is not None:
+            payload['key'] = key
+        if signature is not None:
+            payload['signature'] = signature
+        await self.send_json_cmd('CMD_SET_SIGNING_KEY', payload)
+
+    async def cmd_release_session(self, client_id: Optional[int] = None) -> None:
+        """Release session ownership to allow another host to take control. (CMD_RELEASE_SESSION)"""
+        payload: dict[str, Any] = {}
+        if client_id is not None:
+            payload['client_id'] = client_id
+        await self.send_json_cmd('CMD_RELEASE_SESSION', payload)
 
     async def cmd_imu_read(self) -> None:
         """Read IMU sensor data (accelerometer and gyroscope). (CMD_IMU_READ)"""

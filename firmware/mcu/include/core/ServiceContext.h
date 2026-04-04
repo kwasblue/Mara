@@ -105,6 +105,8 @@ namespace mara {
     class SensorRegistry;
     class TransportRegistry;
     class ActuatorRegistry;
+    class SignatureVerifier;
+    class SessionManager;
 }
 namespace persistence {
     class McuPersistence;
@@ -222,6 +224,10 @@ struct ServiceContext {
     TransportRegistry* transportRegistry = nullptr;
     ActuatorRegistry*  actuatorRegistry  = nullptr;
     persistence::McuPersistence* persistence = nullptr;
+
+    // Security
+    SignatureVerifier* verifier = nullptr;  // Signature verification for state transitions
+    SessionManager* session = nullptr;      // Session ownership management
 
     // =========================================================================
     // Convenience methods for null-safety

@@ -26,6 +26,8 @@ enum class ErrorCode : uint16_t {
     NOT_ACTIVE = 102,
     IN_ESTOP = 103,
     CANNOT_CLEAR_ESTOP = 104,
+    UNAUTHORIZED = 105,         // Missing or invalid signature for state transition
+    SESSION_OCCUPIED = 106,     // Another host owns the session
 
     // Hardware errors (200-299)
     HARDWARE_FAULT = 200,
@@ -72,6 +74,8 @@ inline const char* errorCodeToString(ErrorCode code) {
         case ErrorCode::NOT_ACTIVE: return "NOT_ACTIVE";
         case ErrorCode::IN_ESTOP: return "IN_ESTOP";
         case ErrorCode::CANNOT_CLEAR_ESTOP: return "CANNOT_CLEAR_ESTOP";
+        case ErrorCode::UNAUTHORIZED: return "UNAUTHORIZED";
+        case ErrorCode::SESSION_OCCUPIED: return "SESSION_OCCUPIED";
         case ErrorCode::HARDWARE_FAULT: return "HARDWARE_FAULT";
         case ErrorCode::SENSOR_OFFLINE: return "SENSOR_OFFLINE";
         case ErrorCode::MOTOR_FAULT: return "MOTOR_FAULT";

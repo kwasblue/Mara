@@ -19,7 +19,8 @@ void ControlHandler::init(mara::ServiceContext& ctx) {
 void ControlHandler::handleSignalDefine(JsonVariantConst payload, CommandContext& ctx) {
     static constexpr const char* ACK = "CMD_CTRL_SIGNAL_DEFINE";
 
-    if (!ctx.requireIdle(ACK)) return;
+    // Signal defines require ARMED or ACTIVE - IDLE is read-only
+    if (!ctx.requireArmedOrActive(ACK)) return;
     if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
 
     auto result = mara::cmd::decodeSignalDef(payload);
@@ -163,7 +164,8 @@ void ControlHandler::handleSignalsClear(CommandContext& ctx) {
 void ControlHandler::handleSlotConfig(JsonVariantConst payload, CommandContext& ctx) {
     static constexpr const char* ACK = "CMD_CTRL_SLOT_CONFIG";
 
-    if (!ctx.requireIdle(ACK)) return;
+    // Slot config requires ARMED or ACTIVE - IDLE is read-only
+    if (!ctx.requireArmedOrActive(ACK)) return;
     if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
 
     auto result = mara::cmd::decodeSlotConfig(payload);
@@ -340,17 +342,72 @@ void ControlHandler::handleSlotStatus(JsonVariantConst payload, CommandContext& 
 void ControlHandler::handleGraphUpload(JsonVariantConst payload, CommandContext& ctx) {
     static constexpr const char* ACK = "CMD_CTRL_GRAPH_UPLOAD";
 
-    if (!ctx.requireIdle(ACK)) return;
+    // Graph upload requires ARMED or ACTIVE - IDLE is read-only
+    if (!ctx.requireArmedOrActive(ACK)) return;
     if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
 
     JsonVariantConst graph = payload["graph"];
+    const bool commit = payload["commit"] | true;  // Default to immediate commit
+    const char* modeStr = payload["mode"] | "replace";
     const char* error = nullptr;
-    bool ok = controlModule_->graph().upload(graph, error);
+
+    // Parse upload mode
+    ControlGraphRuntime::UploadMode mode = ControlGraphRuntime::UploadMode::Replace;
+    if (strcmp(modeStr, "merge") == 0) {
+        mode = ControlGraphRuntime::UploadMode::Merge;
+    }
 
     JsonDocument resp;
-    resp["present"] = ok;
-    resp["schema_version"] = ok ? controlModule_->graph().schemaVersion() : 0;
-    resp["slot_count"] = ok ? controlModule_->graph().slotCount() : 0;
+
+    if (commit) {
+        // Immediate activation
+        bool ok = controlModule_->graph().upload(graph, error, mode);
+        resp["present"] = ok;
+        resp["schema_version"] = ok ? controlModule_->graph().schemaVersion() : 0;
+        resp["slot_count"] = ok ? controlModule_->graph().slotCount() : 0;
+        resp["committed"] = ok;
+        resp["mode"] = modeStr;
+        if (!ok && error) {
+            resp["error"] = error;
+        }
+        ctx.sendAck(ACK, ok, resp);
+    } else {
+        // Two-phase commit: stage pending (mode applies on commit)
+        bool ok = controlModule_->graph().uploadPending(graph, error, ctx.now_ms());
+        resp["pending"] = ok;
+        if (ok) {
+            const auto& pending = controlModule_->graph().pendingInfo();
+            resp["token"] = pending.token;
+            resp["hash"] = pending.hash;
+            resp["slot_count"] = pending.slot_count;
+            resp["committed"] = false;
+        }
+        if (!ok && error) {
+            resp["error"] = error;
+        }
+        ctx.sendAck(ACK, ok, resp);
+    }
+}
+
+void ControlHandler::handleGraphCommit(JsonVariantConst payload, CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_CTRL_GRAPH_COMMIT";
+
+    // Graph commit requires ARMED or ACTIVE - IDLE is read-only
+    if (!ctx.requireArmedOrActive(ACK)) return;
+    if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
+
+    uint32_t token = payload["token"] | 0;
+    const char* error = nullptr;
+
+    bool ok = controlModule_->graph().commitPending(token, error, ctx.now_ms());
+
+    JsonDocument resp;
+    resp["committed"] = ok;
+    if (ok) {
+        resp["present"] = controlModule_->graph().present();
+        resp["schema_version"] = controlModule_->graph().schemaVersion();
+        resp["slot_count"] = controlModule_->graph().slotCount();
+    }
     if (!ok && error) {
         resp["error"] = error;
     }
@@ -392,6 +449,7 @@ void ControlHandler::handleGraphStatus(CommandContext& ctx) {
     if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
 
     const auto& graph = controlModule_->graph();
+    const uint32_t now_ms = ctx.now_ms();
     JsonDocument resp;
     resp["present"] = graph.present();
     resp["enabled"] = graph.enabled();
@@ -417,6 +475,43 @@ void ControlHandler::handleGraphStatus(CommandContext& ctx) {
         if (runtime.error[0]) {
             out["error"] = runtime.error;
         }
+
+        // Health monitoring info
+        out["healthy"] = graph.isSlotHealthy(i, now_ms);
+        out["actual_hz"] = graph.getSlotActualHz(i);
+        out["actual_period_us"] = runtime.actual_period_us;
+        out["min_period_us"] = runtime.min_period_us;
+        out["max_period_us"] = runtime.max_period_us;
+    }
+    ctx.sendAck(ACK, true, resp);
+}
+
+void ControlHandler::handleGraphDebug(JsonVariantConst payload, CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_CTRL_GRAPH_DEBUG";
+
+    if (!controlModule_) { ctx.sendError(ACK, "no_control_module"); return; }
+    if (!controlModule_->graph().present()) { ctx.sendError(ACK, "graph_not_present"); return; }
+
+    const char* slotId = payload["slot_id"] | "";
+
+    // Empty string or null disables debug mode
+    bool ok = controlModule_->graph().setDebugSlot(slotId);
+
+    JsonDocument resp;
+    if (!ok) {
+        resp["error"] = "slot_not_found";
+        resp["slot_id"] = slotId;
+        ctx.sendAck(ACK, false, resp);
+        return;
+    }
+
+    // Return current debug state
+    resp["debug_enabled"] = (controlModule_->graph().debugSlotIdx() >= 0);
+    const char* currentSlotId = controlModule_->graph().debugSlotId();
+    if (currentSlotId) {
+        resp["slot_id"] = currentSlotId;
+    } else {
+        resp["slot_id"] = nullptr;
     }
     ctx.sendAck(ACK, true, resp);
 }

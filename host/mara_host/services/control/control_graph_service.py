@@ -11,6 +11,7 @@ from mara_host.tools.schema.control_graph.schema import (
     ControlGraphConfig,
     ControlGraphValidationError,
     normalize_graph_model,
+    validate_signal_references,
 )
 
 
@@ -150,49 +151,120 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
     def _graph_for_safe_restore(graph: ControlGraphConfig) -> ControlGraphConfig:
         return graph.with_enabled(False)
 
-    async def upload(self, graph: dict[str, Any] | ControlGraphConfig) -> ServiceResult:
+    async def upload(
+        self,
+        graph: dict[str, Any] | ControlGraphConfig,
+        commit: bool = True,
+        mode: str = "replace",
+        validate_signals: bool = False,
+        external_signals: set[int] | None = None,
+    ) -> ServiceResult:
+        """
+        Upload a control graph to the MCU.
+
+        Args:
+            graph: The control graph configuration to upload.
+            commit: If True (default), immediately activate the graph.
+                   If False, stage as pending for two-phase commit.
+                   Use commit() method to activate a pending graph.
+            mode: Upload mode:
+                  - "replace" (default): Clear all, upload new graph
+                  - "merge": Preserve runtime state for unchanged slots.
+                    Slots with matching ID and identical config keep their
+                    integrator values, filter states, encoder state, etc.
+            validate_signals: If True, validate that all signal reads reference
+                             signals that are written by the graph or listed
+                             in external_signals.
+            external_signals: Signal IDs that are written by host code (not by
+                             the graph itself). Only used if validate_signals=True.
+
+        Returns:
+            ServiceResult with upload status.
+            If commit=False, includes 'token' and 'hash' for later commit.
+
+        Example:
+            # Re-upload same graph, preserving filter/integrator state
+            await service.upload(graph, mode="merge")
+        """
         try:
             normalized_model = normalize_graph_model(graph)
         except ControlGraphValidationError as exc:
             return ServiceResult.failure(error=str(exc))
+
+        # Optional signal reference validation
+        if validate_signals:
+            signal_errors = validate_signal_references(normalized_model, external_signals)
+            if signal_errors:
+                return ServiceResult.failure(
+                    error="Signal reference validation failed",
+                    data={"signal_errors": signal_errors},
+                )
 
         normalized = normalized_model.to_dict()
         policy = self._evaluate_graph_policy(normalized)
 
         result = await self._send_reliable_with_ack_payload(
             "CMD_CTRL_GRAPH_UPLOAD",
-            {"graph": normalized},
+            {"graph": normalized, "commit": commit, "mode": mode},
             error_message="Failed to upload control graph",
             ack_timeout_s=0.25,
         )
         if not result.ok:
             return result
 
-        # Update cache under lock for thread safety
-        async with self._cache_lock:
-            self._cached_graph_model = normalized_model
+        # Only update cache if committed immediately
+        if commit:
+            async with self._cache_lock:
+                self._cached_graph_model = normalized_model
 
-        # Persist to store - catch validation errors to avoid state divergence
-        # where MCU has graph but host can't restore it
-        persistence_error = None
-        if self._persistence_store is not None:
-            try:
-                self._persistence_store.save_graph(normalized_model)
-            except Exception as e:
-                # Log error but don't fail - MCU already has the graph
-                persistence_error = str(e)
-                import logging
-                logging.getLogger(__name__).warning(
-                    f"Failed to persist control graph (MCU has it): {e}"
-                )
+            # Persist to store - catch validation errors to avoid state divergence
+            persistence_error = None
+            if self._persistence_store is not None:
+                try:
+                    self._persistence_store.save_graph(normalized_model)
+                except Exception as e:
+                    persistence_error = str(e)
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"Failed to persist control graph (MCU has it): {e}"
+                    )
 
-        payload = dict(result.data or {})
-        if persistence_error:
-            payload["persistence_warning"] = persistence_error
+            payload = dict(result.data or {})
+            if persistence_error:
+                payload["persistence_warning"] = persistence_error
+        else:
+            # Pending upload - don't update cache yet
+            payload = dict(result.data or {})
+            payload["pending"] = True
+
         payload.setdefault("graph", normalized)
         if policy is not None:
             payload["policy"] = policy
         return ServiceResult.success(data=payload)
+
+    async def commit(self, token: int) -> ServiceResult:
+        """
+        Commit a pending control graph upload.
+
+        Args:
+            token: The token returned from upload(commit=False).
+
+        Returns:
+            ServiceResult with commit status.
+        """
+        result = await self._send_reliable_with_ack_payload(
+            "CMD_CTRL_GRAPH_COMMIT",
+            {"token": token},
+            error_message="Failed to commit control graph",
+            ack_timeout_s=0.25,
+        )
+        if not result.ok:
+            return result
+
+        # Update cache now that graph is committed
+        # Note: We don't have the model cached from pending upload,
+        # so the caller should re-query status if they need the full graph
+        return ServiceResult.success(data=dict(result.data or {}))
 
     async def apply(self, graph: dict[str, Any] | ControlGraphConfig, enable: bool = True) -> ServiceResult:
         # Pre-check policy BEFORE upload to avoid uploading a graph we can't enable
@@ -332,3 +404,76 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         payload["graph"] = safe_graph.to_dict()
         payload["restored_from_enabled_state"] = any(slot.enabled for slot in graph.slots)
         return ServiceResult.success(data=payload)
+
+    async def set_debug_slot(self, slot_id: str | None) -> ServiceResult:
+        """
+        Enable debug streaming for a single slot to see intermediate transform values.
+
+        Args:
+            slot_id: The slot ID to enable debug for, or None/empty string to disable.
+
+        Returns:
+            ServiceResult with debug_enabled and slot_id fields.
+
+        Only one slot can be in debug mode at a time due to bandwidth constraints.
+        Debug values will appear in telemetry as an array of floats representing:
+        [source_value, transform_1_output, transform_2_output, ..., final_output]
+        """
+        return await self._send_reliable_with_ack_payload(
+            "CMD_CTRL_GRAPH_DEBUG",
+            {"slot_id": slot_id or ""},
+            error_message="Failed to set debug slot",
+            ack_timeout_s=0.25,
+        )
+
+    async def get_slot_health(self) -> ServiceResult:
+        """
+        Get health status for all slots in the control graph.
+
+        Returns:
+            ServiceResult with slots array containing health info per slot:
+            - id: slot identifier
+            - healthy: whether slot is running at expected rate
+            - rate_hz: configured rate
+            - actual_hz: measured rate
+            - actual_period_us: measured period in microseconds
+            - min_period_us: minimum observed period
+            - max_period_us: maximum observed period
+            - error: error string if slot has an error
+        """
+        result = await self.status()
+        if not result.ok:
+            return result
+
+        slots = result.data.get("slots", [])
+        health_info: list[dict[str, Any]] = []
+        unhealthy_slots: list[str] = []
+
+        for slot in slots:
+            slot_health = {
+                "id": slot.get("id"),
+                "healthy": slot.get("healthy", True),
+                "rate_hz": slot.get("rate_hz", 0),
+                "actual_hz": slot.get("actual_hz", 0),
+                "actual_period_us": slot.get("actual_period_us", 0),
+                "min_period_us": slot.get("min_period_us", 0),
+                "max_period_us": slot.get("max_period_us", 0),
+                "error": slot.get("error"),
+            }
+            health_info.append(slot_health)
+
+            if not slot_health["healthy"]:
+                unhealthy_slots.append(slot_health["id"])
+
+        # Emit event if any slots are unhealthy
+        if unhealthy_slots:
+            self.client.bus.emit("ctrl_graph.unhealthy_slots", {
+                "slot_ids": unhealthy_slots,
+                "slots": [s for s in health_info if not s["healthy"]],
+            })
+
+        return ServiceResult.success(data={
+            "all_healthy": len(unhealthy_slots) == 0,
+            "unhealthy_count": len(unhealthy_slots),
+            "slots": health_info,
+        })

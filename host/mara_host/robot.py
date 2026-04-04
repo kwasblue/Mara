@@ -154,6 +154,7 @@ class Robot:
         ble_name: Optional[str] = None,
         tcp_port: int = 3333,
         baudrate: int = DEFAULT_BAUDRATE,
+        signing_key: Optional[bytes] = None,
     ) -> None:
         selected = sum(bool(v) for v in (port, host, ble_name))
         if selected != 1:
@@ -164,6 +165,7 @@ class Robot:
         self._ble_name = ble_name
         self._tcp_port = tcp_port
         self._baudrate = baudrate
+        self._signing_key = signing_key
 
         # Lazy-initialized on connect()
         self._transport = None
@@ -207,6 +209,7 @@ class Robot:
             self._transport,
             self._bus,
             handshake_timeout_s=handshake_timeout_s,
+            signing_key=self._signing_key,
         )
 
     # -------------------------------------------------------------------------

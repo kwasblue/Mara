@@ -30,6 +30,7 @@ struct PersistedDiagnostics {
     uint8_t last_fault = 0;
     uint8_t last_reset_reason = 0;
     bool dirty = false;
+    bool firmware_locked = false;  // Set after first boot, cleared by physical reset
 };
 
 struct PersistedConfigMirror {
@@ -56,6 +57,11 @@ public:
     const PersistedDiagnostics& diagnostics() const { return diagnostics_; }
     const PersistedConfigMirror& configMirror() const { return config_mirror_; }
     bool ready() const { return ready_; }
+
+    // Firmware lock management
+    bool isFirmwareLocked() const { return diagnostics_.firmware_locked; }
+    void setFirmwareLocked(bool locked);
+    void checkPhysicalReset(uint8_t gpioPin, uint32_t holdTimeMs = 5000);
 
     void fillDiagnostics(JsonObject node) const;
     void fillConfigMirror(JsonObject node) const;

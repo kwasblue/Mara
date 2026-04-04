@@ -184,6 +184,7 @@ void McuPersistence::loadDiagnostics_() {
         diagnostics_.host_recovery_count = halPersistence_->getUInt("host_recov", 0);
         diagnostics_.last_fault = halPersistence_->getUChar("last_fault", 0);
         diagnostics_.last_reset_reason = halPersistence_->getUChar("reset_rs", 0);
+        diagnostics_.firmware_locked = halPersistence_->getBool("fw_locked", false);
         diagnostics_.dirty = false;
         halPersistence_->end();
         return;
@@ -206,6 +207,7 @@ void McuPersistence::loadDiagnostics_() {
     diagnostics_.host_recovery_count = prefs.getUInt("host_recov", 0);
     diagnostics_.last_fault = prefs.getUChar("last_fault", 0);
     diagnostics_.last_reset_reason = prefs.getUChar("reset_rs", 0);
+    diagnostics_.firmware_locked = prefs.getBool("fw_locked", false);
     diagnostics_.dirty = false;
     prefs.end();
 #endif
@@ -361,6 +363,60 @@ void McuPersistence::saveConfigMirror_() {
     prefs.putBool("n_mqtt", config_mirror_.network.mqtt_enabled);
     prefs.putUInt("n_mqttp", config_mirror_.network.mqtt_port);
     prefs.end();
+#endif
+}
+
+void McuPersistence::setFirmwareLocked(bool locked) {
+    if (diagnostics_.firmware_locked == locked) {
+        return;
+    }
+    diagnostics_.firmware_locked = locked;
+    diagnostics_.dirty = true;
+
+    // Firmware lock state changes are saved immediately
+    // Use HAL if available
+    if (halPersistence_) {
+        if (halPersistence_->begin(kDiagNs, false)) {
+            halPersistence_->putBool("fw_locked", locked);
+            halPersistence_->end();
+        }
+        diagnostics_.dirty = false;
+        return;
+    }
+
+#if defined(ARDUINO_ARCH_ESP32)
+    Preferences prefs;
+    if (prefs.begin(kDiagNs, false)) {
+        prefs.putBool("fw_locked", locked);
+        prefs.end();
+    }
+    diagnostics_.dirty = false;
+#endif
+}
+
+void McuPersistence::checkPhysicalReset(uint8_t gpioPin, uint32_t holdTimeMs) {
+#if defined(ARDUINO_ARCH_ESP32)
+    // Check if button is held on boot
+    pinMode(gpioPin, INPUT_PULLUP);
+
+    // Wait for pin to stabilize
+    delay(100);
+
+    if (digitalRead(gpioPin) == LOW) {
+        // Button is pressed - wait for hold time
+        uint32_t startMs = millis();
+        while (digitalRead(gpioPin) == LOW) {
+            if ((millis() - startMs) >= holdTimeMs) {
+                // Button held long enough - clear firmware lock
+                setFirmwareLocked(false);
+                return;
+            }
+            delay(10);
+        }
+    }
+#else
+    (void)gpioPin;
+    (void)holdTimeMs;
 #endif
 }
 

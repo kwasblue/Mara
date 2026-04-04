@@ -127,6 +127,35 @@ SAFETY_COMMAND_OBJECTS: dict[str, CommandDef] = {
         category="safety",
         requires_arm=False,
     ),
+    "CMD_SET_SIGNING_KEY": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Set the signing key for state transition authentication. First key allowed unconditionally. Key rotation requires current key signature.",
+        payload={
+            "key": FieldDef(type="string", description="Hex-encoded 256-bit key (64 characters)"),
+            "signature": FieldDef(type="string", required=False, description="Signature of new key using current key (required for rotation)"),
+        },
+        response={
+            "key_set": FieldDef(type="bool", description="True if key was set successfully"),
+        },
+        category="security",
+        requires_arm=False,
+        skip_tool=True,
+    ),
+    "CMD_RELEASE_SESSION": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Release session ownership to allow another host to take control.",
+        payload={
+            "client_id": FieldDef(type="int", required=False, description="Client ID releasing session (optional)"),
+        },
+        response={
+            "released": FieldDef(type="bool", description="True if session was released"),
+        },
+        category="security",
+        requires_arm=False,
+        skip_tool=True,
+    ),
 }
 
 SAFETY_COMMANDS: dict[str, dict] = export_command_dicts(SAFETY_COMMAND_OBJECTS)

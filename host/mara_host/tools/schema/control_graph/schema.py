@@ -391,3 +391,88 @@ def normalize_graph_config(config: GraphConfigInput) -> GraphConfig:
 def validate_graph_config(config: GraphConfigInput) -> None:
     """Validate a graph config, raising ControlGraphValidationError on failure."""
     normalize_graph_model(config)
+
+
+def validate_signal_references(
+    config: ControlGraphConfig | GraphConfigInput,
+    external_signals: set[int] | None = None,
+) -> list[str]:
+    """
+    Check that all signal reads/writes are consistent within the graph.
+
+    This validates that signals being read (via signal_read source or
+    signal_recall/signal_add/signal_subtract/error transforms) are either:
+    1. Written by another slot in the graph via signal_write sink
+    2. Listed in external_signals (signals set by host code via signal_service.set())
+
+    Args:
+        config: The graph configuration to validate (can be dict or ControlGraphConfig)
+        external_signals: Signal IDs that are written by external code (not by the graph).
+                         These won't trigger undefined errors.
+
+    Returns:
+        List of error messages. Empty if all signal references are valid.
+
+    Example:
+        # Graph reads from signal 5 which is set by host code
+        errors = validate_signal_references(graph, external_signals={5})
+        if errors:
+            raise ControlGraphValidationError("; ".join(errors))
+    """
+    # Normalize to ControlGraphConfig if needed
+    if isinstance(config, Mapping):
+        config = normalize_graph_model(config)
+
+    errors: list[str] = []
+    external = external_signals or set()
+
+    # Collect all signal IDs written by slots in this graph
+    written_signals: set[int] = set(external)
+
+    for slot in config.slots:
+        # Check sink(s) for signal_write
+        if slot.sink is not None and slot.sink.type == "signal_write":
+            sig_id = slot.sink.params.get("signal_id")
+            if isinstance(sig_id, int):
+                written_signals.add(sig_id)
+
+        for sink in slot.sinks:
+            if sink.type == "signal_write":
+                sig_id = sink.params.get("signal_id")
+                if isinstance(sig_id, int):
+                    written_signals.add(sig_id)
+
+    # Check all reads reference written or external signals
+    for slot in config.slots:
+        slot_id = slot.id
+
+        # Check source for signal_read
+        if slot.source.type == "signal_read":
+            sig_id = slot.source.params.get("signal_id")
+            if isinstance(sig_id, int) and sig_id not in written_signals:
+                errors.append(
+                    f"slot '{slot_id}': signal_read references undefined signal {sig_id}"
+                )
+
+        # Check transforms for signal-related types
+        for t_idx, transform in enumerate(slot.transforms):
+            sig_id = None
+            sig_param_name = None
+
+            if transform.type == "signal_recall":
+                sig_id = transform.params.get("signal_id")
+                sig_param_name = "signal_id"
+            elif transform.type in ("signal_add", "signal_subtract"):
+                sig_id = transform.params.get("signal_id")
+                sig_param_name = "signal_id"
+            elif transform.type == "error":
+                sig_id = transform.params.get("feedback_signal")
+                sig_param_name = "feedback_signal"
+
+            if sig_id is not None and isinstance(sig_id, int) and sig_id not in written_signals:
+                errors.append(
+                    f"slot '{slot_id}' transform[{t_idx}] ({transform.type}): "
+                    f"{sig_param_name} references undefined signal {sig_id}"
+                )
+
+    return errors

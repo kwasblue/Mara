@@ -7,11 +7,64 @@
 #include "core/ServiceContext.h"
 #include "core/Debug.h"
 #include "core/ErrorCodes.h"
+#include "core/SessionManager.h"
+#include "security/SignatureVerifier.h"
 #include <cstring>
+#include <string>
 
 void SafetyHandler::init(mara::ServiceContext& ctx) {
     mode_ = ctx.mode;
     motion_ = ctx.motion;
+    verifier_ = ctx.verifier;
+    session_ = ctx.session;
+}
+
+bool SafetyHandler::isStateTransition(CmdType cmd) {
+    switch (cmd) {
+        case CmdType::ARM:
+        case CmdType::ACTIVATE:
+        case CmdType::DEACTIVATE:
+        case CmdType::DISARM:
+        case CmdType::ESTOP:
+        case CmdType::CLEAR_ESTOP:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool SafetyHandler::verifySignature(JsonVariantConst payload, CommandContext& ctx, const char* cmdName) {
+    // No verifier or no key configured - allow all commands
+    if (!verifier_ || !verifier_->hasKey()) {
+        return true;
+    }
+
+    // Extract signature from payload
+    const char* sig = payload["signature"] | nullptr;
+    if (!sig || strlen(sig) == 0) {
+        ctx.sendError(cmdName, ErrorCode::UNAUTHORIZED);
+        return false;
+    }
+
+    // Serialize payload without signature for verification
+    // We need to compute signature over the canonical form (sorted keys, no signature field)
+    JsonDocument doc;
+    for (JsonPairConst kv : payload.as<JsonObjectConst>()) {
+        if (strcmp(kv.key().c_str(), "signature") != 0) {
+            doc[kv.key()] = kv.value();
+        }
+    }
+
+    std::string canonical;
+    serializeJson(doc, canonical);
+
+    if (!verifier_->verify(canonical.c_str(), canonical.size(), sig)) {
+        DBG_PRINTF("[SAFETY] Signature verification failed for %s\n", cmdName);
+        ctx.sendError(cmdName, ErrorCode::UNAUTHORIZED);
+        return false;
+    }
+
+    return true;
 }
 
 void SafetyHandler::handleHeartbeat(CommandContext& ctx) {
@@ -184,4 +237,88 @@ void SafetyHandler::handleGetSafetyTimeouts(CommandContext& ctx) {
     resp["motion_timeout_ms"] = mode_->getMotionTimeout();
     resp["enabled"] = mode_->timeoutsEnabled();
     ctx.sendAck("CMD_GET_SAFETY_TIMEOUTS", true, resp);
+}
+
+void SafetyHandler::handleSetSigningKey(JsonVariantConst payload, CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_SET_SIGNING_KEY";
+    DBG_PRINTLN("[SAFETY] SET_SIGNING_KEY");
+
+    if (!verifier_) {
+        ctx.sendError(ACK, "no_verifier");
+        return;
+    }
+
+    const char* keyHex = payload["key"] | nullptr;
+    if (!keyHex || strlen(keyHex) != 64) {
+        ctx.sendError(ACK, ErrorCode::INVALID_PARAMETER);
+        return;
+    }
+
+    // Convert hex to bytes
+    uint8_t keyBytes[32];
+    for (size_t i = 0; i < 32; ++i) {
+        auto hexValue = [](char c) -> int {
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            return -1;
+        };
+        int hi = hexValue(keyHex[i * 2]);
+        int lo = hexValue(keyHex[i * 2 + 1]);
+        if (hi < 0 || lo < 0) {
+            ctx.sendError(ACK, ErrorCode::INVALID_PARAMETER);
+            return;
+        }
+        keyBytes[i] = static_cast<uint8_t>((hi << 4) | lo);
+    }
+
+    // Key rotation: if a key is already set, require signature of new key
+    if (verifier_->hasKey()) {
+        const char* sig = payload["signature"] | nullptr;
+        if (!sig || strlen(sig) != 64) {
+            ctx.sendError(ACK, ErrorCode::UNAUTHORIZED);
+            return;
+        }
+
+        // Verify signature over the new key
+        if (!verifier_->verify(keyHex, 64, sig)) {
+            DBG_PRINTLN("[SAFETY] Key rotation signature failed");
+            ctx.sendError(ACK, ErrorCode::UNAUTHORIZED);
+            return;
+        }
+    }
+
+    // Set the new key
+    verifier_->setKey(keyBytes, 32);
+
+    JsonDocument resp;
+    resp["key_set"] = true;
+    ctx.sendAck(ACK, true, resp);
+}
+
+void SafetyHandler::handleReleaseSession(JsonVariantConst payload, CommandContext& ctx) {
+    static constexpr const char* ACK = "CMD_RELEASE_SESSION";
+    DBG_PRINTLN("[SAFETY] RELEASE_SESSION");
+
+    if (!session_) {
+        ctx.sendError(ACK, "no_session_manager");
+        return;
+    }
+
+    // Optionally verify client_id matches current owner
+    uint32_t clientId = payload["client_id"] | 0;
+    if (clientId != 0 && !session_->isSessionOwner(clientId)) {
+        // Not the owner - can't release
+        JsonDocument resp;
+        resp["released"] = false;
+        resp["error"] = "not_owner";
+        ctx.sendAck(ACK, false, resp);
+        return;
+    }
+
+    session_->releaseSession();
+
+    JsonDocument resp;
+    resp["released"] = true;
+    ctx.sendAck(ACK, true, resp);
 }

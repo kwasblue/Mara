@@ -38,6 +38,8 @@ enum class CmdType {
     CLEAR_ESTOP,
     CLEAR_SUBSYSTEM_LOG_LEVELS,
     CTRL_GRAPH_CLEAR,
+    CTRL_GRAPH_COMMIT,
+    CTRL_GRAPH_DEBUG,
     CTRL_GRAPH_ENABLE,
     CTRL_GRAPH_STATUS,
     CTRL_GRAPH_UPLOAD,
@@ -94,6 +96,7 @@ enum class CmdType {
     OBSERVER_STATUS,
     PERF_RESET,
     PWM_SET,
+    RELEASE_SESSION,
     SAFETY_SET_RATE,
     SERVO_ATTACH,
     SERVO_DETACH,
@@ -102,6 +105,7 @@ enum class CmdType {
     SET_LOG_LEVEL,
     SET_MODE,
     SET_SAFETY_TIMEOUTS,
+    SET_SIGNING_KEY,
     SET_SUBSYSTEM_LOG_LEVEL,
     SET_VEL,
     STEPPER_ENABLE,
@@ -159,6 +163,8 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_CLEAR_ESTOP", CmdType::CLEAR_ESTOP},
         {"CMD_CLEAR_SUBSYSTEM_LOG_LEVELS", CmdType::CLEAR_SUBSYSTEM_LOG_LEVELS},
         {"CMD_CTRL_GRAPH_CLEAR", CmdType::CTRL_GRAPH_CLEAR},
+        {"CMD_CTRL_GRAPH_COMMIT", CmdType::CTRL_GRAPH_COMMIT},
+        {"CMD_CTRL_GRAPH_DEBUG", CmdType::CTRL_GRAPH_DEBUG},
         {"CMD_CTRL_GRAPH_ENABLE", CmdType::CTRL_GRAPH_ENABLE},
         {"CMD_CTRL_GRAPH_STATUS", CmdType::CTRL_GRAPH_STATUS},
         {"CMD_CTRL_GRAPH_UPLOAD", CmdType::CTRL_GRAPH_UPLOAD},
@@ -215,6 +221,7 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_OBSERVER_STATUS", CmdType::OBSERVER_STATUS},
         {"CMD_PERF_RESET", CmdType::PERF_RESET},
         {"CMD_PWM_SET", CmdType::PWM_SET},
+        {"CMD_RELEASE_SESSION", CmdType::RELEASE_SESSION},
         {"CMD_SAFETY_SET_RATE", CmdType::SAFETY_SET_RATE},
         {"CMD_SERVO_ATTACH", CmdType::SERVO_ATTACH},
         {"CMD_SERVO_DETACH", CmdType::SERVO_DETACH},
@@ -223,6 +230,7 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_SET_LOG_LEVEL", CmdType::SET_LOG_LEVEL},
         {"CMD_SET_MODE", CmdType::SET_MODE},
         {"CMD_SET_SAFETY_TIMEOUTS", CmdType::SET_SAFETY_TIMEOUTS},
+        {"CMD_SET_SIGNING_KEY", CmdType::SET_SIGNING_KEY},
         {"CMD_SET_SUBSYSTEM_LOG_LEVEL", CmdType::SET_SUBSYSTEM_LOG_LEVEL},
         {"CMD_SET_VEL", CmdType::SET_VEL},
         {"CMD_STEPPER_ENABLE", CmdType::STEPPER_ENABLE},
@@ -281,6 +289,8 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::CLEAR_ESTOP: return "CMD_CLEAR_ESTOP";
         case CmdType::CLEAR_SUBSYSTEM_LOG_LEVELS: return "CMD_CLEAR_SUBSYSTEM_LOG_LEVELS";
         case CmdType::CTRL_GRAPH_CLEAR: return "CMD_CTRL_GRAPH_CLEAR";
+        case CmdType::CTRL_GRAPH_COMMIT: return "CMD_CTRL_GRAPH_COMMIT";
+        case CmdType::CTRL_GRAPH_DEBUG: return "CMD_CTRL_GRAPH_DEBUG";
         case CmdType::CTRL_GRAPH_ENABLE: return "CMD_CTRL_GRAPH_ENABLE";
         case CmdType::CTRL_GRAPH_STATUS: return "CMD_CTRL_GRAPH_STATUS";
         case CmdType::CTRL_GRAPH_UPLOAD: return "CMD_CTRL_GRAPH_UPLOAD";
@@ -337,6 +347,7 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::OBSERVER_STATUS: return "CMD_OBSERVER_STATUS";
         case CmdType::PERF_RESET: return "CMD_PERF_RESET";
         case CmdType::PWM_SET: return "CMD_PWM_SET";
+        case CmdType::RELEASE_SESSION: return "CMD_RELEASE_SESSION";
         case CmdType::SAFETY_SET_RATE: return "CMD_SAFETY_SET_RATE";
         case CmdType::SERVO_ATTACH: return "CMD_SERVO_ATTACH";
         case CmdType::SERVO_DETACH: return "CMD_SERVO_DETACH";
@@ -345,6 +356,7 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::SET_LOG_LEVEL: return "CMD_SET_LOG_LEVEL";
         case CmdType::SET_MODE: return "CMD_SET_MODE";
         case CmdType::SET_SAFETY_TIMEOUTS: return "CMD_SET_SAFETY_TIMEOUTS";
+        case CmdType::SET_SIGNING_KEY: return "CMD_SET_SIGNING_KEY";
         case CmdType::SET_SUBSYSTEM_LOG_LEVEL: return "CMD_SET_SUBSYSTEM_LOG_LEVEL";
         case CmdType::SET_VEL: return "CMD_SET_VEL";
         case CmdType::STEPPER_ENABLE: return "CMD_STEPPER_ENABLE";

@@ -145,9 +145,16 @@ CONTROL_COMMAND_OBJECTS: dict[str, CommandDef] = {
     "CMD_CTRL_GRAPH_UPLOAD": CommandDef(
         kind="cmd",
         direction="host->mcu",
-        description="Upload a runtime control-graph config. First slice stores validated graph config on the MCU.",
+        description="Upload a runtime control-graph config. Use commit=false for two-phase commit (requires CMD_CTRL_GRAPH_COMMIT to activate).",
         payload={
             "graph": FieldDef(type="object", required=True, description="Normalized control-graph config with schema_version and slots."),
+            "commit": FieldDef(type="bool", default=True, description="If true (default), immediately activate. If false, stage as pending and return token for later commit."),
+            "mode": FieldDef(
+                type="string",
+                default="replace",
+                enum=("replace", "merge"),
+                description="Upload mode: 'replace' clears all and uploads new (default), 'merge' preserves runtime state for unchanged slots.",
+            ),
         },
     ),
     "CMD_CTRL_GRAPH_CLEAR": CommandDef(
@@ -167,6 +174,30 @@ CONTROL_COMMAND_OBJECTS: dict[str, CommandDef] = {
         kind="cmd",
         direction="host->mcu",
         description="Get status of the stored runtime control graph.",
+    ),
+    "CMD_CTRL_GRAPH_DEBUG": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Enable debug streaming for a single slot to see intermediate transform values. Only one slot can be in debug mode at a time.",
+        payload={
+            "slot_id": FieldDef(
+                type="string",
+                required=True,
+                description="Slot ID to enable debug for, or empty string to disable debug mode.",
+            ),
+        },
+    ),
+    "CMD_CTRL_GRAPH_COMMIT": CommandDef(
+        kind="cmd",
+        direction="host->mcu",
+        description="Commit a pending control graph upload. Use with CMD_CTRL_GRAPH_UPLOAD commit=false for two-phase commit.",
+        payload={
+            "token": FieldDef(
+                type="int",
+                required=True,
+                description="Token returned from the pending upload to confirm.",
+            ),
+        },
     ),
     "CMD_MCU_DIAGNOSTICS_QUERY": CommandDef(
         kind="cmd",

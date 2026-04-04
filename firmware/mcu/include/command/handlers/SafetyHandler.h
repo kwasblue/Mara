@@ -9,6 +9,10 @@
 // Forward declarations
 class ModeManager;
 class MotionController;
+namespace mara {
+    class SignatureVerifier;
+    class SessionManager;
+}
 
 class SafetyHandler : public ICommandHandler {
 public:
@@ -32,6 +36,8 @@ public:
             case CmdType::GET_STATE:
             case CmdType::SET_SAFETY_TIMEOUTS:
             case CmdType::GET_SAFETY_TIMEOUTS:
+            case CmdType::SET_SIGNING_KEY:
+            case CmdType::RELEASE_SESSION:
                 return true;
             default:
                 return false;
@@ -39,6 +45,13 @@ public:
     }
 
     void handle(CmdType cmd, JsonVariantConst payload, CommandContext& ctx) override {
+        // State transitions require signature verification when a key is configured
+        if (isStateTransition(cmd)) {
+            if (!verifySignature(payload, ctx, cmdTypeToString(cmd))) {
+                return;  // Error already sent by verifySignature
+            }
+        }
+
         switch (cmd) {
             case CmdType::HEARTBEAT:    handleHeartbeat(ctx);         break;
             case CmdType::ARM:          handleArm(ctx);               break;
@@ -52,6 +65,8 @@ public:
             case CmdType::GET_STATE:    handleGetState(ctx);          break;
             case CmdType::SET_SAFETY_TIMEOUTS: handleSetSafetyTimeouts(payload, ctx); break;
             case CmdType::GET_SAFETY_TIMEOUTS: handleGetSafetyTimeouts(ctx); break;
+            case CmdType::SET_SIGNING_KEY: handleSetSigningKey(payload, ctx); break;
+            case CmdType::RELEASE_SESSION: handleReleaseSession(payload, ctx); break;
             default: break;
         }
     }
@@ -59,6 +74,15 @@ public:
 private:
     ModeManager* mode_ = nullptr;
     MotionController* motion_ = nullptr;
+    mara::SignatureVerifier* verifier_ = nullptr;
+    mara::SessionManager* session_ = nullptr;
+
+    // Check if a command is a state transition that requires signature
+    static bool isStateTransition(CmdType cmd);
+
+    // Verify signature for state transition commands
+    // Returns true if signature valid or no key configured
+    bool verifySignature(JsonVariantConst payload, CommandContext& ctx, const char* cmdName);
 
     // Implemented in SafetyHandler.cpp
     void handleHeartbeat(CommandContext& ctx);
@@ -73,4 +97,6 @@ private:
     void handleGetState(CommandContext& ctx);
     void handleSetSafetyTimeouts(JsonVariantConst payload, CommandContext& ctx);
     void handleGetSafetyTimeouts(CommandContext& ctx);
+    void handleSetSigningKey(JsonVariantConst payload, CommandContext& ctx);
+    void handleReleaseSession(JsonVariantConst payload, CommandContext& ctx);
 };

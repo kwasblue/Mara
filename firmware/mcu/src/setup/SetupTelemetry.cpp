@@ -17,6 +17,8 @@
 #include "motor/DcMotorManager.h"
 #include "telemetry/TelemetrySections.h"
 #include "persistence/McuPersistence.h"
+#include "module/ControlModule.h"
+#include "control/ControlGraphRuntime.h"
 #include <algorithm>
 
 namespace {
@@ -175,6 +177,10 @@ public:
                     node["ctrl_task_peak_us"]  = stats.max_exec_us;
                     node["ctrl_task_iters"]    = stats.iterations;
                     node["ctrl_task_overruns"] = stats.overruns;
+                    // Jitter stats
+                    node["ctrl_task_min_period_us"] = stats.min_period_us;
+                    node["ctrl_task_max_period_us"] = stats.max_period_us;
+                    node["ctrl_task_jitter_violations"] = stats.jitter_violations;
                 }
             }
         );
@@ -498,6 +504,35 @@ public:
                     node["speed"]           = info.lastSpeed;
                     node["freq_hz"]         = info.freqHz;
                     node["resolution_bits"] = info.resolution;
+                }
+            );
+        }
+
+        // Control graph debug values (per-transform intermediate values)
+        if (ctx.control) {
+            ControlModule* control = ctx.control;
+            ctx.telemetry->registerProvider(
+                "ctrl_graph_debug",
+                [control](ArduinoJson::JsonObject node) {
+                    const auto& graph = control->graph();
+                    const int8_t debugIdx = graph.debugSlotIdx();
+                    node["enabled"] = (debugIdx >= 0);
+                    if (debugIdx < 0) return;
+
+                    const char* slotId = graph.debugSlotId();
+                    if (slotId) {
+                        node["slot_id"] = slotId;
+                    }
+
+                    // Get debug values (source + transform outputs + final)
+                    float values[ControlGraphRuntime::MAX_TRANSFORMS + 2];
+                    uint8_t count = graph.getDebugValues(values, sizeof(values) / sizeof(values[0]));
+                    node["count"] = count;
+
+                    ArduinoJson::JsonArray arr = node["values"].to<ArduinoJson::JsonArray>();
+                    for (uint8_t i = 0; i < count; ++i) {
+                        arr.add(values[i]);
+                    }
                 }
             );
         }

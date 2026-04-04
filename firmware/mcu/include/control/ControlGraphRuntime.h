@@ -139,13 +139,31 @@ public:
         char tap_names[MAX_TAPS][12] = {{0}};
         float tap_values[MAX_TAPS] = {0};
         uint8_t tap_count = 0;
+
+        // Health monitoring
+        uint32_t actual_period_us = 0;     // Measured period between runs
+        uint32_t min_period_us = UINT32_MAX;
+        uint32_t max_period_us = 0;
+        uint32_t last_healthy_run_count = 0;  // For stall detection
     };
 
-    bool upload(JsonVariantConst graph, const char*& error) {
+    // Upload modes
+    enum class UploadMode : uint8_t {
+        Replace = 0,  // Clear all, upload new (default)
+        Merge = 1,    // Diff and preserve unchanged slot state
+    };
+
+    bool upload(JsonVariantConst graph, const char*& error, UploadMode mode = UploadMode::Replace) {
         // Safety policy: keep control-graph uploads volatile for now.
         // Persisting executable control behavior on the MCU is deferred until
         // we have an explicit operator-controlled restore flow.
-        if (!uploadInMemory_(graph, error)) {
+        bool result;
+        if (mode == UploadMode::Merge && present_) {
+            result = uploadMerge_(graph, error);
+        } else {
+            result = uploadInMemory_(graph, error);
+        }
+        if (!result) {
             return false;
         }
         clearPersistedGraph_();
@@ -249,13 +267,36 @@ public:
                 continue;
             }
 
+            // Debug mode: record source value
+            const bool is_debug_slot = (debug_slot_idx_ == static_cast<int8_t>(i));
+            if (is_debug_slot) {
+                debug_value_count_ = 0;
+                debug_values_[debug_value_count_++] = value;  // Source value at index 0
+            }
+
             bool should_emit = true;
-            value = applyTransforms_(slot, value, now_ms, signals, should_emit);
+            value = applyTransforms_(slot, value, now_ms, signals, should_emit, is_debug_slot);
+
+            // Debug mode: record final output value
+            if (is_debug_slot && debug_value_count_ < MAX_DEBUG_VALUES) {
+                debug_values_[debug_value_count_++] = value;  // Final output value
+            }
+
             if (should_emit) {
                 writeSink_(slot, gpio, servo, signals, value);
             }
+
+            // Health monitoring: track actual timing
+            if (slot.last_run_ms > 0) {
+                const uint32_t elapsed_us = (now_ms - slot.last_run_ms) * 1000;
+                slot.actual_period_us = elapsed_us;
+                if (elapsed_us < slot.min_period_us) slot.min_period_us = elapsed_us;
+                if (elapsed_us > slot.max_period_us) slot.max_period_us = elapsed_us;
+            }
+
             slot.last_run_ms = now_ms;
             slot.run_count++;
+            slot.last_healthy_run_count = slot.run_count;  // Mark as healthy
             slot.error[0] = '\0';
         }
     }
@@ -266,6 +307,181 @@ public:
     uint8_t slotCount() const { return slot_count_; }
     const ControlGraphSlotSummary& slot(uint8_t idx) const { return slots_[idx]; }
     const SlotRuntime& runtimeSlot(uint8_t idx) const { return runtime_[idx]; }
+
+    // Health check: returns true if slot is running at expected rate
+    bool isSlotHealthy(uint8_t idx, uint32_t now_ms) const {
+        if (idx >= slot_count_) return false;
+        const auto& slot = runtime_[idx];
+        if (!slot.valid || slot.error[0] != '\0') return false;
+
+        // Check if slot has run recently (within 2x expected period)
+        const uint16_t rate_hz = slots_[idx].rate_hz > 0 ? slots_[idx].rate_hz : 100;
+        const uint32_t expected_period_ms = rate_hz >= 1000 ? 1u : (1000u / rate_hz);
+        const uint32_t timeout_ms = expected_period_ms * 2 + 10;  // 2x period + margin
+
+        if (slot.last_run_ms == 0) return true;  // Not started yet, not stalled
+        if (now_ms - slot.last_run_ms > timeout_ms) return false;  // Stalled
+
+        return true;
+    }
+
+    // Get actual rate in Hz (0 if no timing data)
+    float getSlotActualHz(uint8_t idx) const {
+        if (idx >= slot_count_) return 0.0f;
+        const auto& slot = runtime_[idx];
+        if (slot.actual_period_us == 0) return 0.0f;
+        return 1000000.0f / static_cast<float>(slot.actual_period_us);
+    }
+
+    // Debug mode - stream intermediate transform values for a single slot
+    // Only one slot can be in debug mode at a time (bandwidth constraint)
+    int8_t debugSlotIdx() const { return debug_slot_idx_; }
+
+    // Set debug slot by ID string (matches developer mental model)
+    // Pass nullptr or empty string to disable
+    bool setDebugSlot(const char* slotId) {
+        if (slotId == nullptr || slotId[0] == '\0') {
+            debug_slot_idx_ = -1;
+            return true;
+        }
+        for (uint8_t i = 0; i < slot_count_; ++i) {
+            if (strcmp(slots_[i].id, slotId) == 0) {
+                debug_slot_idx_ = static_cast<int8_t>(i);
+                return true;
+            }
+        }
+        return false;  // Slot ID not found
+    }
+
+    // Get debug values for current debug slot
+    // Returns count of values written (0 if no debug slot)
+    uint8_t getDebugValues(float* outValues, uint8_t maxValues) const {
+        if (debug_slot_idx_ < 0 || debug_slot_idx_ >= static_cast<int8_t>(slot_count_)) {
+            return 0;
+        }
+        uint8_t count = debug_value_count_;
+        if (count > maxValues) count = maxValues;
+        for (uint8_t i = 0; i < count; ++i) {
+            outValues[i] = debug_values_[i];
+        }
+        return count;
+    }
+
+    const char* debugSlotId() const {
+        if (debug_slot_idx_ < 0 || debug_slot_idx_ >= static_cast<int8_t>(slot_count_)) {
+            return nullptr;
+        }
+        return slots_[debug_slot_idx_].id;
+    }
+
+    // Two-phase commit: upload without activating
+    // Call uploadPending() to stage, then commitPending() to activate
+    // Pending state times out after PENDING_TIMEOUT_MS
+
+    struct PendingUploadInfo {
+        bool valid = false;
+        uint32_t token = 0;
+        uint32_t upload_ms = 0;
+        uint32_t hash = 0;
+        uint8_t slot_count = 0;
+    };
+
+    static constexpr uint32_t PENDING_TIMEOUT_MS = 5000;
+
+    bool uploadPending(JsonVariantConst graph, const char*& error, uint32_t now_ms) {
+        // Clear any previous pending state
+        pending_ = PendingUploadInfo{};
+
+        // Validate graph structure (same as upload)
+        if (!graph.is<JsonObjectConst>()) {
+            error = "graph_must_be_object";
+            return false;
+        }
+
+        JsonObjectConst obj = graph.as<JsonObjectConst>();
+        JsonArrayConst slots = obj["slots"].as<JsonArrayConst>();
+        if (!slots) {
+            error = "slots_required";
+            return false;
+        }
+        if (slots.size() > MAX_SLOTS) {
+            error = "too_many_slots";
+            return false;
+        }
+
+        // Store pending state
+        pending_.valid = true;
+        pending_.token = generateToken_(now_ms);
+        pending_.upload_ms = now_ms;
+        pending_.slot_count = static_cast<uint8_t>(slots.size());
+        pending_.hash = computeHash_(graph);
+
+        // Cache the JSON for later commit
+        String jsonStr;
+        serializeJson(graph, jsonStr);
+        if (jsonStr.length() >= MAX_PENDING_JSON) {
+            error = "graph_too_large";
+            pending_.valid = false;
+            return false;
+        }
+        strncpy(pending_json_, jsonStr.c_str(), MAX_PENDING_JSON - 1);
+        pending_json_[MAX_PENDING_JSON - 1] = '\0';
+        pending_json_len_ = jsonStr.length();
+
+        error = nullptr;
+        return true;
+    }
+
+    bool commitPending(uint32_t token, const char*& error, uint32_t now_ms) {
+        if (!pending_.valid) {
+            error = "no_pending_graph";
+            return false;
+        }
+
+        if (pending_.token != token) {
+            error = "invalid_token";
+            return false;
+        }
+
+        // Check timeout
+        if (now_ms - pending_.upload_ms > PENDING_TIMEOUT_MS) {
+            pending_.valid = false;
+            error = "pending_expired";
+            return false;
+        }
+
+        // Parse cached JSON and apply
+        JsonDocument doc;
+        DeserializationError json_error = deserializeJson(doc, pending_json_, pending_json_len_);
+        if (json_error) {
+            pending_.valid = false;
+            error = "pending_json_invalid";
+            return false;
+        }
+
+        bool result = uploadInMemory_(doc.as<JsonVariantConst>(), error);
+        pending_.valid = false;  // Clear pending state regardless of result
+        clearPersistedGraph_();  // Keep uploads volatile
+
+        return result;
+    }
+
+    void discardPending() {
+        pending_.valid = false;
+        pending_json_[0] = '\0';
+        pending_json_len_ = 0;
+    }
+
+    const PendingUploadInfo& pendingInfo() const { return pending_; }
+
+    bool hasPendingUpload() const { return pending_.valid; }
+
+    // Check and discard timed-out pending uploads (call in step())
+    void checkPendingTimeout(uint32_t now_ms) {
+        if (pending_.valid && (now_ms - pending_.upload_ms > PENDING_TIMEOUT_MS)) {
+            discardPending();
+        }
+    }
 
 private:
     static constexpr const char* kPrefsNamespace = "ctrl_graph";
@@ -750,7 +966,7 @@ private:
         }
     }
 
-    float applyTransforms_(SlotRuntime& slot, float value, uint32_t now_ms, SignalBus* signals, bool& should_emit) {
+    float applyTransforms_(SlotRuntime& slot, float value, uint32_t now_ms, SignalBus* signals, bool& should_emit, bool record_debug = false) {
         should_emit = true;
         for (uint8_t i = 0; i < slot.transform_count; ++i) {
             auto& tr = slot.transforms[i];
@@ -1016,6 +1232,11 @@ private:
                 default:
                     break;
             }
+
+            // Debug mode: record value after each transform
+            if (record_debug && debug_value_count_ < MAX_DEBUG_VALUES) {
+                debug_values_[debug_value_count_++] = value;
+            }
         }
         return value;
     }
@@ -1055,4 +1276,201 @@ private:
     uint8_t slot_count_ = 0;
     ControlGraphSlotSummary slots_[MAX_SLOTS]{};
     SlotRuntime runtime_[MAX_SLOTS]{};
+
+    // Debug mode state
+    int8_t debug_slot_idx_ = -1;
+    static constexpr uint8_t MAX_DEBUG_VALUES = MAX_TRANSFORMS + 2;  // source + transforms + output
+    float debug_values_[MAX_DEBUG_VALUES] = {0};
+    uint8_t debug_value_count_ = 0;
+
+    // Two-phase commit state
+    static constexpr size_t MAX_PENDING_JSON = 2048;
+    char pending_json_[MAX_PENDING_JSON] = {0};
+    size_t pending_json_len_ = 0;
+    PendingUploadInfo pending_{};
+
+    uint32_t generateToken_(uint32_t now_ms) const {
+        // Simple token: XOR of timestamp and a constant
+        return now_ms ^ 0xDEADBEEF;
+    }
+
+    uint32_t computeHash_(JsonVariantConst graph) const {
+        // Simple FNV-1a hash of serialized JSON
+        String jsonStr;
+        serializeJson(graph, jsonStr);
+        uint32_t hash = 2166136261u;  // FNV offset basis
+        for (size_t i = 0; i < jsonStr.length(); ++i) {
+            hash ^= static_cast<uint8_t>(jsonStr[i]);
+            hash *= 16777619u;  // FNV prime
+        }
+        return hash;
+    }
+
+    uint32_t computeSlotHash_(JsonObjectConst slot) const {
+        // FNV-1a hash of slot JSON (canonical form)
+        String jsonStr;
+        serializeJson(slot, jsonStr);
+        uint32_t hash = 2166136261u;
+        for (size_t i = 0; i < jsonStr.length(); ++i) {
+            hash ^= static_cast<uint8_t>(jsonStr[i]);
+            hash *= 16777619u;
+        }
+        return hash;
+    }
+
+    // Find slot by ID in current graph, returns -1 if not found
+    int8_t findSlotById_(const char* slotId) const {
+        for (uint8_t i = 0; i < slot_count_; ++i) {
+            if (strcmp(slots_[i].id, slotId) == 0) {
+                return static_cast<int8_t>(i);
+            }
+        }
+        return -1;
+    }
+
+    // Preserve runtime state from one slot to another
+    void preserveSlotState_(uint8_t fromIdx, uint8_t toIdx) {
+        if (fromIdx >= MAX_SLOTS || toIdx >= MAX_SLOTS) return;
+        const SlotRuntime& from = runtime_[fromIdx];
+        SlotRuntime& to = runtime_[toIdx];
+
+        // Copy stateful transform fields
+        // Note: we only preserve state for matching transforms (same position & type)
+        uint8_t minTransforms = (from.transform_count < to.transform_count)
+            ? from.transform_count : to.transform_count;
+
+        for (uint8_t i = 0; i < minTransforms; ++i) {
+            if (from.transforms[i].kind == to.transforms[i].kind) {
+                // Preserve state fields (b, d, initialized, etc.) but not config (a, c)
+                to.transforms[i].b = from.transforms[i].b;
+                to.transforms[i].d = from.transforms[i].d;
+                to.transforms[i].t_ms = from.transforms[i].t_ms;
+                to.transforms[i].initialized = from.transforms[i].initialized;
+                to.transforms[i].toggle_state = from.transforms[i].toggle_state;
+                // Copy median buffer
+                for (uint8_t j = 0; j < TransformRuntime::MEDIAN_WINDOW; ++j) {
+                    to.transforms[i].median_buf[j] = from.transforms[i].median_buf[j];
+                }
+                to.transforms[i].median_idx = from.transforms[i].median_idx;
+                to.transforms[i].median_count = from.transforms[i].median_count;
+            }
+        }
+
+        // Preserve encoder state
+        to.encoder_last_count = from.encoder_last_count;
+        to.encoder_last_time_ms = from.encoder_last_time_ms;
+
+        // Preserve tap storage
+        to.tap_count = from.tap_count;
+        for (uint8_t i = 0; i < SlotRuntime::MAX_TAPS; ++i) {
+            copyString_(to.tap_names[i], sizeof(to.tap_names[i]), from.tap_names[i]);
+            to.tap_values[i] = from.tap_values[i];
+        }
+    }
+
+    // Merge upload: preserve state for unchanged slots
+    // Slot hashes stored for comparison
+    uint32_t slot_hashes_[MAX_SLOTS] = {0};
+
+    bool uploadMerge_(JsonVariantConst graph, const char*& error) {
+        if (!graph.is<JsonObjectConst>()) {
+            error = "graph_must_be_object";
+            return false;
+        }
+
+        JsonObjectConst obj = graph.as<JsonObjectConst>();
+        JsonArrayConst newSlots = obj["slots"].as<JsonArrayConst>();
+        if (!newSlots) {
+            error = "slots_required";
+            return false;
+        }
+        if (newSlots.size() > MAX_SLOTS) {
+            error = "too_many_slots";
+            return false;
+        }
+
+        // Compute hashes for new slots and find matches
+        struct SlotMatch {
+            bool matched = false;
+            int8_t oldIdx = -1;
+            bool hashMatch = false;
+        };
+        SlotMatch matches[MAX_SLOTS]{};
+
+        uint8_t newIdx = 0;
+        for (JsonObjectConst newSlot : newSlots) {
+            const char* newId = newSlot["id"] | "";
+            uint32_t newHash = computeSlotHash_(newSlot);
+
+            // Find matching old slot by ID
+            int8_t oldIdx = findSlotById_(newId);
+            if (oldIdx >= 0) {
+                matches[newIdx].matched = true;
+                matches[newIdx].oldIdx = oldIdx;
+                matches[newIdx].hashMatch = (slot_hashes_[oldIdx] == newHash);
+            }
+            ++newIdx;
+        }
+
+        // Save current runtime state for slots we want to preserve
+        SlotRuntime preserved[MAX_SLOTS]{};
+        for (uint8_t i = 0; i < newSlots.size(); ++i) {
+            if (matches[i].matched && matches[i].hashMatch) {
+                preserved[i] = runtime_[matches[i].oldIdx];
+            }
+        }
+
+        // Now do the regular upload
+        if (!uploadInMemory_(graph, error)) {
+            return false;
+        }
+
+        // Restore state for slots with matching hash
+        for (uint8_t i = 0; i < slot_count_; ++i) {
+            if (matches[i].matched && matches[i].hashMatch) {
+                // Slot config unchanged - restore state
+                preserveSlotState_(i, i);  // preserved[i] data was copied above
+                // Actually we need to copy from preserved array
+                // Copy stateful fields from preserved to new runtime
+                const SlotRuntime& from = preserved[i];
+                SlotRuntime& to = runtime_[i];
+
+                uint8_t minTransforms = (from.transform_count < to.transform_count)
+                    ? from.transform_count : to.transform_count;
+
+                for (uint8_t j = 0; j < minTransforms; ++j) {
+                    if (from.transforms[j].kind == to.transforms[j].kind) {
+                        to.transforms[j].b = from.transforms[j].b;
+                        to.transforms[j].d = from.transforms[j].d;
+                        to.transforms[j].t_ms = from.transforms[j].t_ms;
+                        to.transforms[j].initialized = from.transforms[j].initialized;
+                        to.transforms[j].toggle_state = from.transforms[j].toggle_state;
+                        for (uint8_t k = 0; k < TransformRuntime::MEDIAN_WINDOW; ++k) {
+                            to.transforms[j].median_buf[k] = from.transforms[j].median_buf[k];
+                        }
+                        to.transforms[j].median_idx = from.transforms[j].median_idx;
+                        to.transforms[j].median_count = from.transforms[j].median_count;
+                    }
+                }
+
+                to.encoder_last_count = from.encoder_last_count;
+                to.encoder_last_time_ms = from.encoder_last_time_ms;
+                to.tap_count = from.tap_count;
+                for (uint8_t j = 0; j < SlotRuntime::MAX_TAPS; ++j) {
+                    copyString_(to.tap_names[j], sizeof(to.tap_names[j]), from.tap_names[j]);
+                    to.tap_values[j] = from.tap_values[j];
+                }
+            }
+        }
+
+        // Update slot hashes for future merges
+        newIdx = 0;
+        for (JsonObjectConst newSlot : newSlots) {
+            slot_hashes_[newIdx] = computeSlotHash_(newSlot);
+            ++newIdx;
+        }
+
+        error = nullptr;
+        return true;
+    }
 };

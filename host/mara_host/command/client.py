@@ -53,6 +53,12 @@ _JSON_SEPARATORS = (",", ":")
 # Commands that need payload validation for safety
 _VELOCITY_COMMANDS = frozenset({"CMD_SET_VEL", "CMD_SET_VELOCITY"})
 
+# Commands that require signature when a signing key is configured
+_STATE_TRANSITION_COMMANDS = frozenset({
+    "CMD_ARM", "CMD_ACTIVATE", "CMD_DEACTIVATE",
+    "CMD_DISARM", "CMD_ESTOP", "CMD_CLEAR_ESTOP"
+})
+
 
 def _validate_command_payload(cmd_type: str, payload: Dict[str, Any]) -> None:
     """
@@ -114,6 +120,7 @@ class BaseMaraClient(BinaryCommandsMixin):
         log_dir: str = "logs",
         verbose: bool = True,
         robot_name: Optional[str] = None,
+        signing_key: Optional[bytes] = None,
     ) -> None:
         self.transport = transport
         self.bus = bus or EventBus()
@@ -124,6 +131,15 @@ class BaseMaraClient(BinaryCommandsMixin):
         self._heartbeat_task: Optional[asyncio.Task] = None
         self._reconnect_handshake_task: Optional[asyncio.Task] = None
         self._ever_disconnected = False  # Track if we've ever lost connection
+
+        # Signing key for state transition commands (ARM, ACTIVATE, etc.)
+        # If set, these commands will include an HMAC-SHA256 signature
+        self._signing_key = signing_key
+
+        # Unique client ID for session ownership
+        # Generated from process ID and timestamp to be unique per connection
+        import os
+        self._client_id = (os.getpid() << 16) | (int(time.time() * 1000) & 0xFFFF)
 
         # Version handshake
         self._require_version_match = require_version_match
@@ -175,6 +191,39 @@ class BaseMaraClient(BinaryCommandsMixin):
 
         # JSON-to-Binary encoder for efficient wire transmission
         self._init_binary_encoder()
+
+    # ---------- Signing ----------
+
+    def _sign_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Sign a payload with HMAC-SHA256 if a signing key is configured.
+
+        The signature is computed over the canonical JSON form (sorted keys)
+        of the payload excluding the signature field itself.
+
+        Args:
+            payload: The command payload dict
+
+        Returns:
+            Payload with 'signature' field added if signing key is set
+        """
+        if self._signing_key is None:
+            return payload
+
+        import hashlib
+        import hmac
+
+        # Create canonical form (sorted keys, no signature field)
+        canonical = {k: v for k, v in sorted(payload.items()) if k != "signature"}
+        canonical_bytes = _json_encode(canonical)
+
+        # Compute HMAC-SHA256
+        sig = hmac.new(self._signing_key, canonical_bytes, hashlib.sha256).hexdigest()
+        return {**payload, "signature": sig}
+
+    def _requires_signature(self, cmd_type: str) -> bool:
+        """Check if a command type requires signature."""
+        return cmd_type in _STATE_TRANSITION_COMMANDS
 
     # ---------- Lazy logging ----------
 
@@ -619,11 +668,16 @@ class BaseMaraClient(BinaryCommandsMixin):
         if seq is None:
             seq = self._next_seq()
 
+        # Sign state transition commands if signing key is configured
+        final_payload = payload or {}
+        if self._requires_signature(type_str):
+            final_payload = self._sign_payload(final_payload)
+
         cmd_obj = {
             "kind": "cmd",
             "type": type_str,
             "seq": seq,
-            **(payload or {}),
+            **final_payload,
         }
 
         # Optimized: _json_encode uses orjson if available (2-3x faster)
@@ -837,6 +891,11 @@ class BaseMaraClient(BinaryCommandsMixin):
     @property
     def platform_name(self) -> Optional[str]:
         return self._platform_name
+
+    @property
+    def client_id(self) -> int:
+        """Unique client ID for session ownership."""
+        return self._client_id
     
     def get_stats(self) -> Dict[str, Any]:
         return {

@@ -26,6 +26,8 @@ class ErrorCode(IntEnum):
     NOT_ACTIVE = 102
     IN_ESTOP = 103
     CANNOT_CLEAR_ESTOP = 104
+    UNAUTHORIZED = 105
+    SESSION_OCCUPIED = 106
 
     # Hardware errors (200-299)
     HARDWARE_FAULT = 200
@@ -69,6 +71,8 @@ ERROR_MESSAGES: dict[int, str] = {
     ErrorCode.NOT_ACTIVE: "Robot not active",
     ErrorCode.IN_ESTOP: "Emergency stop active",
     ErrorCode.CANNOT_CLEAR_ESTOP: "Cannot clear emergency stop",
+    ErrorCode.UNAUTHORIZED: "Missing or invalid signature for state transition",
+    ErrorCode.SESSION_OCCUPIED: "Another host owns the session",
     ErrorCode.HARDWARE_FAULT: "Hardware fault",
     ErrorCode.SENSOR_OFFLINE: "Sensor offline",
     ErrorCode.MOTOR_FAULT: "Motor fault",

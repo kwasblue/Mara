@@ -100,6 +100,28 @@ public:
     virtual bool putString(const char* key, const char* value) = 0;
 
     // =========================================================================
+    // Blob (binary) operations
+    // =========================================================================
+
+    /// Get length of blob data for a key
+    /// @return Length in bytes, or 0 if key doesn't exist
+    virtual size_t getBytesLength(const char* key) = 0;
+
+    /// Get blob data into buffer
+    /// @param key Key name
+    /// @param buffer Destination buffer
+    /// @param maxLen Maximum buffer length
+    /// @return Number of bytes read, 0 if not found or error
+    virtual size_t getBytes(const char* key, void* buffer, size_t maxLen) = 0;
+
+    /// Put blob data
+    /// @param key Key name
+    /// @param data Source data
+    /// @param len Data length in bytes
+    /// @return Number of bytes written, 0 on error
+    virtual size_t putBytes(const char* key, const void* data, size_t len) = 0;
+
+    // =========================================================================
     // Utility operations
     // =========================================================================
 

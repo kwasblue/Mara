@@ -74,6 +74,18 @@ bool Esp32Persistence::putString(const char* key, const char* value) {
     return prefs_.putString(key, value) > 0;
 }
 
+size_t Esp32Persistence::getBytesLength(const char* key) {
+    return prefs_.getBytesLength(key);
+}
+
+size_t Esp32Persistence::getBytes(const char* key, void* buffer, size_t maxLen) {
+    return prefs_.getBytes(key, buffer, maxLen);
+}
+
+size_t Esp32Persistence::putBytes(const char* key, const void* data, size_t len) {
+    return prefs_.putBytes(key, data, len);
+}
+
 bool Esp32Persistence::isKey(const char* key) {
     return prefs_.isKey(key);
 }

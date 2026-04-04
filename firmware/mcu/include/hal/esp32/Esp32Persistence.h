@@ -32,6 +32,10 @@ public:
     size_t getString(const char* key, char* buffer, size_t maxLen) override;
     bool putString(const char* key, const char* value) override;
 
+    size_t getBytesLength(const char* key) override;
+    size_t getBytes(const char* key, void* buffer, size_t maxLen) override;
+    size_t putBytes(const char* key, const void* data, size_t len) override;
+
     bool isKey(const char* key) override;
     bool remove(const char* key) override;
     bool clear() override;

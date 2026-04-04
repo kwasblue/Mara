@@ -7,12 +7,8 @@
 #include <string>
 #include <vector>
 
-#include <Arduino.h>
-#if defined(ARDUINO_ARCH_ESP32)
-#include <Preferences.h>
-#endif
-
 #include "command/ModeManager.h"
+#include "hal/IPersistence.h"
 #include "config/GeneratedLimits.h"
 #include "control/SignalBus.h"
 #include "hw/GpioManager.h"
@@ -33,6 +29,11 @@ class ControlGraphRuntime {
 public:
     static constexpr uint8_t MAX_SLOTS = MARA_MAX_GRAPH_SLOTS;
     static constexpr uint8_t MAX_TRANSFORMS = 8;
+
+    /// Set HAL persistence interface for graph persistence operations
+    void setPersistence(hal::IPersistence* persistence) {
+        halPersistence_ = persistence;
+    }
 
     enum class SourceKind : uint8_t {
         Unsupported = 0,
@@ -173,27 +174,30 @@ public:
     }
 
     bool restore(const char*& error) {
-#if defined(ARDUINO_ARCH_ESP32)
-        Preferences prefs;
-        if (!prefs.begin(kPrefsNamespace, true)) {
+        if (!halPersistence_) {
+            error = nullptr;
+            return false;
+        }
+
+        if (!halPersistence_->begin(kPrefsNamespace, true)) {
             error = "prefs_begin_failed";
             return false;
         }
-        const size_t len = prefs.getBytesLength(kPrefsBlobKey);
+        const size_t len = halPersistence_->getBytesLength(kPrefsBlobKey);
         if (len == 0) {
-            prefs.end();
+            halPersistence_->end();
             error = nullptr;
             return false;
         }
         if (len > kMaxPersistedGraphBytes) {
-            prefs.end();
+            halPersistence_->end();
             error = "persisted_graph_too_large";
             return false;
         }
 
         std::vector<char> buf(len + 1, '\0');
-        const size_t actual = prefs.getBytes(kPrefsBlobKey, buf.data(), len);
-        prefs.end();
+        const size_t actual = halPersistence_->getBytes(kPrefsBlobKey, buf.data(), len);
+        halPersistence_->end();
         if (actual != len) {
             error = "persisted_graph_read_failed";
             return false;
@@ -206,10 +210,6 @@ public:
             return false;
         }
         return uploadInMemory_(doc.as<JsonVariantConst>(), error);
-#else
-        error = nullptr;
-        return false;
-#endif
     }
 
     void clear() {
@@ -592,10 +592,14 @@ private:
     }
 
     bool savePersistedGraph_(JsonVariantConst graph, const char*& error) {
-#if defined(ARDUINO_ARCH_ESP32)
-        String json;
+        if (!halPersistence_) {
+            error = nullptr;
+            return true;  // No persistence available, silently succeed
+        }
+
+        std::string json;
         serializeJson(graph, json);
-        if (json.isEmpty()) {
+        if (json.empty()) {
             error = "persist_graph_serialize_failed";
             return false;
         }
@@ -604,30 +608,28 @@ private:
             return false;
         }
 
-        Preferences prefs;
-        if (!prefs.begin(kPrefsNamespace, false)) {
+        if (!halPersistence_->begin(kPrefsNamespace, false)) {
             error = "prefs_begin_failed";
             return false;
         }
-        const size_t written = prefs.putBytes(kPrefsBlobKey, json.c_str(), json.length());
-        prefs.end();
-        if (written != static_cast<size_t>(json.length())) {
+        const size_t written = halPersistence_->putBytes(kPrefsBlobKey, json.c_str(), json.length());
+        halPersistence_->end();
+        if (written != json.length()) {
             error = "persist_graph_write_failed";
             return false;
         }
-#endif
         error = nullptr;
         return true;
     }
 
     void clearPersistedGraph_() {
-#if defined(ARDUINO_ARCH_ESP32)
-        Preferences prefs;
-        if (prefs.begin(kPrefsNamespace, false)) {
-            prefs.remove(kPrefsBlobKey);
-            prefs.end();
+        if (!halPersistence_) {
+            return;
         }
-#endif
+        if (halPersistence_->begin(kPrefsNamespace, false)) {
+            halPersistence_->remove(kPrefsBlobKey);
+            halPersistence_->end();
+        }
     }
 
     static void copyString_(char* dst, size_t dst_len, const char* src) {
@@ -1372,6 +1374,9 @@ private:
     // Merge upload: preserve state for unchanged slots
     // Slot hashes stored for comparison
     uint32_t slot_hashes_[MAX_SLOTS] = {0};
+
+    // HAL persistence interface (optional, nullptr disables persistence)
+    hal::IPersistence* halPersistence_ = nullptr;
 
     bool uploadMerge_(JsonVariantConst graph, const char*& error) {
         if (!graph.is<JsonObjectConst>()) {

@@ -1,13 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-
-#include <Arduino.h>
 #include <ArduinoJson.h>
-
-#if defined(ARDUINO_ARCH_ESP32)
-#include <Preferences.h>
-#endif
 
 #include "command/ModeManager.h"
 #include "config/MaraConfig.h"

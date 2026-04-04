@@ -5,6 +5,7 @@
 #if defined(ARDUINO_ARCH_ESP32)
 #include <esp_system.h>
 #include <rom/rtc.h>
+#include <Preferences.h>
 #endif
 
 namespace persistence {

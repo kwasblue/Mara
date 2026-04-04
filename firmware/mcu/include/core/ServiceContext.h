@@ -59,6 +59,7 @@ namespace hal {
     class ILogger;
     class IWifiManager;
     class IClock;
+    class IPersistence;
     struct HalContext;
 }
 
@@ -142,6 +143,7 @@ struct ServiceContext {
     hal::ILogger*     halLogger   = nullptr;   // Platform logging abstraction
     hal::IWifiManager* halWifi    = nullptr;   // Platform WiFi abstraction
     hal::IClock*      halClock    = nullptr;   // Platform clock abstraction
+    hal::IPersistence* halPersistence = nullptr; // Platform persistence abstraction
 
     // =========================================================================
     // Tier 1: Core infrastructure (no dependencies)

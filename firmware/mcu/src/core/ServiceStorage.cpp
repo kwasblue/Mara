@@ -192,6 +192,9 @@ void ServiceStorage::initControl() {
         &telemetry
     );
 
+    // Wire HAL persistence to control graph runtime
+    control->graph().setPersistence(&hal.persistence);
+
     // Wire control module to handlers
     if (controlHandler) {
         controlHandler->setControlModule(control);
@@ -228,6 +231,7 @@ ServiceContext ServiceStorage::buildContext() {
 #if HAS_WIFI
     ctx.halWifi     = &hal.wifiManager;
 #endif
+    ctx.halPersistence = &hal.persistence;
 
     // Tier 1
     ctx.clock   = &clock;

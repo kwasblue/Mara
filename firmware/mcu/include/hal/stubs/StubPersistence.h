@@ -73,6 +73,20 @@ public:
         return true;
     }
 
+    // Blobs
+    size_t getBytesLength(const char* key) override {
+        (void)key;
+        return 0;
+    }
+    size_t getBytes(const char* key, void* buffer, size_t maxLen) override {
+        (void)key; (void)buffer; (void)maxLen;
+        return 0;
+    }
+    size_t putBytes(const char* key, const void* data, size_t len) override {
+        (void)key; (void)data; (void)len;
+        return len;
+    }
+
     // Utilities
     bool isKey(const char* key) override { (void)key; return false; }
     bool remove(const char* key) override { (void)key; return true; }

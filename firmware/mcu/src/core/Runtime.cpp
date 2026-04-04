@@ -1,27 +1,53 @@
 // src/core/Runtime.cpp
-// Runtime orchestrator implementation
+// Runtime orchestrator implementation - platform-agnostic
 
 #include "core/Runtime.h"
+#include "config/PlatformConfig.h"
 #include "setup/SetupControlTask.h"
 #include "loop/LoopFunctions.h"
 #include "sensor/SensorRegistry.h"
 #include "core/Clock.h"
 #include "config/MaraConfig.h"
+
+// Platform-specific includes (guarded)
+#if PLATFORM_HAS_ARDUINO
 #include <Arduino.h>
-#include <ArduinoOTA.h>
+#endif
 
 namespace mara {
 
 bool Runtime::setup(const RuntimeConfig& config) {
     config_ = config;
 
+    // Platform-specific serial initialization
+#if PLATFORM_HAS_ARDUINO
     Serial.begin(config_.serial_baud);
-    delay(500);
-    Serial.println("\n[Runtime] Booting...");
+#endif
+
+    // Wire HAL to managers first
+    storage_.initHal();
+
+    // Build HAL context for logging
+    auto halCtx = storage_.hal.buildContext();
+
+    // Set up debug logger and clock
+    setDebugLogger(halCtx.logger);
+    setHalClock(halCtx.clock);
+
+    // Initial boot delay via HAL
+    if (halCtx.clock) {
+        halCtx.clock->delayMs(500);
+    }
+
+    if (halCtx.logger) {
+        halCtx.logger->println("\n[Runtime] Booting...");
+    }
 
     // Phase 1: Initialize storage components
     if (!initializeStorage()) {
-        Serial.println("[Runtime] FATAL: Storage initialization failed");
+        if (halCtx.logger) {
+            halCtx.logger->println("[Runtime] FATAL: Storage initialization failed");
+        }
         criticalFailure_ = true;
         return false;
     }
@@ -35,7 +61,9 @@ bool Runtime::setup(const RuntimeConfig& config) {
     // Phase 3: Start FreeRTOS control task (if enabled)
     if (config_.use_freertos_control) {
         if (!startControlTask()) {
-            Serial.println("[Runtime] WARNING: Control task failed, using cooperative scheduling");
+            if (halCtx.logger) {
+                halCtx.logger->println("[Runtime] WARNING: Control task failed, using cooperative scheduling");
+            }
         }
     }
 
@@ -51,17 +79,22 @@ bool Runtime::setup(const RuntimeConfig& config) {
 
     updateLoopSchedulers();
 
-    Serial.println("[Runtime] Setup complete");
-    LoopRates& r = getLoopRates();
-    Serial.printf("[Runtime] Loop rates: ctrl=%dHz safety=%dHz telem=%dHz\n",
-                  r.ctrl_hz, r.safety_hz, r.telem_hz);
+    if (halCtx.logger) {
+        halCtx.logger->println("[Runtime] Setup complete");
+        LoopRates& r = getLoopRates();
+        halCtx.logger->printf("[Runtime] Loop rates: ctrl=%dHz safety=%dHz telem=%dHz\n",
+                      r.ctrl_hz, r.safety_hz, r.telem_hz);
+    }
 
     return true;
 }
 
 void Runtime::loop() {
     if (criticalFailure_) {
-        delay(100);
+        auto halCtx = storage_.hal.buildContext();
+        if (halCtx.clock) {
+            halCtx.clock->delayMs(100);
+        }
         return;
     }
 
@@ -71,7 +104,11 @@ void Runtime::loop() {
 
 bool Runtime::initializeStorage() {
     // Configure transports using HAL config structs
+#if PLATFORM_HAS_ARDUINO
     hal::UartTransportConfig uartCfg{&Serial, config_.serial_baud};
+#else
+    hal::UartTransportConfig uartCfg{nullptr, config_.serial_baud};
+#endif
     hal::WifiTransportConfig wifiCfg{config_.tcp_port};
     storage_.initTransports(uartCfg, wifiCfg);
     storage_.initRouter();
@@ -88,6 +125,8 @@ bool Runtime::initializeStorage() {
 }
 
 bool Runtime::runSetupModules() {
+    auto halCtx = storage_.hal.buildContext();
+
     // Populate setup modules
     setupModules_[0] = getSetupWifiModule();
     setupModules_[1] = getSetupOtaModule();
@@ -104,12 +143,16 @@ bool Runtime::runSetupModules() {
 
         auto result = mod->setup(ctx_);
         if (result.isError()) {
-            Serial.printf("[%s] FAILED: %s\n",
-                          mod->name(),
-                          errorCodeToString(result.errorCode()));
+            if (halCtx.logger) {
+                halCtx.logger->printf("[%s] FAILED: %s\n",
+                              mod->name(),
+                              errorCodeToString(result.errorCode()));
+            }
 
             if (mod->isCritical()) {
-                Serial.printf("[Runtime] FATAL: Critical module '%s' failed\n", mod->name());
+                if (halCtx.logger) {
+                    halCtx.logger->printf("[Runtime] FATAL: Critical module '%s' failed\n", mod->name());
+                }
                 criticalFailure_ = true;
 
                 if (ctx_.dcMotor) ctx_.dcMotor->stopAll();
@@ -124,6 +167,8 @@ bool Runtime::runSetupModules() {
 }
 
 bool Runtime::startControlTask() {
+    auto halCtx = storage_.hal.buildContext();
+
     ControlTaskConfig taskCfg;
     taskCfg.rate_hz = config_.control_rate_hz;
     taskCfg.stack_size = config_.control_stack_size;
@@ -131,8 +176,8 @@ bool Runtime::startControlTask() {
     taskCfg.core = config_.control_core;
 
     controlTaskStarted_ = mara::startControlTask(ctx_, taskCfg);
-    if (controlTaskStarted_) {
-        Serial.println("[Runtime] FreeRTOS control task started");
+    if (controlTaskStarted_ && halCtx.logger) {
+        halCtx.logger->println("[Runtime] FreeRTOS control task started");
     }
     return controlTaskStarted_;
 }
@@ -154,8 +199,13 @@ void Runtime::runMainLoop(uint32_t now_ms) {
     uint32_t loop_start_us = getSystemClock().micros();
     LoopTiming& timing = getLoopTiming();
 
-    // OTA
-    ArduinoOTA.handle();
+    // OTA handling via HAL
+#if HAS_OTA
+    auto halCtx = storage_.hal.buildContext();
+    if (halCtx.ota) {
+        halCtx.ota->handle();
+    }
+#endif
 
     // Update scheduler periods (in case rates changed via command)
     updateLoopSchedulers();
@@ -230,7 +280,10 @@ void Runtime::runMainLoop(uint32_t now_ms) {
         timing.overruns++;
     }
 
-    yield();  // Non-blocking yield instead of blocking delay
+    // Yield to scheduler (platform-specific)
+#if PLATFORM_HAS_ARDUINO
+    yield();
+#endif
 }
 
 } // namespace mara

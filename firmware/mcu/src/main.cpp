@@ -1,5 +1,13 @@
+// src/main.cpp
+// Platform-agnostic entry point for MARA firmware.
+// All hardware access goes through HAL interfaces.
+
+#include "config/PlatformConfig.h"
+
+// Platform-specific includes (guarded)
+#if PLATFORM_HAS_ARDUINO
 #include <Arduino.h>
-#include <ArduinoOTA.h>
+#endif
 
 // Core infrastructure
 #include "core/Result.h"
@@ -36,6 +44,9 @@ static constexpr bool USE_FREERTOS_CONTROL = true;
 static mara::ServiceStorage g_storage;
 static mara::ServiceContext g_ctx;
 
+// HAL context pointer for logging before g_ctx is built
+static hal::HalContext g_halCtx;
+
 // Critical failure flag - if true, loop() does nothing
 static bool g_criticalFailure = false;
 
@@ -69,43 +80,67 @@ void setup() {
     auto& maraCfg = config::getMaraConfig();
     const uint32_t serial_baud = maraCfg.network.serial_baud;
 
+    // Platform-specific serial initialization
+    // This must happen before HAL logger can be used on Arduino platforms
+#if PLATFORM_HAS_ARDUINO
     Serial.begin(serial_baud);
-    delay(500);
+#endif
 
     // Wire HAL to managers first (this initializes the logger)
     g_storage.initHal();
 
+    // Build HAL context for early logging
+    g_halCtx = g_storage.hal.buildContext();
+
     // Set up debug logger for DBG_* macros
-    auto halCtx = g_storage.hal.buildContext();
-    mara::setDebugLogger(halCtx.logger);
+    mara::setDebugLogger(g_halCtx.logger);
 
     // Wire HAL clock to mara::SystemClock for portable timing
-    mara::setHalClock(halCtx.clock);
+    mara::setHalClock(g_halCtx.clock);
 
-    Serial.printf("\n[MCU] Booting with USB Serial @ %lu baud + WiFi (AP+STA)...\n", serial_baud);
+    // Initial boot delay via HAL
+    if (g_halCtx.clock) {
+        g_halCtx.clock->delayMs(500);
+    }
+
+    // All logging now goes through HAL
+    if (g_halCtx.logger) {
+        g_halCtx.logger->printf("\n[MCU] Booting with USB Serial @ %lu baud + WiFi (AP+STA)...\n", serial_baud);
+    }
 
     const auto cfgIssues = maraCfg.validate();
     for (const auto& issue : cfgIssues) {
-        Serial.printf("[CONFIG] %s\n", issue.c_str());
+        if (g_halCtx.logger) {
+            g_halCtx.logger->printf("[CONFIG] %s\n", issue.c_str());
+        }
     }
     if (maraCfg.sanitize()) {
-        Serial.println("[CONFIG] Invalid runtime config detected; sanitized to safe defaults");
+        if (g_halCtx.logger) {
+            g_halCtx.logger->println("[CONFIG] Invalid runtime config detected; sanitized to safe defaults");
+        }
     }
 
     // =========================================================================
     // Phase 1: Initialize storage components that need runtime parameters
     // =========================================================================
 
+    // Get device name from config
+    const char* deviceName = maraCfg.network.device_name;
+
     // Configure transports using HAL config structs
+#if PLATFORM_HAS_ARDUINO
     hal::UartTransportConfig uartCfg{&Serial, serial_baud};
-    hal::WifiTransportConfig wifiCfg{3333};
-    hal::BleTransportConfig bleCfg{"ESP32-SPP"};
+#else
+    hal::UartTransportConfig uartCfg{nullptr, serial_baud};
+#endif
+    hal::WifiTransportConfig wifiCfg{static_cast<uint16_t>(maraCfg.network.tcp_port)};
+    hal::BleTransportConfig bleCfg{deviceName};
     hal::MqttTransportConfig mqttCfg{MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_ROBOT_ID};
     g_storage.initTransports(uartCfg, wifiCfg, bleCfg, mqttCfg);
     g_storage.initRouter();
     g_storage.initCommands();
     g_storage.initControl();
-    g_storage.initHost("ESP32-bot");
+    g_storage.initHost(deviceName);
 
     // Build context from storage
     g_ctx = g_storage.buildContext();
@@ -125,14 +160,18 @@ void setup() {
 
         auto result = mod->setup(g_ctx);
         if (result.isError()) {
-            Serial.printf("[%s] FAILED: %s\n",
-                          mod->name(),
-                          mara::errorCodeToString(result.errorCode()));
+            if (g_halCtx.logger) {
+                g_halCtx.logger->printf("[%s] FAILED: %s\n",
+                              mod->name(),
+                              mara::errorCodeToString(result.errorCode()));
+            }
 
             // Halt on critical module failure
             if (mod->isCritical()) {
-                Serial.printf("[FATAL] Critical module '%s' failed. System halted.\n", mod->name());
-                Serial.println("[FATAL] Motors disabled. Please reset device after fixing issue.");
+                if (g_halCtx.logger) {
+                    g_halCtx.logger->printf("[FATAL] Critical module '%s' failed. System halted.\n", mod->name());
+                    g_halCtx.logger->println("[FATAL] Motors disabled. Please reset device after fixing issue.");
+                }
                 g_criticalFailure = true;
 
                 // Attempt to disable any motors that might have been initialized
@@ -146,7 +185,9 @@ void setup() {
 
     // If critical failure occurred, don't complete setup
     if (g_criticalFailure) {
-        Serial.println("[FATAL] Setup aborted due to critical failure.");
+        if (g_halCtx.logger) {
+            g_halCtx.logger->println("[FATAL] Setup aborted due to critical failure.");
+        }
         return;
     }
 
@@ -161,9 +202,13 @@ void setup() {
         taskCfg.core = 1;           // Core 1 (Core 0 handles WiFi)
 
         if (mara::startControlTask(g_ctx, taskCfg)) {
-            Serial.println("[MCU] FreeRTOS control task started");
+            if (g_halCtx.logger) {
+                g_halCtx.logger->println("[MCU] FreeRTOS control task started");
+            }
         } else {
-            Serial.println("[MCU] WARNING: FreeRTOS control task failed to start, using cooperative scheduling");
+            if (g_halCtx.logger) {
+                g_halCtx.logger->println("[MCU] WARNING: FreeRTOS control task failed to start, using cooperative scheduling");
+            }
         }
     }
 
@@ -180,21 +225,25 @@ void setup() {
     // Initialize loop schedulers from LoopRates
     updateLoopSchedulers();
 
-    Serial.println("[MCU] Setup complete. Waiting for host connection...");
+    if (g_halCtx.logger) {
+        g_halCtx.logger->println("[MCU] Setup complete. Waiting for host connection...");
 
-    // Print initial rates
-    LoopRates& r = getLoopRates();
-    Serial.printf("[MCU] Loop rates: ctrl=%dHz safety=%dHz telem=%dHz\n",
-                  r.ctrl_hz, r.safety_hz, r.telem_hz);
+        // Print initial rates
+        LoopRates& r = getLoopRates();
+        g_halCtx.logger->printf("[MCU] Loop rates: ctrl=%dHz safety=%dHz telem=%dHz\n",
+                      r.ctrl_hz, r.safety_hz, r.telem_hz);
+    }
 }
 
 // -----------------------------------------------------------------------------
 // loop()
 // -----------------------------------------------------------------------------
 void loop() {
-    // If critical failure occurred during setup, do nothing except feed watchdog
+    // If critical failure occurred during setup, do nothing except wait
     if (g_criticalFailure) {
-        delay(100);
+        if (g_halCtx.clock) {
+            g_halCtx.clock->delayMs(100);
+        }
         return;
     }
 
@@ -204,8 +253,12 @@ void loop() {
     // Get timing reference
     mara::LoopTiming& timing = mara::getLoopTiming();
 
-    // OTA
-    ArduinoOTA.handle();
+    // OTA handling via HAL
+#if HAS_OTA
+    if (g_halCtx.ota) {
+        g_halCtx.ota->handle();
+    }
+#endif
 
     // Update scheduler periods (in case rates changed via command)
     updateLoopSchedulers();
@@ -282,6 +335,8 @@ void loop() {
         timing.overruns++;
     }
 
-    // Yield to FreeRTOS scheduler without blocking
+    // Yield to scheduler (platform-specific)
+#if PLATFORM_HAS_ARDUINO
     yield();
+#endif
 }

@@ -734,6 +734,42 @@
         }
       }
     },
+    "CMD_CTRL_SIGNAL_TRACE": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Subscribe to trace specific signals via telemetry at a configurable rate.",
+      "payload": {
+        "signal_ids": {
+          "type": "array",
+          "description": "List of signal IDs to trace (max 16). Empty array disables tracing.",
+          "items": {
+            "type": "int"
+          }
+        },
+        "rate_hz": {
+          "type": "int",
+          "description": "Update rate in Hz (1-50, default 10).",
+          "default": 10,
+          "min": 1,
+          "max": 50
+        }
+      }
+    },
+    "CMD_CTRL_AUTO_SIGNALS_CONFIG": {
+      "kind": "cmd",
+      "direction": "host->mcu",
+      "description": "Configure auto-signal publishing from hardware managers (IMU, encoders, etc). Requires ARMED state.",
+      "payload": {
+        "imu": {
+          "type": "object",
+          "description": "IMU auto-signal config: {enabled: bool, rate_hz: int}"
+        },
+        "encoder": {
+          "type": "object",
+          "description": "Encoder auto-signal config: {enabled: bool, rate_hz: int}"
+        }
+      }
+    },
     "CMD_CTRL_SLOT_CONFIG": {
       "kind": "cmd",
       "direction": "host->mcu",

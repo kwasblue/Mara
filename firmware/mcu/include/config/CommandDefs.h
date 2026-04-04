@@ -37,6 +37,7 @@ enum class CmdType {
     CAM_STOP_RECORDING,
     CLEAR_ESTOP,
     CLEAR_SUBSYSTEM_LOG_LEVELS,
+    CTRL_AUTO_SIGNALS_CONFIG,
     CTRL_GRAPH_CLEAR,
     CTRL_GRAPH_COMMIT,
     CTRL_GRAPH_DEBUG,
@@ -50,8 +51,7 @@ enum class CmdType {
     CTRL_SIGNAL_DELETE,
     CTRL_SIGNAL_GET,
     CTRL_SIGNAL_SET,
-    CTRL_SIGNAL_TRACE,          // Set signals to trace via telemetry
-    CTRL_AUTO_SIGNALS_CONFIG,   // Configure auto-signal publishing from hardware
+    CTRL_SIGNAL_TRACE,
     CTRL_SLOT_CONFIG,
     CTRL_SLOT_ENABLE,
     CTRL_SLOT_GET_PARAM,
@@ -164,6 +164,7 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_CAM_STOP_RECORDING", CmdType::CAM_STOP_RECORDING},
         {"CMD_CLEAR_ESTOP", CmdType::CLEAR_ESTOP},
         {"CMD_CLEAR_SUBSYSTEM_LOG_LEVELS", CmdType::CLEAR_SUBSYSTEM_LOG_LEVELS},
+        {"CMD_CTRL_AUTO_SIGNALS_CONFIG", CmdType::CTRL_AUTO_SIGNALS_CONFIG},
         {"CMD_CTRL_GRAPH_CLEAR", CmdType::CTRL_GRAPH_CLEAR},
         {"CMD_CTRL_GRAPH_COMMIT", CmdType::CTRL_GRAPH_COMMIT},
         {"CMD_CTRL_GRAPH_DEBUG", CmdType::CTRL_GRAPH_DEBUG},
@@ -178,7 +179,6 @@ inline CmdType cmdTypeFromString(const std::string& s) {
         {"CMD_CTRL_SIGNAL_GET", CmdType::CTRL_SIGNAL_GET},
         {"CMD_CTRL_SIGNAL_SET", CmdType::CTRL_SIGNAL_SET},
         {"CMD_CTRL_SIGNAL_TRACE", CmdType::CTRL_SIGNAL_TRACE},
-        {"CMD_CTRL_AUTO_SIGNALS_CONFIG", CmdType::CTRL_AUTO_SIGNALS_CONFIG},
         {"CMD_CTRL_SLOT_CONFIG", CmdType::CTRL_SLOT_CONFIG},
         {"CMD_CTRL_SLOT_ENABLE", CmdType::CTRL_SLOT_ENABLE},
         {"CMD_CTRL_SLOT_GET_PARAM", CmdType::CTRL_SLOT_GET_PARAM},
@@ -292,6 +292,7 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::CAM_STOP_RECORDING: return "CMD_CAM_STOP_RECORDING";
         case CmdType::CLEAR_ESTOP: return "CMD_CLEAR_ESTOP";
         case CmdType::CLEAR_SUBSYSTEM_LOG_LEVELS: return "CMD_CLEAR_SUBSYSTEM_LOG_LEVELS";
+        case CmdType::CTRL_AUTO_SIGNALS_CONFIG: return "CMD_CTRL_AUTO_SIGNALS_CONFIG";
         case CmdType::CTRL_GRAPH_CLEAR: return "CMD_CTRL_GRAPH_CLEAR";
         case CmdType::CTRL_GRAPH_COMMIT: return "CMD_CTRL_GRAPH_COMMIT";
         case CmdType::CTRL_GRAPH_DEBUG: return "CMD_CTRL_GRAPH_DEBUG";
@@ -306,7 +307,6 @@ inline const char* cmdTypeToString(CmdType c) {
         case CmdType::CTRL_SIGNAL_GET: return "CMD_CTRL_SIGNAL_GET";
         case CmdType::CTRL_SIGNAL_SET: return "CMD_CTRL_SIGNAL_SET";
         case CmdType::CTRL_SIGNAL_TRACE: return "CMD_CTRL_SIGNAL_TRACE";
-        case CmdType::CTRL_AUTO_SIGNALS_CONFIG: return "CMD_CTRL_AUTO_SIGNALS_CONFIG";
         case CmdType::CTRL_SLOT_CONFIG: return "CMD_CTRL_SLOT_CONFIG";
         case CmdType::CTRL_SLOT_ENABLE: return "CMD_CTRL_SLOT_ENABLE";
         case CmdType::CTRL_SLOT_GET_PARAM: return "CMD_CTRL_SLOT_GET_PARAM";

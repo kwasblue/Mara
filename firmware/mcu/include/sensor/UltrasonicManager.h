@@ -1,13 +1,13 @@
 #pragma once
 
 #include "config/FeatureFlags.h"
-
-#if HAS_ULTRASONIC
-
 #include "config/PlatformConfig.h"
-#if PLATFORM_HAS_ARDUINO
+
+// Ultrasonic sensors require precise timing (pulseIn) that's only available on Arduino platforms.
+// On non-Arduino platforms, we provide a stub implementation.
+#if HAS_ULTRASONIC && PLATFORM_HAS_ARDUINO
+
 #include <Arduino.h>
-#endif
 #include "core/Debug.h"
 
 class UltrasonicManager {
@@ -138,9 +138,9 @@ private:
     }
 };
 
-#else // !HAS_ULTRASONIC
+#else // !HAS_ULTRASONIC || !PLATFORM_HAS_ARDUINO
 
-// Stub when ultrasonic is disabled
+// Stub when ultrasonic is disabled or platform doesn't support Arduino timing
 class UltrasonicManager {
 public:
     static constexpr uint8_t MAX_SENSORS = 4;
@@ -157,4 +157,4 @@ public:
     uint32_t getReadingAgeMs(uint8_t, uint32_t) const { return UINT32_MAX; }
 };
 
-#endif // HAS_ULTRASONIC
+#endif // HAS_ULTRASONIC && PLATFORM_HAS_ARDUINO

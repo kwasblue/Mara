@@ -235,6 +235,23 @@ class RobotCommandsMixin:
             payload['id'] = id
         await self.send_json_cmd('CMD_CTRL_SIGNAL_DELETE', payload)
 
+    async def cmd_ctrl_signal_trace(self, signal_ids: Optional[Any] = None, rate_hz: int = 10) -> None:
+        """Subscribe to trace specific signals via telemetry at a configurable rate. (CMD_CTRL_SIGNAL_TRACE)"""
+        payload: dict[str, Any] = {}
+        if signal_ids is not None:
+            payload['signal_ids'] = signal_ids
+        payload['rate_hz'] = rate_hz
+        await self.send_json_cmd('CMD_CTRL_SIGNAL_TRACE', payload)
+
+    async def cmd_ctrl_auto_signals_config(self, imu: Optional[Any] = None, encoder: Optional[Any] = None) -> None:
+        """Configure auto-signal publishing from hardware managers (IMU, encoders, etc). Requires ARMED state. (CMD_CTRL_AUTO_SIGNALS_CONFIG)"""
+        payload: dict[str, Any] = {}
+        if imu is not None:
+            payload['imu'] = imu
+        if encoder is not None:
+            payload['encoder'] = encoder
+        await self.send_json_cmd('CMD_CTRL_AUTO_SIGNALS_CONFIG', payload)
+
     async def cmd_ctrl_slot_config(self, slot: int, controller_type: str, rate_hz: int = 100, ref_id: Optional[int] = None, meas_id: Optional[int] = None, out_id: Optional[int] = None, num_states: int = 2, num_inputs: int = 1, state_ids: Optional[Any] = None, ref_ids: Optional[Any] = None, output_ids: Optional[Any] = None, require_armed: bool = True, require_active: bool = True) -> None:
         """Configure a control slot with controller type and signal routing. Only allowed when IDLE. (CMD_CTRL_SLOT_CONFIG)"""
         payload: dict[str, Any] = {}

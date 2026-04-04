@@ -56,9 +56,10 @@ class TestCommandsDomainFiles:
     def test_commands_has_expected_count(self):
         """COMMANDS should have expected number of commands."""
         from mara_host.tools.schema import COMMANDS
-        # Total should be 119 commands across all domains (including WiFi, Benchmark commands)
+        # Total should be 121 commands across all domains (including WiFi, Benchmark commands)
         # Added: CMD_SET_SIGNING_KEY, CMD_RELEASE_SESSION (safety), CMD_CTRL_GRAPH_DEBUG, CMD_CTRL_GRAPH_COMMIT (control)
-        assert len(COMMANDS) == 119, f"Expected 119 commands, got {len(COMMANDS)}"
+        # Added: CMD_CTRL_SIGNAL_TRACE, CMD_CTRL_AUTO_SIGNALS_CONFIG (auto-signals support)
+        assert len(COMMANDS) == 121, f"Expected 121 commands, got {len(COMMANDS)}"
 
     def test_individual_domain_exports(self):
         """Individual domain exports should be available."""
@@ -84,8 +85,9 @@ class TestCommandsDomainFiles:
         assert len(SAFETY_COMMANDS) == 14, f"SAFETY: expected 14, got {len(SAFETY_COMMANDS)}"
         assert len(RATE_COMMANDS) == 4, f"RATE: expected 4, got {len(RATE_COMMANDS)}"
         # CONTROL: +2 for CMD_CTRL_GRAPH_DEBUG, CMD_CTRL_GRAPH_COMMIT
-        assert len(CONTROL_COMMANDS) == 21, f"CONTROL: expected 21, got {len(CONTROL_COMMANDS)}"
-        assert len(CONTROL_COMMAND_OBJECTS) == 21, f"CONTROL_OBJECTS: expected 21, got {len(CONTROL_COMMAND_OBJECTS)}"
+        # CONTROL: +2 for CMD_CTRL_SIGNAL_TRACE, CMD_CTRL_AUTO_SIGNALS_CONFIG
+        assert len(CONTROL_COMMANDS) == 23, f"CONTROL: expected 23, got {len(CONTROL_COMMANDS)}"
+        assert len(CONTROL_COMMAND_OBJECTS) == 23, f"CONTROL_OBJECTS: expected 23, got {len(CONTROL_COMMAND_OBJECTS)}"
         assert len(MOTION_COMMANDS) == 2, f"MOTION: expected 2, got {len(MOTION_COMMANDS)}"
         assert len(GPIO_COMMANDS) == 7, f"GPIO: expected 7, got {len(GPIO_COMMANDS)}"
         assert len(SERVO_COMMANDS) == 5, f"SERVO: expected 5, got {len(SERVO_COMMANDS)}"

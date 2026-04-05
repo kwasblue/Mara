@@ -207,7 +207,7 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
             "CMD_CTRL_GRAPH_UPLOAD",
             {"graph": normalized, "commit": commit, "mode": mode},
             error_message="Failed to upload control graph",
-            ack_timeout_s=0.25,
+            ack_timeout_s=5.0,  # Graph upload needs more time for MCU processing
         )
         if not result.ok:
             return result
@@ -266,7 +266,60 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
         # so the caller should re-query status if they need the full graph
         return ServiceResult.success(data=dict(result.data or {}))
 
-    async def apply(self, graph: dict[str, Any] | ControlGraphConfig, enable: bool = True) -> ServiceResult:
+    async def _get_robot_mode(self) -> str:
+        """Get current robot mode (IDLE/ARMED/ACTIVE/ESTOP)."""
+        try:
+            ok, error, data = await self.client.send_with_data("CMD_GET_ROBOT_STATE", {})
+            if ok and data:
+                return data.get("mode", "UNKNOWN")
+        except Exception:
+            pass
+        return "UNKNOWN"
+
+    async def _ensure_armed(self) -> ServiceResult:
+        """Ensure robot is in ARMED state, arming if necessary."""
+        mode = await self._get_robot_mode()
+        if mode == "ARMED":
+            return ServiceResult.success(data={"mode": mode, "action": "already_armed"})
+
+        if mode == "ACTIVE":
+            # Deactivate first, then we're armed
+            ok, error = await self.client.send_reliable("CMD_DEACTIVATE")
+            if not ok:
+                return ServiceResult.failure(error=f"Failed to deactivate: {error}")
+            return ServiceResult.success(data={"mode": "ARMED", "action": "deactivated"})
+
+        if mode in ("IDLE", "UNKNOWN"):
+            ok, error = await self.client.send_reliable("CMD_ARM")
+            if not ok:
+                return ServiceResult.failure(error=f"Failed to arm: {error}")
+            return ServiceResult.success(data={"mode": "ARMED", "action": "armed"})
+
+        if mode == "ESTOP":
+            return ServiceResult.failure(error="Robot is in ESTOP state - clear estop first")
+
+        return ServiceResult.failure(error=f"Unknown robot mode: {mode}")
+
+    async def apply(
+        self,
+        graph: dict[str, Any] | ControlGraphConfig,
+        enable: bool = True,
+        auto_clear: bool = True,
+        ensure_armed: bool = True,
+    ) -> ServiceResult:
+        """
+        Upload and optionally enable a control graph with automatic state management.
+
+        Args:
+            graph: The control graph configuration to upload
+            enable: If True (default), enable the graph after upload
+            auto_clear: If True (default), clear any existing graph first to prevent
+                       busy-state timeouts when re-uploading
+            ensure_armed: If True (default), automatically arm the robot if not armed
+
+        Returns:
+            ServiceResult with upload status, graph config, and policy info
+        """
         # Pre-check policy BEFORE upload to avoid uploading a graph we can't enable
         if enable:
             try:
@@ -281,16 +334,34 @@ class ControlGraphService(ConfigurableService[dict[str, Any], dict[str, Any]]):
             except ControlGraphValidationError as exc:
                 return ServiceResult.failure(error=str(exc))
 
+        # Step 1: Ensure robot is armed
+        if ensure_armed:
+            arm_result = await self._ensure_armed()
+            if not arm_result.ok:
+                return ServiceResult.failure(
+                    error=f"Cannot upload graph: {arm_result.error}"
+                )
+
+        # Step 2: Clear existing graph to prevent busy-state issues
+        if auto_clear:
+            await self.clear()
+            # Re-arm after clear (clear may affect state on some firmware versions)
+            if ensure_armed:
+                await self._ensure_armed()
+
+        # Step 3: Upload the graph
         upload_result = await self.upload(graph)
         if not upload_result.ok:
             return upload_result
         if not enable:
             return upload_result
 
+        # Step 4: Enable the graph
         enable_result = await self.enable(True)
         if not enable_result.ok:
             return enable_result
 
+        # Step 5: Verify upload succeeded
         status_result = await self.status()
         if not status_result.ok:
             return status_result

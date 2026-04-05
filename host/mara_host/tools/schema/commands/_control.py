@@ -180,6 +180,7 @@ CONTROL_COMMAND_OBJECTS: dict[str, CommandDef] = {
         kind="cmd",
         direction="host->mcu",
         description="Upload a runtime control-graph config. Use commit=false for two-phase commit (requires CMD_CTRL_GRAPH_COMMIT to activate).",
+        timeout_s=5.0,  # Graph upload needs more time for MCU parsing/validation
         payload={
             "graph": FieldDef(type="object", required=True, description="Normalized control-graph config with schema_version and slots."),
             "commit": FieldDef(type="bool", default=True, description="If true (default), immediately activate. If false, stage as pending and return token for later commit."),

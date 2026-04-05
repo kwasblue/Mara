@@ -1,8 +1,8 @@
 ================================================================================
 MARA MONOREPO STRUCTURE
-Generated: 2026-04-04 18:08:38
-Total Files: 1091
-Total Lines of Code: 128,677
+Generated: 2026-04-05 01:52:53
+Total Files: 1122
+Total Lines of Code: 133,183
 ================================================================================
 
 
@@ -626,6 +626,57 @@ HOST (Python)
       |-- __init__(self, client, bus)
       `-- _on_pong(self, msg)
     [Fn] main()
+
+  host/mara_host/bindings/__init__.py (2 lines)
+
+  host/mara_host/bindings/mara_bindings.py (339 lines)
+    [Class] MaraError
+    [Class] MaraState
+    [Class] MaraBindingsError
+      `-- __init__(self, error_code, message)
+    [Class] MaraBindings
+      |-- __init__(self, library_path)
+      |-- _load_library(self, path)
+      |-- _setup_functions(self)
+      |-- _check(self, result, operation)
+      |-- create(self)
+      |-- init(self, handle, config_json)
+      |-- start(self, handle)
+      |-- stop(self, handle)
+      |-- destroy(self, handle)
+      |-- arm(self, handle)
+      |-- disarm(self, handle)
+      |-- activate(self, handle)
+      |-- deactivate(self, handle)
+      |-- estop(self, handle)
+      |-- clear_estop(self, handle)
+      |-- get_state(self, handle)
+      |-- get_state_string(self, handle)
+      |-- gpio_mode(self, handle, pin, mode)
+      |-- gpio_write(self, handle, pin, value)
+      |-- gpio_read(self, handle, pin)
+      |-- servo_attach(self, handle, servo_id, pin, min_us, max_us)
+      |-- servo_detach(self, handle, servo_id)
+      |-- servo_write(self, handle, servo_id, angle)
+      |-- servo_read(self, handle, servo_id)
+      |-- motor_set(self, handle, motor_id, speed)
+      |-- motor_stop(self, handle, motor_id)
+      |-- motor_stop_all(self, handle)
+      |-- set_velocity(self, handle, vx, omega)
+      |-- motion_forward(self, handle, speed)
+      |-- motion_backward(self, handle, speed)
+      |-- motion_rotate_left(self, handle, speed)
+      |-- motion_rotate_right(self, handle, speed)
+      |-- stop_motion(self, handle)
+      |-- imu_read(self, handle)
+      |-- encoder_read(self, handle, encoder_id)
+      |-- ultrasonic_read(self, handle, sensor_id)
+      |-- execute_json(self, handle, command)
+      |-- get_identity(self, handle)
+      |-- get_health(self, handle)
+      |-- error_string(self, error_code)
+      |-- state_string(self, state)
+      `-- version(self)
 
   host/mara_host/camera/__init__.py (96 lines)
     [Fn] _check_vision_deps()
@@ -2100,7 +2151,7 @@ HOST (Python)
 
   host/mara_host/core/__init__.py (31 lines)
 
-  host/mara_host/core/_generated_config.py (222 lines)
+  host/mara_host/core/_generated_config.py (303 lines)
     [Fn] has_feature(name)
     [Fn] get_enabled_features()
     [Fn] get_profile(name)
@@ -3891,7 +3942,7 @@ HOST (Python)
     [Fn] _read_commands(runtime)
     [Fn] _read_tools()
 
-  host/mara_host/mcp/runtime.py (609 lines)
+  host/mara_host/mcp/runtime.py (665 lines)
     [Fn] _redact_sensitive(params)
     [Class] EventType
     [Class] Event
@@ -3915,7 +3966,7 @@ HOST (Python)
       |-- get_recent_events(self, n, event_type)
       `-- get_command_stats(self)
     [Class] MaraRuntime
-      |-- __init__(self, port, host, ble_name, tcp_port, robot_config, robot_config_path)
+      |-- __init__(self, port, host, ble_name, tcp_port, robot_config, robot_config_path, linux_mode, library_path)
       |-- state(self)
       |-- is_connected(self)
       |-- state_service(self)
@@ -4400,7 +4451,24 @@ HOST (Python)
       |-- get_pose(self)
       `-- describe(self)
 
-  host/mara_host/runtime/__init__.py (7 lines)
+  host/mara_host/runtime/__init__.py (12 lines)
+
+  host/mara_host/runtime/linux_runtime.py (267 lines)
+    [Class] LinuxRuntimeState
+    [Class] LinuxRuntimeConfig
+    [Class] ImuData
+    [Class] LinuxRuntime
+      |-- __init__(self, library_path, config)
+      |-- is_connected(self)
+      |-- is_armed(self)
+      |-- robot_state(self)
+      |-- runtime_state(self)
+      |-- get_version(self)
+      |-- on_state_change(self, callback)
+      |-- on_telemetry(self, callback)
+      |-- _ensure_started(self)
+      |-- _ensure_armed(self)
+      `-- _notify_state_change(self)
 
   host/mara_host/runtime/robot_runtime.py (82 lines)
     [Class] BaseRobotRuntime
@@ -4897,7 +4965,7 @@ HOST (Python)
   host/mara_host/services/tooling/backends/implementations/cmake/__init__.py (13 lines)
     [Fn] register_backends(registry)
 
-  host/mara_host/services/tooling/backends/implementations/cmake/build_backend.py (237 lines)
+  host/mara_host/services/tooling/backends/implementations/cmake/build_backend.py (239 lines)
     [Fn] _find_cmake()
     [Fn] _find_idf_py()
     [Fn] _is_espidf_project(project_dir)
@@ -5181,7 +5249,7 @@ HOST (Python)
 
   host/mara_host/telemetry/telemetry_sections.py (108 lines)
 
-  host/mara_host/tools/build_firmware.py (183 lines)
+  host/mara_host/tools/build_firmware.py (184 lines)
     [Fn] _find_pio()
     [Fn] run_pio(args, verbose, extra_flags)
     [Fn] generate()
@@ -6756,6 +6824,86 @@ HOST (Python)
     [Fn] _import_jsonl_logger()
     [Fn] test_jsonl_logger_writes_valid_json_lines(tmp_path)
 
+  host/tests/test_linux_bindings.py (184 lines)
+    [Class] TestMaraError
+      `-- test_error_values(self)
+    [Class] TestMaraState
+      `-- test_state_values(self)
+    [Class] TestMaraBindingsError
+      |-- test_exception_with_error_code(self)
+      `-- test_exception_default_message(self)
+    [Class] TestMaraBindings
+      |-- mock_lib(self)
+      |-- bindings(self, mock_lib)
+      |-- test_create_returns_handle(self, bindings, mock_lib)
+      |-- test_init_calls_library(self, bindings, mock_lib)
+      |-- test_start_calls_library(self, bindings, mock_lib)
+      |-- test_stop_calls_library(self, bindings, mock_lib)
+      |-- test_destroy_calls_library(self, bindings, mock_lib)
+      |-- test_arm_calls_library(self, bindings, mock_lib)
+      |-- test_disarm_calls_library(self, bindings, mock_lib)
+      |-- test_estop_calls_library(self, bindings, mock_lib)
+      |-- test_get_state_returns_enum(self, bindings, mock_lib)
+      |-- test_gpio_mode_calls_library(self, bindings, mock_lib)
+      |-- test_gpio_write_calls_library(self, bindings, mock_lib)
+      |-- test_gpio_read_calls_library(self, bindings, mock_lib)
+      |-- test_servo_attach_calls_library(self, bindings, mock_lib)
+      |-- test_servo_write_calls_library(self, bindings, mock_lib)
+      |-- test_set_velocity_calls_library(self, bindings, mock_lib)
+      |-- test_motion_forward_calls_library(self, bindings, mock_lib)
+      |-- test_stop_motion_calls_library(self, bindings, mock_lib)
+      |-- test_imu_read_returns_tuple(self, bindings, mock_lib)
+      |-- test_error_raises_exception(self, bindings, mock_lib)
+      |-- test_version_returns_string(self, bindings, mock_lib)
+      `-- test_library_not_found_raises_error(self)
+    [Fn] set_state(handle, state_ptr)
+    [Fn] set_imu_values(handle, ax, ay, az, gx, gy, gz)
+
+  host/tests/test_linux_integration.py (144 lines)
+    [Fn] pytest_configure(config)
+    [Fn] lib()
+    [Class] TestUtilityFunctions
+      |-- test_version_returns_semver(self, lib)
+      |-- test_error_string(self, lib, code, expected)
+      `-- test_state_string(self, lib, state, expected)
+    [Class] TestRuntimeLifecycle
+      |-- handle(self, lib)
+      |-- test_create_returns_handle(self, lib)
+      |-- test_create_destroy_cycle(self, lib)
+      |-- test_init_without_hardware_returns_hardware_error(self, lib, handle)
+      |-- test_operations_before_init_return_not_initialized(self, lib, handle)
+      |-- test_estop_works_before_init(self, lib, handle)
+      |-- test_clear_estop_works_before_init(self, lib, handle)
+      |-- test_get_state_before_init(self, lib, handle)
+      |-- test_get_state_string_before_init(self, lib, handle)
+      `-- test_destroy_without_init_is_safe(self, lib)
+    [Class] TestStateMachineHil
+      |-- started(self, lib)
+      |-- test_initial_state_is_idle(self, lib, started)
+      |-- test_arm_transitions_to_armed(self, lib, started)
+      |-- test_disarm_returns_to_idle(self, lib, started)
+      |-- test_activate_requires_armed(self, lib, started)
+      |-- test_arm_activate_cycle(self, lib, started)
+      |-- test_estop_from_active(self, lib, started)
+      |-- test_clear_estop_returns_to_idle(self, lib, started)
+      |-- test_identity_json_is_valid(self, lib, started)
+      `-- test_health_json_is_valid(self, lib, started)
+
+  host/tests/test_linux_runtime.py (351 lines)
+    [Class] TestLinuxRuntimeConfig
+      |-- test_default_config(self)
+      `-- test_custom_config(self)
+    [Class] TestImuData
+      |-- test_default_values(self)
+      `-- test_custom_values(self)
+    [Class] TestLinuxRuntime
+      |-- mock_bindings(self)
+      |-- runtime(self, mock_bindings)
+      |-- test_initial_state(self)
+      `-- test_get_version(self, runtime, mock_bindings)
+    [Class] TestLinuxRuntimeIntegration
+      `-- mock_bindings(self)
+
   host/tests/test_mcp_http_runtime_surface.py (121 lines)
     [Fn] test_http_health_endpoint_reports_runtime_status_without_robot()
     [Fn] test_http_runtime_connect_state_and_disconnect_round_trip()
@@ -7461,6 +7609,50 @@ FIRMWARE/MCU (C++)
     [Class] StepperActuator
     [Struct] State
 
+  firmware/mcu/include/api/mara_capi.h (73 lines)
+    [Fn] mara_create(mara_runtime_t* out)
+    [Fn] mara_init(mara_runtime_t rt, const char* config_json)
+    [Fn] mara_start(mara_runtime_t rt)
+    [Fn] mara_stop(mara_runtime_t rt)
+    [Fn] mara_destroy(mara_runtime_t rt)
+    [Fn] mara_arm(mara_runtime_t rt)
+    [Fn] mara_disarm(mara_runtime_t rt)
+    [Fn] mara_activate(mara_runtime_t rt)
+    [Fn] mara_deactivate(mara_runtime_t rt)
+    [Fn] mara_estop(mara_runtime_t rt)
+    [Fn] mara_clear_estop(mara_runtime_t rt)
+    [Fn] mara_get_state(mara_runtime_t rt, mara_state_t* state)
+    [Fn] mara_get_state_string(mara_runtime_t rt, char* buf, size_t len)
+    [Fn] mara_gpio_mode(mara_runtime_t rt, uint8_t pin, uint8_t mode)
+    [Fn] mara_gpio_write(mara_runtime_t rt, uint8_t pin, uint8_t value)
+    [Fn] mara_gpio_read(mara_runtime_t rt, uint8_t pin, uint8_t* value)
+    [Fn] mara_servo_attach(mara_runtime_t rt, uint8_t id, uint8_t pin,
+                               uint16_t min_us, uint16_t max_us)
+    [Fn] mara_servo_detach(mara_runtime_t rt, uint8_t id)
+    [Fn] mara_servo_write(mara_runtime_t rt, uint8_t id, float angle)
+    [Fn] mara_servo_read(mara_runtime_t rt, uint8_t id, float* angle)
+    [Fn] mara_motor_set(mara_runtime_t rt, uint8_t id, float speed)
+    [Fn] mara_motor_stop(mara_runtime_t rt, uint8_t id)
+    [Fn] mara_motor_stop_all(mara_runtime_t rt)
+    [Fn] mara_set_velocity(mara_runtime_t rt, float vx, float omega)
+    [Fn] mara_motion_forward(mara_runtime_t rt, float speed)
+    [Fn] mara_motion_backward(mara_runtime_t rt, float speed)
+    [Fn] mara_motion_rotate_left(mara_runtime_t rt, float speed)
+    [Fn] mara_motion_rotate_right(mara_runtime_t rt, float speed)
+    [Fn] mara_stop_motion(mara_runtime_t rt)
+    [Fn] mara_imu_read(mara_runtime_t rt,
+                           float* ax, float* ay, float* az,
+                           float* gx, float* gy, float* gz)
+    [Fn] mara_encoder_read(mara_runtime_t rt, uint8_t id, int32_t* ticks)
+    [Fn] mara_ultrasonic_read(mara_runtime_t rt, uint8_t id, float* distance_cm)
+    [Fn] mara_execute_json(mara_runtime_t rt, const char* cmd,
+                               char* response, size_t len, size_t* actual)
+    [Fn] mara_get_identity(mara_runtime_t rt, char* info_json, size_t len)
+    [Fn] mara_get_health(mara_runtime_t rt, char* health_json, size_t len)
+    [Fn] mara_error_string(mara_error_t err)
+    [Fn] mara_state_string(mara_state_t state)
+    [Fn] mara_version(void)
+
   firmware/mcu/include/audio/AudioGraphManager.h (23 lines)
     [Class] CommandRegistry
     [Class] AudioGraphManager
@@ -7920,7 +8112,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/include/config/PinConfig.h (20 lines)
 
-  firmware/mcu/include/config/PlatformConfig.h (133 lines)
+  firmware/mcu/include/config/PlatformConfig.h (163 lines)
 
   firmware/mcu/include/config/Version.h (16 lines)
 
@@ -8539,7 +8731,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/hal/ITimer.h (17 lines)
     [Class] ITimer
 
-  firmware/mcu/include/hal/ITransportFactory.h (34 lines)
+  firmware/mcu/include/hal/ITransportFactory.h (35 lines)
     [Struct] UartTransportConfig
     [Struct] WifiTransportConfig
     [Struct] BleTransportConfig
@@ -8556,7 +8748,7 @@ FIRMWARE/MCU (C++)
     [Fn] wifiStatusToString(WifiStatus status)
     [Fn] wifiModeToString(WifiMode mode)
 
-  firmware/mcu/include/hal/PlatformHal.h (30 lines)
+  firmware/mcu/include/hal/PlatformHal.h (35 lines)
 
   firmware/mcu/include/hal/drivers/Vl53l0x.h (49 lines)
     [Class] Vl53l0x
@@ -8640,6 +8832,62 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/hal/esp32/Esp32WifiManager.h (32 lines)
     [Class] Esp32WifiManager
 
+  firmware/mcu/include/hal/linux/LinuxClock.h (68 lines)
+    [Class] LinuxClock
+    [Struct] timespec
+    [Struct] timespec
+    [Struct] timespec
+    [Struct] timespec
+    [Struct] timespec
+    [Struct] timespec
+
+  firmware/mcu/include/hal/linux/LinuxCriticalSection.h (58 lines)
+    [Class] LinuxCriticalSection
+
+  firmware/mcu/include/hal/linux/LinuxGpio.h (45 lines)
+    [Struct] gpiod_chip
+    [Struct] gpiod_line_request
+    [Class] LinuxGpio
+    [Struct] PinState
+
+  firmware/mcu/include/hal/linux/LinuxHal.h (84 lines)
+    [Struct] LinuxHalStorage
+
+  firmware/mcu/include/hal/linux/LinuxI2c.h (30 lines)
+    [Class] LinuxI2c
+
+  firmware/mcu/include/hal/linux/LinuxLogger.h (40 lines)
+    [Class] LinuxLogger
+
+  firmware/mcu/include/hal/linux/LinuxPersistence.h (72 lines)
+    [Class] LinuxPersistence
+    [Struct] JsonValue
+
+  firmware/mcu/include/hal/linux/LinuxPwm.h (40 lines)
+    [Class] LinuxPwm
+    [Struct] ChannelState
+
+  firmware/mcu/include/hal/linux/LinuxServo.h (50 lines)
+    [Class] LinuxPwm
+    [Class] LinuxI2c
+    [Class] LinuxServo
+    [Struct] ServoState
+
+  firmware/mcu/include/hal/linux/LinuxSystemInfo.h (40 lines)
+    [Class] LinuxSystemInfo
+
+  firmware/mcu/include/hal/linux/LinuxTaskScheduler.h (48 lines)
+    [Class] LinuxTaskScheduler
+    [Struct] TaskInfo
+    [Struct] timespec
+
+  firmware/mcu/include/hal/linux/LinuxTimer.h (32 lines)
+    [Class] LinuxTimer
+    [Struct] timespec
+
+  firmware/mcu/include/hal/linux/LinuxTransportFactory.h (28 lines)
+    [Class] LinuxTransportFactory
+
   firmware/mcu/include/hal/native/NativeClock.h (43 lines)
     [Class] NativeClock
 
@@ -8659,7 +8907,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/hal/stubs/StubCriticalSection.h (12 lines)
     [Class] StubCriticalSection
 
-  firmware/mcu/include/hal/stubs/StubGpio.h (15 lines)
+  firmware/mcu/include/hal/stubs/StubGpio.h (17 lines)
     [Class] StubGpio
 
   firmware/mcu/include/hal/stubs/StubI2c.h (40 lines)
@@ -8668,7 +8916,7 @@ FIRMWARE/MCU (C++)
   firmware/mcu/include/hal/stubs/StubPersistence.h (75 lines)
     [Class] StubPersistence
 
-  firmware/mcu/include/hal/stubs/StubPwm.h (14 lines)
+  firmware/mcu/include/hal/stubs/StubPwm.h (17 lines)
     [Class] StubPwm
 
   firmware/mcu/include/hal/stubs/StubServo.h (18 lines)
@@ -9054,7 +9302,7 @@ FIRMWARE/MCU (C++)
     [Fn] publishTriggered(uint8_t id)
     [Fn] publishCleared(uint8_t id)
 
-  firmware/mcu/include/sensor/MicManager.h (30 lines)
+  firmware/mcu/include/sensor/MicManager.h (41 lines)
     [Class] MicManager
     [Struct] Level
     [Fn] setHal(hal::II2sAudio* audio)
@@ -9066,6 +9314,11 @@ FIRMWARE/MCU (C++)
     [Fn] isOnline()
     [Fn] readLevel(Level& outLevel,
                    size_t sampleCount = 512)
+    [Fn] end()
+    [Class] MicManager
+    [Struct] Level
+    [Fn] setHal(void*)
+    [Fn] isOnline()
     [Fn] end()
 
   firmware/mcu/include/sensor/SensorMacros.h (9 lines)
@@ -9264,6 +9517,58 @@ FIRMWARE/MCU (C++)
     [Fn] main()
     [Fn] before_build(source, target, env)
 
+  firmware/mcu/src/api/mara_capi.cpp (502 lines)
+    [Struct] MaraRuntimeImpl
+    [Fn] getImpl(mara_runtime_t rt)
+    [Fn] mara_create(mara_runtime_t* out)
+    [Fn] mara_init(mara_runtime_t rt, const char* config_json)
+    [Fn] mara_start(mara_runtime_t rt)
+    [Fn] mara_stop(mara_runtime_t rt)
+    [Fn] mara_destroy(mara_runtime_t rt)
+    [Fn] mara_arm(mara_runtime_t rt)
+    [Fn] mara_disarm(mara_runtime_t rt)
+    [Fn] mara_activate(mara_runtime_t rt)
+    [Fn] mara_deactivate(mara_runtime_t rt)
+    [Fn] mara_estop(mara_runtime_t rt)
+    [Fn] mara_clear_estop(mara_runtime_t rt)
+    [Fn] mara_get_state(mara_runtime_t rt, mara_state_t* state)
+    [Fn] mara_get_state_string(mara_runtime_t rt, char* buf, size_t len)
+    [Fn] mara_gpio_mode(mara_runtime_t rt, uint8_t pin, uint8_t mode)
+    [Fn] mara_gpio_write(mara_runtime_t rt, uint8_t pin, uint8_t value)
+    [Fn] mara_gpio_read(mara_runtime_t rt, uint8_t pin, uint8_t* value)
+    [Fn] mara_servo_attach(mara_runtime_t rt, uint8_t id, uint8_t pin,
+                               uint16_t min_us, uint16_t max_us)
+    [Fn] mara_servo_detach(mara_runtime_t rt, uint8_t id)
+    [Fn] mara_servo_write(mara_runtime_t rt, uint8_t id, float angle)
+    [Fn] mara_servo_read(mara_runtime_t rt, uint8_t id, float* angle)
+    [Fn] mara_motor_set(mara_runtime_t rt, uint8_t id, float speed)
+    [Fn] mara_motor_stop(mara_runtime_t rt, uint8_t id)
+    [Fn] mara_motor_set(rt, id, 0.0f)
+    [Fn] mara_motor_stop_all(mara_runtime_t rt)
+    [Fn] mara_set_velocity(mara_runtime_t rt, float vx, float omega)
+    [Fn] mara_motion_forward(mara_runtime_t rt, float speed)
+    [Fn] mara_set_velocity(rt, speed / 100.0f, 0.0f)
+    [Fn] mara_motion_backward(mara_runtime_t rt, float speed)
+    [Fn] mara_set_velocity(rt, -speed / 100.0f, 0.0f)
+    [Fn] mara_motion_rotate_left(mara_runtime_t rt, float speed)
+    [Fn] mara_set_velocity(rt, 0.0f, speed / 100.0f)
+    [Fn] mara_motion_rotate_right(mara_runtime_t rt, float speed)
+    [Fn] mara_set_velocity(rt, 0.0f, -speed / 100.0f)
+    [Fn] mara_stop_motion(mara_runtime_t rt)
+    [Fn] mara_set_velocity(rt, 0.0f, 0.0f)
+    [Fn] mara_imu_read(mara_runtime_t rt,
+                           float* ax, float* ay, float* az,
+                           float* gx, float* gy, float* gz)
+    [Fn] mara_encoder_read(mara_runtime_t rt, uint8_t id, int32_t* ticks)
+    [Fn] mara_ultrasonic_read(mara_runtime_t rt, uint8_t id, float* distance_cm)
+    [Fn] mara_execute_json(mara_runtime_t rt, const char* cmd,
+                               char* response, size_t len, size_t* actual)
+    [Fn] mara_get_identity(mara_runtime_t rt, char* info_json, size_t len)
+    [Fn] mara_get_health(mara_runtime_t rt, char* health_json, size_t len)
+    [Fn] mara_error_string(mara_error_t err)
+    [Fn] mara_state_string(mara_state_t state)
+    [Fn] mara_version(void)
+
   firmware/mcu/src/audio/AudioGraphManager.cpp (46 lines)
 
   firmware/mcu/src/audio/BiquadDesign.cpp (72 lines)
@@ -9442,6 +9747,46 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/hal/esp32/Esp32WifiManager.cpp (155 lines)
 
+  firmware/mcu/src/hal/linux/LinuxGpio.cpp (183 lines)
+
+  firmware/mcu/src/hal/linux/LinuxI2c.cpp (138 lines)
+    [Struct] i2c_msg
+    [Struct] i2c_rdwr_ioctl_data
+
+  firmware/mcu/src/hal/linux/LinuxLogger.cpp (144 lines)
+    [Struct] tm
+
+  firmware/mcu/src/hal/linux/LinuxPersistence.cpp (382 lines)
+    [Struct] passwd
+    [Struct] stat
+
+  firmware/mcu/src/hal/linux/LinuxPwm.cpp (169 lines)
+
+  firmware/mcu/src/hal/linux/LinuxServo.cpp (153 lines)
+
+  firmware/mcu/src/hal/linux/LinuxSystemInfo.cpp (208 lines)
+    [Struct] utsname
+    [Struct] utsname
+
+  firmware/mcu/src/hal/linux/LinuxTaskScheduler.cpp (206 lines)
+    [Struct] timespec
+    [Struct] timespec
+    [Struct] timespec
+    [Struct] sched_param
+
+  firmware/mcu/src/hal/linux/LinuxTimer.cpp (122 lines)
+    [Struct] itimerspec
+    [Struct] timespec
+    [Struct] timespec
+    [Struct] itimerspec
+
+  firmware/mcu/src/hal/linux/LinuxTransportFactory.cpp (101 lines)
+    [Struct] LinuxUartTransport
+    [Struct] LinuxTcpTransport
+    [Struct] termios
+    [Struct] hostent
+    [Struct] sockaddr_in
+
   firmware/mcu/src/loop/LoopControl.cpp (37 lines)
     [Fn] runControlLoop(ServiceContext& ctx, uint32_t now_ms, float dt)
 
@@ -9464,7 +9809,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/motor/ActuatorRegistry.cpp (78 lines)
 
-  firmware/mcu/src/motor/DcMotorManager.cpp (206 lines)
+  firmware/mcu/src/motor/DcMotorManager.cpp (207 lines)
     [Fn] setSpeed(id, 0.0f)
     [Fn] setSpeed(id, cmd)
 
@@ -9485,7 +9830,7 @@ FIRMWARE/MCU (C++)
 
   firmware/mcu/src/sensor/LidarManager.cpp (53 lines)
 
-  firmware/mcu/src/sensor/MicManager.cpp (132 lines)
+  firmware/mcu/src/sensor/MicManager.cpp (134 lines)
 
   firmware/mcu/src/sensor/SensorRegistry.cpp (83 lines)
 
@@ -9513,7 +9858,7 @@ FIRMWARE/MCU (C++)
     [Class] SetupMotorsModule
     [Fn] getSetupMotorsModule()
 
-  firmware/mcu/src/setup/SetupOta.cpp (64 lines)
+  firmware/mcu/src/setup/SetupOta.cpp (66 lines)
     [Class] SetupOtaModule
     [Fn] getSetupOtaModule()
 
@@ -9568,7 +9913,7 @@ FIRMWARE/MCU (C++)
     [Fn] getSystemClock()
     [Fn] maraModeToString(MaraMode mode)
 
-  firmware/mcu/test/fakes/Arduino.h (64 lines)
+  firmware/mcu/test/fakes/Arduino.h (65 lines)
     [Fn] pinMode(int pin, int mode)
     [Fn] digitalWrite(int pin, int val)
     [Fn] digitalRead(int pin)
@@ -10235,22 +10580,22 @@ STATISTICS
 ================================================================================
 
 FILES
-  Python Files:     745
-  C++ Files:        346
-  Total Files:      1091
+  Python Files:     751
+  C++ Files:        371
+  Total Files:      1122
 
 DEFINITIONS
-  Classes:          1448
-  Structs:          186
-  Functions:        2730
-  Methods:          3636
+  Classes:          1482
+  Structs:          224
+  Functions:        2820
+  Methods:          3749
 
 LINES OF CODE
-  Python:           98,125
-  C++:              30,552
-  Total Code:       128,677
-  Blank Lines:      35,225
-  Comment Lines:    36,780
-  Total Lines:      200,682
+  Python:           99,557
+  C++:              33,626
+  Total Code:       133,183
+  Blank Lines:      36,527
+  Comment Lines:    38,060
+  Total Lines:      207,770
 
 ================================================================================

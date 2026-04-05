@@ -71,7 +71,7 @@ async def run(args: argparse.Namespace) -> int:
     print(f"Connecting to {args.port} ...")
 
     async with CLIContext(port=args.port) as ctx:
-        print("Connected and armed.")
+        print("Connected.")
 
         imu_svc = ImuService(ctx.client)
 
@@ -92,13 +92,7 @@ async def run(args: argparse.Namespace) -> int:
             return 1
         print("Servo attached.")
 
-        # Disarm to enter IDLE (graph upload requires IDLE)
-        print("Disarming to IDLE for graph upload ...")
-        disarm_result = await ctx.state_service.disarm()
-        if not disarm_result.ok:
-            print(f"WARNING: disarm failed: {disarm_result.error}")
-
-        # Upload and apply the graph (applies = upload + enable)
+        # Upload and apply graph (handles arm/clear/re-arm automatically)
         print(f"Uploading graph: {graph_path.name} ...")
         apply_result = await ctx.control_graph_service.apply(graph_config, enable=True)
         if not apply_result.ok:
@@ -107,14 +101,6 @@ async def run(args: argparse.Namespace) -> int:
 
         data = apply_result.data or {}
         print(f"Graph applied: present={data.get('present')} slots={data.get('slot_count')} enabled={data.get('enabled')}")
-
-        # Re-arm after upload
-        print("Re-arming ...")
-        arm_result = await ctx.state_service.arm()
-        if not arm_result.ok:
-            print(f"WARNING: arm failed: {arm_result.error}")
-        else:
-            print("Armed. Graph is running.")
 
         print()
         print("Monitoring graph (Ctrl+C to stop):")

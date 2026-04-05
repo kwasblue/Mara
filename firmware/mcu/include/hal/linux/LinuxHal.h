@@ -53,7 +53,7 @@ struct LinuxHalStorage {
     LinuxPwm pwm;
     LinuxServo servo;
     LinuxI2c i2c{1};       // Primary I2C bus (/dev/i2c-1)
-    LinuxI2c i2c1{0};      // Secondary I2C bus (/dev/i2c-0)
+    LinuxI2c i2c0{0};      // Secondary I2C bus (/dev/i2c-0)
     LinuxTimer timer;
 
     // Stub for watchdog (Linux uses systemd watchdog instead)
@@ -81,7 +81,7 @@ struct LinuxHalStorage {
             .pwm         = &pwm,
             .servo       = &servo,
             .i2c         = &i2c,
-            .i2c1        = &i2c1,
+            .i2c1        = &i2c0,
             .timer       = &timer,
             .watchdog    = &watchdog,
             .can         = nullptr,       // No CAN support yet
@@ -101,17 +101,34 @@ struct LinuxHalStorage {
     /// Initialize all hardware interfaces
     ///
     /// Call this before using the HAL. On Linux, this:
-    /// - Opens GPIO chip
-    /// - Initializes I2C buses
-    /// - Sets up timers
+    /// - Opens GPIO chip (/dev/gpiochip0)
+    /// - Initializes I2C buses (/dev/i2c-1, /dev/i2c-0)
+    /// - Sets up PWM (/sys/class/pwm/pwmchip0)
     ///
-    /// @return true if all initialization succeeded
+    /// @return true if all initialization succeeded (false if any component fails)
     bool begin() {
         bool ok = true;
-        ok &= gpio.begin();
-        ok &= i2c.begin(0, 0);   // Linux ignores SDA/SCL pins
-        ok &= i2c1.begin(0, 0);
-        ok &= pwm.begin();
+
+        if (!gpio.begin()) {
+            logger.warn("LinuxHal: GPIO init failed (no /dev/gpiochip0?)");
+            ok = false;
+        }
+
+        if (!i2c.begin(0, 0)) {   // Linux ignores SDA/SCL pins
+            logger.warn("LinuxHal: I2C bus 1 init failed (no /dev/i2c-1?)");
+            ok = false;
+        }
+
+        if (!i2c0.begin(0, 0)) {
+            logger.warn("LinuxHal: I2C bus 0 init failed (no /dev/i2c-0?)");
+            ok = false;
+        }
+
+        if (!pwm.begin()) {
+            logger.warn("LinuxHal: PWM init failed (no /sys/class/pwm/pwmchip0?)");
+            ok = false;
+        }
+
         return ok;
     }
 
@@ -119,7 +136,7 @@ struct LinuxHalStorage {
     void end() {
         gpio.end();
         i2c.end();
-        i2c1.end();
+        i2c0.end();
         pwm.end();
     }
 };

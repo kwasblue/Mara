@@ -9,6 +9,7 @@
 #include <cstring>
 #include <string>
 #include <map>
+#include <vector>
 
 namespace hal {
 

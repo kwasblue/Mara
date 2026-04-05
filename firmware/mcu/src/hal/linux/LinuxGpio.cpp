@@ -92,13 +92,13 @@ void LinuxGpio::toggle(uint8_t pin) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = pins_.find(pin);
-    if (it == pins_.end()) {
+    if (it == pins_.end() || !it->second.request) {
         return;
     }
 
     uint8_t newVal = it->second.value ? 0 : 1;
-    mutex_.unlock();  // Unlock before calling digitalWrite
-    digitalWrite(pin, newVal);
+    gpiod_line_request_set_value(it->second.request, pin, newVal ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
+    it->second.value = newVal;
 }
 
 void LinuxGpio::attachInterrupt(uint8_t pin, void (*isr)(), InterruptMode mode) {

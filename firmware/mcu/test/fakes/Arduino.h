@@ -6,6 +6,7 @@
 #ifdef __cplusplus
   #include <cstdint>
   #include <cstddef>
+  #include <cmath>
   #include <chrono>
   using std::uint8_t;
   using std::uint16_t;

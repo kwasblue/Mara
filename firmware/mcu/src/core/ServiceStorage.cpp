@@ -220,7 +220,7 @@ ServiceContext ServiceStorage::buildContext() {
     ctx.halPwm      = &hal.pwm;
     ctx.halServo    = &hal.servo;
     ctx.halI2c      = &hal.i2c;
-    ctx.halI2c1     = &hal.i2c1;
+    ctx.halI2c1     = &hal.i2c0;
     ctx.halTimer    = &hal.timer;
     ctx.halWatchdog = &hal.watchdog;
     ctx.halLogger   = &hal.logger;

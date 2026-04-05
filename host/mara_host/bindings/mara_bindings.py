@@ -86,14 +86,16 @@ class MaraBindings:
 
     def _load_library(self, path: Optional[str]) -> ctypes.CDLL:
         """Load the shared library"""
-        search_paths = []
+        # Repo build output: <repo>/firmware/mcu/build/libmara_capi.so
+        _repo_root = Path(__file__).resolve().parents[3]
+        _build_lib = str(_repo_root / "firmware" / "mcu" / "build" / "libmara_capi.so")
 
         if path:
-            search_paths.append(path)
+            search_paths = [path, _build_lib]
         else:
-            # Standard search paths
             search_paths = [
                 "libmara_capi.so",
+                _build_lib,
                 "/usr/local/lib/libmara_capi.so",
                 "/usr/lib/libmara_capi.so",
                 str(Path.home() / ".local/lib/libmara_capi.so"),

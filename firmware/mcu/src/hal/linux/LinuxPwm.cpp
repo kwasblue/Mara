@@ -6,6 +6,7 @@
 #if PLATFORM_LINUX
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
 #include <unistd.h>

@@ -13,7 +13,9 @@
 // An empty password disables OTA authentication entirely (INSECURE).
 #ifndef OTA_PASSWORD
     #define OTA_PASSWORD ""  // Default: no password (development only)
-    #warning "OTA_PASSWORD not set - OTA updates are unauthenticated! Set in WifiSecrets.h or build_flags."
+    #if PLATFORM_ESP32
+        #warning "OTA_PASSWORD not set - OTA updates are unauthenticated! Set in WifiSecrets.h or build_flags."
+    #endif
 #endif
 
 // OTA hostname defaults to device name from config

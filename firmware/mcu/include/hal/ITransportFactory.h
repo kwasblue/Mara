@@ -11,6 +11,7 @@ namespace hal {
 struct UartTransportConfig {
     void* serial = nullptr;      // HardwareSerial* on Arduino, void* for portability
     uint32_t baudRate = 115200;
+    const char* device = nullptr; // Device path for Linux (e.g. "/dev/ttyUSB0")
 };
 
 struct WifiTransportConfig {

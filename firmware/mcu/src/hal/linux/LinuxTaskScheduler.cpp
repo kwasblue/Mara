@@ -249,13 +249,12 @@ void* LinuxTaskScheduler::threadWrapper(void* arg) {
 
         if (!info->running) break;
 
-        // Run the task function
+        // Run the task function once per loop iteration.
+        // Firmware tasks are expected to contain their own delay/loop logic;
+        // if the function returns, we loop back to check running/suspended.
         if (info->func) {
             info->func(info->param);
         }
-
-        // Task function returned, exit
-        break;
     }
 
     currentTask_ = nullptr;

@@ -7,6 +7,8 @@
 
 #if PLATFORM_LINUX
 
+#include <unistd.h>
+
 namespace hal {
 
 // PCA9685 registers
@@ -183,7 +185,8 @@ void LinuxServo::setPwmPulse(uint8_t servoId, uint16_t pulseUs) {
             static_cast<uint8_t>((offTime >> 8) & 0x0F)    // OFF_H
         };
 
-        i2c_->writeRegister(pca9685Address_, reg, data, 4);
+        uint8_t pkt[5] = {reg, data[0], data[1], data[2], data[3]};
+        i2c_->write(pca9685Address_, pkt, 5);
     }
     // Software mode: just store the value (already done in caller)
 }
@@ -192,7 +195,7 @@ bool LinuxServo::writePCA9685Reg(uint8_t reg, uint8_t value) {
     if (!i2c_) {
         return false;
     }
-    return i2c_->writeRegister(pca9685Address_, reg, &value, 1);
+    return i2c_->writeReg(pca9685Address_, reg, value) == I2cResult::Ok;
 }
 
 uint16_t LinuxServo::angleToPulse(uint8_t servoId, float angleDeg) const {

@@ -43,7 +43,11 @@ from datetime import datetime
 from typing import Optional, Dict, Any, Callable, List
 from enum import Enum
 
+import logging
+
 from ..bindings import MaraBindings, MaraError, MaraState
+
+logger = logging.getLogger(__name__)
 
 
 class LinuxRuntimeState(str, Enum):
@@ -256,56 +260,63 @@ class LinuxRuntime:
 
     async def arm(self) -> Dict[str, Any]:
         """Arm the robot"""
-        self._ensure_started()
-        self._bindings.arm(self._handle)
-        self._robot_state = self._bindings.get_state(self._handle)
+        async with self._lock:
+            self._ensure_started()
+            self._bindings.arm(self._handle)
+            self._robot_state = self._bindings.get_state(self._handle)
         self._notify_state_change()
         return {"state": self._robot_state.name}
 
     async def disarm(self) -> Dict[str, Any]:
         """Disarm the robot"""
-        self._ensure_started()
-        self._bindings.disarm(self._handle)
-        self._robot_state = self._bindings.get_state(self._handle)
+        async with self._lock:
+            self._ensure_started()
+            self._bindings.disarm(self._handle)
+            self._robot_state = self._bindings.get_state(self._handle)
         self._notify_state_change()
         return {"state": self._robot_state.name}
 
     async def activate(self) -> Dict[str, Any]:
         """Activate the robot"""
-        self._ensure_started()
-        self._bindings.activate(self._handle)
-        self._robot_state = self._bindings.get_state(self._handle)
+        async with self._lock:
+            self._ensure_started()
+            self._bindings.activate(self._handle)
+            self._robot_state = self._bindings.get_state(self._handle)
         self._notify_state_change()
         return {"state": self._robot_state.name}
 
     async def deactivate(self) -> Dict[str, Any]:
         """Deactivate the robot"""
-        self._ensure_started()
-        self._bindings.deactivate(self._handle)
-        self._robot_state = self._bindings.get_state(self._handle)
+        async with self._lock:
+            self._ensure_started()
+            self._bindings.deactivate(self._handle)
+            self._robot_state = self._bindings.get_state(self._handle)
         self._notify_state_change()
         return {"state": self._robot_state.name}
 
     async def estop(self) -> Dict[str, Any]:
         """Emergency stop"""
-        self._ensure_started()
-        self._bindings.estop(self._handle)
-        self._robot_state = self._bindings.get_state(self._handle)
+        async with self._lock:
+            self._ensure_started()
+            self._bindings.estop(self._handle)
+            self._robot_state = self._bindings.get_state(self._handle)
         self._notify_state_change()
         return {"state": self._robot_state.name}
 
     async def clear_estop(self) -> Dict[str, Any]:
         """Clear emergency stop"""
-        self._ensure_started()
-        self._bindings.clear_estop(self._handle)
-        self._robot_state = self._bindings.get_state(self._handle)
+        async with self._lock:
+            self._ensure_started()
+            self._bindings.clear_estop(self._handle)
+            self._robot_state = self._bindings.get_state(self._handle)
         self._notify_state_change()
         return {"state": self._robot_state.name}
 
     async def get_state(self) -> MaraState:
         """Get current robot state"""
-        self._ensure_started()
-        self._robot_state = self._bindings.get_state(self._handle)
+        async with self._lock:
+            self._ensure_started()
+            self._robot_state = self._bindings.get_state(self._handle)
         return self._robot_state
 
     # =========================================================================
@@ -497,5 +508,5 @@ class LinuxRuntime:
         for callback in self._state_callbacks:
             try:
                 callback(self._robot_state)
-            except Exception:
-                pass  # Don't let callback errors crash runtime
+            except Exception as e:
+                logger.warning("State change callback raised: %s", e)

@@ -210,21 +210,24 @@ include_directories(
 # Source Files
 # =============================================================================
 
-# Core firmware sources (platform-independent)
-file(GLOB_RECURSE CORE_SOURCES
-    src/core/*.cpp
-    src/command/*.cpp
-    src/control/*.cpp
-    src/motor/*.cpp
-    src/sensor/*.cpp
-    src/module/*.cpp
-    src/loop/*.cpp
-)
+# All firmware sources except the Arduino entry point (main.cpp)
+file(GLOB_RECURSE ALL_SOURCES src/*.cpp)
+list(FILTER ALL_SOURCES EXCLUDE REGEX ".*/src/main\\.cpp$")
 
-# Linux HAL sources
-file(GLOB LINUX_HAL_SOURCES
-    src/hal/linux/*.cpp
-)
+# Split into platform-specific and core groups for clarity
+# (combined into mara_runtime below)
+set(CORE_SOURCES "")
+set(LINUX_HAL_SOURCES "")
+set(HAL_DRIVER_SOURCES "")
+foreach(src ${ALL_SOURCES})
+    if(src MATCHES ".*/hal/linux/.*")
+        list(APPEND LINUX_HAL_SOURCES ${src})
+    elseif(src MATCHES ".*/hal/drivers/.*")
+        list(APPEND HAL_DRIVER_SOURCES ${src})
+    elseif(NOT src MATCHES ".*/hal/esp32/.*")
+        list(APPEND CORE_SOURCES ${src})
+    endif()
+endforeach()
 
 # C API wrapper
 set(CAPI_SOURCES
@@ -256,6 +259,7 @@ endif()
 add_library(mara_runtime SHARED
     ${CORE_SOURCES}
     ${LINUX_HAL_SOURCES}
+    ${HAL_DRIVER_SOURCES}
 )
 
 target_include_directories(mara_runtime PUBLIC

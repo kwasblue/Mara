@@ -145,7 +145,7 @@ void LinuxSystemInfo::readCpuInfo() {
     // Fallback: try to get from uname
     struct utsname uts;
     if (uname(&uts) == 0) {
-        snprintf(chipModel_, sizeof(chipModel_), "%s %s", uts.sysname, uts.machine);
+        snprintf(chipModel_, sizeof(chipModel_), "%.32s %.31s", uts.sysname, uts.machine);
     } else {
         strcpy(chipModel_, "Linux");
     }
@@ -211,7 +211,8 @@ void LinuxSystemInfo::readHostname() {
 void LinuxSystemInfo::readKernelVersion() {
     struct utsname uts;
     if (uname(&uts) == 0) {
-        snprintf(kernelVersion_, sizeof(kernelVersion_), "%s", uts.release);
+        snprintf(kernelVersion_, sizeof(kernelVersion_), "%.*s",
+                 static_cast<int>(sizeof(kernelVersion_) - 1), uts.release);
     } else {
         strcpy(kernelVersion_, "unknown");
     }

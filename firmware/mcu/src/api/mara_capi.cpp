@@ -280,8 +280,10 @@ mara_error_t mara_estop(mara_runtime_t rt) {
     }
 
     auto* impl = getImpl(rt);
-    // No lock - E-stop must be immediate
-    impl->state = MARA_STATE_FAULT;
+    // state is std::atomic — write is safe without the mutex.
+    // We intentionally do not hold the mutex here so estop cannot
+    // be blocked by another operation that already holds it.
+    impl->state.store(MARA_STATE_FAULT);
     impl->hal.logger->warn("EMERGENCY STOP");
 
     // TODO: Stop all actuators immediately
@@ -333,7 +335,7 @@ mara_error_t mara_get_state_string(mara_runtime_t rt, char* buf, size_t len) {
         return MARA_ERR_BUFFER_TOO_SMALL;
     }
 
-    strcpy(buf, str);
+    memcpy(buf, str, strLen + 1);
     return MARA_OK;
 }
 
@@ -570,16 +572,11 @@ mara_error_t mara_imu_read(mara_runtime_t rt,
         return MARA_ERR_NOT_INITIALIZED;
     }
 
-    // TODO: Read from IMU via I2C
-    // For now, return zeros
-    *ax = 0.0f;
-    *ay = 0.0f;
-    *az = 1.0f;  // 1g in Z direction (gravity)
-    *gx = 0.0f;
-    *gy = 0.0f;
-    *gz = 0.0f;
+    // IMU not yet implemented for Linux — no I2C IMU driver
+    (void)ax; (void)ay; (void)az;
+    (void)gx; (void)gy; (void)gz;
 
-    return MARA_OK;
+    return MARA_ERR_NOT_SUPPORTED;
 }
 
 mara_error_t mara_encoder_read(mara_runtime_t rt, uint8_t id, int32_t* ticks) {
@@ -640,7 +637,7 @@ mara_error_t mara_execute_json(mara_runtime_t rt, const char* cmd,
         return MARA_ERR_BUFFER_TOO_SMALL;
     }
 
-    strcpy(response, resp);
+    memcpy(response, resp, respLen + 1);
     if (actual) {
         *actual = respLen;
     }
@@ -674,11 +671,12 @@ mara_error_t mara_get_identity(mara_runtime_t rt, char* info_json, size_t len) {
         mara_state_string(impl->state.load())
     );
 
-    if (written < 0 || static_cast<size_t>(written) >= len) {
+    if (written < 0 || written >= static_cast<int>(sizeof(buf)) ||
+        static_cast<size_t>(written) >= len) {
         return MARA_ERR_BUFFER_TOO_SMALL;
     }
 
-    strcpy(info_json, buf);
+    memcpy(info_json, buf, written + 1);
     return MARA_OK;
 }
 
@@ -704,11 +702,12 @@ mara_error_t mara_get_health(mara_runtime_t rt, char* health_json, size_t len) {
         impl->hal.clock->millis()
     );
 
-    if (written < 0 || static_cast<size_t>(written) >= len) {
+    if (written < 0 || written >= static_cast<int>(sizeof(buf)) ||
+        static_cast<size_t>(written) >= len) {
         return MARA_ERR_BUFFER_TOO_SMALL;
     }
 
-    strcpy(health_json, buf);
+    memcpy(health_json, buf, written + 1);
     return MARA_OK;
 }
 

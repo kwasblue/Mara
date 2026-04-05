@@ -3,7 +3,7 @@
 // AUTO-GENERATED FILE - DO NOT EDIT
 // =============================================================================
 // Generated from: config/mara_build.yaml
-// Generated at:   2026-04-05T00:47:14.235270
+// Generated at:   2026-04-05T01:17:19.524568
 //
 // Resource limits only - safe to include without affecting feature flags.
 // For feature flags, include GeneratedBuildConfig.h instead.

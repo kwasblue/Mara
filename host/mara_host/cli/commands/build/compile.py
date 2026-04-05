@@ -13,13 +13,13 @@ from mara_host.tools.build_firmware import (
     generate as do_generate,
 )
 
-from ._common import get_features
+from ._common import get_features, resolve_env
 from .size import show_size_summary
 
 
 def cmd_compile(args: argparse.Namespace) -> int:
     """Compile firmware through the pluggable BuildBackend."""
-    env = getattr(args, 'env', 'esp32_usb')
+    env = resolve_env(args)
     verbose = getattr(args, 'verbose', False)
     features = get_features(args)
     backend_name = getattr(args, 'build_backend', 'platformio')

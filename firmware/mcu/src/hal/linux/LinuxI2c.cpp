@@ -64,7 +64,7 @@ bool LinuxI2c::devicePresent(uint8_t address) {
 
     // Try to read a byte - if device is present, this will succeed
     uint8_t dummy;
-    return (read(fd_, &dummy, 1) == 1 || errno == ENXIO);
+    return (::read(fd_, &dummy, 1) == 1 || errno == ENXIO);
 }
 
 I2cResult LinuxI2c::write(uint8_t address, const uint8_t* data, size_t length, bool stop) {

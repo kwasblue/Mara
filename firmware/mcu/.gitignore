@@ -18,6 +18,9 @@ include/config/WifiSecrets.h
 .gcc-flags.json
 .cache/
 
+# ---- CMake build folder ----
+build/
+
 # ---- MCU auto-generated ----
 PlatformIO/Projects/ESP32 MCU Host/include/config/PinConfig.h
 PlatformIO/Projects/ESP32 MCU Host/include/config/CommandDefs.h

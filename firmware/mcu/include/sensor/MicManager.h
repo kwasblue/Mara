@@ -1,6 +1,10 @@
 // managers/MicManager.h
 #pragma once
 
+#include "config/PlatformConfig.h"
+
+#if PLATFORM_ESP32
+
 #include <Arduino.h>
 #include "driver/i2s.h"
 #include "hal/II2sAudio.h"
@@ -48,3 +52,16 @@ private:
     // if readLevel() were called from multiple tasks simultaneously.
     int32_t    sampleBuffer_[kMaxSampleCount];
 };
+
+#else // !PLATFORM_ESP32
+
+// Stub for non-ESP32 platforms — MicManager requires ESP32 I2S driver
+class MicManager {
+public:
+    struct Level { float rms = 0.f; float peak = 0.f; float dbfs = -120.f; };
+    void setHal(void*) {}
+    bool isOnline() const { return false; }
+    void end() {}
+};
+
+#endif // PLATFORM_ESP32

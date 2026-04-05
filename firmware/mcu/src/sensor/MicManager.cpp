@@ -1,5 +1,8 @@
 // managers/MicManager.cpp
 #include "sensor/MicManager.h"
+
+#if PLATFORM_ESP32
+
 #include <math.h>
 
 bool MicManager::begin(gpio_num_t wsPin,
@@ -170,3 +173,5 @@ bool MicManager::readLevel(Level& outLevel, size_t sampleCount) {
 
     return true;
 }
+
+#endif // PLATFORM_ESP32

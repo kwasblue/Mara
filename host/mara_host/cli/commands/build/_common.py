@@ -80,3 +80,13 @@ def get_features(args: argparse.Namespace) -> Optional[dict[str, bool]]:
         features_str = profile if not features_str else f"{profile},{features_str}"
 
     return parse_features(features_str, no_features)
+
+
+def resolve_env(args: argparse.Namespace) -> str:
+    """Resolve the build environment, auto-mapping linux profiles to linux envs."""
+    env = getattr(args, 'env', 'esp32_usb')
+    profile = getattr(args, 'profile', None)
+    # If env wasn't explicitly set but profile is a linux profile, use the profile as env
+    if env == 'esp32_usb' and profile and profile.startswith('linux'):
+        return profile
+    return env

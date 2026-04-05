@@ -170,35 +170,40 @@ class CMakeBuildBackend(BuildBackend):
                 error="cmake not found",
             )
 
-        # Configure if needed
-        if not (build_path / "CMakeCache.txt").exists():
-            configure_cmd = [cmake, "-S", str(project_dir), "-B", str(build_path)]
+        # Always configure — cmake is idempotent and only regenerates when inputs change.
+        # This ensures feature flags and platform settings are always up to date.
+        configure_cmd = [cmake, "-S", str(project_dir), "-B", str(build_path)]
 
-            # Add feature flags as CMake definitions
-            if request.features:
-                configure_cmd.extend(_features_to_cmake_defs(request.features))
+        # Platform: linux environments get PLATFORM_LINUX=ON
+        is_linux = request.environment.lower().startswith("linux")
+        if is_linux:
+            configure_cmd.extend(["-DPLATFORM_LINUX=ON"])
 
-            # Add build type based on environment name
-            if "debug" in request.environment.lower():
-                configure_cmd.extend(["-DCMAKE_BUILD_TYPE=Debug"])
-            else:
-                configure_cmd.extend(["-DCMAKE_BUILD_TYPE=Release"])
+        # Add feature flags as CMake definitions
+        if request.features:
+            configure_cmd.extend(_features_to_cmake_defs(request.features))
 
-            print(f"[cmake-build] Configuring: {' '.join(configure_cmd)}")
-            config_result = subprocess.run(
-                configure_cmd,
-                cwd=project_dir,
-                capture_output=True,
-                text=True,
+        # Add build type based on environment name
+        if "debug" in request.environment.lower():
+            configure_cmd.extend(["-DCMAKE_BUILD_TYPE=Debug"])
+        else:
+            configure_cmd.extend(["-DCMAKE_BUILD_TYPE=Release"])
+
+        print(f"[cmake-build] Configuring: {' '.join(configure_cmd)}")
+        config_result = subprocess.run(
+            configure_cmd,
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+
+        if config_result.returncode != 0:
+            return BuildOutcome(
+                success=False,
+                return_code=config_result.returncode,
+                output=config_result.stdout or "",
+                error=config_result.stderr or "",
             )
-
-            if config_result.returncode != 0:
-                return BuildOutcome(
-                    success=False,
-                    return_code=config_result.returncode,
-                    output=config_result.stdout or "",
-                    error=config_result.stderr or "",
-                )
 
         # Build
         build_cmd = [cmake, "--build", str(build_path)]

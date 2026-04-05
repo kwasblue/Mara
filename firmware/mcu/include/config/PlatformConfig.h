@@ -236,6 +236,17 @@
 #endif
 
 // =============================================================================
+// PLATFORM TYPE STUBS
+// =============================================================================
+// ESP32/Arduino-specific types and constants that need a fallback on Linux/Native
+
+#if !PLATFORM_ESP32
+    // Pull in Arduino type/constant stubs for Linux/Native builds.
+    // test/fakes/Arduino.h is in the include path via CMakeLists.txt.
+    #include <Arduino.h>
+#endif
+
+// =============================================================================
 // STATIC ASSERTIONS FOR SANITY
 // =============================================================================
 // Ensure exactly one platform is selected

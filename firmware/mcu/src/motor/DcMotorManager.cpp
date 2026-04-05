@@ -6,6 +6,7 @@
 #if HAS_DC_MOTOR
 
 #include "core/Debug.h"
+#include <cmath>
 
 bool DcMotorManager::attach(uint8_t id,
                             int in1Pin,

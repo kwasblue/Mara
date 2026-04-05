@@ -22,11 +22,12 @@ import sys
 _TOOLS_DIR = Path(__file__).resolve().parent
 MCU_PROJECT = _TOOLS_DIR.parent.parent.parent / "firmware" / "mcu"
 
-# Available environments from platformio.ini
+# Available environments from platformio.ini + cmake Linux environments
 ENVIRONMENTS = {
     "esp32_minimal", "esp32_motors", "esp32_sensors",
     "esp32_control", "esp32_full", "esp32_usb", "esp32_ota",
-    "esp32_base", "native", "esp32_test"
+    "esp32_base", "native", "esp32_test",
+    "linux_minimal", "linux_motors", "linux_full",
 }
 
 # Import from single source of truth (mara_build.yaml via build_profiles)

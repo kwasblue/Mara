@@ -55,6 +55,8 @@ option(HAS_CONTROL_MODULE "Enable control module" ON)
 option(HAS_TELEMETRY "Enable telemetry" ON)
 option(HAS_LOGGING "Enable logging" ON)
 option(HAS_IDENTITY "Enable identity module" ON)
+option(HAS_MQTT_TRANSPORT "Enable MQTT transport (requires HAS_WIFI)" OFF)
+option(HAS_OTA "Enable OTA updates (requires HAS_WIFI)" OFF)
 
 # =============================================================================
 # Compiler Definitions
@@ -182,12 +184,26 @@ else()
     add_definitions(-DHAS_IDENTITY=0)
 endif()
 
+if(HAS_MQTT_TRANSPORT)
+    add_definitions(-DHAS_MQTT_TRANSPORT=1)
+else()
+    add_definitions(-DHAS_MQTT_TRANSPORT=0)
+endif()
+
+if(HAS_OTA)
+    add_definitions(-DHAS_OTA=1)
+else()
+    add_definitions(-DHAS_OTA=0)
+endif()
+
 # =============================================================================
 # Include Directories
 # =============================================================================
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/fakes
+    ${CMAKE_CURRENT_SOURCE_DIR}/.pio/libdeps/native/ArduinoJson/src
 )
 
 # =============================================================================

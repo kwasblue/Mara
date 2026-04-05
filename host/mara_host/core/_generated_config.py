@@ -4,7 +4,7 @@ _generated_config.py
 AUTO-GENERATED FILE - DO NOT EDIT
 =============================================================================
 Generated from: config/mara_build.yaml
-Generated at:   2026-04-05T00:02:27.786398
+Generated at:   2026-04-05T00:33:10.161953
 Active profile: full
 Target platform: esp32
 

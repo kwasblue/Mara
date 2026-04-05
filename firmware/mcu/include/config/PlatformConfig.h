@@ -16,7 +16,7 @@
 // 3. Default to native for unit tests
 
 // Check if platform was already defined (from GeneratedBuildConfig.h or CLI)
-#if defined(PLATFORM_ESP32) || defined(PLATFORM_STM32) || defined(PLATFORM_RP2040) || defined(PLATFORM_NATIVE)
+#if defined(PLATFORM_ESP32) || defined(PLATFORM_STM32) || defined(PLATFORM_RP2040) || defined(PLATFORM_LINUX) || defined(PLATFORM_NATIVE)
     // Platform already defined - skip auto-detection
     #define PLATFORM_FROM_CONFIG 1
 #else
@@ -32,6 +32,11 @@
     #elif defined(ARDUINO_ARCH_RP2040) || defined(PICO_BUILD)
         #define PLATFORM_RP2040 1
         #define PLATFORM_NAME "rp2040"
+    #elif defined(__linux__) && !defined(PLATFORM_NATIVE) && !defined(NATIVE_BUILD) && !defined(UNIT_TEST)
+        // Linux platform for Raspberry Pi, Jetson, etc.
+        // Only when not explicitly building for native/test
+        #define PLATFORM_LINUX 1
+        #define PLATFORM_NAME "linux"
     #elif defined(NATIVE_BUILD) || defined(UNIT_TEST) || !defined(ARDUINO)
         #define PLATFORM_NATIVE 1
         #define PLATFORM_NAME "native"
@@ -52,6 +57,9 @@
 #ifndef PLATFORM_RP2040
     #define PLATFORM_RP2040 0
 #endif
+#ifndef PLATFORM_LINUX
+    #define PLATFORM_LINUX 0
+#endif
 #ifndef PLATFORM_NATIVE
     #define PLATFORM_NATIVE 0
 #endif
@@ -64,6 +72,8 @@
         #define PLATFORM_NAME "stm32"
     #elif PLATFORM_RP2040
         #define PLATFORM_NAME "rp2040"
+    #elif PLATFORM_LINUX
+        #define PLATFORM_NAME "linux"
     #else
         #define PLATFORM_NAME "native"
     #endif
@@ -97,6 +107,9 @@
     #ifndef HAS_FREERTOS
         #define HAS_FREERTOS 0
     #endif
+#elif PLATFORM_LINUX
+    // Linux uses pthreads, not FreeRTOS
+    #define HAS_FREERTOS 0
 #else
     #define HAS_FREERTOS 0
 #endif
@@ -129,6 +142,15 @@
     #define PLATFORM_HAS_I2S_CAPABLE 1      // PIO can do I2S
     #define PLATFORM_HAS_DUAL_CORE 1
     #define PLATFORM_DEFAULT_SERIAL_BAUD 921600
+#elif PLATFORM_LINUX
+    // Linux SBC (Raspberry Pi, Jetson, etc.)
+    // WiFi/BLE handled by NetworkManager, not HAL
+    #define PLATFORM_HAS_WIFI_CAPABLE 0
+    #define PLATFORM_HAS_BLE_CAPABLE 0
+    #define PLATFORM_HAS_CAN_CAPABLE 0      // Can be added via SocketCAN
+    #define PLATFORM_HAS_I2S_CAPABLE 0      // Could add via ALSA
+    #define PLATFORM_HAS_DUAL_CORE 1        // Most SBCs have multiple cores
+    #define PLATFORM_DEFAULT_SERIAL_BAUD 921600
 #else
     // Native/test build - no hardware capabilities
     #define PLATFORM_HAS_WIFI_CAPABLE 0
@@ -155,6 +177,11 @@
     #define PLATFORM_RAM_KB 264
     #define PLATFORM_FLASH_KB 2048          // Typical 2MB flash
     #define PLATFORM_HAS_PSRAM_SUPPORT 0
+#elif PLATFORM_LINUX
+    // Linux SBC - abundant resources
+    #define PLATFORM_RAM_KB 1048576         // 1GB+ typical
+    #define PLATFORM_FLASH_KB 999999        // Storage is plentiful
+    #define PLATFORM_HAS_PSRAM_SUPPORT 0
 #else
     // Native - unlimited for practical purposes
     #define PLATFORM_RAM_KB 999999
@@ -172,6 +199,7 @@
 #define PLATFORM_INCLUDE_ESP32_HAL  PLATFORM_ESP32
 #define PLATFORM_INCLUDE_STM32_HAL  PLATFORM_STM32
 #define PLATFORM_INCLUDE_RP2040_SDK PLATFORM_RP2040
+#define PLATFORM_INCLUDE_LINUX_HAL  PLATFORM_LINUX
 
 // =============================================================================
 // HELPER MACROS FOR CONDITIONAL COMPILATION
@@ -193,6 +221,13 @@
     #define PLATFORM_ONLY_NATIVE(code)
 #endif
 
+// PLATFORM_ONLY_LINUX { code } - code only compiles in Linux builds
+#if PLATFORM_LINUX
+    #define PLATFORM_ONLY_LINUX(code) code
+#else
+    #define PLATFORM_ONLY_LINUX(code)
+#endif
+
 // PLATFORM_WHEN_ARDUINO { code } - code only compiles when Arduino framework present
 #if PLATFORM_HAS_ARDUINO
     #define PLATFORM_WHEN_ARDUINO(code) code
@@ -206,6 +241,6 @@
 // Ensure exactly one platform is selected
 
 static_assert(
-    (PLATFORM_ESP32 + PLATFORM_STM32 + PLATFORM_RP2040 + PLATFORM_NATIVE) == 1,
+    (PLATFORM_ESP32 + PLATFORM_STM32 + PLATFORM_RP2040 + PLATFORM_LINUX + PLATFORM_NATIVE) == 1,
     "Exactly one platform must be defined"
 );

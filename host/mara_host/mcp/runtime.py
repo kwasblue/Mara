@@ -303,6 +303,8 @@ class MaraRuntime:
         tcp_port: int = 3333,
         robot_config: Optional[object] = None,
         robot_config_path: Optional[str] = None,
+        linux_mode: bool = False,
+        library_path: Optional[str] = None,
     ):
         self.port = port
         self.host = host
@@ -310,6 +312,11 @@ class MaraRuntime:
         self.tcp_port = tcp_port
         self.robot_config = robot_config
         self.robot_config_path = robot_config_path
+
+        # Linux mode: run firmware in-process via libmara_capi.so
+        self._linux_mode = linux_mode
+        self._library_path = library_path
+        self._linux_runtime = None
 
         self._ctx = None
         self._store = StateStore()
@@ -332,6 +339,8 @@ class MaraRuntime:
     @property
     def is_connected(self) -> bool:
         """Check if connected to robot."""
+        if self._linux_mode:
+            return self._linux_runtime is not None and self._linux_runtime.is_connected
         return self._ctx is not None and self._ctx.is_connected
 
     # ═══════════════════════════════════════════════════════════
@@ -340,11 +349,60 @@ class MaraRuntime:
 
     async def connect(self) -> dict:
         """Connect to robot. Returns connection info."""
+        async with self._lock:
+            # Linux mode: use in-process runtime
+            if self._linux_mode:
+                return await self._connect_linux()
+
+            return await self._connect_serial()
+
+    async def _connect_linux(self) -> dict:
+        """Connect via Linux in-process runtime (libmara_capi.so)."""
+        from mara_host.runtime.linux_runtime import LinuxRuntime
+
+        if self._linux_runtime is not None:
+            return {"status": "already_connected"}
+
+        try:
+            self._linux_runtime = LinuxRuntime(library_path=self._library_path)
+            result = await self._linux_runtime.start()
+
+            # Update state
+            now = datetime.now()
+            self._store.connected = True
+            self._store.connected_at = now
+            self._store.robot_state = FreshValue("IDLE", now, stale_after_s=2.0)
+            self._store.firmware_version = self._linux_runtime.get_version()
+            self._store.protocol_version = 0
+            self._store.features = []
+
+            # Record event
+            self._store.add_event(EventType.CONNECTED, {
+                "mode": "linux",
+                "version": self._store.firmware_version,
+            })
+
+            return {
+                "status": "connected",
+                "mode": "linux",
+                "version": self._store.firmware_version,
+            }
+        except Exception as e:
+            self._linux_runtime = None
+            self._store.connected = False
+            self._store.add_event(EventType.ERROR, {
+                "stage": "connect",
+                "mode": "linux",
+                "error": str(e),
+            })
+            raise
+
+    async def _connect_serial(self) -> dict:
+        """Connect via serial/TCP transport to ESP32."""
         from mara_host.cli.context import CLIContext
 
-        async with self._lock:
-            if self._ctx is not None and self._ctx.is_connected:
-                return {"status": "already_connected"}
+        if self._ctx is not None and self._ctx.is_connected:
+            return {"status": "already_connected"}
 
             # Recover from stale runtime contexts that still exist but no longer
             # hold a live client connection.
@@ -420,6 +478,24 @@ class MaraRuntime:
     async def disconnect(self) -> dict:
         """Disconnect from robot."""
         async with self._lock:
+            # Linux mode
+            if self._linux_mode:
+                if self._linux_runtime is None:
+                    return {"status": "not_connected"}
+
+                try:
+                    await self._linux_runtime.stop()
+                except Exception:
+                    pass
+                finally:
+                    self._linux_runtime = None
+                    self._store.connected = False
+                    self._store.robot_state = FreshValue("UNKNOWN", datetime.now(), stale_after_s=2.0)
+                    self._store.add_event(EventType.DISCONNECTED)
+
+                return {"status": "disconnected"}
+
+            # Serial/TCP mode
             if self._ctx is None:
                 return {"status": "not_connected"}
 

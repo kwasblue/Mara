@@ -56,6 +56,13 @@
         using PlatformHalStorage = Rp2040HalStorage;
     }
 
+#elif PLATFORM_LINUX
+    // Linux HAL - for Raspberry Pi, Jetson, and other Linux SBCs
+    #include "hal/linux/LinuxHal.h"
+    namespace hal {
+        using PlatformHalStorage = LinuxHalStorage;
+    }
+
 #elif PLATFORM_NATIVE
     // Native/test HAL - stubs for unit testing
     #include "hal/native/NativeHal.h"

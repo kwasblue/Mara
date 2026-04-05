@@ -61,10 +61,16 @@ With Modules:
 """
 
 from .runtime import Runtime, RuntimeConfig
+from .linux_runtime import LinuxRuntime, LinuxRuntimeConfig, LinuxRuntimeState, ImuData
 from ..core.base_module import BaseModule
 
 __all__ = [
     "Runtime",
     "RuntimeConfig",
     "BaseModule",
+    # Linux runtime
+    "LinuxRuntime",
+    "LinuxRuntimeConfig",
+    "LinuxRuntimeState",
+    "ImuData",
 ]

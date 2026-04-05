@@ -19,17 +19,19 @@
 #   - esp32: ESP32, ESP32-S2, ESP32-S3, ESP32-C3
 #   - stm32: STM32 family (future)
 #   - rp2040: Raspberry Pi Pico (future)
+#   - linux: Linux SBCs (Raspberry Pi, Jetson, etc.)
 #   - native: Host/test builds (stubs)
 #
 # Supported SDKs:
-#   - arduino: Arduino framework (default)
+#   - arduino: Arduino framework (default for ESP32)
 #   - espidf: ESP-IDF native (future)
 #   - mbed: Mbed OS (future)
+#   - cmake: CMake build system (for Linux)
 #
 platform:
-  target: esp32           # Target MCU: esp32 | stm32 | rp2040 | native
-  board: esp32dev         # PlatformIO board name
-  sdk: arduino            # SDK/framework: arduino | espidf | mbed
+  target: esp32           # Target MCU: esp32 | stm32 | rp2040 | linux | native
+  board: esp32dev         # PlatformIO board name (ignored for linux/native)
+  sdk: arduino            # SDK/framework: arduino | espidf | mbed | cmake
   variant: ""             # Optional variant (e.g., "s3" for ESP32-S3)
 
 # -----------------------------------------------------------------------------
@@ -237,6 +239,96 @@ profiles:
     observer: true
     control_module: true
     ota: true
+    telemetry: true
+    heartbeat: true
+    logging: true
+    identity: true
+    audio: false
+    benchmark: true
+
+  # ==========================================================================
+  # LINUX PROFILES
+  # ==========================================================================
+  # For running MARA firmware natively on Linux robots (Raspberry Pi, Jetson)
+  # WiFi/BLE/OTA are disabled as they're handled by the Linux system
+
+  # LINUX_MINIMAL: Minimal Linux build for basic GPIO/I2C control
+  linux_minimal:
+    wifi: false
+    ble: false
+    uart_transport: false
+    mqtt_transport: false
+    servo: true
+    stepper: false
+    dc_motor: true
+    encoder: false
+    motion_controller: false
+    ultrasonic: false
+    imu: false
+    lidar: false
+    signal_bus: false
+    control_kernel: false
+    pid_controller: false
+    state_space: false
+    observer: false
+    control_module: false
+    ota: false
+    telemetry: true
+    heartbeat: true
+    logging: true
+    identity: true
+    audio: false
+    benchmark: false
+
+  # LINUX_MOTORS: Linux motor control profile
+  linux_motors:
+    wifi: false
+    ble: false
+    uart_transport: false
+    mqtt_transport: false
+    servo: true
+    stepper: true
+    dc_motor: true
+    encoder: true
+    motion_controller: true
+    ultrasonic: false
+    imu: false
+    lidar: false
+    signal_bus: true
+    control_kernel: false
+    pid_controller: false
+    state_space: false
+    observer: false
+    control_module: false
+    ota: false
+    telemetry: true
+    heartbeat: true
+    logging: true
+    identity: true
+    audio: false
+    benchmark: false
+
+  # LINUX_FULL: Full Linux build with all sensors and control
+  linux_full:
+    wifi: false
+    ble: false
+    uart_transport: false
+    mqtt_transport: false
+    servo: true
+    stepper: true
+    dc_motor: true
+    encoder: true
+    motion_controller: true
+    ultrasonic: true
+    imu: true
+    lidar: true
+    signal_bus: true
+    control_kernel: true
+    pid_controller: true
+    state_space: true
+    observer: true
+    control_module: true
+    ota: false
     telemetry: true
     heartbeat: true
     logging: true

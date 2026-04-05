@@ -404,76 +404,76 @@ class MaraRuntime:
         if self._ctx is not None and self._ctx.is_connected:
             return {"status": "already_connected"}
 
-            # Recover from stale runtime contexts that still exist but no longer
-            # hold a live client connection.
-            if self._ctx is not None and not self._ctx.is_connected:
-                try:
-                    await self._ctx.disconnect()
-                except Exception:
-                    pass
-                self._ctx = None
-
-            ctx = CLIContext(
-                port=self.port,
-                host=self.host,
-                ble_name=self.ble_name,
-                tcp_port=self.tcp_port,
-                verbose=False,
-                robot_config=self.robot_config,
-                robot_config_path=self.robot_config_path,
-            )
-
+        # Recover from stale runtime contexts that still exist but no longer
+        # hold a live client connection.
+        if self._ctx is not None and not self._ctx.is_connected:
             try:
-                await ctx.connect()
+                await self._ctx.disconnect()
+            except Exception:
+                pass
+            self._ctx = None
 
-                # Set up telemetry callbacks
-                ctx._telemetry.on_imu(self._on_imu)
-                ctx._telemetry.on_encoder(self._on_encoder)
-                ctx._telemetry.on_state(self._on_state_change)
+        ctx = CLIContext(
+            port=self.port,
+            host=self.host,
+            ble_name=self.ble_name,
+            tcp_port=self.tcp_port,
+            verbose=False,
+            robot_config=self.robot_config,
+            robot_config_path=self.robot_config_path,
+        )
 
-                self._ctx = ctx
+        try:
+            await ctx.connect()
 
-                # Update state - start with UNKNOWN until we query actual state
-                now = datetime.now()
-                self._store.connected = True
-                self._store.connected_at = now
-                self._store.robot_state = FreshValue("UNKNOWN", now, stale_after_s=2.0)
-                self._store.firmware_version = self._ctx.client.firmware_version or ""
-                self._store.protocol_version = self._ctx.client.protocol_version or 0
-                self._store.features = self._ctx.client.features or []
+            # Set up telemetry callbacks
+            ctx._telemetry.on_imu(self._on_imu)
+            ctx._telemetry.on_encoder(self._on_encoder)
+            ctx._telemetry.on_state(self._on_state_change)
 
-                # Query actual robot state from MCU
-                try:
-                    state_result = await self._ctx.state_service.get_state()
-                    if state_result.ok and state_result.state:
-                        self._store.robot_state = FreshValue(state_result.state, datetime.now(), stale_after_s=2.0)
-                except Exception:
-                    pass  # Keep UNKNOWN if query fails
+            self._ctx = ctx
 
-                # Record event
-                self._store.add_event(EventType.CONNECTED, {
-                    "firmware": self._store.firmware_version,
-                    "features": self._store.features,
-                    "initial_state": self._store.robot_state.value,
-                })
+            # Update state - start with UNKNOWN until we query actual state
+            now = datetime.now()
+            self._store.connected = True
+            self._store.connected_at = now
+            self._store.robot_state = FreshValue("UNKNOWN", now, stale_after_s=2.0)
+            self._store.firmware_version = self._ctx.client.firmware_version or ""
+            self._store.protocol_version = self._ctx.client.protocol_version or 0
+            self._store.features = self._ctx.client.features or []
 
-                return {
-                    "status": "connected",
-                    "firmware": self._store.firmware_version,
-                    "features": self._store.features,
-                }
-            except Exception as e:
-                try:
-                    await ctx.disconnect()
-                except Exception:
-                    pass
-                self._ctx = None
-                self._store.connected = False
-                self._store.add_event(EventType.ERROR, {
-                    "stage": "connect",
-                    "error": str(e),
-                })
-                raise
+            # Query actual robot state from MCU
+            try:
+                state_result = await self._ctx.state_service.get_state()
+                if state_result.ok and state_result.state:
+                    self._store.robot_state = FreshValue(state_result.state, datetime.now(), stale_after_s=2.0)
+            except Exception:
+                pass  # Keep UNKNOWN if query fails
+
+            # Record event
+            self._store.add_event(EventType.CONNECTED, {
+                "firmware": self._store.firmware_version,
+                "features": self._store.features,
+                "initial_state": self._store.robot_state.value,
+            })
+
+            return {
+                "status": "connected",
+                "firmware": self._store.firmware_version,
+                "features": self._store.features,
+            }
+        except Exception as e:
+            try:
+                await ctx.disconnect()
+            except Exception:
+                pass
+            self._ctx = None
+            self._store.connected = False
+            self._store.add_event(EventType.ERROR, {
+                "stage": "connect",
+                "error": str(e),
+            })
+            raise
 
     async def disconnect(self) -> dict:
         """Disconnect from robot."""
